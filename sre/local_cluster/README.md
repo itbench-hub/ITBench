@@ -14,7 +14,7 @@ Helm version v.3.16 is required: [Installation](https://helm.sh/docs/intro/insta
 ##### e.g., Python's virtual environments
 
 ```bash
-#we use python 3.11
+#we use python 3.12
 python3 -m venv venv
 source venv/bin/activate
 ```
