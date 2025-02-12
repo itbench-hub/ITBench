@@ -1,0 +1,121 @@
+---
+- name: Add Helm chart repo for OpenCost
+  kubernetes.core.helm_repository:
+    name: opencost-charts
+    kubeconfig_path: "{{ kubeconfig }}"
+    repo_url: "https://opencost.github.io/opencost-helm-chart"
+  tags:
+    - install_tools
+  when:
+    - domain == "finops"
+
+- name: Update Helm repo
+  kubernetes.core.helm:
+    name: dummy
+    state: absent
+    kubeconfig_path: "{{ kubeconfig }}"
+    release_namespace: "{{ opencost_namespace_project_name }}"
+    update_repo_cache: true
+  tags:
+    - install_tools
+  when:
+    - domain == "finops"
+
+- name: Identify and set Prometheus service name
+  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl get services -o=jsonpath='{.items[?(@.spec.ports[0].port==9090)].metadata.name}' -n {{ prometheus_namespace_project_name }} | awk '{ if ($1 == "prometheus-operated") print $2; else print $1 }'
+  register: command_output
+  tags:
+    - install_tools
+  when:
+    - domain == "finops"
+
+- ansible.builtin.set_fact:
+    prometheus_service_name: "{{ command_output.stdout }}"
+    when: command_output.stdout | length > 0
+  tags:
+    - install_tools
+  when:
+    - domain == "finops"
+
+- name: Deploy OpenCost
+  kubernetes.core.helm:
+    name: "{{ opencost_installation_name }}"
+    kubeconfig_path: "{{ kubeconfig }}"
+    chart_ref: opencost-charts/opencost
+    chart_version: "{{ opencost_chart_version }}"
+    release_namespace: "{{ opencost_namespace_project_name }}"
+    release_state: present
+    create_namespace: true
+    wait: true
+    timeout: 10m0s
+    values:
+      networkPolicies:
+        enabled: true
+        prometheus:
+          namespace: "{{ prometheus_namespace_project_name }}"
+      opencost:
+        customPricing:
+          enabled: true
+          createConfigmap: true
+          provider: custom
+          costModel:
+            description: Modified pricing configuration.
+            CPU: 10.00
+            spotCPU: 7.50
+            RAM: 5.00
+            spotRAM: 2.50
+            GPU: 50.00
+            storage: 2.50
+            zoneNetworkEgress: 1.00
+            regionNetworkEgress: 1.00
+            internetNetworkEgress: 1.00
+        exporter:
+          extraEnv:
+            USE_CUSTOM_PROVIDER: true
+        prometheus:
+          external:
+            enabled: true
+            url: "http://{{ prometheus_service_name }}.{{ prometheus_namespace_project_name }}:9090"
+          internal:
+            enabled: false
+        ui:
+          ingress:
+            annotations:
+              # nginx.ingress.kubernetes.io/rewrite-target: /$2
+              nginx.ingress.kubernetes.io/enable-cors: "true"
+            enabled: true
+            hosts:
+              - host: null
+                paths:
+                  - /
+                  # - /{{ opencost_namespace_project_name }}(/|$)(.*)
+            ingressClassName: nginx
+  tags:
+    - install_tools
+  when:
+    - domain == "finops"
+
+- name: Service monitor to get OpenCost metrics
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: "opencost-metrics-to-prometheus"
+        namespace: "{{ opencost_namespace_project_name }}"
+        labels:
+            "for_instance_in_namespace": "{{ prometheus_namespace_project_name }}"
+      spec:
+        endpoints:
+        - interval: 10s
+          path: /metrics
+          port: http
+        selector:
+          matchLabels:
+            "app.kubernetes.io/instance": "opencost"
+  tags:
+    - install_tools
+  when:
+    - domain == "finops"

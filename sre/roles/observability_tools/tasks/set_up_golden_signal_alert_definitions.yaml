@@ -75,6 +75,22 @@
   when:
     - domain == "sre" or domain == "finops"
 
+- name: Load opencost alert rules from JSON file
+  set_fact:
+    opencost_rules_payload: "{{ lookup('ansible.builtin.file', 'alert_rules/opencost_alert_rules.json')| from_json }}"
+  tags:
+    - install_tools
+  when:
+    - domain == "finops"
+
+- name: Combine alert rules into one payload
+  set_fact:
+    alert_rules_payload: "{{ alert_rules_payload + opencost_rules_payload }}"
+  tags:
+    - install_tools
+  when:
+    - domain == "finops"
+
 - name: Update folderUID and ruleGroup in generic alert rules
   set_fact:
     generic_updated_alert_rules: >

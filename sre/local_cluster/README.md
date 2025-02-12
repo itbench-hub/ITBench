@@ -1,9 +1,12 @@
 # Local Cluster Setup
 
 ## Pre-requisites
-1. Python3.12
+1. [Python3.12](https://www.python.org/downloads/release/python-3120/)
 2. [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
 3. [Kubectl](https://kubernetes.io/docs/tasks/tools/)
+4. [Podman](https://podman.io/) (podman-plugins and podman-machine on Linux)
+5. [Helm](https://helm.sh/)
+6. [Brew](https://brew.sh/) (Mac)
 
 ## Setup
 
