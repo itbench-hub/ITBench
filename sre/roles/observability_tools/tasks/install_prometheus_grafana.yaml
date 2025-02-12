@@ -21,6 +21,30 @@
   when:
     - domain == "sre" or domain == "finops"
 
+- name: Create Prometheus rules list
+  set_fact:
+    prometheus_rules: []
+  tags:
+    - install_tools
+  when:
+    - domain == "sre" or domain == "finops"
+
+- name: Load OpenCost recording rules from yaml
+  set_fact:
+    opencost_recording_rules: "{{ lookup('ansible.builtin.file', 'recording_rules/opencost.yaml')| from_yaml }}"
+  tags:
+    - install_tools
+  when:
+    - domain == "finops"
+
+- name: Add OpenCost rules to Prometheus rules list
+  set_fact:
+    prometheus_rules: "{{ prometheus_rules + opencost_recording_rules.groups }}"
+  tags:
+    - install_tools
+  when:
+    - domain == "finops"
+
 - name: Deploy the Prometheus - Grafana stack
   kubernetes.core.helm:
     name: "{{ prometheus_installation_name }}"
@@ -31,6 +55,11 @@
     release_state: present
     create_namespace: true
     wait: true
+    timeout: 10m0s
+    values:
+      additionalPrometheusRulesMap:
+        rule-name:
+          groups: "{{ prometheus_rules }}"
     set_values:
       - value: prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
         value_type: raw

@@ -78,7 +78,11 @@ make get_kcfg
 ```bash
 export KUBECONFIG=/tmp/<downloaded yaml>
 kubectl get pod --all-namespaces
-``` 
+```
+
+```yaml
+kubeconfig: "/tmp/<downloaded yaml>"
+```
 
 4. Now let's head back to the [parent README](../README.md).
    
@@ -88,7 +92,25 @@ make delete
 ```
 
 _Note_: For a full list of `make` commands, run the following command:
-
 ```bash
 make help
+```
+
+## FAQ
+
+### How do I access the observability stack's frontends?
+
+Once you have deployed the observability stack, run the following command to find the Ingress address for deployed frontends:
+
+```bash
+kubectl get ingress -A
+```
+
+To access the Granfana dashboard, copy the address for the `prometheus-grafana` ingress resource from the terminal and paste it into the browser with the following prefix: `/prometheus`.
+
+To access the Opencost dashboard, copy the address for the `opencost-ingress` ingress resource from the terminal and paste it into the browser.
+
+```console
+http://<prometheus-granfana address>/prometheus
+http://<opencost-ingress address>
 ```
