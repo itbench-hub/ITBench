@@ -1,5 +1,5 @@
 ---
-- name: Add Helm chart repo from the Prometheus community
+- name: Add Helm chart repo from the OpenTelemetry community
   kubernetes.core.helm_repository:
     name: open-telemetry
     kubeconfig_path: "{{ kubeconfig }}"
@@ -37,7 +37,7 @@
   when:
     - sample_application == "otel_astronomy_shop"
 
-- name: Deploy (unmodified) OpenTelemetry's Astronomy Shop Demo
+- name: Deploy OpenTelemetry's Astronomy Shop Demo
   kubernetes.core.helm:
     name: "{{ otel_astronomy_app_installation_name }}"
     kubeconfig_path: "{{ kubeconfig }}"
@@ -54,45 +54,146 @@
             valueFrom:
               fieldRef:
                 apiVersion: v1
-                fieldPath: "metadata.labels['app.kubernetes.io/name']"
-    set_values:
-      - value: jaeger.enabled=false
-        value_type: raw
-      - value: grafana.enabled=false
-        value_type: raw
-      - value: prometheus.enabled=false
-        value_type: raw
-      - value: opensearch.enabled=false
-        value_type: raw
-      - value: "opentelemetry-collector.config.exporters.otlp.endpoint={{ jaeger_installation_name }}-collector.{{ jaeger_namespace_project_name }}.svc.cluster.local:4317"
-        value_type: string
-      - value: "opentelemetry-collector.config.exporters.otlphttp\/prometheus.endpoint=http://{{ prometheus_service_name }}.{{ prometheus_namespace_project_name }}:9090/api/v1/otlp"
-        value_type: string
-      - value: "opentelemetry-collector.config.exporters.opensearch.http.endpoint=http://opensearch-cluster-master.{{ opensearch_namespace_project_name }}.svc.cluster.local:9200"
-        value_type: string
-      - value: 'opentelemetry-collector.config.connectors.spanmetrics={"dimensions": [{"name": "namespace", "default": "{{ otel_astronomy_app_namespace_project_name }}"}]}'
-        value_type: json
-      - value: opentelemetry-collector.resources.limits.memory=512Mi
-        value_type: string
-      - value: components.loadgenerator.imageOverride.repository=quay.io/mudiverm/srebench-loadgen
-        value_type: raw
-      - value: components.loadgenerator.imageOverride.tag=0.3
-        value_type: raw
-      - value: components.flagd.command[0]=/flagd-build
-        value_type: string
-      - value: components.flagd.command[1]=start
-        value_type: string
-      - value: components.flagd.command[2]=-p
-        value_type: string
-      - value: components.flagd.command[3]=8013
-        value_type: string
-      - value: components.flagd.command[4]=--uri
-        value_type: string
-      - value: components.flagd.command[5]=file:./etc/flagd/demo.flagd.json
-        value_type: string
-      - value: components.flagd.resources.limits.memory=144Mi
-        value_type: string
-    wait_timeout: "5m"
+                fieldPath: metadata.labels['app.kubernetes.io/name']
+      components:
+        accountingService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 100Mi
+        adService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 250Mi
+        cartService:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 100Mi
+        checkoutService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 15Mi
+        currencyService:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 10Mi
+        emailService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 75Mi
+        flagd:
+          command:
+            - /flagd-build
+            - start
+            - -p
+            - "8013"
+            - --uri
+            - file:./etc/flagd/demo.flagd.json
+          resources:
+            requests:
+              cpu: 15m
+              memory: 75Mi
+            limits:
+              memory: 144Mi
+        frauddetectionService:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 300Mi
+        frontend:
+          resources:
+            requests:
+              cpu: 300m
+              memory: 125Mi
+        frontendProxy:
+          resources:
+            requests:
+              cpu: 75m
+              memory: 25Mi
+            limits:
+              memory: 75Mi
+        kafka:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 550Mi
+        loadgenerator:
+          imageOverride:
+            repository: quay.io/it-bench/loadgenerator
+            tag: "0.3"
+          resources:
+            limits:
+              memory: 1500Mi
+        imageprovider:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 25Mi
+        paymentService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 100Mi
+        productCatalogService:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 15Mi
+        quoteService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 25Mi
+        recommendationService:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+        shippingService:
+          resources:
+            requests: 
+              cpu: 10m
+              memory: 10Mi
+        valkey:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 10Mi
+      grafana:
+        enabled: false
+      jaeger:
+        enabled: false
+      opensearch:
+        enabled: false
+      opentelemetry-collector:
+        config:
+          connectors:
+            spanmetrics:
+              dimensions:
+                - name: namespace
+                  default: "{{ otel_astronomy_app_namespace_project_name }}"
+          exporters:
+            opensearch:
+              http:
+                endpoint: "http://opensearch-cluster-master.{{ opensearch_namespace_project_name }}.svc.cluster.local:9200"
+            otlp:
+              endpoint: "{{ jaeger_installation_name }}-collector.{{ jaeger_namespace_project_name }}.svc.cluster.local:4317"
+            otlphttp/prometheus:
+              endpoint: "http://{{ prometheus_service_name }}.{{ prometheus_namespace_project_name }}:9090/api/v1/otlp"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 150Mi
+          limits:
+            memory: 512Mi
+      prometheus:
+        enabled: false
+    wait: true
   tags:
     - install_sample_applications
   when:
@@ -122,31 +223,3 @@
     - install_sample_applications
   when:
     - sample_application == "otel_astronomy_shop"
-
-# - name: Enable targeted load (while avoiding the recommendation service)
-#   ansible.builtin.import_role:
-#     name: fault_injection
-#   vars:
-#       is_injection: true
-#       is_fault_injection: true
-#       is_otel_astronomy_shop_dynamic_load: true
-#       dynamic_load_vars:
-#         - name: BROWSE_PRODUCT_WEIGHT
-#           value: "150"
-#         - name: GET_RECOMMENDATIONS_WEIGHT
-#           value: "0"
-#         - name: GET_ADS_WEIGHT
-#           value: "150"
-#         - name: VIEW_CART_WEIGHT
-#           value: "150"
-#         - name: ADD_TO_CART_WEIGHT
-#           value: "150"
-#         - name: CHECKOUT_WEIGHT
-#           value: "150"
-#         - name: CHECKOUT_MULTI_WEIGHT
-#           value: "150"
-#         - name: FLOOD_HOME_WEIGHT
-#           value: "150"
-#   tags:
-#     - sample_applications
-#     - install_opentelemetry_astronomy_shop

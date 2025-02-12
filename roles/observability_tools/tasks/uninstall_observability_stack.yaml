@@ -46,6 +46,17 @@
   when:
     - domain == "sre" or domain == "finops"
 
+- name: Uninstall the Kubernetes Metrics Server
+  kubernetes.core.helm:
+    name: "{{ metrics_server_installation_name }}"
+    kubeconfig_path: "{{ kubeconfig }}"
+    release_namespace: "{{ metrics_server_namespace_project_name }}"
+    state: absent
+  tags:
+    - uninstall_tools
+  when:
+    - domain == "finops"
+
 - name: Uninstall Loki
   kubernetes.core.helm:
     name: "{{ loki_installation_name }}"
@@ -69,6 +80,17 @@
     - uninstall_tools
   when:
     - domain == "sre" or domain == "finops"
+
+- name: Uninstall OpenCost
+  kubernetes.core.helm:
+    name: "{{ opencost_installation_name }}"
+    kubeconfig_path: "{{ kubeconfig }}"
+    release_namespace: "{{ opencost_namespace_project_name }}"
+    state: absent
+  tags:
+    - uninstall_tools
+  when:
+    - domain == "finops"
 
 - name: Uninstall Ingress
   kubernetes.core.helm:
@@ -121,6 +143,19 @@
   when:
     - domain == "sre" or domain == "finops"
 
+- name: Remove the namespace associated with Kubernetes Metric Server
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ metrics_server_namespace_project_name }}"
+    api_version: v1
+    kind: Namespace
+    state: absent
+    wait: true
+  tags:
+    - uninstall_tools
+  when:
+    - domain == "finops"
+
 - name: Remove the namespace associated with Loki
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig }}"
@@ -146,6 +181,19 @@
     - uninstall_tools
   when:
     - domain == "sre" or domain == "finops"
+
+- name: Remove the namespace associated with OpenCost
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ opencost_namespace_project_name }}"
+    api_version: v1
+    kind: Namespace
+    state: absent
+    wait: true
+  tags:
+    - uninstall_tools
+  when:
+    - domain == "finops"
 
 - name: Remove the namespace associated with Ingress
   kubernetes.core.k8s:

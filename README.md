@@ -8,6 +8,19 @@ ITBench uses open source technologies to create completely repeatable and reprod
 ![itbench_sre_task_scenario.png](./docs/itbench_sre_task_scenario.png)
 While this repository focuses on scenarios, an open-source Language Model (LM)-based SRE-Agent that aims to diagnose and remediate issues in these scenario environments can be found [here](https://github.com/IBM/itbench-sre-agent). 
 
+### Project Structure
+
+This project uses Ansible to automate the deployment and undeployment of technologies to a Kubernetes cluster and the injection and removal of faults. 
+The playbook run is configured using variables defined in `group\_vars`.
+
+| Directory                   | Purpose                                                                                                      |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------|
+| `roles/observability_tools` | Handles  the deployment and removal of observability tools                                                   |
+| `roles/sample_applications` | Handles the deployment and removal of sample applications                                                    |
+| `roles/fault_injection`     | Provides reusable fault injection mechanisms                                                                 |
+| `roles/fault_removal`       | Provides mechanisms to remove (injected) faults from the environment                                         |
+| `roles/incident_`           | Contains scenarios that leverage the fault injection and removal mechanisms defined in the directories above |
+
 ## Getting Started – Deploying an Incident Scenario
 ### Cluster Setup
 

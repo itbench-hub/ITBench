@@ -7,9 +7,11 @@ INCIDENT_NUMBER ?= 1
 
 # TODO: Re-think the end to end experience
 
+FINOPS_SCENARIOS := 37 38
 HOTEL_RESERVATION_SCENARIOS := 102 210 211 212
 
 IS_DEBUG_SCENARIO ?= true
+IS_FINOPS_SCENARIO := $(shell echo "$(FINOPS_SCENARIOS)" | grep -w "$(INCIDENT_NUMBER)" > /dev/null && echo "true" || echo "false")
 IS_HOTEL_RESERVATION_SCENARIO := $(shell echo "$(HOTEL_RESERVATION_SCENARIOS)" | grep -w "$(INCIDENT_NUMBER)" > /dev/null && echo "true" || echo "false")
 SAMPLE_APPLICATION := $(shell echo "$(HOTEL_RESERVATION_SCENARIOS)" | grep -w "$(INCIDENT_NUMBER)" > /dev/null && echo "dsb_hotel_reservation" || echo "otel_astronomy_shop")
 
@@ -99,19 +101,39 @@ else
 		--extra-vars "sample_application=$(SAMPLE_APPLICATION)"
 endif
 
-.PHONY: start_incident
+.PHONY: deploy_scenario_application
 ifeq ($(IS_HOTEL_RESERVATION_SCENARIO),true)
-start_incident: deploy_observability_stack deploy_hotel_reservation inject_incident_fault ## Starts an incident by deploying a stack, application, and fault for an incident
+deploy_scenario_application: deploy_hotel_reservation
 else 
-start_incident: deploy_observability_stack deploy_astronomy_shop inject_incident_fault
+deploy_scenario_application: deploy_astronomy_shop
 endif
 
-.PHONY: stop_incident
+.PHONY: undeploy_scenario_application
 ifeq ($(IS_HOTEL_RESERVATION_SCENARIO),true)
-stop_incident: remove_incident_fault undeploy_hotel_reservation undeploy_astronomy_shop undeploy_observability_stack ## Stops an incident by undeploying a stack, application, and fault for an incident
+undeploy_scenario_application: undeploy_hotel_reservation
 else
-stop_incident: remove_incident_fault undeploy_astronomy_shop undeploy_astronomy_shop undeploy_observability_stack
+undeploy_scenario_application: undeploy_astronomy_shop
 endif
+
+.PHONY: deploy_scenario_tools
+ifeq ($(IS_FINOPS_SCENARIO),true)
+deploy_scenario_tools: deploy_finops_stack
+else
+deploy_scenario_tools: deploy_observability_stack
+endif
+
+.PHONY: undeploy_scenario_tools
+ifeq ($(IS_FINOPS_SCENARIO),true)
+undeploy_scenario_tools: undeploy_finops_stack
+else
+undeploy_scenario_tools: undeploy_observability_stack
+endif
+
+.PHONY: start_incident
+start_incident: deploy_scenario_tools deploy_scenario_application inject_incident_fault ## Starts an incident by deploying a stack, application, and fault for an incident
+
+.PHONY: stop_incident
+stop_incident: remove_incident_fault undeploy_scenario_application undeploy_scenario_tools ## Stops an incident by undeploying a stack, application, and fault for an incident
 
 .PHONY: awx_setup
 awx_setup:

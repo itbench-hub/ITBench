@@ -1,0 +1,55 @@
+---
+scenario_domain: finops
+sample_application: otel_astronomy_shop
+
+is_install_chaos_mesh: false
+target_namespace_name: "{{ otel_astronomy_app_namespace_project_name }}"
+target_deployments:
+  - "{{ otel_astronomy_app_installation_name }}-accountingservice"
+  - "{{ otel_astronomy_app_installation_name }}-adservice"
+  - "{{ otel_astronomy_app_installation_name }}-cartservice"
+  - "{{ otel_astronomy_app_installation_name }}-checkoutservice"
+  - "{{ otel_astronomy_app_installation_name }}-currencyservice"
+  - "{{ otel_astronomy_app_installation_name }}-emailservice"
+  - "{{ otel_astronomy_app_installation_name }}-flagd"
+  - "{{ otel_astronomy_app_installation_name }}-frauddetectionservice"
+  - "{{ otel_astronomy_app_installation_name }}-frontend"
+  - "{{ otel_astronomy_app_installation_name }}-frontendproxy"
+  - "{{ otel_astronomy_app_installation_name }}-imageprovider"
+  - "{{ otel_astronomy_app_installation_name }}-kafka"
+  - "{{ otel_astronomy_app_installation_name }}-otelcol"
+  - "{{ otel_astronomy_app_installation_name }}-paymentservice"
+  - "{{ otel_astronomy_app_installation_name }}-productcatalogservice"
+  - "{{ otel_astronomy_app_installation_name }}-quoteservice"
+  - "{{ otel_astronomy_app_installation_name }}-recommendationservice"
+  - "{{ otel_astronomy_app_installation_name }}-shippingservice"
+  - "{{ otel_astronomy_app_installation_name }}-valkey"
+
+docs_incident_38:
+  "id": 38
+  "name": "Large cost variation"
+  "platform": kubernetes
+  "description": "Services has scaled up despite low traffic"
+  "application": "otel_astronomy_shop"
+  "complexity": "Medium"
+ 
+  alerts: 
+    - id: high_cost_variation
+      text: "Cost has increased significantly despite having low utilization"
+      namespace: otel-demo
+
+  recommended_actions:
+  - solution:
+    - actions:
+      - check current and recent past utilization numbers through promethous
+      - found a temporary spike in application load
+      - detect misconfiguration in auto-scaler for scaling down
+    # - time_to_clear_alert: 120s
+
+  metrics:
+  - type: "rate"
+    value: 27.8
+  # - type: "total"
+  #   value: Z
+  - type: "efficiency"
+    value: 52
