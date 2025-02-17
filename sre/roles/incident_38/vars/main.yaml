@@ -29,18 +29,44 @@ docs_incident_38:
   "id": 38
   "name": "Large cost variation"
   "platform": kubernetes
+  "dsl_format": groups
   "description": "Services has scaled up despite low traffic"
   "application": "otel_astronomy_shop"
   "complexity": "Medium"
- 
+  "inject_fault_unused": true
+  "agent_operation_timeout_sec": 3000
+  "bundle_ready_timeout_sec": 3000
+
+  fault:
+    - "entity":
+        "name": "otel-demo-*"
+        "kind": "HorizontalPodAutoscaler"
+        "group_id": "otel-demo-horizontal-pod-autoscalers"
+      "condition": "Misconfigured HPA"
+      "category": "Other"
+      "fault_mechanism": "custom(other)"
+
   alerts: 
     - id: high_cost_variation
       text: "Cost has increased significantly despite having low utilization"
+      group_id: otel-demo-namespace-1
+
+  groups:
+    - id: otel-demo-namespace-1
+      kind: Namespace
+      name: otel-demo
+      namespace: ""
+    - id: otel-demo-horizontal-pod-autoscalers
+      kind: HorizontalPodAutoscaler
       namespace: otel-demo
+      filter:
+      - "*.*"
+      root_cause: true
 
   recommended_actions:
   - solution:
-    - actions:
+      id: "investigate_detect_misconfigured_autoscaler"
+      actions:
       - check current and recent past utilization numbers through promethous
       - found a temporary spike in application load
       - detect misconfiguration in auto-scaler for scaling down
@@ -48,8 +74,6 @@ docs_incident_38:
 
   metrics:
   - type: "rate"
-    value: 27.8
-  # - type: "total"
-  #   value: Z
+    value: "27.8"
   - type: "efficiency"
-    value: 52
+    value: "52"

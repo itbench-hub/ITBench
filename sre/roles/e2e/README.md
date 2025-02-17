@@ -78,3 +78,4 @@ python experiment_runner.py --experiment_spec ../../group_vars/e2e --path ../../
 ```bash
 make batch_delete
 ```
+2. Delete the VPC in AWS console. Do NOT do this step until `make batch_delete` completes.

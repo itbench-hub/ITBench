@@ -11,8 +11,25 @@
   tags:
     - get_bundle_info
 
+- name: Get restricted kubeconfig from S3
+  amazon.aws.s3_object:
+    endpoint_url: "https://s3.us-east-2.amazonaws.com"
+    bucket: "{{ s3_bucket_name_for_results }}"
+    object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/kubeconfig.j2"
+    dest: "/tmp/kubeconfig.j2"
+    mode: get
+  register: s3_get_result
+  retries: 3  # Number of retries
+  delay: 60   # Delay between retries in seconds (60 seconds = 1 minute)
+  until: s3_get_result is success  # Continue retrying until the task is successful
+  tags:
+    - get_bundle_info
+  when:
+    - sre_bench_runner
+    - run_uuid is defined and scenario_number is defined and run_number is defined
+
 - name: Store kubeconfig
-  command: cat {{ kubeconfig }}
+  command: cat /tmp/kubeconfig.j2
   register: kubeconfig_output
   tags:
     - get_bundle_info

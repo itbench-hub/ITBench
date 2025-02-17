@@ -12,7 +12,7 @@ from experiment_utils import load_yaml
 
 
 # Temp fix until scneario_spec is implemented
-SAMPLE_APP_HOTEL_RESERVATIONS_SCENARIOS = [102, 210, 211, 212]
+sample_application_HOTEL_RESERVATIONS_SCENARIOS = [102, 210, 211, 212]
 
 
 class ExperimentRunner:
@@ -47,9 +47,32 @@ class ExperimentRunner:
             )
 
         counter = 0
+        mapping = {
+            1: 1,
+            3: 2,
+            5: 3,
+            6: 4,
+            12: 5,
+            14: 6,
+            15: 7,
+            16: 8,
+            17: 9,
+            18: 10,
+            19: 11,
+            20: 12,
+            23: 13,
+            25: 14,
+            26: 15,
+            27: 16,
+            28: 17,
+            29: 18,
+            32: 19,
+            34: 20,
+            102: 21
+        }
         for each_scenario in self.experiment.scenarios:
             # ToDo: To pick up cluster annotated name and instance_type from bucket
-            cluster_assignment = f"exp-runner-m4.xlarge-aws-{each_scenario}.k8s.local"
+            cluster_assignment = f"exp-runner-m4.xlarge-aws-{mapping[each_scenario]}.k8s.local"
 
             # get relevant Kubeconfig(s)
             kubeconfig_command = subprocess.run(
@@ -59,19 +82,19 @@ class ExperimentRunner:
             if kubeconfig_command.returncode != 0:
                 raise SystemExit
 
-            sample_app = "modified_opentelemetry_astronomy_shop"
-            if each_scenario in SAMPLE_APP_HOTEL_RESERVATIONS_SCENARIOS:
-                sample_app = "deathstarbench_hotel_reservations"
+            sample_application = "otel_astronomy_shop"
+            if each_scenario in sample_application_HOTEL_RESERVATIONS_SCENARIOS:
+                sample_application = "dsb_hotel_reservation"
 
             job_template_creation = subprocess.run(
-                f"ansible-playbook -v {self.base_yaml} --tags \"awx_scenario_setup\" --extra-vars \"relevant_kubeconfig_file_path=/tmp/{cluster_assignment}.yaml scenario_number={each_scenario} state={self.state} sample_app={sample_app}\"",
+                f"ansible-playbook -v {self.base_yaml} --tags \"awx_scenario_setup\" --extra-vars \"relevant_kubeconfig_file_path=/tmp/{cluster_assignment}.yaml scenario_number={each_scenario} domain=sre state={self.state} sample_application={sample_application}\"",
                 shell=True,
                 check=True)
             if job_template_creation.returncode != 0:
                 raise SystemExit
 
             workflow_template_creation = subprocess.run(
-                f"ansible-playbook -v {self.base_yaml} --tags \"workflow_setup\" --extra-vars \"scenario_number={each_scenario} state={self.state} sample_app={sample_app}\"",
+                f"ansible-playbook -v {self.base_yaml} --tags \"workflow_setup\" --extra-vars \"scenario_number={each_scenario} state={self.state} sample_application={sample_application}\"",
                 shell=True,
                 check=True)
             if workflow_template_creation.returncode != 0:
@@ -79,7 +102,7 @@ class ExperimentRunner:
 
             if state == "present":
                 launch_workflow_command = subprocess.run(
-                    f"ansible-playbook -v {self.base_yaml} --tags \"workflow_launch\" --extra-vars \"run_uuid={run_uuid} sre_agent_name__version_number=lumyn-0.0.1 scenario_number={each_scenario} number_of_runs={self.experiment.number_of_runs} state={self.state} sample_app={sample_app}\"",
+                    f"ansible-playbook -v {self.base_yaml} --tags \"workflow_launch\" --extra-vars \"run_uuid={run_uuid} sre_agent_name__version_number=lumyn-0.0.1 scenario_number={each_scenario} number_of_runs={self.experiment.number_of_runs} state={self.state} sample_application={sample_application}\"",
                     shell=True,
                     check=True)
                 if launch_workflow_command.returncode != 0:

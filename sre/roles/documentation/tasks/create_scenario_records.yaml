@@ -12,9 +12,13 @@
         name: "{{ incident.name }}"
         type: "SRE"
         description: "{{ incident.description }}"
-        category: "{{ incident.fault | map(attribute='category') | unique | sort | join(', ') }}"
+        # Until multiple cateogries per scenario can be supported
+        # scenario_class: "{{ incident.fault | map(attribute='category') | unique | sort | join(', ') }}"
+        category: "{{ (incident.fault | map(attribute='category') | unique | list | last) | default('Other') }}"
         complexity: "{{ incident.complexity }}"
-        scenario_class: "{{ incident.fault | map(attribute='category') | unique | sort | join(', ') }}"
+        # Until multiple cateogries per scenario can be supported
+        # scenario_class: "{{ incident.fault | map(attribute='category') | unique | sort | join(', ') }}"
+        scenario_class: "{{ (incident.fault | map(attribute='category') | unique | list | last) | default('Other') }}"
       bundle:
         name: "{{ incident.name }}"
         path: "{{ scenario_root_path | default('IT-Automation-Testbed') }}/"
@@ -37,6 +41,8 @@
             target: "bundle_status"
           get:
             target: "bundle_info"
+          on_error:
+            target: "e2e_awx_stage_three"
   tags:
     - documentation
 
