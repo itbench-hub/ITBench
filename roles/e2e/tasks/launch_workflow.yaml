@@ -1,35 +1,18 @@
 ---
-- name: Get AWX service information
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ awx_kubeconfig }}"
-    kind: Service
-    namespace: awx
-    name: awx-deployment-service
-  register: awx_service_information
+- name: Tasks associated with workflow handshake
+  ansible.builtin.include_tasks:
+    file: workflow_handshake.yaml
+    apply:
+      tags:
+        - workflow_launch
+        - workflow_launch_stage_one
+        - workflow_launch_stage_two
+        - workflow_launch_stage_three
   tags:
     - workflow_launch
-
-- name: Set `controller_host` value for the Ansible tower
-  set_fact:
-    controller_host: "http://{{ awx_service_information.resources[0].status.loadBalancer.ingress[0].hostname }}"
-  tags:
-    - workflow_launch
-
-- name: Set `controller_username` value for the Ansible tower
-  set_fact:
-    controller_username: "admin"
-  tags:
-    - workflow_launch
-
-- name: Get AWX secret information
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ awx_kubeconfig }}"
-    kind: Secret
-    namespace: awx
-    name: awx-deployment-admin-password
-  register: awx_secret_information
-  tags:
-    - workflow_launch
+    - workflow_launch_stage_one
+    - workflow_launch_stage_two
+    - workflow_launch_stage_three
 
 - name: Set `controller_password` value for the Ansible tower
   set_fact:
@@ -54,3 +37,57 @@
   loop: "{{ range(1,(number_of_runs |int)+1) | list }}"
   tags:
     - workflow_launch
+
+- name: Launch the workflow - Stage One
+  awx.awx.workflow_launch:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    workflow_template: "Scenario-{{scenario_number}}-One-Mode-Deployment-Stage-One"
+    extra_vars:
+      run_uuid: "{{ run_uuid }}"
+      scenario_number: "{{ scenario_number }}"
+      run_number: "{{ item }}"
+      sre_agent_name__version_number: "{{ sre_agent_name__version_number }}"
+      s3_bucket_name_for_results: "{{ s3_bucket_name_for_results }}"
+      sre_bench_runner: "{{ sre_bench_runner | bool }}"
+    wait: False
+  loop: "{{ range(1,(number_of_runs |int)+1) | list }}"
+  tags:
+    - workflow_launch_stage_one
+
+- name: Launch the workflow - Stage Two
+  awx.awx.workflow_launch:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    workflow_template: "Scenario-{{scenario_number}}-One-Mode-Deployment-Stage-Two"
+    extra_vars:
+      run_uuid: "{{ run_uuid }}"
+      scenario_number: "{{ scenario_number }}"
+      run_number: "{{ item }}"
+      sre_agent_name__version_number: "{{ sre_agent_name__version_number }}"
+      s3_bucket_name_for_results: "{{ s3_bucket_name_for_results }}"
+      sre_bench_runner: "{{ sre_bench_runner | bool }}"
+    wait: False
+  loop: "{{ range(1,(number_of_runs |int)+1) | list }}"
+  tags:
+    - workflow_launch_stage_two
+
+- name: Launch the workflow - Stage Three
+  awx.awx.workflow_launch:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    workflow_template: "Scenario-{{scenario_number}}-One-Mode-Deployment-Stage-Three"
+    extra_vars:
+      run_uuid: "{{ run_uuid }}"
+      scenario_number: "{{ scenario_number }}"
+      run_number: "{{ item }}"
+      sre_agent_name__version_number: "{{ sre_agent_name__version_number }}"
+      s3_bucket_name_for_results: "{{ s3_bucket_name_for_results }}"
+      sre_bench_runner: "{{ sre_bench_runner | bool }}"
+    wait: False
+  loop: "{{ range(1,(number_of_runs |int)+1) | list }}"
+  tags:
+    - workflow_launch_stage_three

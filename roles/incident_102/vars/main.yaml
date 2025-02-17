@@ -12,7 +12,7 @@ docs_incident_102:
   name: 'Memory resource quota limit on a namespace'
   description: 'Introduce memory resource quota limit and make search service unavailable'
   application: "deathstarbench_hotel_reservations"
-  complexity: Easy
+  complexity: Low
   inject_fault_unused: true
   agent_operation_timeout_sec: 3000
   bundle_ready_timeout_sec: 3000
@@ -66,16 +66,16 @@ docs_incident_102:
   - - frontend-service-1
     - frontend-pod
   propagations:
-  - source: search-namespace
-    target: search-service-1
-    condition: searchservice replicaset has 0 pods
-    effect: searchservice Error Rate is Above Threshold
-  - source: search-service-1
+  - source: search-deployment-1
     target: frontend-service-1
-    condition: searchservice Error Rate is Above Threshold
+    condition: searchservice replicaset has 0 pods causing searchservice to be unavailable
     effect: frontend service Error Rate is Above Threshold
   recommended_actions:
   - solution:
       id: increase_memory_resource_limit
       actions:
       - increase memory resource limit
+  - solution:
+      id: reduce_memory_on_deployment_pods
+      actions:
+      - patch deployments or pods to reduce the requested memory

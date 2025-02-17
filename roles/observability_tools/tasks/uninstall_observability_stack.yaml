@@ -207,3 +207,99 @@
     - uninstall_tools
   when:
     - domain == "sre" or domain == "finops"
+    - sre_bench_runner
+    - run_uuid is defined and scenario_number is defined and run_number is defined
+
+- name: Get the assertion.json from S3
+  amazon.aws.s3_object:
+    endpoint_url: "https://s3.us-east-2.amazonaws.com"
+    bucket: "{{ s3_bucket_name_for_results }}"
+    object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/assertion.json"
+    dest: "/tmp/assertion.json"
+    mode: get
+  tags:
+    - uninstall_tools
+  when:
+    - domain == "sre" or domain == "finops"
+    - sre_bench_runner
+    - run_uuid is defined and scenario_number is defined and run_number is defined
+
+- name: Read deployment and fault injection details from assertion json
+  set_fact:
+    assertion_array: "{{ lookup('file', '/tmp/assertion.json') | from_json | json_query('status.conditions') }}"
+  tags:
+    - uninstall_tools
+  when:
+    - domain == "sre" or domain == "finops"
+    - sre_bench_runner
+
+- name: Create namespace to delete list
+  set_fact:
+    namespace_delete_list:
+      - "{{ opensearch_namespace_project_name }}"
+      - "{{ jaeger_namespace_project_name }}"
+      - "{{ loki_namespace_project_name }}"
+      - "{{ es_namespace_project_name }}"
+      - "{{ prometheus_namespace_project_name }}"
+      - "{{ ingress_namespace_project_name }}"
+  tags:
+    - uninstall_tools
+
+- name: Get all namespaces
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    kind: Namespace
+  register: namespaces
+  until: "{{ namespaces.resources | json_query('[].metadata.name') | list | intersect(namespace_delete_list) | length < 1 }}"
+  retries: 20
+  delay: 30
+  when:
+    - domain == "sre" or domain == "finops"
+    - sre_bench_runner
+  tags:
+    - uninstall_tools
+
+- name: Update assertion array content
+  set_fact:
+    updated_assertion_array: "{{ assertion_array + [{'type': 'Destroyed', 'status': namespaces.resources | json_query('[].metadata.name') | list | intersect(namespace_delete_list) | length < 1, 'lastTransitionTime':now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ')}] }}"
+  when:
+    - domain == "sre" or domain == "finops"
+    - sre_bench_runner
+  tags:
+    - uninstall_tools
+
+- name: Create json structure for assertion json file
+  set_fact:
+    assertion_json:
+      status:
+        conditions: "{{ updated_assertion_array }}"
+  when:
+    - domain == "sre" or domain == "finops"
+    - sre_bench_runner
+  tags:
+    - uninstall_tools
+
+- name: Update assertion json file
+  copy:
+    content: "{{ assertion_json | to_json | indent(2) }}"
+    dest: "/tmp/assertion.json"
+    mode: "0644"
+  when:
+    - domain == "sre" or domain == "finops"
+    - sre_bench_runner
+  tags:
+    - uninstall_tools
+
+- name: Upload the assertion JSON to S3
+  amazon.aws.s3_object:
+    endpoint_url: "https://s3.us-east-2.amazonaws.com"
+    bucket: "{{ s3_bucket_name_for_results }}"
+    object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/assertion.json"
+    src: "/tmp/assertion.json"
+    mode: put
+  tags:
+    - uninstall_tools
+  when:
+    - domain == "sre" or domain == "finops"
+    - sre_bench_runner
+    - run_uuid is defined and scenario_number is defined and run_number is defined

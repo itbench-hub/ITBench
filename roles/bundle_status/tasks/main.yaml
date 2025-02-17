@@ -6,15 +6,19 @@
     object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/assertion.json"
     dest: "/tmp/assertion.json"
     mode: get
+  register: s3_get_result
+  retries: 3  # Number of retries
+  delay: 60   # Delay between retries in seconds (60 seconds = 1 minute)
+  until: s3_get_result is success  # Continue retrying until the task is successful
   tags:
-    - book_keeping
+    - bundle_status
   when:
     - sre_bench_runner
     - run_uuid is defined and scenario_number is defined and run_number is defined
 
 - name: Read JSON file
   ansible.builtin.slurp:
-    src: "{{ assertion_filepath }}"
+    src: "/tmp/assertion.json"
   register: json_content
   when: sre_bench_runner
   tags:

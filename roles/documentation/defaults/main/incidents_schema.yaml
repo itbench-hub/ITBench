@@ -52,7 +52,7 @@ valid_documentation_schema:
                   type: string
                 "kind": # Mandatory
                   type: string
-                  enum: [ "User", "Pod", "Service", "Deployment", "Node", "ConfigMap", "Endpoint", "Process", "Other" ]
+                  enum: [ "User", "Pod", "Service", "Deployment", "HorizontalPodAutoscaler", "Node", "ConfigMap", "Endpoint", "Process", "Other" ]
                 "group_id":  # Optional: Use this if the entity is listed in the "groups" block ("kind" must match)
                   type: string
                 "changed": # Optional
@@ -106,14 +106,14 @@ valid_documentation_schema:
                       "APIService", "Alertmanager", "CSIDriver", "CSINode", "CiliumEndpoint", "CiliumIdentity",
                       "CiliumNode", "ClusterRole", "ClusterRoleBinding", "ConfigMap", "ControllerRevision",
                       "CustomResourceDefinition", "DaemonSet", "Deployment", "EndpointSlice", "Endpoints",
-                      "FlowSchema", "Ingress", "IngressClass", "Job", "K8Cluster", "Lease",
+                      "FlowSchema", "HorizontalPodAutoscaler", "Ingress", "IngressClass", "Job", "K8Cluster", "Lease",
                       "MutatingWebhookConfiguration", "Namespace", "NetworkPolicy", "Node", "PersistentVolume",
                       "PersistentVolumeClaim", "Pod", "PodDisruptionBudget", "Port", "PriorityClass",
                       "PriorityLevelConfiguration", "Prometheus", "PrometheusRule", "ReplicaSet", "Role",
                       "RoleBinding", "Secret", "Service", "ServiceAccount", "ServiceMonitor", "ServiceOperation",
                       "StatefulSet", "StorageClass", "ValidatingWebhookConfiguration", "VolumeAttachment",
                       # Connected to chaos monkey
-                      "PodChaos", "NetworkChaos", "StressChaos", "HttpChaos", "JvmChaos",
+                      "NetworkChaos", "StressChaos", "HttpChaos", "JVMChaos", "PodChaos",
                       # External Options
                       "User", "Other"
                       ]
@@ -144,6 +144,17 @@ valid_documentation_schema:
               "type": string
           additionalProperties: false
           required: ["source", "target", "condition", "effect"]
+      "metrics":
+        type: array
+        items:
+          type: object
+          properties:
+            "type":
+              type: string
+            "value":
+              type: string
+          required: [ "type", "value"]
+          additionalProperties: false
       "recommended_actions":
         type: array
         items:
