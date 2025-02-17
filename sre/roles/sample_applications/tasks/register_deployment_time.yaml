@@ -1,8 +1,8 @@
 ---    
 - name: Record Deployment time
   kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
     definition:
-      kubeconfig: "{{ kubeconfig }}"
       kind: ConfigMap
       apiVersion: v1
       metadata:
@@ -43,12 +43,11 @@
     - install_sample_applications
   when:
     - sre_bench_runner
-    - sample_application == "otel_astronomy_shop"
 
 - name: Create a JSON with application deployment details
   copy:
     content: "{{ assertion_json | to_json | indent(2) }}"
-    dest: "{{ assertion_filepath }}"
+    dest: "/tmp/assertion.json"
     mode: "0644"
   tags:
     - install_sample_applications
@@ -63,7 +62,7 @@
     src: "/tmp/assertion.json"
     mode: put
   tags:
-    - book_keeping
+    - install_sample_applications
   when:
     - sre_bench_runner
     - run_uuid is defined and scenario_number is defined and run_number is defined

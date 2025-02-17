@@ -1,103 +1,55 @@
 # Local Cluster Setup
 
-## Pre-requisites
-1. [Python3.12](https://www.python.org/downloads/release/python-3120/)
-2. [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
-3. [Kubectl](https://kubernetes.io/docs/tasks/tools/)
-4. [Podman](https://podman.io/) (podman-plugins and podman-machine on Linux)
-5. [Helm](https://helm.sh/)
-6. [Brew](https://brew.sh/) (Mac)
+__Note: The following setup guide has been verified and tested on MacOS using the perscribed details. Other components, such as Docker or Minikube, can be utilized instead of the recommended software, but is unsupported.__
+
+_Note: The following setup guide presumes that the required software listed [here](./README.md#required-software) has been installed. If it has not, please go back and do so before following this document._
+
+## Recommended Software
+
+1. [Podman](https://podman.io/)
+2. [Kind](https://kind.sigs.k8s.io/)
+3. [Cloud Provider Kind](https://github.com/kubernetes-sigs/cloud-provider-kind)
+
+### Installing Recommended Software via Homebrew (MacOS)
+
+```bash
+brew install podman
+brew install kind
+brew install cloud-provider-kind
+```
 
 ## Setup
 
-This setup has been tested on MacOS.
-
-Helm version v.3.16 is required: [Installation](https://helm.sh/docs/intro/install/).
-
-### Create an isolated environment 
-```bash
-python3.12 -m venv venv
-source venv/bin/activate
-```
-
-#### Install Python dependencies
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-#### Install Podman
-Tested on Podman Desktop. [Installation Instructions can be found here](https://podman.io/docs/installation)
-
-##### Step 1: Initialize Podman Machine
-
+1.  Initialize a Podman machine. Using the following command as is will generate a machine called `podman-machine-default`.
 ```shell
 podman machine init
 ```
-This creates a machine named `podman-machine-default`.
 
-##### Step 2: Tweak Podman machine's resources
-
+2. Set the machine's resources. The tested configuration uses 12 CPU cores and 16 GB of RAM.
 ```shell
 podman machine set --cpus 12 -m 16384
 ```
-The deployment was tested with 12 CPU cores and 16 GB of RAM. 
 
-##### Step 3: Start Podman Machine
-
+3. Start the Machine
 ```shell
 podman machine start
 ```
 
-#### Install kind
+4. Create a kind cluster. A barebone kind configuration file has been provided [here](./kind-config.yaml).
 ```shell
-brew install kind
+kind create cluster --config kind-config.yaml
 ```
 
-And verify the installation:
+_Note: To delete the cluster, run this command: `kind delete cluster --name kind-cluster`_
+
+The kubeconfig will be placed at `$HOME/.kube/config`
+
+5. Open a second terminal window and run the cloud provider.
 ```shell
-% which kind
-/opt/homebrew/bin/kind
-% kind version
-kind v0.26.0 go1.23.4 darwin/arm64
+sudo cloud-provider-kind -enable-lb-port-mapping
 ```
 
-A barebone kind configuration file has been provided [here](./kind-config.yaml).
-
-Let's create a kind cluster using the configuration file by executing:
-```shell
-$ kind create cluster --config kind-config.yaml
-Creating cluster "kind-cluster" ...
- ✓ Ensuring node image (kindest/node:v1.30.0) 🖼
- ✓ Preparing nodes 📦
- ✓ Writing configuration 📜
- ✓ Starting control-plane 🕹️
- ✓ Installing CNI 🔌
- ✓ Installing StorageClass 💾
-Set kubectl context to "kind-cluster"
-You can now use your cluster with:
-
-kubectl cluster-info --context kind-kind-cluster
-
-Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
-```
-
-Let's verify the status of the clusters with:
-```shell
-$ kubectl cluster-info --context kind-kind-cluster
-
-Kubernetes control plane is running at https://127.0.0.1:36111
-CoreDNS is running at https://127.0.0.1:36111/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
-
-To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
-```
-```shell
-$ kubectl get nodes
-NAME                           STATUS   ROLES           AGE     VERSION\
-kind-cluster-control-plane   Ready    control-plane   8m22s   v1.30.0
-```
-
-####  [Back to the Parent README](../README.md)
+6. The cluster has been set up. Now let's head back to the [parent README](../README.md) to deploy the incidents.
 
 # Troubleshooting
 ### 1. Running kind cluster on Red Hat Enterprise Linux (RHEL) 9.5 with Podman:**

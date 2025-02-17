@@ -1,0 +1,39 @@
+---
+- name: Get AWX service information
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ awx_kubeconfig }}"
+    kind: Service
+    namespace: awx
+    name: awx-deployment-service
+  register: awx_service_information
+  tags:
+    - workflow_setup
+
+- name: Set `controller_host` value for the Ansible tower
+  set_fact:
+    controller_host: "http://{{ awx_service_information.resources[0].status.loadBalancer.ingress[0].hostname }}"
+  tags:
+    - workflow_setup
+
+- name: Set `controller_username` value for the Ansible tower
+  set_fact:
+    controller_username: "admin"
+  tags:
+    - workflow_setup
+
+- name: Get AWX secret information
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ awx_kubeconfig }}"
+    kind: Secret
+    namespace: awx
+    name: awx-deployment-admin-password
+  register: awx_secret_information
+  tags:
+    - workflow_setup
+
+- name: Set `controller_password` value for the Ansible tower
+  set_fact:
+    controller_password: "{{ awx_secret_information.resources[0].data.password | b64decode }}"
+  tags:
+    - workflow_setup
+
