@@ -6,6 +6,7 @@ Depending on the scenario domain (SRE or FinOps), the following tools are deploy
 | --- | --- | --- |
 | Bitnami Elasticsearch | FinOps, SRE | https://github.com/bitnami/containers |
 | Bitnami Kubernetes Event Exporter | FinOps, SRE | https://github.com/bitnami/containers |
+| Chaos Mesh | SRE | https://github.com/chaos-mesh/chaos-mesh |
 | Grafana | FinOps, SRE | https://github.com/grafana/grafana |
 | Jaeger | FinOps, SRE | https://github.com/jaegertracing/jaeger |
 | Kubernetes Ingress | FinOps, SRE | https://github.com/kubernetes/ingress-nginx |

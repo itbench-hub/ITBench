@@ -69,7 +69,7 @@ python experiment_runner.py --experiment_spec ../../group_vars/e2e --path ../../
 Once the experiment is complete
 1. `cd` into this directory `roles/e2e` and run:
 ```bash
-python experiment_runner.py --experiment_spec ../../group_vars/e2e --path ../../
+python experiment_runner.py --experiment_spec ../../group_vars/e2e --batch_variables ../../remote_cluster/playbooks/batch_variables.yaml --path ../../
 ```
 2. and enter "n" (to nuke) this time. This would delete all the templates and workflows for the experiment within AWX / Ansible Tower
 

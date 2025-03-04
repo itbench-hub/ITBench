@@ -17,8 +17,9 @@ sample_application_HOTEL_RESERVATIONS_SCENARIOS = [102, 210, 211, 212]
 
 class ExperimentRunner:
 
-    def __init__(self, experiment_config: Path, path_to_base_playbook_directory: Path, state: str = "present"):
+    def __init__(self, experiment_config: Path, batch_variables: Path, path_to_base_playbook_directory: Path, state: str = "present"):
         self.experiment_config = load_yaml(experiment_config)
+        self.batch_variables = load_yaml(batch_variables)
         self.experiment = ExperimentModel(**self.experiment_config)
         self.base_yaml = os.path.join(path_to_base_playbook_directory, "base.yaml")
         self.state = state
@@ -47,32 +48,9 @@ class ExperimentRunner:
             )
 
         counter = 0
-        mapping = {
-            1: 1,
-            3: 2,
-            5: 3,
-            6: 4,
-            12: 5,
-            14: 6,
-            15: 7,
-            16: 8,
-            17: 9,
-            18: 10,
-            19: 11,
-            20: 12,
-            23: 13,
-            25: 14,
-            26: 15,
-            27: 16,
-            28: 17,
-            29: 18,
-            32: 19,
-            34: 20,
-            102: 21
-        }
-        for each_scenario in self.experiment.scenarios:
+        for idx, each_scenario in enumerate(self.experiment.scenarios):
             # ToDo: To pick up cluster annotated name and instance_type from bucket
-            cluster_assignment = f"exp-runner-m4.xlarge-aws-{mapping[each_scenario]}.k8s.local"
+            cluster_assignment = f"{self.batch_variables['cluster_name_prefix']}-{self.batch_variables['control_node_type']}-aws-{idx+1}.k8s.local"
 
             # get relevant Kubeconfig(s)
             kubeconfig_command = subprocess.run(
@@ -123,6 +101,7 @@ if __name__ == "__main__":
     parser = AddErrorParser()
     parser.add_argument('--experiment_spec', help='path to the experiment file', required=True)
     parser.add_argument('--path', help='path to the playbook directory', required=True)
+    parser.add_argument('--batch_variables', help='path to the batch variables file', required=True)
     arguments = parser.parse_args()
 
     init_or_deinit = input("Are you looking to initialize the experiment or nuke it? y to initialize, n to nuke\n")
@@ -134,5 +113,5 @@ if __name__ == "__main__":
         print("Please enter a valid input")
         raise SystemExit
 
-    experiment = ExperimentRunner(arguments.experiment_spec, arguments.path, state=state)
+    experiment = ExperimentRunner(arguments.experiment_spec, arguments.batch_variables, arguments.path, state=state)
     experiment.setup()

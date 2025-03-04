@@ -51,25 +51,29 @@ make configure_aws_access
 make create
 ```
 
-2. Download kubeconf YAML file: it will list all clusters, type in one cluster name and it will download in `/tmp/`.  
-   For example, if the cluster name appears as `exp-runner-m4.xlarge-aws-16.k8s.local\taws\tus-west-2a` you just need to enter everything up to and including .local `exp-runner-m4.xlarge-aws-16.k8s.local`.
+2. Update the value of the `kubeconfig` key in the `../group_vars/all.yaml`, with the absolute path that the kubeconfig should be downloaded to
+```shell
+vim ../group_vars/all.yaml
+```
+
+```yaml
+kubeconfig: "<path to kubeconfig>"
+```
+
+3. Run the following command to download the kubeconfig of a selected cluster to the path specified by the `kubeconfig` in `all.yaml`. A cluster can be selected by typing the name of cluster into the prompt or pressing the `Return` key if the first entry in the table is what is desired.
 ```bash
 make get_kcfg
 ```
 
-3. Access remote k8s cluster
+4. Access remote k8s cluster
 ```bash
-export KUBECONFIG=/tmp/<downloaded yaml>
+export KUBECONFIG=<path to downloaded yaml>
 kubectl get pod --all-namespaces
 ```
 
-```yaml
-kubeconfig: "/tmp/<downloaded yaml>"
-```
-
-4. Now let's head back to the [parent README](../README.md) to deploy the incidents.
+5. Now let's head back to the [parent README](../README.md) to deploy the incidents.
    
-5. Once done with the experiment runs, to destroy the cluster, run the following command:
+6. Once done with the experiment runs, to destroy the cluster, run the following command:
 ```bash
 make delete
 ```

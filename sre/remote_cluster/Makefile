@@ -34,7 +34,7 @@ destroy_all_clusters: ## Deletes all clusters
 	ansible-playbook playbooks/destroy_all_clusters.yaml
 
 .PHONY: get_kcfg
-get_kcfg: list_clusters ## Retrieves the kubeconfig for a single cluster
+get_kcfg: ## Retrieves the kubeconfig for a single cluster
 	@echo "exports /tmp/ directory"
 	ansible-playbook playbooks/get_kcfg.yaml
 

@@ -42,14 +42,21 @@ kind create cluster --config kind-config.yaml
 
 _Note: To delete the cluster, run this command: `kind delete cluster --name kind-cluster`_
 
-The kubeconfig will be placed at `$HOME/.kube/config`
+5. Update the value of the `kubeconfig` key in the `../group_vars/all.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config`).
+```shell
+vim ../group_vars/all.yaml
+```
 
-5. Open a second terminal window and run the cloud provider.
+```yaml
+kubeconfig: "<path to kubeconfig>"
+```
+
+6. Open a second terminal window and run the cloud provider.
 ```shell
 sudo cloud-provider-kind -enable-lb-port-mapping
 ```
 
-6. The cluster has been set up. Now let's head back to the [parent README](../README.md) to deploy the incidents.
+7. The cluster has been set up. Now let's head back to the [parent README](../README.md) to deploy the incidents.
 
 # Troubleshooting
 ### 1. Running kind cluster on Red Hat Enterprise Linux (RHEL) 9.5 with Podman:**

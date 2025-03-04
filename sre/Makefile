@@ -208,6 +208,7 @@ evaluation:
 																	run_number=1  \
 																	location=${location} \
 																	sre_bench_runner=true \
+																	kubeconfig=/tmp/${CLUSTER_ASSIGNED_NAME}.yaml \
 																	domain=sre" > /tmp/eval.out ; \
 	cat evaluation/e2e_new/incident_reports/$(INCIDENT_NUMBER).json
 	rm evaluation/e2e_new/incident_reports/$(INCIDENT_NUMBER).json
@@ -220,4 +221,4 @@ bundle_status:
 
 .SILENT: bundle_info
 bundle_info:
-	ANSIBLE_STDOUT_CALLBACK=json ansible-playbook base.yaml --tags "get_bundle_info" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} run_number=1 s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true" | jq '.plays[].tasks[] | select(.task.name == "bundle_info : Return grafana url").hosts.localhost.msg'
+	ANSIBLE_STDOUT_CALLBACK=json ansible-playbook base.yaml --tags "get_bundle_info" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} run_number=1 s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true kubeconfig=/tmp/${CLUSTER_ASSIGNED_NAME}.yaml" | jq '.plays[].tasks[] | select(.task.name == "bundle_info : Return grafana url").hosts.localhost.msg'
