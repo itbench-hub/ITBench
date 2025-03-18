@@ -33,15 +33,23 @@ The playbook run is configured using variables defined in `group\_vars`.
 - [Helm](https://helm.sh/docs/intro/install/) (v3.16+)
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/)
 
-### Installing Required Software via Homebrew (MacOS)
+### Installing Required Software via Homebrew (for MacOS)
 
 1. Install [Homebrew](https://brew.sh/)
-
 2. Install required software
 ```bash
 brew install helm
 brew install kubectl
 brew install python@3.12
+```
+
+### Installing Required Software (for Red Hat Enterprise Linux -- RHEL)
+
+1. Install Helm by following the instructions [here](https://helm.sh/docs/intro/install/#from-script)
+2. Set up kubectl by following the instructions [here](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
+3. Set up Python by running:
+```bash
+sudo dnf install python3.12
 ```
 
 ## Getting Started – Deploying an Incident Scenario
@@ -64,6 +72,11 @@ python -m pip install -r requirements.txt
 ansible-galaxy install -r requirements.yaml
 ```
 
+4. Create the `all.yaml` file from the template.
+```bash
+cp group_vars/all.yaml.example group_vars/all.yaml
+```
+
 _Note: These steps only need to be done once upon the initial set up._
 _Note: Depending on what kind of cluster setup is needed, further dependencies may need to be installed. Please see the below section for further details._
 
@@ -71,7 +84,8 @@ _Note: Depending on what kind of cluster setup is needed, further dependencies m
 
 #### Local Cluster
 
-For instruction on how to create a kind cluster, please see the instructions [here](./local_cluster/README.md).
+For instruction on how to create a kind cluster on MacOS, please see the instructions [here](./local_cluster/README.md).
+For instruction on how to create a kind cluster on Red Hat Enterprise Linux (RHEL) virtual machine (VM) or bare-metal instance, please see the instructions [here](./local_cluster/README_RHEL.md).
 
 #### Remote Cluster
 
@@ -83,71 +97,65 @@ Currently, only AWS is supported. AWS clusters are provisioned using [kOps](http
 
 Now that our cluster is up and running, let's proceed with the deployment of the observability tools and application stack, injecting the fault, and monitoring of alerts in the Grafana dashboard.
 
-1. Create the `all.yaml` file from the template and update the `kubeconfig` field with the path to the configuration of the Kubernetes cluster. While the file creation needs only to be done once, the `kubeconfig` field must be updated if the file path changes or the cluster you intend to leverage changes.
-
-```bash
-cp group_vars/all.yaml.example group_vars/all.yaml
-```
-
-2. Deploy the observability tools. 
+1. Deploy the observability tools. 
 
 ```bash
 make deploy_observability_stack
 ```
 The observability tools deployment includes Prometheus, Grafana, Loki, Elasticsearch, Jaeger, OpenSearch and K8s-events-exporter. For additional details on the observability tools deployed please head [here](./docs/tools.md).
 
-3. Deploy one of the sample applications. In this case we are deploying OpenTelemetery's Astronomy Shop Demo.
+2. Deploy one of the sample applications. In this case we are deploying OpenTelemetery's Astronomy Shop Demo.
 
 ```bash
 make deploy_astronomy_shop
 ```
 Currently IT-Bench supports two sample applications--OpenTelemetery's Astronomy Shop Demo and Deathstartbench's Hotel Reservation. For additional details on the sample applications please head [here](./docs/sample_applications.md).
 
-4. Once all pods are running, inject the fault for an incident.
+3. Once all pods are running, inject the fault for an incident.
 
 ```bash
 INCIDENT_NUMBER=1 make inject_incident_fault
 ```
 Currently the incident scenarios open-sourced are incidents 1, 3, 23, 26, 27, and 102. One can leverage any one of these incidents at this point in time in their own environemnts. Additional details on the incident scenarios themselves and the fault mechanisms can be found [here].
 
-5. After fault injection, to view alerts in the grafana dashboard, use Port Forward to access the Grafana service.
+4. After fault injection, to view alerts in the grafana dashboard, use Port Forward to access the Grafana service.
 
 ```bash
 kubectl port-forward svc/ingress-nginx-controller -n ingress-nginx 8080:80
 ```
 
-6. To view Grafana dashboard in your web browser, use the following URL: 
+5. To view Grafana dashboard in your web browser, use the following URL: 
 
 ```bash
 http://localhost:8080/prometheus/alerting/list
 ```
 
-7. In the right panel, under the `Grafana` section, click on the `AstronomyNotifications` folder to view the alerts on the dashboard. Four alerts are defined:
+6. In the right panel, under the `Grafana` section, click on the `AstronomyNotifications` folder to view the alerts on the dashboard. Four alerts are defined:
 - To track `error` across the different services
 - To track `latency` across the different services
 - To track status of deployments across the different namespaces
 - To track Kafka connection status across the Kafka-related components
 An Alert's default `State` is `Normal`. After few minutes, the fault `State` changes to `Firing`, indicating fault manifestation. The alert definitions for Grafana located [here](roles/observability_tools/tasks/alert_rules) and has been curated using this [guide](https://grafana.com/docs/grafana/latest/alerting/alerting-rules/create-grafana-managed-rule/). 
 
-8. (Optional) You only need to do this if you plan to leverage our [SRE-Agent](https://github.com/IBM/itbench-sre-agent). Port forward the topology mapper service by running. 
+7. (Optional) You only need to do this if you plan to leverage our [SRE-Agent](https://github.com/IBM/itbench-sre-agent). Port forward the topology mapper service by running. 
 ```bash
 kubectl -n kube-system port-forward svc/topology-monitor 8081:8080
 ```
 
-9. (Optional) You only need to do this if you plan to leverage our [SRE-Agent](https://github.com/IBM/itbench-sre-agent). Leverage the values below for the `.env.tmpl`
+8. (Optional) You only need to do this if you plan to leverage our [SRE-Agent](https://github.com/IBM/itbench-sre-agent). Leverage the values below for the `.env.tmpl`
 ```
 GRAFANA_URL=http://localhost:8080/prometheus
 TOPOLOGY_URL=http://localhost:8081
 ```
 
-10. To remove the injected fault, run the following `make` command:
+9. To remove the injected fault, run the following `make` command:
 
 ```bash
 INCIDENT_NUMBER=1 make remove_incident_fault
 ```
 After executing the command, the alert's `State` should change back to `Normal` from `Firing`, indicating that the fault has been removed.
 
-11. Once done you can undeploy the observability, followed by the application stack by running:
+10. Once done you can undeploy the observability, followed by the application stack by running:
 ```bash
 make undeploy_astronomy_shop
 make undeploy_observability_stack

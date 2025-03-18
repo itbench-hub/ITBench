@@ -1,7 +1,7 @@
 ---
-- name: Clone Saurabh's fork of DeathStarBench Hotel Reservations
+- name: Clone fork of DeathStarBench repository
   ansible.builtin.git:
-    repo: https://github.com/saurabhjha1/DeathStarBench.git
+    repo: https://github.com/it-bench/DeathStarBench.git
     dest: roles/sample_applications/DeathStarBench
     single_branch: yes
     version: master
@@ -9,29 +9,7 @@
   tags:
     - install_sample_applications
   when:
-    - sample_application == "dsb_hotel_reservation"
-
-# TODO: Should be replaced with a PR to the repo to update the image
-- name: Update Hotel Reservation's otel collecter image
-  ansible.builtin.replace:
-    path: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation/templates/otel_collect_deployment.tpl
-    regexp: otel/opentelemetry-collector-contrib:0.85.0
-    replace: otel/opentelemetry-collector-contrib:0.114.0
-  tags:
-    - install_sample_applications
-  when:
-    - sample_application == "dsb_hotel_reservation" 
-
-# TODO: Should be replaced with a PR to the repo to update the config
-- name: Update Hotel Reservation's otel collecter config
-  ansible.builtin.replace:
-    path: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation/templates/otel_collector_config.tpl
-    regexp: logging
-    replace: debug
-  tags:
-    - install_sample_applications
-  when:
-    - sample_application == "dsb_hotel_reservation"    
+    - sample_application == "dsb_hotel_reservation"   
 
 - name: Identify and set Prometheus service name
   ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl get services -o=jsonpath='{.items[?(@.spec.ports[0].port==9090)].metadata.name}' -n {{ prometheus_namespace_project_name }} | awk '{ if ($1 == "prometheus-operated") print $2; else print $1 }'
@@ -49,7 +27,7 @@
   when:
     - sample_application == "dsb_hotel_reservation"
 
-- name: Deploy Deathstar Hotel Reservations 
+- name: Deploy DeathStarBench's Hotel Reservation
   kubernetes.core.helm:
     name: "{{ deathstarbench_hotelreservation_app_installation_name }}"
     kubeconfig_path: "{{ kubeconfig }}"

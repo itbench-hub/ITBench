@@ -4,13 +4,13 @@ from pydantic import (BaseModel, Field, StrictInt, ValidationInfo,
                       field_validator)
 
 
-class AWXConfigurationModel(BaseModel):
+class AWXConfigModel(BaseModel):
     endpoint: str
     username: str = Field(default="admin")
     password: str
 
 
-class GitConfigurationModel(BaseModel):
+class GitConfigModel(BaseModel):
     it_automation_bench_local_path: str
     deploy_key_it_automation_bench_private_ssh_key_path: str
     deploy_key_agent_private_ssh_key_path: str
@@ -19,12 +19,30 @@ class GitConfigurationModel(BaseModel):
 
 
 class LLMConfigModel(BaseModel):
-    llm_configuration_parameters: str
-    llm_model_name: str
-    llm_backend: str
-    llm_base_url: str
-    llm_api_key: str
-    llm_project_id: Optional[str] = None
+    provider: str
+    model: str
+    base_url: str
+    api_key: str # pragma: allowlist secret
+    api_version: str
+    seed: int
+    top_p: float
+    temperature: float
+    reasoning_effort: str
+    thinking: str
+    thinking_budget: int
+    max_tokens: int
+
+
+class LLMConfigModelAgent(LLMConfigModel):
+    enable_god_mode: bool = Field(default=True)
+
+
+class LLMConfigModelTools(LLMConfigModel):
+    is_native_function_calling_supported: bool = Field(default=True)
+
+
+class WatsonXConfig(BaseModel):
+    wx_project_id: str
 
 
 class AgentAnalyticsSDKModel(BaseModel):
@@ -32,45 +50,32 @@ class AgentAnalyticsSDKModel(BaseModel):
     git_username: str
 
 
-class AgentConfigurationModel(BaseModel):
-    llm_for_agents_config: LLMConfigModel
-    llm_for_tools_config: LLMConfigModel
-    enable_tools: Optional[List[str]] = None
-    enable_god_mode: bool = Field(default=True)
-    enable_tool_with_reflection: bool = Field(default=True)
+class AgentConfigModel(BaseModel):
+    agents_config: LLMConfigModelAgent
+    tools_config: LLMConfigModelTools
+    watsonx_config: WatsonXConfig
     agent_analytics_sdk: AgentAnalyticsSDKModel
 
-    @field_validator('llm_for_agents_config', mode='after')
-    @classmethod
-    def is_llm_for_agents_config__equals__llm_for_tools_config(
-            cls, value: str, info: ValidationInfo) -> str:
-        if "llm_for_tools_config" in info.data and value.dict(
-        ) != info.data["llm_for_tools_config"].dict():
-            raise ValueError(
-                "At this time llm_for_agents_config to be equal to llm_for_tools_config"
-            )
-        return value
 
-
-class AWSConfigurationModel(BaseModel):
+class AWSConfigModel(BaseModel):
     access_key_id: str
     secret_access_key: str
 
 
-class KOpsConfigurationModel(BaseModel):
+class KOpsConfigModel(BaseModel):
     s3_bucket_name: str
 
 
 class ExperimentModel(BaseModel):
     awx_kubeconfig: str
     awx_chart_version: Optional[str] = None
-    aws: AWSConfigurationModel
-    git: GitConfigurationModel
-    kops: KOpsConfigurationModel
+    aws: AWSConfigModel
+    git: GitConfigModel
+    kops: KOpsConfigModel
     scenarios: List[int]
     number_of_runs: int = Field(default=20)
     data_modalities: List[str] = Field(default=["metrics", "logs", "traces"])
-    agent_configuration: AgentConfigurationModel
+    agent_configuration: AgentConfigModel
     controller_host: Optional[str] = None
     controller_username: Optional[str] = None
     controller_password: Optional[str] = None

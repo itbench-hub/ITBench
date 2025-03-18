@@ -4,11 +4,11 @@ __Note: The following setup guide has been verified and tested on MacOS, Ubuntu,
 
 _Note: The following guide has been largely based on this [blog](https://aws.amazon.com/blogs/compute/kubernetes-clusters-aws-kops/)._
 
-_Note: The following setup guide presumes that the required software listed [here](./README.md#required-software) has been installed along with [creating the virtual environment and installing the dependencies](./README.md#installing-dependencies). If it has not, please go back and do so before following this document._
+_Note: The following setup guide presumes that the required software listed [here](../README.md#required-software) has been installed along with [creating the virtual environment and installing the dependencies](../README.md#installing-dependencies). If it has not, please go back and do so before following this document._
 
 ## First Time Setup
 
-1. Install Python dependencies
+1. Install Python dependencies. (Working directory is `remote_cluster`.)
 ```bash
 python -m pip install -r requirements.txt
 ```

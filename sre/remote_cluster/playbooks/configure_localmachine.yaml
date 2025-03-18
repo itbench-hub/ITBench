@@ -85,7 +85,7 @@
     # Download and move kubectl (Fedora)
     - name: Download kubectl (Fedora / CentOS / RHEL)
       get_url:
-        url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+        url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
         dest: "./kubectl"
         mode: '0755'
       when: ansible_distribution == 'Ubuntu' or ansible_distribution == 'Fedora' or ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
@@ -103,35 +103,3 @@
         name: kubectl
         state: present
       when: ansible_distribution == 'MacOSX'
-
-    - name: Download and install Linkerd
-      shell: curl --proto '=https' --tlsv1.2 -sSfL https://run.linkerd.io/install | sh
-      args:
-        executable: /bin/bash
-        creates: "{{ ansible_env.HOME }}/.linkerd2/bin/linkerd"
-
-    - name: Update PATH for Linkerd in bash
-      lineinfile:
-        path: "{{ ansible_env.HOME }}/.bashrc"
-        line: 'export PATH=$PATH:{{ ansible_env.HOME }}/.linkerd2/bin'
-        create: yes
-      when: user_shell == 'bash'
-
-    - name: Update PATH for Linkerd in zsh
-      lineinfile:
-        path: "{{ ansible_env.HOME }}/.zshrc"
-        line: 'export PATH=$PATH:{{ ansible_env.HOME }}/.linkerd2/bin'
-        create: yes
-      when: user_shell == 'zsh'
-  
-    - name: Source bashrc to update PATH
-      shell: source "{{ ansible_env.HOME }}/.bashrc"
-      args:
-        executable: /bin/bash
-      when: user_shell == 'bash'
-
-    - name: Source zshrc to update PATH
-      shell: source {{ ansible_env.HOME }}/.zshrc
-      args:
-        executable: /bin/zsh
-      when: user_shell == 'zsh'

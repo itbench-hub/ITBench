@@ -1,0 +1,83 @@
+---
+- name: Document this fault injection
+  set_fact:
+    injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
+  vars:
+    curr_docs:
+      name: "Chaos Network Partition"
+      author: "@divyapathak24"
+      description: "networkchaos creates the network connection between ShippingService and QuoteService unavailable"
+      fault_type: "ChaosMesh"
+      required_fields:
+        - "chaos_mesh_namespace_project_name"
+        - "target_label_name1"
+        - "target_namespace_name"
+  tags:
+    - injection_docs
+
+- name: Inject network partition chaos leveraging the Chaos framework
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: NetworkChaos
+      metadata:
+        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        namespace: "{{ chaos_mesh_namespace_project_name }}"
+      spec:
+        action: partition
+        mode: one
+        selector:
+          namespaces:
+            - "{{ target_namespace_name }}"
+          labelSelectors:
+            "app.kubernetes.io/component": "{{ target_label_name1 }}"
+        direction: to
+        target:
+          mode: one
+          selector:
+            namespaces:
+              - "{{ target_namespace_name }}"
+            labelSelectors:
+              "app.kubernetes.io/component": "{{ target_label_name2 }}"
+  register: fault_injection_status
+  tags: chaos_mesh
+  when: is_network_partition_chaos and is_fault_injection
+
+- name: Remove network partition chaos leveraging the Chaos framework
+  kubernetes.core.k8s:
+    state: absent
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: NetworkChaos
+      metadata:
+        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        namespace: "{{ chaos_mesh_namespace_project_name }}"
+      spec:
+        action: partition
+        mode: one
+        selector:
+          namespaces:
+            - "{{ target_namespace_name }}"
+          labelSelectors:
+            "app.kubernetes.io/component": "{{ target_label_name1 }}"
+        direction: to
+        target:
+          mode: one
+          selector:
+            namespaces:
+              - "{{ target_namespace_name }}"
+            labelSelectors:
+              "app.kubernetes.io/component": "{{ target_label_name2 }}"
+  register: fault_removal_status
+  tags: chaos_mesh
+  when: is_network_partition_chaos and is_fault_removal
+
+- name: Remove network partition chaos inside target namespace
+  ansible.builtin.shell: >
+    for i in $(KUBECONFIG={{ kubeconfig }} kubectl get podnetworkchaos -n "{{ target_namespace_name }}" | awk '{print $1}'); do KUBECONFIG={{ kubeconfig }} kubectl delete podnetworkchaos $i -n "{{ target_namespace_name }}"; done
+  register: fault_removal_extra_status
+  tags: chaos_mesh
+  when: is_network_partition_chaos and is_fault_removal

@@ -1,7 +1,21 @@
 ---
 - import_tasks: install_astronomy_shop.yaml
 - import_tasks: uninstall_astronomy_shop.yaml
-- import_tasks: install_deathstarbench_hotel_reservations.yaml
-- import_tasks: uninstall_deathstarbench_hotel_reservations.yaml
+- import_tasks: install_deathstarbench_hotel_reservation.yaml
+- import_tasks: uninstall_deathstarbench_hotel_reservation.yaml
 - import_tasks: register_deployment_time.yaml
 - import_tasks: register_deployment_failure.yaml
+
+- ansible.builtin.import_tasks: 
+    file: install_elasticsearch_cluster.yaml
+  tags:
+    - install_sample_applications
+  when:
+    - sample_application == "elasticsearch"
+
+- ansible.builtin.import_tasks: 
+    file: uninstall_elasticsearch_cluster.yaml
+  tags:
+    - uninstall_sample_applications
+  when:
+    - sample_application == "elasticsearch"

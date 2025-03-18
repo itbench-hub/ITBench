@@ -7,12 +7,13 @@ import time
 import uuid
 from pathlib import Path
 
-from experiment_models import AWXConfigurationModel, ExperimentModel
+from experiment_models import ExperimentModel
 from experiment_utils import load_yaml
 
 
 # Temp fix until scneario_spec is implemented
-sample_application_HOTEL_RESERVATIONS_SCENARIOS = [102, 210, 211, 212]
+sample_application_HOTEL_RESERVATIONS_SCENARIOS = [102, 103, 104, 210, 211, 212]
+sample_application_ELASTICSEARCH_CLUSTER_SCENATIOS = [301, 302]
 
 
 class ExperimentRunner:
@@ -33,6 +34,7 @@ class ExperimentRunner:
             shell=True,
             check=True,
             stdout=subprocess.PIPE)
+        
         if list_clusters_command.returncode != 0:
             raise SystemExit
 
@@ -63,6 +65,8 @@ class ExperimentRunner:
             sample_application = "otel_astronomy_shop"
             if each_scenario in sample_application_HOTEL_RESERVATIONS_SCENARIOS:
                 sample_application = "dsb_hotel_reservation"
+            elif each_scenario in sample_application_ELASTICSEARCH_CLUSTER_SCENATIOS:
+                sample_application = "elasticsearch"
 
             job_template_creation = subprocess.run(
                 f"ansible-playbook -v {self.base_yaml} --tags \"awx_scenario_setup\" --extra-vars \"relevant_kubeconfig_file_path=/tmp/{cluster_assignment}.yaml scenario_number={each_scenario} domain=sre state={self.state} sample_application={sample_application}\"",
@@ -80,7 +84,7 @@ class ExperimentRunner:
 
             if state == "present":
                 launch_workflow_command = subprocess.run(
-                    f"ansible-playbook -v {self.base_yaml} --tags \"workflow_launch\" --extra-vars \"run_uuid={run_uuid} sre_agent_name__version_number=lumyn-0.0.1 scenario_number={each_scenario} number_of_runs={self.experiment.number_of_runs} state={self.state} sample_application={sample_application}\"",
+                    f"ansible-playbook -v {self.base_yaml} --tags \"workflow_launch\" --extra-vars \"run_uuid={run_uuid} sre_agent_name__version_number=lumyn-0.0.1 scenario_number={each_scenario} number_of_runs={self.experiment.number_of_runs} state={self.state} sample_application={sample_application} s3_bucket_name_for_results={self.experiment.s3_bucket_name_for_results} s3_endpoint_url={self.experiment.s3_endpoint_url}\"",
                     shell=True,
                     check=True)
                 if launch_workflow_command.returncode != 0:

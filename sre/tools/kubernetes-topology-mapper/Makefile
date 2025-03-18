@@ -10,11 +10,13 @@ help: ## Display this help.
 
 .PHONY: build-image
 build-image: ## Builds container image
-	$(OCI_BIN) build -f Dockerfile -t $(IMG) --platform=linux/amd64
+	$(OCI_BIN) manifest rm $(IMG) || true
+	$(OCI_BIN) manifest create $(IMG)
+	$(OCI_BIN) build -f Dockerfile --platform=linux/arm64,linux/amd64 --manifest $(IMG) .
 
 .PHONY: push-image
-push-image: registry-login ## Pushes image to container registry
-	$(OCI_BIN) push $(IMG)
+push-image: ## Pushes image to container registry
+	$(OCI_BIN) manifest push $(IMG)
 
 .PHONY: build-push-image
 build-push-image: build-image push-image ## Builds image and then pushes to registry

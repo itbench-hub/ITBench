@@ -1,0 +1,223 @@
+---
+- name: Document this fault injection
+  set_fact:
+    injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
+  vars:
+    curr_docs:
+      name: "Chaos Memory Stress"
+      author: "@divyapathak24"
+      description: "Create stresschaos to induce memory stress on adservice"
+      fault_type: "ChaosMesh"
+      required_fields:
+        - "chaos_mesh_namespace_project_name"
+        - "otel_astronomy_app_namespace_project_name"
+        - "target_deployment_name"
+        - "target_label_name1"
+        - "target_namespace_name"
+        - "deployment_info.result.spec.template.spec.containers[0].name"
+        - "deployment_info.result.spec.template.spec.containers[0].image"
+        - "deployment_info.result.spec.template.spec.containers[0].resources.limits.memory"
+  tags:
+    - injection_docs
+
+- name: Get current deployment
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    name: "{{ target_deployment_name }}"
+    kubeconfig: "{{ kubeconfig }}"
+  register: deployment_info
+  tags: incident_22
+  when: is_memory_stress_chaos and is_fault_injection
+
+- name: Create a new variable with the name to get the service first name
+  set_fact:
+    new_service_name: "{{ target_label_name1 | replace('service', '') | upper }}"
+  tags: incident_22
+  when: is_memory_stress_chaos
+
+- name: Create Job from Deployment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: "{{ target_deployment_name }}"
+        namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+        labels:
+          app.kubernetes.io/component: "{{ target_label_name1 }}"
+          app.kubernetes.io/instance: "{{ otel_astronomy_app_namespace_project_name }}"
+          app.kubernetes.io/name: "{{ target_label_name1 }}"
+      spec:
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/component: "{{ target_label_name1 }}"
+              app.kubernetes.io/instance: "{{ otel_astronomy_app_namespace_project_name }}"
+              app.kubernetes.io/name: "{{ target_label_name1 }}"
+          spec:
+            containers:
+              - name: "{{ deployment_info.result.spec.template.spec.containers[0].name }}"
+                image: "{{ deployment_info.result.spec.template.spec.containers[0].image }}"
+                imagePullPolicy: IfNotPresent
+                ports:
+                  - containerPort: 8080  # valkey change to 6379
+                    name: "{{ target_label_name1 }}" 
+                    protocol: TCP 
+                env:
+                  - name: OTEL_SERVICE_NAME
+                    valueFrom:
+                      fieldRef:
+                        apiVersion: v1
+                        fieldPath: "metadata.labels['app.kubernetes.io/component']"
+                  - name: OTEL_COLLECTOR_NAME
+                    value: "{{ otel_astronomy_app_namespace_project_name }}-otelcol"
+                  - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+                    value: cumulative
+                  - name: '{{new_service_name}}_SERVICE_PORT'
+                    value: "8080" # valkey change to 6379
+                  - name: FLAGD_HOST
+                    value: "{{ otel_astronomy_app_namespace_project_name }}-flagd"
+                  - name: FLAGD_PORT
+                    value: "8013"
+                  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                    value: http://$(OTEL_COLLECTOR_NAME):4318
+                  - name: OTEL_LOGS_EXPORTER
+                    value: otlp
+                  - name: OTEL_RESOURCE_ATTRIBUTES
+                    value: service.name=$(OTEL_SERVICE_NAME),service.namespace=opentelemetry-demo,service.version=1.11.1
+                resources: 
+                  limits: 
+                    memory: "{{ deployment_info.result.spec.template.spec.containers[0].resources.limits.memory }}"
+                securityContext:
+                  runAsGroup: 1000
+                  runAsNonRoot: true
+                  runAsUser: 999
+            restartPolicy: Never
+        backoffLimit: 0
+  tags: incident_22
+  when: is_memory_stress_chaos and is_fault_injection
+
+- name: Get current service information
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    kind: Service
+    name: "{{ target_deployment_name }}"          
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+  register: svc_info
+  tags: incident_22
+  when: is_memory_stress_chaos and is_fault_injection
+
+- name: Save the deployment spec in temporary deployment file and delete deployment and svc
+  ansible.builtin.shell: |
+    kubectl get deployment/'{{ target_deployment_name }}' -n  {{ otel_astronomy_app_namespace_project_name }} -o yaml > /tmp/deployment_{{ kubeconfig.split('/')[2] }}.yaml
+    kubectl delete deployment/'{{ target_deployment_name }}' -n {{ otel_astronomy_app_namespace_project_name }}
+    kubectl delete service/'{{ target_deployment_name }}' -n {{ otel_astronomy_app_namespace_project_name }}
+  tags: incident_22
+  when: is_memory_stress_chaos and is_fault_injection
+
+- name: Create a service
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ target_deployment_name }}" 
+        namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+        labels: 
+            app.kubernetes.io/component: "{{ target_label_name1 }}"
+            app.kubernetes.io/instance: "{{ otel_astronomy_app_namespace_project_name }}"
+            app.kubernetes.io/name: "{{ target_label_name1 }}"
+      spec:
+        clusterIP: "{{ svc_info.result.spec.clusterIP }}"
+        selector:
+          app.kubernetes.io/name: "{{ target_label_name1 }}"
+        ports:
+        - port: 8080  # valkey change to 6379
+          targetPort: 8080 # valkey change to 6379
+  tags: incident_22
+  when: is_memory_stress_chaos and is_fault_injection
+
+- name: Inject memory stress chaos leveraging the Chaos framework
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: StressChaos
+      metadata:
+        name: "{{ target_namespace_name }}-{{ target_deployment_name}}"
+        namespace: "{{ chaos_mesh_namespace_project_name }}"
+      spec:
+        mode: one
+        selector:
+          namespaces:
+            - "{{ target_namespace_name }}"
+          labelSelectors:
+            "app.kubernetes.io/component": "{{ target_label_name1 }}"
+        stressors:
+          memory:
+            workers: 4
+            size: "100%"
+  register: fault_injection_status
+  tags: chaos-mesh
+  when: is_memory_stress_chaos and is_fault_injection
+
+- name: Remove memory stress chaos leveraging the Chaos framework
+  kubernetes.core.k8s:
+    state: absent
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: StressChaos
+      metadata:
+        name: "{{ target_namespace_name }}-{{ target_deployment_name}}"
+        namespace: "{{ chaos_mesh_namespace_project_name }}"
+      spec:
+        mode: one
+        selector:
+          namespaces:
+            - "{{ target_namespace_name }}"
+          labelSelectors:
+            "app.kubernetes.io/component": "{{ target_label_name1 }}"
+        stressors:
+          memory:
+            workers: 4
+            size: "100%"
+  register: fault_injection_status
+  tags: chaos-mesh
+  when: is_memory_stress_chaos and is_fault_removal
+
+- name: Get current job
+  kubernetes.core.k8s:
+    api_version: batch/v1
+    kind: Job
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    name: "{{ target_deployment_name }}"
+    kubeconfig: "{{ kubeconfig }}"
+  register: job_info
+  tags: incident_22
+  when: is_memory_stress_chaos and is_fault_removal
+
+- name: Delete the job
+  ansible.builtin.shell: |
+    KUBECONFIG={{ kubeconfig }} kubectl delete job/'{{ target_deployment_name}}' -n {{ otel_astronomy_app_namespace_project_name }}
+  tags: incident_22
+  when: is_memory_stress_chaos and is_fault_removal
+
+- name: Reapply the deployment
+  ansible.builtin.shell: |
+    KUBECONFIG={{ kubeconfig }} kubectl apply -f /tmp/deployment_{{ kubeconfig.split('/')[2] }}.yaml -n  {{ otel_astronomy_app_namespace_project_name }}
+  tags: incident_22
+  when: is_memory_stress_chaos and is_fault_removal
+
+- name: Remove temporary deployment files
+  ansible.builtin.shell: |
+    rm -f '/tmp/deployment_{{ kubeconfig.split('/')[2] }}.yaml' 
+  tags: incident_22
+  when: is_memory_stress_chaos and is_fault_removal

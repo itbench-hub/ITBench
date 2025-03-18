@@ -208,15 +208,33 @@
       sre_agent_directory: /runner/project
       conda_sh_directory: /opt/conda/etc/profile.d/conda.sh
       conda_env_directory: /runner/project/lumyn_env
-      is_watsonx: "{{ true if agent_configuration['llm_for_agents_config']['llm_backend'] == 'watsonx' else false }}"
-      is_azure: "{{ true if agent_configuration['llm_for_agents_config']['llm_backend'] == 'azure' else false }}"
-      llm_model_name: "{{ agent_configuration['llm_for_agents_config']['llm_model_name'] }}"
-      llm_base_url: "{{ agent_configuration['llm_for_agents_config']['llm_base_url'] }}"
-      llm_api_key: "{{ agent_configuration['llm_for_agents_config']['llm_api_key'] }}" # pragma: allowlist secret
-      llm_api_version: "{{ agent_configuration['llm_for_agents_config']['llm_api_version'] if agent_configuration['llm_for_agents_config']['llm_backend'] == 'azure' else '' }}"
-      llm_project_id: "{{ agent_configuration['llm_for_agents_config']['llm_project_id'] if agent_configuration['llm_for_agents_config']['llm_backend'] == 'watsonx' else '' }}"
-      llm_configuration_parameters: "{{ agent_configuration['llm_for_agents_config']['llm_configuration_parameters'] if agent_configuration['llm_for_agents_config']['llm_configuration_parameters'] is defined else null }}"
-      enable_god_mode: "{{ agent_configuration['llm_for_agents_config']['enable_god_mode'] }}"
+      provider_agents: "{{ agent_configuration['agents_config']['provider'] }}"
+      model_agents: "{{ agent_configuration['agents_config']['model'] }}"
+      base_url_agents: "{{ agent_configuration['agents_config']['base_url'] }}"
+      api_key_agents: "{{ agent_configuration['agents_config']['api_key'] }}" # pragma: allowlist secret
+      api_version_agents: "{{ agent_configuration['agents_config']['api_version'] }}"
+      seed_agents: "{{ agent_configuration['agents_config']['seed'] }}"
+      top_p_agents: "{{ agent_configuration['agents_config']['top_p'] }}"
+      temperature_agents: "{{ agent_configuration['agents_config']['temperature'] }}"
+      reasoning_effort_agents: "{{ agent_configuration['agents_config']['reasoning_effort'] }}"
+      thinking_agents: "{{ agent_configuration['agents_config']['thinking'] }}"
+      thinking_budget_agents: "{{ agent_configuration['agents_config']['thinking_budget'] }}"
+      max_tokens_agents: "{{ agent_configuration['agents_config']['max_tokens'] }}"
+      provider_tools: "{{ agent_configuration['tools_config']['provider'] }}"
+      model_tools: "{{ agent_configuration['tools_config']['model'] }}"
+      base_url_tools: "{{ agent_configuration['tools_config']['base_url'] }}"
+      api_key_tools: "{{ agent_configuration['tools_config']['api_key'] }}" # pragma: allowlist secret
+      api_version_tools: "{{ agent_configuration['tools_config']['api_version'] }}"
+      seed_tools: "{{ agent_configuration['tools_config']['seed'] }}"
+      top_p_tools: "{{ agent_configuration['tools_config']['top_p'] }}"
+      temperature_tools: "{{ agent_configuration['tools_config']['temperature'] }}"
+      reasoning_effort_tools: "{{ agent_configuration['tools_config']['reasoning_effort'] }}"
+      thinking_tools: "{{ agent_configuration['tools_config']['thinking'] }}"
+      thinking_budget_tools: "{{ agent_configuration['tools_config']['thinking_budget'] }}"
+      max_tokens_tools: "{{ agent_configuration['tools_config']['max_tokens'] }}"
+      is_native_function_calling_supported: "{{ agent_configuration['tools_config']['is_native_function_calling_supported'] }}"
+      wx_project_id: "{{ agent_configuration['watsonx_config']['wx_project_id'] }}"
+      enable_god_mode: "{{ agent_configuration['agents_config']['enable_god_mode'] }}"
       agent_analytics_sdk_username: "{{ agent_configuration['agent_analytics_sdk']['git_username'] }}"
       agent_analytics_sdk_token: "{{ agent_configuration['agent_analytics_sdk']['git_token'] }}"
       sre_agent_max_runtime_in_seconds: 900
@@ -434,6 +452,26 @@
       is_fault_removal: true
       incident_number: "{{scenario_number}}"
     job_tags: "incident_{{scenario_number}}"
+  tags:
+    - awx_scenario_setup
+
+- name: Uninstalling K8s resources in default namespace
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Uninstalling-K8s-Resources-Default-Namespace"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+    job_tags: "uninstall_sre_agent"
   tags:
     - awx_scenario_setup
 

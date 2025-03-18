@@ -1,0 +1,100 @@
+---
+- name: Document this fault injection
+  set_fact:
+    injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
+  vars:
+    curr_docs:
+      name: "Assign a service to non-existent node"
+      author: "@JacksonArthurClark"
+      description: "attach ad and cart deployment to non-existant node"
+      application: "otel_astronomy_shop"
+      fault_type: "Custom"
+      required_fields:
+        - "nodeSelector"
+        - "kubernetes.io/hostname"
+        - "target_deployments"
+        - "target_namespace_name"
+        - "extra-node"
+        - "modified_node_selector"
+  tags:
+    - injection_docs
+
+- name: Fetch deployment YAML
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: "{{ item }}"
+    namespace: "{{ target_namespace_name }}"
+  register: deployment_info
+  loop: "{{ target_deployments }}"
+  when:
+    - is_custom
+    - is_fault_injection or is_fault_removal
+    - is_non_existent_node
+
+- name: Modify the nodeSelector to assign to a non-existent node
+  set_fact:
+    modified_node_selector: >-
+      {{
+        {"spec": {
+            "template": {
+              "spec": {"nodeSelector": {"kubernetes.io/hostname": "extra-node"}}
+            }
+          }}
+      }}
+  loop: "{{ target_deployments }}"
+  when:
+    - is_custom
+    - is_fault_injection or is_fault_removal
+    - is_non_existent_node
+
+- name: Patch deployment to assign deployment to a non-existent node
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    api_version: apps/v1
+    kind: Deployment
+    name: "{{ item }}"
+    namespace: "{{ target_namespace_name }}"
+    merge_type: strategic-merge
+    definition: "{{ modified_node_selector }}"
+  loop: "{{ target_deployments }}"
+  register: non_existent_node_apply_result
+  when:
+    - is_custom
+    - is_fault_injection
+    - is_non_existent_node
+
+- name: Patch deployment to remove deployment from a non-existent node
+  kubernetes.core.k8s_json_patch:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    name: "{{ item }}"
+    namespace: "{{ target_namespace_name }}"
+    patch:
+      - op: remove
+        path: "/spec/template/spec/nodeSelector"
+
+  loop: "{{ target_deployments }}"
+  register: non_existent_node_removal_result
+  when:
+    - is_custom
+    - is_fault_removal
+    - is_non_existent_node
+
+- name: Print patch apply result (for debugging)
+  debug:
+    var: non_existent_node_apply_result
+  when:
+    - is_custom
+    - is_fault_injection
+    - is_non_existent_node
+
+- name: Print patch removal result (for debugging)
+  debug:
+    var: non_existent_node_removal_result
+  when:
+    - is_custom
+    - is_fault_removal
+    - is_non_existent_node

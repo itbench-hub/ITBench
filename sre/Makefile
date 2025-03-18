@@ -7,13 +7,22 @@ INCIDENT_NUMBER ?= 1
 NUMBER_OF_RUNS = 1
 # TODO: Re-think the end to end experience
 
+ELASTICSEARCH_SCENARIOS := 301 302
 FINOPS_SCENARIOS := 37 38
-HOTEL_RESERVATION_SCENARIOS := 102 210 211 212
+HOTEL_RESERVATION_SCENARIOS := 102 103 104 210 211 212
 
 IS_DEBUG_SCENARIO ?= true
 IS_FINOPS_SCENARIO := $(shell echo "$(FINOPS_SCENARIOS)" | grep -w "$(INCIDENT_NUMBER)" > /dev/null && echo "true" || echo "false")
 IS_HOTEL_RESERVATION_SCENARIO := $(shell echo "$(HOTEL_RESERVATION_SCENARIOS)" | grep -w "$(INCIDENT_NUMBER)" > /dev/null && echo "true" || echo "false")
-SAMPLE_APPLICATION := $(shell echo "$(HOTEL_RESERVATION_SCENARIOS)" | grep -w "$(INCIDENT_NUMBER)" > /dev/null && echo "dsb_hotel_reservation" || echo "otel_astronomy_shop")
+IS_ELASTICSEARCH_SCENARIO := $(shell echo "$(ELASTICSEARCH_SCENARIOS)" | grep -w "$(INCIDENT_NUMBER)" > /dev/null && echo "true" || echo "false")
+
+SAMPLE_APPLICATION := otel_astronomy_shop
+ifeq ($(IS_HOTEL_RESERVATION_SCENARIO),true)
+SAMPLE_APPLICATION := dsb_hotel_reservation
+else ifeq ($(IS_ELASTICSEARCH_SCENARIO),true)
+SAMPLE_APPLICATION := elasticsearch
+else
+endif
 
 .PHONY: help
 help: ## Display this help.
@@ -66,6 +75,16 @@ undeploy_hotel_reservation: ## Undeploys the Hotel Reservation application
 	ansible-playbook -v base.yaml --tags "uninstall_sample_applications" \
 		--extra-vars "sample_application=dsb_hotel_reservation"
 
+.PHONY: deploy_elasticsearch
+deploy_elasticsearch: ## Deploys the Elasticsearch cluster
+	ansible-playbook -v base.yaml --tags "install_sample_applications" \
+		--extra-vars "sample_application=elasticsearch"
+
+.PHONY: undeploy_elasticsearch
+undeploy_elasticsearch: ## Undeploys the Elasticsearch cluster
+	ansible-playbook -v base.yaml --tags "uninstall_sample_applications" \
+		--extra-vars "sample_application=elasticsearch"
+
 .PHONY: install_chaos_mesh
 install_chaos_mesh: ## Installs a Chaos mesh to the cluster
 	ansible-playbook -v base.yaml --tags "chaos_mesh_installation" \
@@ -85,9 +104,11 @@ else
 		--extra-vars "incident_number=$(INCIDENT_NUMBER)" \
 		--extra-vars "sample_application=$(SAMPLE_APPLICATION)"
 endif
+	ansible-playbook -v base.yaml --tags "post_fault_injection"
 
 .PHONY: remove_incident_fault
 remove_incident_fault: ## Removes the fault used in a specific incident
+	ansible-playbook -v base.yaml --tags "pre_fault_removal"
 ifeq ($(IS_DEBUG_SCENARIO),true)
 	ansible-playbook -v base.yaml --tags "incident_$(INCIDENT_NUMBER)" \
 		--extra-vars "debug=true" \
@@ -104,6 +125,8 @@ endif
 .PHONY: deploy_scenario_application
 ifeq ($(IS_HOTEL_RESERVATION_SCENARIO),true)
 deploy_scenario_application: deploy_hotel_reservation
+else ifeq ($(IS_ELASTICSEARCH_SCENARIO),true)
+deploy_scenario_application: deploy_elasticsearch
 else 
 deploy_scenario_application: deploy_astronomy_shop
 endif
@@ -111,6 +134,8 @@ endif
 .PHONY: undeploy_scenario_application
 ifeq ($(IS_HOTEL_RESERVATION_SCENARIO),true)
 undeploy_scenario_application: undeploy_hotel_reservation
+else ifeq ($(IS_ELASTICSEARCH_SCENARIO),true)
+undeploy_scenario_application: undeploy_elasticsearch
 else
 undeploy_scenario_application: undeploy_astronomy_shop
 endif
@@ -182,6 +207,7 @@ endif
 
 .PHONY: e2e_awx_init_stage_one
 e2e_awx_init_stage_one: ## Given an incident number, run_uuid intitialize the scenario run leveraging an AWX node
+	kops export kubecfg --admin --name=${AWX_CLUSTERNAME} --state=s3://${S3_BUCKET_NAME} --kubeconfig /tmp/${AWX_CLUSTERNAME.yaml}
 	# Get cluster to be used configuration
 	KOPS_STATE_STORE=s3://${S3_BUCKET_NAME} kops export kubecfg ${CLUSTER_ASSIGNED_NAME} --admin --kubeconfig /tmp/${CLUSTER_ASSIGNED_NAME}.yaml; \
         ansible-playbook -v base.yaml --tags "awx_scenario_setup" --extra-vars "relevant_kubeconfig_file_path=/tmp/${CLUSTER_ASSIGNED_NAME}.yaml scenario_number=${INCIDENT_NUMBER} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre"; \

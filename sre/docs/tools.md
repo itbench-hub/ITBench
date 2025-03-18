@@ -31,11 +31,11 @@ make undeploy_observability_stack
 ### Installing FinOps stack (Observability stack + OpenCost + Metrics Server) for FinOps scenarios
 Run:
 ```bash
-make deploy_observability_stack
+make deploy_finops_stack
 ```
 
 ### Uninstalling FinOps stack for FinOps scenarios
 Run:
 ```bash
-make undeploy_observability_stack
+make undeploy_finops_stack
 ```

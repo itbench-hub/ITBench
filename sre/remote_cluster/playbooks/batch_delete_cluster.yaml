@@ -60,3 +60,59 @@
       loop: "{{ cluster_batches }}"
       loop_control:
         loop_var: batch
+
+    - name: Find all route tables related to clusters
+      amazon.aws.ec2_vpc_route_table_info:
+        filters:
+          "tag:Name": "{{ cluster_name_prefix }}-public-rt"
+        region: "{{ aws_region }}"
+      register: route_tables_info
+
+    - name: Find all subnet related to clusters
+      amazon.aws.ec2_vpc_subnet_info:
+        filters:
+          vpc-id: "{{ item.vpc_id }}"
+        region: "{{ aws_region }}"
+      loop: "{{ route_tables_info.route_tables }}"
+      register: subnet_info_list
+
+    - name: Append list of subnet info entries
+      ansible.builtin.set_fact:
+        subnets_info: "{{ subnet_info_list.results | sum(attribute='subnets', start=[]) }}"
+
+    - name: Delete all new subnets created for related clusters
+      amazon.aws.ec2_vpc_subnet:
+        state: absent
+        vpc_id: "{{ item.vpc_id }}"
+        region: "{{ aws_region }}"
+        cidr: "{{ item.cidr_block }}"
+        debug_botocore_endpoint_logs: true
+      loop: "{{ subnets_info }}"
+
+    - name: Delete all route tables related to clusters
+      ec2_vpc_route_table:
+        vpc_id: "{{ item.vpc_id }}"
+        region: "{{ aws_region }}"
+        route_table_id: "{{ item.id }}"
+        lookup: id
+        state: absent
+      loop: "{{ route_tables_info.route_tables }}"
+
+    - name: Delete Internet Gateway for related clusters
+      amazon.aws.ec2_vpc_igw:
+        state: absent
+        vpc_id: "{{ item.vpc_id }}"
+        region: "{{ aws_region }}"
+      loop: "{{ route_tables_info.route_tables }}"
+
+    - name: Delete shared VPC for related clusters
+      amazon.aws.ec2_vpc_net:
+        state: absent
+        vpc_id: "{{ item.vpc_id }}"
+        region: "{{ aws_region }}"
+      loop: "{{ route_tables_info.route_tables }}"
+
+    - name: Delete validated clusters file
+      ansible.builtin.file:
+        path: validated_clusters.json
+        state: absent

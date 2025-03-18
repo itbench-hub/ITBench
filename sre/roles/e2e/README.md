@@ -59,11 +59,11 @@ agent_configuration:
 ```
 2. `cd` into this directory `roles/e2e` and run:
 ```bash
-python experiment_runner.py --experiment_spec ../../group_vars/e2e --path ../../
+python experiment_runner.py --experiment_spec ../../group_vars/e2e --batch_variables ../../remote_cluster/playbooks/batch_variables.yaml --path ../../
 ```
 3. and enter "y". This would create the needed job templates and workflows for the experiment within AWX / Ansible Tower
 4. Head over to the AWX endpoint to monitor the jobs if need be.
-5. The experiment outcom runs at this time are uploaded to the [`awx-evaluations`](https://us-east-2.console.aws.amazon.com/s3/buckets/awx-evaluations?region=us-east-2&bucketType=general&tab=objects) bucket 
+5. The experiment output is uploaded to the s3_bucket_name_for_results/lumyn-0.0.1/<run_id>. You can find the run_id by clicking the details page of any of the jobs in the awx console that were part of the experiment.
 
 ### Experiment Destruction
 Once the experiment is complete
@@ -78,4 +78,3 @@ python experiment_runner.py --experiment_spec ../../group_vars/e2e --batch_varia
 ```bash
 make batch_delete
 ```
-2. Delete the VPC in AWS console. Do NOT do this step until `make batch_delete` completes.

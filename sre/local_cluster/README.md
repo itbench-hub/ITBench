@@ -7,6 +7,7 @@ _Note: The following setup guide presumes that the required software listed [her
 ## Recommended Software
 
 1. [Podman](https://podman.io/)
+2. [Golang](https://go.dev/)
 2. [Kind](https://kind.sigs.k8s.io/)
 3. [Cloud Provider Kind](https://github.com/kubernetes-sigs/cloud-provider-kind)
 
@@ -14,8 +15,7 @@ _Note: The following setup guide presumes that the required software listed [her
 
 ```bash
 brew install podman
-brew install kind
-brew install cloud-provider-kind
+brew install go
 ```
 
 ## Setup
@@ -37,12 +37,17 @@ podman machine start
 
 4. Create a kind cluster. A barebone kind configuration file has been provided [here](./kind-config.yaml).
 ```shell
-kind create cluster --config kind-config.yaml
+make create_cluster
 ```
 
-_Note: To delete the cluster, run this command: `kind delete cluster --name kind-cluster`_
+_Note: To delete the cluster, run this command: `make delete_cluster`_
 
-5. Update the value of the `kubeconfig` key in the `../group_vars/all.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config`).
+5. Once the cluster is running, we need to run the `cloud-provider-kind` in a terminal and keep it running.
+```shell
+make start_provider
+```
+
+6. Update the value of the `kubeconfig` key in the `../group_vars/all.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config`).
 ```shell
 vim ../group_vars/all.yaml
 ```
@@ -51,44 +56,9 @@ vim ../group_vars/all.yaml
 kubeconfig: "<path to kubeconfig>"
 ```
 
-6. Open a second terminal window and run the cloud provider.
+7. Run the following command to create a new StorageClass named "default" using the local-path provisioner from Rancher (aimed to mimic the standard storage class from Kind).
 ```shell
-sudo cloud-provider-kind -enable-lb-port-mapping
+kubectl apply -f rancher-storageclass.yaml
 ```
 
-7. The cluster has been set up. Now let's head back to the [parent README](../README.md) to deploy the incidents.
-
-# Troubleshooting
-### 1. Running kind cluster on Red Hat Enterprise Linux (RHEL) 9.5 with Podman:**
-
-During our test, we found that running kind with rootless provider on RHEL with podman will require some special setup which cannot be covered here.
-We used **sudo** privilege to create a kind cluster and ran the test successfully.
-Please see [instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/) for the installation and setup kubectl on Linux if you don't have one installed.
-
-`$ sudo kind create cluster --config kind-config.yaml`
-
-Once the kind cluster is up and running, please run the following commands before using kubectl:
-```
-$ sudo cp /root/.kube/config /tmp
-$ sudo chmod 644 /tmp/config
-$ export KUBECONFIG=/tmp/config
-```
-```
-$ kubectl get nodes
-NAME                         STATUS   ROLES           AGE    VERSION
-kind-cluster-control-plane   Ready    control-plane   7d1h   v1.30.0
-```
-### 2. "CrashLoopBackOff" in Chaos-Controller Manager Pods on Red Hat Enterprise Linux (RHEL) 9.5**
-
-**Problem:**  While testing on RHEL OS, the `chaos-controller-manager` pods in kind cluster may enter a `CrashLoopBackOff` state due to the error:  
-```
-"too many files open"
-```
-
-This is related to inotify resource limits, which can be exhausted in kind clusters, especially when there are many files being watched. This can impact the RHEL-based deployment of chaos mesh related scenarios. 
-
-**Solution:** 
-Fix for this problem is given in [kind - Known Issues - Pod Errors Due to Too Many Open Files](https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files). 
-
-**Note:**
-This issue has been observed specifically on RHEL OS while working within the chaos-mesh namespace. No such issue has been observed during testing on macOS.
+8. The cluster has been set up. Now let's head back to the [parent README](../README.md) to deploy the incidents.

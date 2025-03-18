@@ -31,6 +31,22 @@
   when:
     - sample_application == "dsb_hotel_reservation"
 
+- name: Record Deployment time
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: bundle-alert-timestamps
+        namespace: "{{ elasticsearch_app_namespace_project_name }}"
+      data:
+        deployment_time: "{{ now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+  tags:
+    - install_sample_applications
+  when:
+    - sample_application == "elasticsearch_incident"
+
 - name: Create deployment record
   set_fact:
     assertion_json:
@@ -56,7 +72,7 @@
 
 - name: Upload the JSON with application deployment details to S3
   amazon.aws.s3_object:
-    endpoint_url: "https://s3.us-east-2.amazonaws.com"
+    endpoint_url: "{{ s3_endpoint_url }}"
     bucket: "{{ s3_bucket_name_for_results }}"
     object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/assertion.json"
     src: "/tmp/assertion.json"
