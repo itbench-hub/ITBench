@@ -1,0 +1,65 @@
+---
+- name: Deploy the environment
+  hosts: rhel9_servers
+  become: true
+  vars_files:
+    - ./vars.yaml
+  pre_tasks:
+    - include_tasks: ../tasks/precondition_setup.yml
+  tasks:
+  - block:
+    - include_tasks: ../tasks/status_update.yml
+      vars:
+        new_conditions:
+        - type: "Deployed"
+          status: "False"
+          reason: "DeploymentInProgress"
+          message: "Setting up 'ansible_user' in the remote RHEL9 server..."
+        - type: "FaultInjected"
+          status: "False"
+          reason: "DeploymentNotReady"
+          message: "Waiting for the deployment to complete"
+        - type: "Destroyed"
+          status: "False"
+          reason: "DeploymentNotReady"
+          message: "Waiting for the deployment to complete"
+
+    - include_tasks: ../tasks/user_create.yml
+
+    - include_tasks: ../tasks/status_update.yml
+      vars:
+        new_conditions:
+        - type: "Deployed"
+          status: "True"
+        - type: "FaultInjected"
+          status: "False"
+          reason: "FaultInjectionNotReady"
+          message: "Waiting for the fault injection to be completed"
+        - type: "Destroyed"
+          status: "False"
+          reason: "FaultInjectionNotReady"
+          message: "Waiting for the fault injection to be completed"
+    
+    rescue:
+      - include_tasks: ../tasks/status_update.yml
+        vars:
+          new_conditions:
+          - type: "Deployed"
+            status: "False"
+            reason: "DeploymentFailed"
+            message: >
+              Deployment is failed due to the following reason.
+              The task "{{ ansible_failed_task.name }}" failed with error:
+              {{ ansible_failed_result.msg }}
+          - type: "FaultInjected"
+            status: "False"
+            reason: "DeploymentFailed"
+            message: "Waiting for the deployment to complete"
+          - type: "Destroyed"
+            status: "False"
+            reason: "DeploymentFailed"
+            message: "Waiting for the deployment to complete"
+
+      - name: Show full details of the failed task
+        debug:
+          var: ansible_failed_result

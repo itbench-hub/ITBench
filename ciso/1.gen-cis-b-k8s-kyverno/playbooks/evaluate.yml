@@ -1,0 +1,85 @@
+---
+- name: Evaluate the system compliance
+  hosts: localhost
+  vars_files:
+    - ./vars.yaml
+  pre_tasks:
+    - include_tasks: ../tasks/precondition_setup.yml
+  tasks:
+    - name: Gather Policy Reports
+      command: >
+        kubectl get polr -A -o json
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: result
+      failed_when: result.rc != 0
+
+    - name: Write the output to a file
+      ansible.builtin.copy:
+        content: "{{ result.stdout }}"
+        dest: "{{ work_dir }}/polr.json"
+
+    - name: Gather Cluster Policy Reports
+      command: >
+        kubectl get cpolr -A -o json
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"
+      register: result
+      failed_when: result.rc != 0
+
+    - name: Write the output to a file
+      ansible.builtin.copy:
+        content: "{{ result.stdout }}"
+        dest: "{{ work_dir }}/cpolr.json"
+
+    - name: Read fault resource manifest (application.yaml)
+      ansible.builtin.slurp:
+        src: ../manifests/application.yaml
+      register: fault_resource
+
+    - name: Parse fault resource manifest
+      ansible.builtin.set_fact:
+        fault_resource_data: "{{ fault_resource.content | b64decode | from_yaml }}"
+
+    - name: Check if archive exists
+      ansible.builtin.stat:
+        path: "{{ agent_output }}"
+      register: archive_file
+
+    - name: Ensure destination directory exists
+      ansible.builtin.file:
+        path: "{{ agent_output_destination }}"
+        state: directory
+        mode: '0755'
+      when: archive_file.stat.exists
+
+    - name: Extract archive of Agent submitted data
+      ansible.builtin.command:
+        cmd: "tar -xf {{ agent_output }} -C {{ agent_output_destination }}"
+      register: tar_result
+      changed_when: tar_result.rc == 0
+      when: archive_file.stat.exists
+
+    - name: Run evaluation
+      ansible.builtin.command:
+        argv:
+        - python
+        - ../evaluation/main.py
+        - -polr
+        - "{{ work_dir }}/polr.json"
+        - -cpolr
+        - "{{ work_dir }}/cpolr.json"
+        - --api-version
+        - "{{ fault_resource_data.apiVersion }}"
+        - --kind
+        - "{{ fault_resource_data.kind }}"
+        - --namespace
+        - "{{ fault_resource_data.metadata.namespace | default(target_ns) }}"
+        - --name
+        - "{{ fault_resource_data.metadata.name }}"
+        - --agent-output
+        - "{{ agent_output_destination }}"
+        - -o
+        - "{{ path_to_output }}"
+      environment:
+        KUBECONFIG: "{{ kubeconfig }}"

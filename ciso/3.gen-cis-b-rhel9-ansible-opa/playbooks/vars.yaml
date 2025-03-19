@@ -1,0 +1,25 @@
+# vars.yaml
+bundle_id: "rhel9/cis-b-gen/5.2.12"
+bundle_title: "CIS Benchmark for RHEL9 5.2.12"
+work_dir: "{{ lookup('env', 'WORK_DIR') | default('/tmp/caa-bench', true) }}"
+
+bundle_input_file: "{{ lookup('env', 'BUNDLE_INPUT_FILE') | default('../input.json', true) }}"
+bundle_input: "{{ lookup('file', bundle_input_file) | from_json }}"
+
+path_to_status: "{{ work_dir }}/status.json"
+check_target_hostname: "{{ bundle_input.target_server.address }}"
+check_target_user: ansible_user
+check_target_ssh_key: "{{ work_dir }}/id_rsa.{{ check_target_user }}"
+check_target_python_interpreter: "{{ bundle_input.target_server.python_interpreter | default('/usr/bin/python', true) }}"
+path_to_evaluator_inventory: "{{ work_dir }}/inventory.ansible.ini"
+
+shared_workspace: "{{ bundle_input.shared_workspace }}"
+agent_kubeconfig: "{{ shared_workspace }}/kubeconfig.yaml"
+agent_output: "{{ shared_workspace }}/agent_output.data"
+agent_output_destination: "{{ shared_workspace }}/agent_output"
+
+filename_to_generated_fetcher: "playbook.yml"
+filename_to_generated_policy: "policy.rego"
+filename_to_collected_data: "collected_data.json"
+
+created_user_password: "{{ lookup('env', 'CREATED_USER_PASSWORD') | default('ansiblePassw0rd', true) }}"

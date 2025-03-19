@@ -1,0 +1,11 @@
+- name: Disable X11 forwarding in SSH configuration
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^X11Forwarding'
+    line: 'X11Forwarding no'
+    state: present
+
+- name: Restart SSH service to apply changes
+  ansible.builtin.service:
+    name: sshd
+    state: restarted

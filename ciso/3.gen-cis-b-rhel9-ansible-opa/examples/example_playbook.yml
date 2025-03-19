@@ -1,0 +1,18 @@
+- name: Collect /etc/ssh/sshd_config X11Forwarding setting
+  hosts: rhel9_servers
+  gather_facts: no
+
+  tasks:
+    - name: Extract X11Forwarding setting from /etc/ssh/sshd_config
+      ansible.builtin.shell: grep '^X11Forwarding' /etc/ssh/sshd_config || echo "X11Forwarding not set"
+      register: ssh_x11_forwarding
+
+    - name: Save collected setting to JSON
+      ansible.builtin.copy:
+        content: |
+          {
+            "file": "/etc/ssh/sshd_config",
+            "x11_forwarding": {{ ssh_x11_forwarding.stdout | to_json }}
+          }
+        dest: /tmp/ssh_x11_forwarding_compliance.json
+      delegate_to: localhost

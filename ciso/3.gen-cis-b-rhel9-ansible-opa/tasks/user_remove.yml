@@ -1,0 +1,24 @@
+---
+- become: true 
+  block:
+  - name: "Remove '{{ check_target_user }}' user "
+    user:
+      name: "{{ check_target_user }}"
+      state: absent
+      remove: yes
+
+  - name: "Remove '{{ check_target_user }}' sudoers file"
+    file:
+      path: "/etc/sudoers.d/{{ check_target_user }}"
+      state: absent
+
+  rescue:
+    - name: Show full details of the failed task
+      ansible.builtin.debug:
+        var: ansible_failed_result
+
+  always:
+    - name: Ignore errors and continue
+      ansible.builtin.debug:
+        msg: "Ignoring errors and marking as success."
+      ignore_errors: yes

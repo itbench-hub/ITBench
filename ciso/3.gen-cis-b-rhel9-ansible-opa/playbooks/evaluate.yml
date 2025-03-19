@@ -1,0 +1,104 @@
+---
+- name: Evaluate the system compliance
+  hosts: localhost
+  vars_files:
+    - ./vars.yaml
+  vars:
+    shared_workspace: /tmp
+    path_to_output: /tmp/evaluate.json
+  pre_tasks:
+    - include_tasks: ../tasks/precondition_setup.yml
+  tasks:
+  - block:
+
+    - name: Check if {{ agent_output }} exists
+      stat:
+        path: "{{ agent_output }}"
+      register: agent_output_stat
+
+    - name: Ensure dest directory exists
+      file:
+        path: "{{ agent_output_destination }}"
+        state: directory
+        mode: '0755'
+      when: agent_output_stat.stat.exists
+
+    - name: Extract {{ agent_output }} if it exists
+      unarchive:
+        src: "{{ agent_output }}"
+        dest: "{{ agent_output_destination }}"
+        keep_newer: true
+      when: agent_output_stat.stat.exists
+
+    - name: Copy items from extracted directory to extracted directory
+      copy:
+        src: "{{ agent_output_destination }}/{{ item }}"
+        dest: "{{ shared_workspace }}/{{ item }}"
+      with_items:
+      - "{{ filename_to_generated_fetcher }}"
+      - "{{ filename_to_generated_policy }}"
+      when: agent_output_stat.stat.exists
+
+    - name: Run Ansible
+      ansible.builtin.command:
+        argv:
+        - ansible-playbook
+        - "{{ shared_workspace }}/{{ filename_to_generated_fetcher }}"
+        - -i
+        - "{{ path_to_evaluator_inventory }}"
+      args:
+        chdir: "{{ shared_workspace }}"
+      register: fetcher_result
+
+    - name: Run OPA
+      ansible.builtin.command:
+        argv:
+        - opa
+        - eval
+        - --data
+        - "{{ shared_workspace }}/{{ filename_to_generated_policy }}"
+        - --input
+        - "{{ shared_workspace }}/{{ filename_to_collected_data }}"
+        - data.check.result
+        - --format
+        - raw
+      register: checker_result
+
+    - name: Set pass/fail based on command result (opa should result 'false' since a fault condition is injected.)
+      set_fact:
+        pass_result:
+          pass: "{{ true if checker_result.stdout == 'false' else false }}"
+          details: |
+            [fetcher] cmd: {{ fetcher_result.cmd }}, stdout: {{ fetcher_result.stdout }}, stderr: {{ fetcher_result.stderr }}
+            [checker] cmd: {{ checker_result.cmd }}, stdout: {{ checker_result.stdout }}, stderr: {{ checker_result.stderr }}
+
+    - name: Write pass result to JSON file
+      copy:
+        content: "{{ pass_result | to_json }}"
+        dest: "{{ path_to_output }}"
+
+    - name: Pretty print the
+      debug:
+        msg: "{{ pass_result }}"
+
+    rescue:
+      - name: Set pass result
+        set_fact:
+          pass_result:
+            pass: false
+            errors:
+            - code: "{{ ansible_failed_task.name }}"
+              message: |
+                The task "{{ ansible_failed_task.name }}" failed with error:
+                {{ ansible_failed_result.msg | default('No error message provided') }}
+                {{ ansible_failed_result.stdout | default('No stdout provided') }}
+                {{ ansible_failed_result.stderr | default('No stderr provided') }}
+
+      - name: Write pass result to JSON file
+        copy:
+          content: "{{ pass_result | to_json }}"
+          dest: "{{ path_to_output }}"
+
+      - name: Pretty print the
+        debug:
+          msg: "{{ pass_result }}"
