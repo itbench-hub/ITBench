@@ -1,0 +1,29 @@
+---
+- name: Build a goal descriptioin
+  hosts: localhost
+  vars_files:
+    - ./vars.yaml
+  vars:
+    shared_workspace: /tmp
+    path_to_output: /tmp/goal.json
+  pre_tasks:
+    - include_tasks: ../tasks/precondition_setup.yml
+  tasks:
+  - name: Load info.json
+    set_fact:
+      info_content: "{{ lookup('file', '../info.json') | from_json }}"
+
+  - name: Build the goal description
+    set_fact:
+      goal_object:
+        goal: |
+          {{ info_content.goal }} 
+
+          The cluster's kubeconfig is at `{% raw %}{{ kubeconfig }}{% endraw %}`.
+        vars:
+          kubeconfig: "{{ lookup('file', agent_kubeconfig) }}"
+
+  - name: Write the goal description to JSON file
+    copy:
+      content: "{{ goal_object | to_json }}"
+      dest: "{{ path_to_output }}"

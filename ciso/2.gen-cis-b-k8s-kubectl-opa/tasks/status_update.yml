@@ -1,0 +1,60 @@
+---
+- vars:
+    new_conditions:
+  block:
+  - name: Check if status file exists
+    stat:
+      path: "{{ path_to_status }}"
+    register: status_file
+
+  - name: Define default status
+    set_fact:
+      default_status:
+        status:
+          conditions:
+            - lastTransitionTime: "{{ ansible_date_time.iso8601 }}"
+              status: "True"
+              type: "Deployed"
+            - lastTransitionTime: "{{ ansible_date_time.iso8601 }}"
+              status: "Unknown"
+              type: "FaultInjected"
+            - lastTransitionTime: "{{ ansible_date_time.iso8601 }}"
+              status: "Unknown"
+              type: "Destroyed"
+
+  - name: Create default status file if it does not exist
+    copy:
+      content: "{{ default_status | to_json(indent=2) }}"
+      dest: "{{ path_to_status }}"
+    when: not status_file.stat.exists
+
+  - name: Read existing status from JSON file
+    slurp:
+      src: "{{ path_to_status }}"
+    register: current_status
+
+  - name: Convert current status to dictionary
+    set_fact:
+      current_status_dict: "{{ current_status.content | b64decode | from_json }}"
+
+  - name: Initialize updated_conditions as an empty list
+    set_fact:
+      updated_conditions: []
+      
+  - name: Loop through each condition and update only matching ones
+    set_fact:
+      updated_conditions: "{{ updated_conditions + [ (updated_item | combine({'lastTransitionTime': ansible_date_time.iso8601}) if updated_item != item else item) ] }}"
+    loop: "{{ current_status_dict.status.conditions }}"
+    loop_control:
+      loop_var: item
+    vars:
+      updated_item: "{{ new_conditions | selectattr('type', 'equalto', item.type) | first | default(item) }}"
+
+  - name: Prepare updated JSON data with kubeconfig
+    set_fact:
+      updated_json_data: "{{ current_status_dict | combine({'status': {'conditions': updated_conditions }}) }}"
+
+  - name: Write updated status back to JSON file
+    copy:
+      content: "{{ updated_json_data | to_json(indent=2) }}"
+      dest: "{{ path_to_status }}"

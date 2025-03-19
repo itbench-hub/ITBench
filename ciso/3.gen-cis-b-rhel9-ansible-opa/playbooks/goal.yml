@@ -1,0 +1,39 @@
+---
+- name: Build a goal descriptioin
+  hosts: localhost
+  vars_files:
+    - ./vars.yaml
+  vars:
+    shared_workspace: /tmp
+    path_to_output: /tmp/goal.json
+  pre_tasks:
+    - include_tasks: ../tasks/precondition_setup.yml
+  tasks:
+  - name: Load info.json
+    set_fact:
+      info_content: "{{ lookup('file', '../info.json') | from_json }}"
+
+  - name: Build the goal description
+    set_fact:
+      goal_object:
+        goal: |
+          I would like to check if the following condition is satisfiled, given a host name `rhel9_servers`, on RHEL by using Ansible Playbook and OPA Rego policy
+              {{ info_content.goal }} 
+
+          To check the condition, do the following steps. 
+          - collect configuration from the RHEL host and save it locally. you can use ansible-playbook to do that. 
+          - chcek if the condition is met by using rego policy with the input given by the step above. 
+
+          for those steps, you need to create ansible playbook `playbook.yml` and OPA rego policy `policy.rego`.
+          If you can fix the generated code, do it and run the fixed code again.
+          Once you get a final answer, you can quit the work.
+
+          The Ansible inventory file (inventory.ansible.ini) for the target RHEL server is located at `{% raw %}{{ path_to_inventory }}{% endraw %}`.
+        vars:
+          ansible_ini: "{{ lookup('file', path_to_evaluator_inventory) }}"
+          ansible_user_key: "{{ lookup('file', check_target_ssh_key) }}"
+
+  - name: Write the goal description to JSON file
+    copy:
+      content: "{{ goal_object | to_json }}"
+      dest: "{{ path_to_output }}"
