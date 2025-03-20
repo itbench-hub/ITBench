@@ -1,18 +1,4 @@
 ---
-- name: Add Helm chart repo for Ingress
-  kubernetes.core.helm_repository:
-    name: ingress-nginx
-    kubeconfig_path: "{{ kubeconfig }}"
-    repo_url: "https://kubernetes.github.io/ingress-nginx"
-
-- name: Update Helm repo
-  kubernetes.core.helm:
-    name: dummy
-    kubeconfig_path: "{{ kubeconfig }}"
-    state: absent
-    release_namespace: "{{ prometheus_namespace_project_name }}"
-    update_repo_cache: true
-
 - name: Set up Nginx Ingress
   kubernetes.core.helm:
     name: "{{ ingress_installation_name }}"

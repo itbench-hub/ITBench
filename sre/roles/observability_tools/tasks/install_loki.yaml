@@ -1,22 +1,4 @@
 ---
-- name: Add Helm chart repo for Loki
-  kubernetes.core.helm_repository:
-    name: grafana
-    kubeconfig_path: "{{ kubeconfig }}"
-    repo_url: "https://grafana.github.io/helm-charts"
-  when:
-    - enable_loki_endpoint
-
-- name: Update Helm repo
-  kubernetes.core.helm:
-    name: dummy
-    kubeconfig_path: "{{ kubeconfig }}"
-    state: absent
-    release_namespace: "{{ loki_namespace_project_name }}"
-    update_repo_cache: true
-  when:
-    - enable_loki_endpoint
-
 - name: Deploy Loki
   kubernetes.core.helm:
     name: "{{ loki_installation_name }}"
@@ -26,8 +8,6 @@
     release_namespace: "{{ loki_namespace_project_name }}"
     release_state: present
     create_namespace: true
-    wait: true
-    timeout: 10m0s
     values:
       backend:
         replicas: 0

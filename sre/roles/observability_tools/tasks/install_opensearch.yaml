@@ -1,18 +1,4 @@
 ---
-- name: Add Helm chart repo for OpenSearch
-  kubernetes.core.helm_repository:
-    name: opensearch
-    kubeconfig_path: "{{ kubeconfig }}"
-    repo_url: "https://opensearch-project.github.io/helm-charts"
-
-- name: Update Helm repo
-  kubernetes.core.helm:
-    name: dummy
-    kubeconfig_path: "{{ kubeconfig }}"
-    state: absent
-    release_namespace: "{{ opensearch_namespace_project_name }}"
-    update_repo_cache: true
-
 - name: Deploy OpenSearch
   kubernetes.core.helm:
     name: "{{ opensearch_installation_name }}"
@@ -22,8 +8,6 @@
     release_namespace: "{{ opensearch_namespace_project_name }}"
     release_state: present
     create_namespace: true
-    wait: true
-    timeout: 10m0s
     values:
       replicas: 1
       config:
