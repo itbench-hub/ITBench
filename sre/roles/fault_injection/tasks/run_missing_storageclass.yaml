@@ -1,0 +1,167 @@
+---
+- name: Document this fault injection
+  set_fact:
+    injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
+  vars:
+    curr_docs:
+      name: "Missing Storageclass"
+      author: "@Yinfang-Chen"
+      description: "Replace the PV requested storage class for mongodb with the non-existent 'ceph-fs'."
+      application: "deathstarbench_hotel_reservations"
+      fault_type: "Custom"
+      required_fields:
+        - "deathstarbench_hotelreservation_app_installation_name"
+        - "deathstarbench_hotelreservation_app_namespace_project_name"
+        - "jaeger_installation_name"
+        - "jaeger_namespace_project_name"
+        - "prometheus_namespace_project_name"
+        - "prometheus_service_name"
+  tags:
+    - injection_docs
+
+- name: Include tasks to uninstall DeathStarBench
+  include_tasks: "../../sample_applications/tasks/uninstall_deathstarbench_hotel_reservations.yaml"
+  when: is_fault_injection and is_missing_storage_class
+
+- name: Check if DeathStarBench directory exists
+  ansible.builtin.stat:
+    path: roles/sample_applications/DeathStarBench
+  register: dsb_dir_status
+  when: (is_fault_injection or is_fault_removal) and is_missing_storage_class
+
+- name: Clone Saurabh's fork of DeathStarBench Hotel Reservations
+  ansible.builtin.git:
+    repo: https://github.com/saurabhjha1/DeathStarBench.git
+    dest: roles/sample_applications/DeathStarBench
+    single_branch: yes
+    version: master
+  when: 
+    - dsb_dir_status is defined and dsb_dir_status.stat is defined and not (dsb_dir_status.stat.exists)
+    - is_fault_injection or is_fault_removal
+    - is_missing_storage_class
+
+- name: Check if values.yaml.bak already exists
+  ansible.builtin.stat:
+    path: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation/values.yaml.bak
+  register: bak_file_status
+  when: (is_fault_injection or is_fault_removal) and is_missing_storage_class
+
+- name: Backup the original values.yaml file
+  ansible.builtin.copy:
+    src: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation/values.yaml
+    dest: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation/values.yaml.bak
+  when: 
+    - bak_file_status is defined and bak_file_status.stat is defined and not bak_file_status.stat.exists
+    - is_fault_injection
+    - is_missing_storage_class
+
+- name: Write a new values.yaml file with PersistentVolume enabled
+  ansible.builtin.copy:
+    dest: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation/values.yaml
+    content: |
+      global:
+        nameOverride: ""
+        fullnameOverride: ""
+        mainChart: hotelres
+        replicas: 1
+        imagePullPolicy: "Always"
+        imageRepo: "saurabhjha1/hotel-reservation"
+        restartPolicy: Always
+        serviceType: ClusterIP
+        dockerRegistry: docker.io
+        defaultImageVersion: latest
+        serviceDnsDomain: "cluster.local"
+        monitoring:
+          defaultJaegerEnabled: true
+          otelAddress: ""
+          centralJaegerAddress: ""
+          centralPrometheusAddress: ""
+        services:
+          environments:
+            # TLS enablement
+            #  - 0: Disable
+            #  - 1: Enabled, using default cipher suite based on golang runtime
+            #  - TLS_XXX: Enabled, using the specified Cipher suite, see tls/options.go#L22
+            TLS: 0
+            LOG_LEVEL: "INFO"
+            JAEGER_SAMPLE_RATIO: "0.01"  # Can adjust sampling rate as needed
+            MEMC_TIMEOUT: "2"
+            GC: "100"
+        affinity: {}
+        tolerations: []
+        nodeSelector: {}
+
+        memcached:
+          HACount: 1
+          environments:
+            MEMCACHED_CACHE_SIZE: "128"
+            MEMCACHED_THREADS: "2"
+      
+        mongodb:
+          persistentVolume:               # use hostPath or pvprovisioner
+            enabled: true
+            size: "1Gi"
+            hostPath:
+              enabled: true
+              path: /tmp
+            pvprovisioner:
+              enabled: true
+              storageClassName: ceph-fs   # an non-existent storageclass
+  when: is_fault_injection and is_missing_storage_class
+
+- name: Deploy Deathstar Hotel Reservations 
+  kubernetes.core.helm:
+    name: "{{ deathstarbench_hotelreservation_app_installation_name }}"
+    kubeconfig_path: "{{ kubeconfig }}"
+    chart_ref: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation
+    release_namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+    release_state: present
+    create_namespace: true
+    wait_timeout: "5m"
+    set_values:
+      - value: "global.monitoring.otelAddress=otel-collector-{{ deathstarbench_hotelreservation_app_installation_name }}.{{ deathstarbench_hotelreservation_app_namespace_project_name }}.svc.cluster.local"
+        value_type: raw
+      - value: "global.monitoring.defaultJaegerEnabled=false"
+        value_type: raw
+      - value: "global.monitoring.centralJaegerAddress={{ jaeger_installation_name }}-collector.{{ jaeger_namespace_project_name }}.svc.cluster.local"
+        value_type: raw
+      - value: "global.monitoring.centralPrometheusAddress=http://{{ prometheus_service_name }}.{{ prometheus_namespace_project_name }}:9090/api/v1/otlp"
+        value_type: raw
+      - value: "global.nameOverride={{ deathstarbench_hotelreservation_app_installation_name }}"
+        value_type: raw
+  when: is_fault_injection and is_missing_storage_class
+
+- name: Include tasks to uninstall DeathStarBench
+  include_tasks: "../../sample_applications/tasks/uninstall_deathstarbench_hotel_reservations.yaml"
+  when: is_fault_removal and is_missing_storage_class
+
+- name: Restore the original values.yaml file
+  ansible.builtin.copy:
+    src: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation/values.yaml.bak
+    dest: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation/values.yaml
+  when: 
+    - bak_file_status is defined and bak_file_status.stat is defined and not bak_file_status.stat.exists
+    - is_fault_removal 
+    - is_missing_storage_class
+
+- name: Deploy Deathstar Hotel Reservations 
+  kubernetes.core.helm:
+    name: "{{ deathstarbench_hotelreservation_app_installation_name }}"
+    kubeconfig_path: "{{ kubeconfig }}"
+    chart_ref: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation
+    release_namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+    release_state: present
+    create_namespace: true
+    wait_timeout: "5m"
+    set_values:
+      - value: "global.monitoring.otelAddress=otel-collector-{{ deathstarbench_hotelreservation_app_installation_name }}.{{ deathstarbench_hotelreservation_app_namespace_project_name }}.svc.cluster.local"
+        value_type: raw
+      - value: "global.monitoring.defaultJaegerEnabled=false"
+        value_type: raw
+      - value: "global.monitoring.centralJaegerAddress={{ jaeger_installation_name }}-collector.{{ jaeger_namespace_project_name }}.svc.cluster.local"
+        value_type: raw
+      - value: "global.monitoring.centralPrometheusAddress=http://{{ prometheus_service_name }}.{{ prometheus_namespace_project_name }}:9090/api/v1/otlp"
+        value_type: raw
+      - value: "global.nameOverride={{ deathstarbench_hotelreservation_app_installation_name }}"
+        value_type: raw
+  when: is_fault_removal and is_missing_storage_class

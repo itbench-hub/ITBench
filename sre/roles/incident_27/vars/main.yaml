@@ -1,0 +1,124 @@
+---
+scenario_domain: sre
+sample_application: otel_astronomy_shop
+
+target_namespace_name: "{{ otel_astronomy_app_namespace_project_name }}"
+target_label_name1: "quoteservice"
+target_label_name2: ""
+
+docs_incident_27:
+  platform: kubernetes
+  dsl_format: groups
+  id: 27
+  name: Abort HTTP request fault
+  description: Aborts http requests to quoteservice using chaos mesh fault
+  application: "otel_astronomy_shop"
+  complexity: Medium
+  inject_fault_unused: true
+  agent_operation_timeout_sec: 3000
+  bundle_ready_timeout_sec: 3000
+  golden_signal_cause: traffic
+  golden_signal_effect: error
+  incidentPattern: HTTPRequestAbortFault
+  fault:
+    - entity:
+        name: http-abort-otel-demo-quoteservice-1
+        group_id: http-abort-otel-demo-quoteservice-1
+        kind: Service
+      condition: "To Be Specified"
+      category: "Change"
+      fault_mechanism: chaos
+  technologies:
+    - Go
+    - PHP
+    - Rust
+    - Tonic
+  alerts:
+    - id: Error_Rate_is_Above_Threshold_frontend
+      text: Error Rate is Above Threshold
+      group_id: frontend-service-1
+    - id: Error_Rate_is_Above_Threshold_checkout
+      text: Error Rate is Above Threshold
+      group_id: checkout-service-1
+    - id: Error_Rate_is_Above_Threshold_shipping
+      text: Error Rate is Above Threshold
+      group_id: shipping-service-1
+  groups:
+    - id: http-abort-otel-demo-quoteservice-1
+      kind: HttpChaos
+      filter: 
+      - .*quoteservice
+      namespace: chaos-mesh
+      root_cause: true
+    - id: quote-service-1
+      kind: Service
+      filter: 
+      - .*quoteservice\b
+      namespace: otel-demo
+    - id: checkout-service-1
+      kind: Service
+      filter: 
+      - .*checkoutservice\b
+      namespace: otel-demo
+    - id: shipping-service-1
+      kind: Service
+      filter: 
+      - .*shippingservice\b
+      namespace: otel-demo
+    - id: frontend-service-1
+      kind: Service
+      filter: 
+      - .*frontend\b
+      namespace: otel-demo
+    - id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+      - .*frontend-.*
+    - id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+      - .*checkoutservice-.*
+    - id: quote-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+      - .*quoteservice-.*
+    - id: shipping-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+      - .*shippingservice-.*
+  aliases:
+    - - frontend-service-1
+      - frontend-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+    - - quote-service-1
+      - quote-pod-1
+    - - shipping-service-1
+      - shipping-pod-1
+  propagations:
+    - source: http-abort-otel-demo-quoteservice-1
+      target: quote-service-1
+      condition: http-abort-otel-demo-quoteservice httpchaos Aborts all POST request to
+        quoteservice /getquote
+      effect: quote service Error Rate is Above Threshold
+    - source: quote-service-1
+      target: checkout-service-1
+      condition: quote service Error Rate is Above Threshold
+      effect: checkout service Error Rate is Above Threshold
+    - source: checkout-service-1
+      target: shipping-service-1
+      condition: checkout service Error Rate is Above Threshold
+      effect: shipping service Error Rate is Above Threshold
+    - source: shipping-service-1
+      target: frontend-service-1
+      condition: shipping service Error Rate is Above Threshold
+      effect: frontend service Error Rate is Above Threshold
+  recommended_actions:
+    - solution:
+        id: Delete_the_resource_httpchaos_on_quoteservice
+        actions:
+          - Delete the resource httpchaos on quoteservice

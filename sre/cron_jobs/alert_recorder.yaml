@@ -1,0 +1,59 @@
+---
+- name: Periodic run for alert recordings
+  hosts: localhost
+  tasks:
+  - name: (Hack) Kubeconfig path inside AWX-EE container
+    ansible.builtin.shell: find /runner/env -type f -size +3072c
+    register: kubeconfig
+
+  - name: Tasks associated with leveraging ingress
+    ansible.builtin.include_tasks:
+      file: leverage_ingress.yaml
+  
+  - name:  Tasks associated with leveraging port forwarding
+    ansible.builtin.include_tasks:
+      file: leverage_port_forwarding.yaml
+
+  - name: Initialize an empty list for alerts
+    set_fact:
+      filtered_alerts: []
+  
+  - name: Call the alerts API
+    ansible.builtin.uri:
+      url: "{{ grafana_url }}/api/prometheus/grafana/api/v1/alerts"
+      method: GET
+      return_content: yes
+      body_format: json
+      headers:
+        Content-Type: "application/json"
+    register: alerts_api_result
+    retries: 10
+    delay: 5
+    until: alerts_api_result.status == 200
+  
+  - name: Parse JSON response and filter for alerts in state alerting
+    set_fact:
+      json_data: "{{ alerts_api_result.json.data.alerts | list }}"
+  
+  - name: Create temporary file
+    ansible.builtin.tempfile:
+      state: file
+      suffix: temp
+    register: tempfile_for_alerts_in_alerting_state
+  
+  - name: Debug json_data
+    debug:
+      var: json_data
+  
+  - name: Copy alerts in JSON to temp file
+    ansible.builtin.copy:
+      content: "{{ json_data | to_json }}"
+      dest: "{{ tempfile_for_alerts_in_alerting_state.path }}"
+  
+  - name: Upload Alerts JSON to S3
+    amazon.aws.s3_object:
+      endpoint_url: "{{ s3_endpoint_url }}"
+      bucket: "{{ s3_bucket_name_for_results }}"
+      object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/alerts/alerts_at_{{now(utc=true,fmt='%Y-%m-%dT%H:%M:%S.%f')}}.txt"
+      src: "{{ tempfile_for_alerts_in_alerting_state.path }}"
+      mode: put

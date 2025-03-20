@@ -1,0 +1,81 @@
+---
+scenario_domain: sre
+sample_application: dsb_hotel_reservation
+
+target_namespace_name: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+target_deployment_name: "search"
+
+docs_incident_102:
+  platform: kubernetes
+  dsl_format: groups
+  id: 102
+  name: 'Memory resource quota limit on a namespace'
+  description: 'Introduce memory resource quota limit and make search service unavailable'
+  application: "deathstarbench_hotel_reservations"
+  complexity: Low
+  inject_fault_unused: true
+  agent_operation_timeout_sec: 3000
+  bundle_ready_timeout_sec: 3000
+  golden_signal_cause: resource unavailability
+  golden_signal_effect: error
+  incidentPattern: MemoryResourceLimit
+  fault:
+    - entity:
+        name: search-pod-1
+        group_id: search-pod-1
+        kind: Pod
+      condition: "To Be Specified"
+      category: "Other"
+      fault_mechanism: custom
+  technologies:
+  - Go
+  - Node.js
+  alerts:
+  - id: Error_Rate_is_Above_Threshold_frontend
+    text: Error Rate is Above Threshold
+    group_id: frontend-service-1
+  groups:
+  - id: search-namespace
+    kind: Namespace
+    name: hotel-reservations
+    namespace: ""
+    root_cause: true
+  - id: search-service-1
+    kind: Service
+    filter: 
+    - .*search-.*
+    namespace: hotel-reservations
+  - id: search-deployment-1
+    kind: Deployment
+    filter: 
+    - .*search-.*
+    namespace: hotel-reservations
+  - id: frontend-service-1
+    kind: Service
+    filter: 
+    - .*frontend-.*
+    namespace: hotel-reservations
+  - id: frontend-pod
+    kind: Pod
+    namespace: hotel-reservations
+    filter:
+    - .*frontend-.*
+  aliases:
+  - - search-deployment-1
+    - search-service-1
+  - - frontend-service-1
+    - frontend-pod
+  propagations:
+  - source: search-deployment-1
+    target: frontend-service-1
+    condition: searchservice replicaset has 0 pods causing searchservice to be unavailable
+    effect: frontend service Error Rate is Above Threshold
+  recommended_actions:
+  - solution:
+      id: increase_memory_resource_limit
+      actions:
+      - increase memory resource limit
+  - solution:
+      id: reduce_memory_on_deployment_pods
+      actions:
+      - patch deployments or pods to reduce the requested memory

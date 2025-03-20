@@ -1,0 +1,50 @@
+---
+- name: Fetch the current deployment
+  k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ target_deployment_name }}"
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+  register: deployment_info
+  tags: incident_23
+  when: is_image_unsupported and is_removal
+
+- name: Print current deployment details (for debugging)
+  debug:
+    var: deployment_info
+  tags: incident_23
+  when: is_image_unsupported and is_removal
+
+- name: Update environment variables (replicas to 0 amd correct image) of Kubernetes deployment
+  kubernetes.core.k8s:
+    kind: Deployment
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ target_deployment_name }}"
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    state: present
+    resource_definition:
+      spec:
+        replicas: 0
+        template:
+          spec:
+            containers:
+              - name: "{{ deployment_info.resources[0].spec.template.spec.containers[0].name }}"  # Specify the container to update
+                image: "ghcr.io/open-telemetry/demo:1.11.1-checkoutservice"  # Use the new env variables
+  register: deployment_update_result
+  tags: incident_23
+  when: is_image_unsupported and is_removal
+
+- name: Fault Remove Update environment variable replicas = 1 of Kubernetes deployment
+  kubernetes.core.k8s:
+    kind: Deployment
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ target_deployment_name }}"
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    state: present
+    resource_definition:
+      spec:
+        replicas: 1
+  register: deployment_update_result
+  tags: incident_23
+  when: is_image_unsupported and is_removal

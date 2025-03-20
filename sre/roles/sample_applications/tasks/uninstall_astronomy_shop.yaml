@@ -1,0 +1,17 @@
+---
+- name: Uninstall / remove OpenTelemetry's Astronomy Shop Demo
+  kubernetes.core.helm:
+    name: "{{ otel_astronomy_app_installation_name }}"
+    kubeconfig_path: "{{ kubeconfig }}"
+    release_namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    state: absent
+    wait: true
+
+- name: Remove the namespace associated with the installation of OpenTelemetry's Astronomy Shop Demo
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ otel_astronomy_app_namespace_project_name }}"
+    api_version: v1
+    kind: Namespace
+    state: absent
+    wait: true

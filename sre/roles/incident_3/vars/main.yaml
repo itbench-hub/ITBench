@@ -1,0 +1,120 @@
+---
+scenario_domain: sre
+sample_application: otel_astronomy_shop
+
+target_namespace_name: "{{ otel_astronomy_app_namespace_project_name }}"
+target_deployment_name: "{{ otel_astronomy_app_installation_name }}-adservice"
+is_install_chaos_mesh: false
+fault_injected:
+  - adServiceHighCpu
+
+docs_incident_3:
+  "id": 3
+  "name": "Ad Service CPU"
+  "platform": "kubernetes"
+  "dsl_format": "groups"
+  "description": "Ad Service in Astronomy Shop runs with high CPU load"
+  "application": "otel_astronomy_shop"
+  "complexity": "Medium"
+  "inject_fault_unused": true
+  "agent_operation_timeout_sec": 3000
+  bundle_ready_timeout_sec: 3000
+  golden_signal_cause: saturation
+  golden_signal_effect: error
+  incidentPattern: HighCPU
+  technologies:
+    - Java
+    - Node.js
+  alerts:
+    - id: Error_Rate_is_Above_Threshold_frontend
+      text: Error Rate is Above Threshold
+      group_id: frontend-service-1
+  "fault":
+    - "entity":
+        "name": "otel-demo-frontend"
+        "kind": "Service"
+      "condition": "High HTTP error rate"
+      "category": "Resource Saturation"
+      fault_mechanism: custom(flagd)
+    - "entity":
+        "name": "otel-demo-cartservice"
+        "kind": "Service"
+      "condition": "High HTTP error rate"
+      "category": "Resource Saturation"
+      fault_mechanism: custom(flagd)
+    - "entity":
+        "name": "otel-demo-flagd-config"
+        "kind": "ConfigMap"
+        "changed":
+          "element": "data.demo\\.flagd\\.json"
+          "from": "{\n  \"$schema\": \"https://flagd.dev/schema/v0/flags.json\",\n  \"flags\": {\n    \"productCatalogFailure\": {\n      \"description\": \"Fail product catalog service on a specific product\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"recommendationServiceCacheFailure\": {\n      \"description\": \"Fail recommendation service cache\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"adServiceManualGc\": {\n      \"description\": \"Triggers full manual garbage collections in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"adServiceHighCpu\": {\n      \"description\": \"Triggers high cpu load in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"adServiceFailure\": {\n      \"description\": \"Fail ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"kafkaQueueProblems\": {\n      \"description\": \"Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": 100,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"cartServiceFailure\": {\n      \"description\": \"Fail cart service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"paymentServiceFailure\": {\n      \"description\": \"Fail payment service charge requests\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"paymentServiceUnreachable\": {\n      \"description\": \"Payment service is unavailable\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"loadgeneratorFloodHomepage\": {\n      \"description\": \"Flood the frontend with a large amount of requests.\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": 100,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"imageSlowLoad\": {\n      \"description\": \"slow loading images in the frontend\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"10sec\": 10000,\n        \"5sec\": 5000,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\n    }\n  }\n}\n"
+          "to": "{\n  \"$schema\": \"https://flagd.dev/schema/v0/flags.json\",\n  \"flags\": {\n    \"productCatalogFailure\": {\n      \"description\": \"Fail product catalog service on a specific product\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"recommendationServiceCacheFailure\": {\n      \"description\": \"Fail recommendation service cache\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"adServiceManualGc\": {\n      \"description\": \"Triggers full manual garbage collections in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"adServiceHighCpu\": {\n      \"description\": \"Triggers high cpu load in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"on\"\n    },\n    \"adServiceFailure\": {\n      \"description\": \"Fail ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"kafkaQueueProblems\": {\n      \"description\": \"Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": 100,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"cartServiceFailure\": {\n      \"description\": \"Fail cart service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"paymentServiceFailure\": {\n      \"description\": \"Fail payment service charge requests\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"paymentServiceUnreachable\": {\n      \"description\": \"Payment service is unavailable\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"loadgeneratorFloodHomepage\": {\n      \"description\": \"Flood the frontend with a large amount of requests.\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": 100,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"imageSlowLoad\": {\n      \"description\": \"slow loading images in the frontend\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"10sec\": 10000,\n        \"5sec\": 5000,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\n    }\n  }\n}\n"
+      "condition": "adServiceHighCpu feature flag set"
+      "category": "Configuration Setting"
+      fault_mechanism: custom(flagd)
+  groups:
+    - id: flagd-config-1
+      kind: ConfigMap
+      namespace: otel-demo
+      filter:
+      - .*flagd-config\b
+      root_cause: true
+    - id: flagd-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+      - .*flagd-.*
+    - id: flagd-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+      - .*flagd\b
+    - id: ad-pod-1
+      kind: Pod
+      filter:
+      - .*adservice-.*
+      namespace: otel-demo
+    - id: ad-service-1
+      kind: Service
+      filter:
+      - .*adservice\b
+      namespace: otel-demo
+    - id: frontend-service-1
+      kind: Service
+      filter: 
+      - .*frontend\b
+      namespace: otel-demo
+    - id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+      - .*frontend-.*
+  aliases:
+    - - flagd-pod-1
+      - flagd-service-1
+    - - frontend-service-1
+      - frontend-pod-1
+    - - ad-service-1
+      - ad-pod-1
+  propagations:
+    - source: flagd-config-1
+      target: flagd-service-1
+      condition: flagd-config ConfigMap adServiceHighCpu feature flag set
+      effect: flagd enables injection
+    - source: flagd-service-1
+      target: ad-service-1
+      condition: flagd enables injection
+      effect: ad pod High CPU Utilization. ad service Error Rate is Above Threshold
+    - source: ad-service-1
+      target: frontend-service-1
+      condition: ad service is returning errors
+      effect: frontend Error Rate is Above Threshold
+  recommended_actions:
+    - solution:
+        id: Disable_adServicHighCpu_feature_flag
+        actions:
+          - Disable adServicHighCpu feature flag
+    - solution:
+        id: Disable_adServicHighCpu_feature_flag
+        actions:
+          - Disable adServicHighCpu feature flag

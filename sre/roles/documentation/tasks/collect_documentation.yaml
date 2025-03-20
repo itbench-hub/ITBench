@@ -1,0 +1,104 @@
+---
+- name: Find all incident roles
+  find:
+    paths: "roles" 
+    patterns: "incident_*"
+    file_type: "directory"
+    recurse: False
+  register: incident_roles
+  tags:
+    - documentation
+
+- name: Include all of the incident roles
+  ansible.builtin.include_role:
+    name: '{{ item["path"] }}'
+  loop: "{{ incident_roles['files'] }}"
+  tags:
+    - documentation
+
+- name: Include single incident role
+  ansible.builtin.include_role:
+    name: 'incident_{{ doc_incident_number }}'
+  tags:
+    - single_doc_validate
+
+- name: Sort incidents
+  set_fact:
+    sorted_incidents: "{{ sorted_incidents | default([]) \
+                          + [all_incidents[lookup('ansible.utils.index_of', data=all_incidents, test='eq', key='id', value=curr_id)]] }}"
+  loop: "{{ sorted_id_values }}"
+  loop_control:
+    loop_var: curr_id
+  vars:
+    all_id_values: "{{ all_incidents | map(attribute='id') | map('int') }}"
+    sorted_id_values: "{{ all_id_values | sort }}"
+  tags:
+    - documentation
+
+- name: Replace all_incidents with sorted list
+  set_fact:
+    all_incidents: "{{ sorted_incidents }}"
+  tags:
+    - documentation
+
+- name: Use /tmp if documentation_json_file not defined in group_vars/all
+  set_fact:
+    documentation_json_file: "/tmp/sre-bench-docs.json"
+  when: documentation_json_file is undefined
+  tags:
+    - documentation
+
+- name: For a full documentation run, replace the local Incident_Data.{md, html} files
+  set_fact:
+    outfile_markdown: "Incident_Data.md"
+  tags:
+    - documentation
+
+- name: Use a local file for single-incident documentation validation
+  set_fact:
+    documentation_json_file: "DEBUG_incident_data_{{ doc_incident_number }}.json"
+    outfile_markdown: "DEBUG_Incident_Data_{{ doc_incident_number }}.md"
+  tags:
+    - single_doc_validate
+
+- name: Write documentation to documentation_json_file
+  copy:
+    dest: "{{ documentation_json_file }}"
+    content: "{{ all_incidents | to_nice_json }}"
+  tags:
+    - documentation
+    - single_doc_validate
+
+- name: Display location of the new file
+  debug:
+    msg: "Wrote incident summary data to {{ documentation_json_file }}"
+  tags:
+    - documentation
+    - single_doc_validate
+
+- name: Validate the documentation content
+  ansible.utils.validate:
+    data: "{{ all_incidents | to_json }}"
+    criteria: "{{ valid_documentation_schema }}"
+    engine: ansible.utils.jsonschema
+  ignore_errors: true
+  register: validation_result
+  tags:
+    - documentation
+    - single_doc_validate
+
+- name: Show validation results
+  debug:
+    msg: "Validated documentation schema for incident {{ all_incidents | map(attribute='id') | sort | join(', ') }}: {{ validation_result['msg'] }}"
+  failed_when: "'errors' in validation_result"
+  tags:
+    - documentation
+    - single_doc_validate
+
+- name: Create markdown
+  script: docs_to_markdown.py "--data_file" "{{ documentation_json_file }}" "--outfile_markdown" "{{ outfile_markdown }}" "--create_html" "--schema" "{{ valid_documentation_schema }}"
+  args:
+    executable: python3
+  tags:
+    - documentation
+    - single_doc_validate

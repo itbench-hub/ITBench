@@ -1,0 +1,86 @@
+---
+- name: Retrieve existing bundle-alert-timestamps ConfigMap
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    kind: ConfigMap
+    name: bundle-alert-timestamps
+  register: existing_configmap_info
+  when:
+    - is_fault_injection
+    - sample_application == "otel_astronomy_shop"
+
+- name: Add fault injection time to ConfigMap
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: bundle-alert-timestamps
+        namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+      data:
+        deployment_time: "{{ existing_configmap_info.resources[0].data.deployment_time }}"
+        fault_injection_time : "{{ now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+  when:
+    - is_fault_injection
+    - sample_application == "otel_astronomy_shop"
+
+- name: Retrieve existing bundle-alert-timestamps ConfigMap
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+    kind: ConfigMap
+    name: bundle-alert-timestamps
+  register: existing_configmap_info
+  when:
+    - is_fault_injection
+    - sample_application == "dsb_hotel_reservation"
+
+- name: Add fault injection time to ConfigMap
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: bundle-alert-timestamps
+        namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+      data:
+        deployment_time: "{{ existing_configmap_info.resources[0].data.deployment_time }}"
+        fault_injection_time : "{{ now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+  when:
+    - is_fault_injection
+    - sample_application == "dsb_hotel_reservation"
+    - existing_configmap_info.resources | length > 0
+
+- name: Retrieve existing bundle-alert-timestamps ConfigMap
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: "{{ elasticsearch_app_namespace_project_name }}"
+    kind: ConfigMap
+    name: bundle-alert-timestamps
+  register: existing_configmap_info
+  when:
+    - is_fault_injection
+    - sample_application == "elasticsearch"
+
+- name: Add fault injection time to ConfigMap
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: bundle-alert-timestamps
+        namespace: "{{ elasticsearch_app_namespace_project_name }}"
+      data:
+        deployment_time: "{{ existing_configmap_info.resources[0].data.deployment_time }}"
+        fault_injection_time : "{{ now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+  when:
+    - is_fault_injection
+    - sample_application == "elasticsearch"
+    - existing_configmap_info.resources | length > 0

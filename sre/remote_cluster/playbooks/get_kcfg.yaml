@@ -1,0 +1,42 @@
+---
+- import_playbook: list_clusters.yaml
+- hosts: localhost
+  vars:
+    state_store: "s3://{{ s3name }}"
+  vars_files:
+    - variables.yaml
+    - secret.yaml
+    - ../../group_vars/all.yaml
+  tasks:
+    - name: Set kops path for Linux
+      set_fact:
+        kops_path: "/usr/local/bin/kops"
+      when: ansible_distribution == 'Ubuntu' or ansible_distribution == 'Fedora' or ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    
+    - name: Set kops path for macOS
+      set_fact:
+        kops_path: "{{ '/opt/homebrew/bin/kops' if ansible_architecture == 'arm64' else '/usr/local/bin/kops' }}"
+      when: ansible_distribution == 'MacOSX'
+
+    - pause:
+        prompt: "provide the cluster name [{{ known_clusters[0] }}]"
+        echo: yes
+      register: prompted_cluster_name
+    
+    - set_fact:
+        cluster_name: "{{ prompted_cluster_name.user_input | default(known_clusters[0], true) }}"
+    
+    - name: set kubeconfig filename
+      set_fact:
+        kubeconfig_filename: "{{ kubeconfig | default(default_filename) }}"
+      vars:
+        default_filename: "/tmp/{{ cluster_name }}.yaml"
+    
+    - name: export kubeconfig
+      command:
+        cmd: "{{ kops_path }} export kubecfg --admin --name={{ cluster_name }} --state=s3://{{ s3name }} --kubeconfig {{ kubeconfig_filename }}"
+
+    - name: "location_msg"
+      debug:
+        msg:
+          -  "Exported kubeconfig for {{ cluster_name }} to {{ kubeconfig_filename }}"

@@ -1,0 +1,69 @@
+---
+- name: Observability Stack + Sample Applications + Fault Injection
+  hosts: localhost
+
+  vars_files:
+    - group_vars/all.yaml
+    - group_vars/documentation.yaml
+    - group_vars/observability_tools.yaml
+    - group_vars/sample_applications.yaml
+    - group_vars/fault_injection.yaml
+    - group_vars/sre_agent.yaml
+    - group_vars/book_keeping.yaml
+    - group_vars/evaluation.yaml
+    - group_vars/e2e.yaml
+
+  pre_tasks:
+    - name: Check for helm
+      ansible.builtin.shell: which helm
+      register: system_helm_path
+      tags:
+        - always
+
+    - name: Get helm version
+      ansible.builtin.shell: "{{ system_helm_path.stdout_lines[0] }} version --short"
+      register: raw_helm_version_out
+      tags:
+        - always
+
+    - name: Parse helm version
+      ansible.builtin.set_fact:
+        system_helm_version: "{{ raw_helm_version_out.stdout_lines[0] | regex_search('v([0-9.]+).*', '\\1') | first }}"
+      tags:
+        - always
+
+    - name: Validate helm version
+      ansible.builtin.assert:
+        that: "'3.16' is version_compare(system_helm_version, '<=')"
+        fail_msg: "Helm version for system {{ system_helm_path }} must be 3.16 or later. Got {{ system_helm_version }}"
+        success_msg: "Helm version {{ system_helm_version }} (>= 3.16) is OK."
+      tags:
+        - always
+
+    - name: Validate python version
+      ansible.builtin.assert:
+        that: "'3.12' is version_compare(ansible_facts.python_version, '<=')"
+        fail_msg: "Python version for system {{ ansible_facts.python.executable }} must be 3.12 or later. Got {{ ansible_facts.python_version }}"
+        success_msg: "Python version {{ ansible_facts.python_version }} (>= 3.12) is OK."
+      tags:
+        - always
+
+  roles:
+    - role: observability_tools
+    - role: sample_applications
+    - role: fault_injection
+    - role: post_fault_injection
+    - role: pre_fault_removal
+    - role: fault_removal
+    - role: sre_agent
+    - role: documentation
+    - role: book_keeping
+    - role: evaluation
+    - role: bundle_status
+    - role: bundle_info
+    - role: e2e
+
+  tasks:
+    - name: Include incident role 
+      ansible.builtin.import_role:
+        name: "incident_{{ incident_number }}"

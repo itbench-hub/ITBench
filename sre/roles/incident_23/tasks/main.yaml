@@ -1,0 +1,29 @@
+---
+- name: Documenting Incident #23
+  set_fact:
+    all_incidents: "{{ all_incidents + [ docs_incident_23 ] }}"
+  tags: documentation, incident_23
+
+- name: fault_injection_incident_23
+  ansible.builtin.import_role:
+    name: fault_injection
+  vars:
+      is_image_unsupported: true
+      is_injection: true
+      is_otel_astronomy_shop_dynamic_load: true
+      dynamic_load_vars:
+        - name: checkout_weight
+          value: "1000"
+        - name: checkout_multi_weight
+          value: "1000"  
+  tags: incident_23
+  when: is_fault_injection | bool
+
+- name: fault_removal_incident_23
+  ansible.builtin.import_role:
+    name: fault_removal
+  vars:
+      is_image_unsupported: true
+      is_removal: true
+  tags: incident_23
+  when: is_fault_removal | bool

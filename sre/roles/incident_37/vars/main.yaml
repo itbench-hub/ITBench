@@ -1,0 +1,65 @@
+---
+scenario_domain: finops
+sample_application: otel_astronomy_shop
+
+is_install_chaos_mesh: false
+target_namespace_name: "{{ otel_astronomy_app_namespace_project_name }}"
+target_deployments:
+  - "{{ otel_astronomy_app_installation_name }}-accountingservice"
+  - "{{ otel_astronomy_app_installation_name }}-adservice"
+  - "{{ otel_astronomy_app_installation_name }}-cartservice"
+  - "{{ otel_astronomy_app_installation_name }}-checkoutservice"
+  - "{{ otel_astronomy_app_installation_name }}-currencyservice"
+  - "{{ otel_astronomy_app_installation_name }}-emailservice"
+  - "{{ otel_astronomy_app_installation_name }}-flagd"
+  - "{{ otel_astronomy_app_installation_name }}-frauddetectionservice"
+  - "{{ otel_astronomy_app_installation_name }}-frontend"
+  - "{{ otel_astronomy_app_installation_name }}-frontendproxy"
+  - "{{ otel_astronomy_app_installation_name }}-imageprovider"
+  - "{{ otel_astronomy_app_installation_name }}-kafka"
+  - "{{ otel_astronomy_app_installation_name }}-otelcol"
+  - "{{ otel_astronomy_app_installation_name }}-paymentservice"
+  - "{{ otel_astronomy_app_installation_name }}-productcatalogservice"
+  - "{{ otel_astronomy_app_installation_name }}-quoteservice"
+  - "{{ otel_astronomy_app_installation_name }}-recommendationservice"
+  - "{{ otel_astronomy_app_installation_name }}-shippingservice"
+  - "{{ otel_astronomy_app_installation_name }}-valkey"
+
+docs_incident_37:
+  "id": 37
+  "name": "Large cost variation"
+  "platform": kubernetes
+  "dsl_format": groups
+  "description": "Services has scaled beyond budget due to high traffic"
+  "application": "otel_astronomy_shop"
+  "complexity": "Low"
+  "inject_fault_unused": true
+  "agent_operation_timeout_sec": 3000
+  "bundle_ready_timeout_sec": 3000
+  "fault": []
+ 
+  alerts: 
+    - id: high_cost_variation
+      text: "Cost has increased more than 20 percent"
+      group_id: otel-demo-namespace-1
+  
+  groups:
+    - id: otel-demo-namespace-1
+      kind: Namespace
+      name: otel-demo
+      namespace: ""
+      root_cause: true
+
+  recommended_actions:
+  - solution:
+      id: "no_action"
+      actions:
+        - no changes is needed in application
+        - update opencost alert to prevent false alerts
+    # - time_to_clear_alert: 120s
+
+  metrics:
+  - type: "rate"
+    value: "27.8"
+  - type: "efficiency"
+    value: "52"

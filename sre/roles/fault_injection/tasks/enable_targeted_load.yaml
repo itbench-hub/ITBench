@@ -1,0 +1,23 @@
+---
+- name: Value Check
+  ansible.builtin.debug:
+    msg: "{{ otel_astronomy_app_installation_name + '-loadgenerator' }}"
+  when: is_fault_injection and is_otel_astronomy_shop_dynamic_load
+
+- name: Add dynamic load variables to the loadgenerator container
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: Deployment
+    name: "{{ otel_astronomy_app_installation_name + '-loadgenerator' }}"
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    wait: true
+    resource_definition:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: loadgenerator  # Ensure this matches the container name in the deployment
+                env: "{{ dynamic_load_vars }}"
+  when: is_fault_injection and is_otel_astronomy_shop_dynamic_load

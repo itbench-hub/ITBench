@@ -1,0 +1,199 @@
+---
+- name: Print prometheus namespace and application namespace
+  debug:
+    msg: "Prometheus namespace : {{ prometheus_namespace_project_name }}, Application namespace : {{ otel_astronomy_app_namespace_project_name }}"
+  tags:
+    - book_keeping
+
+- name:  Tasks associated with leveraging ingress
+  ansible.builtin.include_tasks:
+    file: leverage_ingress.yaml
+    apply:
+      tags:
+        - book_keeping
+  tags:
+    - book_keeping
+
+- name:  Tasks associated with leveraging port forwarding
+  ansible.builtin.include_tasks:
+    file: leverage_port_forwarding.yaml
+    apply:
+      tags:
+        - book_keeping
+  tags:
+    - book_keeping
+
+- name: Initialize an empty list for selected user details
+  set_fact:
+    filtered_alerts: []
+  when:
+    - is_book_keeping
+  tags:
+    - book_keeping
+
+- name: Call the alerts API
+  uri:
+    url: "{{ grafana_url }}/api/prometheus/grafana/api/v1/alerts"
+    method: GET
+    return_content: yes
+    body_format: json
+    headers:
+      Content-Type: "application/json"
+  register: api_response
+  until: "{{ api_response.json.data.alerts | selectattr('state', '==', 'Alerting') | list | length > 0 }}"
+  retries: 120
+  delay: 10
+  tags:
+    - book_keeping
+
+- name: Parse JSON response and filter for alerts in state alerting
+  set_fact:
+    json_data: "{{ api_response.json.data.alerts | selectattr('state', '==', 'Alerting') | list }}"
+  tags:
+    - book_keeping
+
+- name: Create temporary file
+  ansible.builtin.tempfile:
+    state: file
+    suffix: temp
+  register: tempfile_for_alerts_in_alerting_state
+  tags:
+    - book_keeping
+
+- name: Debug json_data
+  debug:
+    var: json_data
+  tags:
+    - book_keeping
+
+- name: Copy alerts in JSON to temp file
+  ansible.builtin.copy:
+    content: "{{ json_data | to_json }}"
+    dest: "{{ tempfile_for_alerts_in_alerting_state.path }}"
+  tags:
+    - book_keeping
+
+- name: Upload Alerts JSON to S3
+  amazon.aws.s3_object:
+    endpoint_url: "{{ s3_endpoint_url }}"
+    bucket: "{{ s3_bucket_name_for_results }}"
+    object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/alerts_in_alerting_state_{{now(utc=true,fmt='%Y-%m-%dT%H:%M:%S.%f')}}.txt"
+    src: "{{ tempfile_for_alerts_in_alerting_state.path }}"
+    mode: put
+  tags:
+    - book_keeping
+  when: run_uuid is defined and scenario_number is defined and run_number is defined
+
+- name: Parse alerts to config
+  set_fact:
+    filtered_alerts: "{{ filtered_alerts + [{'service_name':item.labels.service_name if item.labels.service_name is defined else 'No service name', 'alert_name':item.labels.alertname, 'alert_active_time':item.activeAt, 'alert_status':item.state}] }}"
+  with_items: "{{ json_data }}"
+  when:
+    - is_book_keeping
+  tags:
+    - book_keeping
+
+- name: Retrieve existing bundle-alert-timestamps ConfigMap
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    kind: ConfigMap
+    name: bundle-alert-timestamps
+  register: existing_configmap_info
+  when:
+    - is_book_keeping
+    - sample_application == "otel_astronomy_shop"
+  tags:
+    - book_keeping
+
+- name: Record alert manifestation time in ConfigMap
+  vars:
+    configmap_data:
+      current_alerts : "{{ filtered_alerts }}"
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: bundle-alert-timestamps
+        namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+      data:
+        fault_injection_time: "{{ existing_configmap_info.resources[0].data.fault_injection_time }}"
+        deployment_time: "{{ existing_configmap_info.resources[0].data.deployment_time }}"
+        data.json: "{{ configmap_data | to_nice_json }}"
+  when:
+    - is_book_keeping
+    - sample_application == "otel_astronomy_shop"
+  tags:
+    - book_keeping
+
+- name: Retrieve existing bundle-alert-timestamps ConfigMap
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+    kind: ConfigMap
+    name: bundle-alert-timestamps
+  register: existing_configmap_info
+  when:
+    - is_book_keeping
+    - sample_application == "dsb_hotel_reservation"
+  tags:
+    - book_keeping
+
+- name: Record alert manifestation time in ConfigMap
+  vars:
+    configmap_data:
+      current_alerts : "{{ filtered_alerts }}"
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: bundle-alert-timestamps
+        namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+      data:
+        fault_injection_time: "{{ existing_configmap_info.resources[0].data.fault_injection_time }}"
+        deployment_time: "{{ existing_configmap_info.resources[0].data.deployment_time }}"
+        data.json: "{{ configmap_data | to_nice_json }}"
+  when:
+    - is_book_keeping
+    - sample_application == "dsb_hotel_reservation"
+  tags:
+    - book_keeping
+
+- name: Retrieve existing bundle-alert-timestamps ConfigMap
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: "{{ elasticsearch_app_namespace_project_name }}"
+    kind: ConfigMap
+    name: bundle-alert-timestamps
+  register: existing_configmap_info
+  when:
+    - is_book_keeping
+    - sample_application == "elasticsearch"
+  tags:
+    - book_keeping
+
+- name: Record alert manifestation time in ConfigMap
+  vars:
+    configmap_data:
+      current_alerts : "{{ filtered_alerts }}"
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: bundle-alert-timestamps
+        namespace: "{{ elasticsearch_app_namespace_project_name }}"
+      data:
+        fault_injection_time: "{{ existing_configmap_info.resources[0].data.fault_injection_time }}"
+        deployment_time: "{{ existing_configmap_info.resources[0].data.deployment_time }}"
+        data.json: "{{ configmap_data | to_nice_json }}"
+  when:
+    - is_book_keeping
+    - sample_application == "elasticsearch"
+  tags:
+    - book_keeping

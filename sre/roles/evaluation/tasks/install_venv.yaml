@@ -1,0 +1,25 @@
+--- 
+- name: Ensure virtual environment exists
+  ansible.builtin.stat:
+    path: "{{ venv_dir }}/bin/activate"
+  register: venv_exists
+  tags:
+    - evaluation
+
+- debug: msg="{{ venv_exists.stat.exists }}"
+  tags:
+    - evaluation
+
+- name: Create a virtual environment
+  ansible.builtin.command:
+    cmd: "python3 -m venv {{ venv_dir }}"
+  args:
+    creates: venv_path/bin/activate
+  when: not venv_exists.stat.exists
+  tags:
+    - evaluation
+
+- name: Install requirements
+  ansible.builtin.shell: "source {{ venv_dir }}/bin/activate && pip install -r {{ requirements_file }}"
+  tags:
+    - evaluation

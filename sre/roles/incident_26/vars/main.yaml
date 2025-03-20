@@ -1,0 +1,100 @@
+---
+scenario_domain: sre
+sample_application: otel_astronomy_shop
+
+target_namespace_name: "{{ otel_astronomy_app_namespace_project_name }}"
+target_label_name1: "emailservice"
+
+docs_incident_26:
+  platform: kubernetes
+  dsl_format: groups
+  id: 26
+  name: HTTP request tamper fault
+  description: Modify HTTP POST request from checkoutservice to emailservice
+  application: "otel_astronomy_shop"
+  complexity: Medium
+  inject_fault_unused: true
+  agent_operation_timeout_sec: 3000
+  bundle_ready_timeout_sec: 3000
+  golden_signal_cause: traffic
+  golden_signal_effect: error
+  incidentPattern: HTTPRequestBodyTamperFault
+  fault:
+    - entity:
+        name: tamper-body-otel-demo-emailservice-1
+        group_id: tamper-body-otel-demo-emailservice-1
+        kind: Service
+      condition: "To Be Specified"
+      category: "Change"
+      fault_mechanism: chaos
+  technologies:
+    - Go
+    - Ruby
+  alerts:
+    - id: Error_Rate_is_Above_Threshold_checkout
+      text: Error Rate is Above Threshold
+      group_id: checkout-service-1
+    - id: Error_Rate_is_Above_Threshold_email
+      text: Error Rate is Above Threshold
+      group_id: email-service-1
+  groups:
+    - id: tamper-body-otel-demo-emailservice-1
+      kind: HttpChaos
+      filter: 
+      - .*emailservice
+      namespace: chaos-mesh
+      root_cause: true
+    - id: send_order_confirmation-endpoint-1
+      kind: ServiceOperation
+      filter: 
+      - emailservice-.*_send_order_confirmation
+      namespace: otel-demo
+    - id: email-service-1
+      kind: Service
+      filter: 
+        - .*emailservice
+      namespace: otel-demo
+    - id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - .*checkoutservice-.*
+    - id: checkout-service-1
+      kind: Service
+      filter: 
+         - .*checkoutservice
+      namespace: otel-demo
+    - id: email-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - .*emailservice.*
+  aliases:
+    - - email-service-1
+      - email-pod-1
+      - send_order_confirmation-endpoint-1
+    - - checkout-pod-1
+      - checkout-service-1
+  propagations:
+    - source: tamper-body-otel-demo-emailservice-1
+      target: send_order_confirmation-endpoint-1
+      condition: tamper-body-otel-demo-emailservice httpchaos tamper body of /api/send_order_confirmation
+        emailservice set http-request-failure on emailservice
+      effect: send_order_confirmation endpoint payload of /api/send_order_confirmation
+        POST request is corrupted
+    - source: send_order_confirmation-endpoint-1
+      target: email-service-1
+      condition: send_order_confirmation endpoint payload of /api/send_order_confirmation
+        POST request is corrupted
+      effect: email service Error Rate is Above Threshold
+    - source: email-service-1
+      target: checkout-service-1
+      condition: send_order_confirmation endpoint payload of /api/send_order_confirmation
+        POST request is corrupted
+      effect: checkoutservice Error Rate is Above Threshold
+  recommended_actions:
+    - solution:
+        id: Delete_the_resource_httpchaos_tamper-body-otel-demo-26-emailservice
+        actions:
+          - Delete the resource httpchaos tamper-body-otel-demo-26-emailservice
+

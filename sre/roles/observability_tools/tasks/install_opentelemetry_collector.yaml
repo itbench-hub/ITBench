@@ -1,0 +1,56 @@
+---
+- name: Add Helm chart repo from the OpenTelemetry community
+  kubernetes.core.helm_repository:
+    name: open-telemetry
+    kubeconfig_path: "{{ kubeconfig }}"
+    repo_url: "https://open-telemetry.github.io/opentelemetry-helm-charts"
+
+- name: Update Helm repo
+  kubernetes.core.helm:
+    name: dummy
+    kubeconfig_path: "{{ kubeconfig }}"
+    state: absent
+    release_namespace: "{{ opentelemetry_collector_namespace_project_name }}"
+    update_repo_cache: true
+
+- name: Deploy OpenTelemetry Collector (Kubernetes)
+  kubernetes.core.helm:
+    name: "{{ opentelemetry_collector_installation_name }}"
+    kubeconfig_path: "{{ kubeconfig }}"
+    chart_ref: open-telemetry/opentelemetry-collector
+    chart_version: "{{ opentelemetry_collector_chart_version }}"
+    release_namespace: "{{ opentelemetry_collector_namespace_project_name }}"
+    release_state: present
+    wait: true
+    timeout: 10m0s
+    create_namespace: true
+    values:
+      mode: deployment
+      replicaCount: 1
+      presets:
+        kubernetesEvents:
+          enabled: true
+      image:
+        repository: "otel/opentelemetry-collector-k8s"
+      config:
+        exporters:
+          otlphttp/logs:
+            endpoint: http://{{ loki_installation_name }}-gateway.{{ loki_namespace_project_name }}.svc.cluster.local/otlp
+            tls:
+              insecure: true
+        receivers:
+          jaeger: null
+          prometheus: null
+          zipkin: null
+        service:
+          pipelines:
+            logs:
+              exporters: 
+                - debug
+                - otlphttp/logs
+            metrics:
+              receivers:
+                - otlp
+            traces:
+              receivers:
+                - otlp

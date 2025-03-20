@@ -1,0 +1,41 @@
+---
+- name: Delete all resources in default namespace in the cluster
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: "{{ item.api_version }}"
+    state: absent
+    kind: "{{ item.kind }}"
+    namespace: default
+    delete_all: true
+    wait: true
+  tags:
+    - uninstall_sre_agent
+  loop:
+    - api_version: apps/v1
+      kind: Deployment
+    - api_version: apps/v1
+      kind: DaemonSet
+    - api_version: apps/v1
+      kind: ReplicaSet
+    - api_version: apps/v1
+      kind: StatefulSet
+    - api_version: batch/v1
+      kind: Job
+    - api_version: batch/v1
+      kind: CronJob
+    - api_version: v1
+      kind: Pod
+    - api_version: v1
+      kind: Service
+    - api_version: networking.k8s.io/v1
+      kind: Ingress
+    - api_version: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+    - api_version: v1
+      kind: ConfigMap
+    - api_version: v1
+      kind: PersistentVolume
+    - api_version: v1
+      kind: PersistentVolumeClaim
+    - api_version: v1
+      kind: Secret
