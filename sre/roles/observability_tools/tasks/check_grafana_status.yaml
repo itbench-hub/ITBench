@@ -1,0 +1,31 @@
+---
+- name: Leverage ingress
+  ansible.builtin.include_tasks:
+    file: leverage_ingress.yaml
+    apply:
+      tags:
+        - install_tools
+  tags:
+    - install_tools
+
+- name: Leverage port-forwarding
+  ansible.builtin.include_tasks:
+    file: leverage_port_forwarding.yaml
+    apply:
+      tags:
+        - install_tools
+  tags:
+    - install_tools
+
+- name: Grafana health check
+  ansible.builtin.uri:
+    url: "{{ grafana_url }}/healthz"
+    method: GET
+    status_code: 200
+    return_content: true
+  register: grafana_health_check
+  retries: 5
+  delay: 60
+  until: grafana_health_check.content == "Ok"
+  tags:
+    - install_tools

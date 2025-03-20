@@ -1,0 +1,624 @@
+---
+- name: Get AWX service information
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ awx_kubeconfig }}"
+    kind: Service
+    namespace: awx
+    name: awx-deployment-service
+  register: awx_service_information
+  tags:
+    - awx_scenario_setup
+
+- name: Set `controller_host` value for the Ansible tower
+  set_fact:
+    controller_host: "http://{{ awx_service_information.resources[0].status.loadBalancer.ingress[0].hostname }}"
+  tags:
+    - awx_scenario_setup
+
+- name: Set `controller_username` value for the Ansible tower
+  set_fact:
+    controller_username: "admin"
+  tags:
+    - awx_scenario_setup
+
+- name: Get AWX secret information
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ awx_kubeconfig }}"
+    kind: Secret
+    namespace: awx
+    name: awx-deployment-admin-password
+  register: awx_secret_information
+  tags:
+    - awx_scenario_setup
+
+- name: Set `controller_password` value for the Ansible tower
+  set_fact:
+    controller_password: "{{ awx_secret_information.resources[0].data.password | b64decode }}" # pragma: allowlist secret
+
+  tags:
+    - awx_scenario_setup
+
+- name: Add/Remove the Kubeconfig credential
+  awx.awx.credential:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+    description: "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+    organization: Default
+    credential_type: Kubeconfig
+    inputs:
+      kubeconfig: "{{ lookup('file', relevant_kubeconfig_file_path) }}"
+    state: "{{ state }}"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template to install the observability stack
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--InstallObservability-Stack"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    extra_vars:
+      domain: "{{ domain }}"
+    job_tags: "install_tools"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template to install the sample application
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Install-Sample-Application-{{ sample_application }}"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    extra_vars:
+      sample_application: "{{ sample_application }}"
+    job_tags: "install_sample_applications"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template to setup for telemetry access
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Setup-For-Telemetry-Access"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    extra_vars:
+      sample_application: "{{ sample_application }}"
+    job_tags: "telemetry_access"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template for trace gathering
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Trace-Gathering"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "cron_jobs/trace_recorder.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template to trigger fault
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Trigger-Fault"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    extra_vars:
+      sample_application: "{{ sample_application }}"
+      is_fault_injection: true
+      incident_number: "{{scenario_number}}"
+    job_tags: "incident_{{scenario_number}}"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template for post fault injection task(s)
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Post-Fault-Injection"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    job_tags: "post_fault_injection"
+  tags:
+    - awx_scenario_setup
+
+- name: Run the SRE Agent
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Run-SRE-Agent"
+    job_type: "run"
+    project: "Project-GitHub-Lumyn"
+    playbook: "deployments/ansible/base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 2700
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    extra_vars:
+      sre_agent_directory: /runner/project
+      conda_sh_directory: /opt/conda/etc/profile.d/conda.sh
+      conda_env_directory: /runner/project/lumyn_env
+      provider_agents: "{{ agent_configuration['agents_config']['provider'] }}"
+      model_agents: "{{ agent_configuration['agents_config']['model'] }}"
+      base_url_agents: "{{ agent_configuration['agents_config']['base_url'] }}"
+      api_key_agents: "{{ agent_configuration['agents_config']['api_key'] }}" # pragma: allowlist secret
+      api_version_agents: "{{ agent_configuration['agents_config']['api_version'] }}"
+      seed_agents: "{{ agent_configuration['agents_config']['seed'] }}"
+      top_p_agents: "{{ agent_configuration['agents_config']['top_p'] }}"
+      temperature_agents: "{{ agent_configuration['agents_config']['temperature'] }}"
+      reasoning_effort_agents: "{{ agent_configuration['agents_config']['reasoning_effort'] }}"
+      thinking_agents: "{{ agent_configuration['agents_config']['thinking'] }}"
+      thinking_budget_agents: "{{ agent_configuration['agents_config']['thinking_budget'] }}"
+      max_tokens_agents: "{{ agent_configuration['agents_config']['max_tokens'] }}"
+      provider_tools: "{{ agent_configuration['tools_config']['provider'] }}"
+      model_tools: "{{ agent_configuration['tools_config']['model'] }}"
+      base_url_tools: "{{ agent_configuration['tools_config']['base_url'] }}"
+      api_key_tools: "{{ agent_configuration['tools_config']['api_key'] }}" # pragma: allowlist secret
+      api_version_tools: "{{ agent_configuration['tools_config']['api_version'] }}"
+      seed_tools: "{{ agent_configuration['tools_config']['seed'] }}"
+      top_p_tools: "{{ agent_configuration['tools_config']['top_p'] }}"
+      temperature_tools: "{{ agent_configuration['tools_config']['temperature'] }}"
+      reasoning_effort_tools: "{{ agent_configuration['tools_config']['reasoning_effort'] }}"
+      thinking_tools: "{{ agent_configuration['tools_config']['thinking'] }}"
+      thinking_budget_tools: "{{ agent_configuration['tools_config']['thinking_budget'] }}"
+      max_tokens_tools: "{{ agent_configuration['tools_config']['max_tokens'] }}"
+      is_native_function_calling_supported: "{{ agent_configuration['tools_config']['is_native_function_calling_supported'] }}"
+      wx_project_id: "{{ agent_configuration['watsonx_config']['wx_project_id'] }}"
+      enable_god_mode: "{{ agent_configuration['agents_config']['enable_god_mode'] }}"
+      agent_analytics_sdk_username: "{{ agent_configuration['agent_analytics_sdk']['git_username'] }}"
+      agent_analytics_sdk_token: "{{ agent_configuration['agent_analytics_sdk']['git_token'] }}"
+      sre_agent_max_runtime_in_seconds: 900
+    job_tags: "sre_agent"
+  when: not sre_bench_runner
+  tags:
+    - awx_scenario_setup
+
+- name: Capture failed deployment state
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Capture-Failed-Deployment"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    job_tags: "capture_failed_deployment_state"
+  tags:
+    - awx_scenario_setup
+
+- name: Capture failed fault injection state
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Capture-Failed-Fault-Injection"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    job_tags: "capture_failed_fault_injection_state"
+  tags:
+    - awx_scenario_setup
+
+- name: Capture failed deployment state
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Capture-Failed-Deployment"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    job_tags: "capture_failed_deployment_state"
+  tags:
+    - awx_scenario_setup
+
+- name: Capture failed fault injection state
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Capture-Failed-Fault-Injection"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    job_tags: "capture_failed_fault_injection_state"
+  tags:
+    - awx_scenario_setup
+
+- name: Node pause in lieu of SRE Agent
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Node-Pause"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    job_tags: "sre_agent"
+  tags:
+    - awx_scenario_setup
+
+- name: Handover to Agent
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Handover-To-Agent"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    extra_vars:
+      sample_application: "{{ sample_application }}"
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    job_tags: "handover_to_agent"
+  tags:
+    - awx_scenario_setup
+
+- name: Handover from Agent
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Handover-From-Agent"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    job_tags: "handover_from_agent"
+  tags:
+    - awx_scenario_setup
+
+- name: Evaluation
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Evaluation"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    job_tags: "evaluation"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template for pre fault removal task(s)
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Pre-Fault-Removal"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    job_tags: "pre_fault_removal"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template to remove fault
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Remove-Fault"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+    extra_vars:
+      sample_application: "{{ sample_application }}"
+      is_fault_removal: true
+      incident_number: "{{scenario_number}}"
+    job_tags: "incident_{{scenario_number}}"
+  tags:
+    - awx_scenario_setup
+
+- name: Uninstalling K8s resources in default namespace
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Uninstalling-K8s-Resources-Default-Namespace"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+    job_tags: "uninstall_sre_agent"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template to check for alerts
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Check-for-Alerts"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    extra_vars:
+      sample_application: "{{ sample_application }}"
+      is_book_keeping: true
+    job_tags: "book_keeping"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template to turn alert recorder on
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Alert-Recorder-On"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "cron_jobs/alert_recorder_init.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWX
+    extra_vars:
+      controller_host: "{{ controller_host }}"
+      scenario_number: "{{ scenario_number }}"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template to turn alert recorder off
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Alert-Recorder-Off"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "cron_jobs/alert_recorder_deinit.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWX
+    extra_vars:
+      controller_host: "{{ controller_host }}"
+      scenario_number: "{{ scenario_number }}"
+  tags:
+    - awx_scenario_setup
+
+- name: De-initialize alert recorder being executed every minute
+  awx.awx.schedule:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Schedule for Alert Recorder - {{ scenario_number }}"
+    state: absent
+    timeout: 1800
+    unified_job_template: "Scenario-{{ scenario_number }}--Setup-Alert-Recorder"
+  ignore_errors: yes
+  when:
+    state == "absent"
+  tags:
+    - awx_scenario_setup
+
+- name: Removing job template pertaining to alert recorder
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--Setup-Alert-Recorder"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    state: absent
+    timeout: 1800
+  when:
+    state == "absent"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template to uninstall the sample application
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}"
+    name: "Scenario-{{ scenario_number }}--Uninstall-Sample-Application-{{ sample_application }}"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    extra_vars:
+      sample_application: "{{ sample_application }}"
+    job_tags: "uninstall_sample_applications"
+  tags:
+    - awx_scenario_setup
+
+- name: Creating/removing job template to uninstall the observability stack
+  awx.awx.job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{ scenario_number }}--UninstallObservability-Stack"
+    job_type: "run"
+    project: "Project-GitHub-IT-Automation-Bench"
+    playbook: "base.yaml"
+    inventory: "Demo Inventory"
+    organization: "Default"
+    execution_environment: "AWX-EE-Custom"
+    state: "{{ state }}"
+    timeout: 1800
+    credentials:
+      - "Credential-Kubeconfig-Scenario-{{scenario_number}}"
+      - Credential-AWS
+    extra_vars:
+      domain: "{{ domain }}"
+    job_tags: "uninstall_tools"
+  tags:
+    - awx_scenario_setup

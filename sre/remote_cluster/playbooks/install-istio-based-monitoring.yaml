@@ -1,0 +1,115 @@
+- hosts: localhost
+  vars:
+    state_store: "s3://{{ s3name }}"
+  vars_files:
+    - variables.yaml
+    - secret.yaml
+
+  vars_prompt:
+    - name: "cluster_name"
+      prompt: "provide the cluster name"
+      private: no
+
+
+  tasks:
+    - name: export kubeconfig
+      command:
+        cmd: kops export --name {{ cluster_name }} kubecfg --admin --state s3://{{ s3name }} --kubeconfig /tmp/{{ cluster_name }}.yaml
+
+    - name: "user_confirmation"
+      pause:
+        prompt: "Current kubectl context is '{{ ansible_env.KUBECONFIG | default('default') }}', press enter to continue"
+
+
+    - name: Check if Helm is installed
+      command: which helm
+      register: helm_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Install Helm on Ubuntu
+      apt:
+        name: snapd
+        state: present
+      become: true
+      when: ansible_distribution == 'Ubuntu' and helm_check.rc != 0
+
+    - name: Snap install Helm on Ubuntu
+      command: snap install helm --classic
+      become: true
+      when: ansible_distribution == 'Ubuntu' and helm_check.rc != 0
+
+    - name: Install Helm on MacOS
+      homebrew:
+        name: helm
+        state: present
+      become: false
+      when: ansible_distribution == 'MacOSX' and helm_check.rc != 0
+
+    - name: Add Istio Helm Repository
+      command:
+        cmd: helm repo add istio https://istio-release.storage.googleapis.com/charts
+      register: helm_repo_add_output
+      ignore_errors: true
+
+    - name: Check if Prometheus repo is added
+      shell: helm repo list | grep prometheus-community
+      register: helm_repo_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Add Prometheus repo to Helm
+      command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      when: helm_repo_check.rc != 0
+
+    - name: Update Helm Repository
+      command:
+        cmd: helm repo update
+      register: helm_repo_update_output
+
+    - name: Display result of updating Helm Repo
+      debug:
+        msg: "{{ helm_repo_update_output.stdout_lines }}"
+
+    - name: Install prom-stack
+      command: helm install prom-stack prometheus-community/prometheus -n kube-system
+
+    - name: Apply metrics-server components
+      command: kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+    - name: Create Istio Namespace
+      command:
+        cmd: kubectl create namespace istio-system
+      environment:
+        KUBECONFIG: "/tmp/{{ cluster_name }}.yaml"
+      ignore_errors: true
+
+    - name: Install Istio Base
+      command:
+        cmd: helm install istio-base istio/base -n istio-system --set defaultRevision=default
+      environment:
+        KUBECONFIG: "/tmp/{{ cluster_name }}.yaml"
+      register: install_istio_base_output
+
+
+    - name: Display result of installing Istio Base
+      debug:
+        msg: "{{ install_istio_base_output.stdout_lines }}"
+
+    - name: Install istio discovery chart
+      command:
+        cmd: helm install istiod istio/istiod -n istio-system --wait
+      environment:
+        KUBECONFIG: "/tmp/{{ cluster_name }}.yaml"
+      
+    - name: install kiali
+      command: 
+        cmd: kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.19/samples/addons/kiali.yaml
+      environment:
+        KUBECONFIG: "/tmp/{{ cluster_name }}.yaml"
+
+    - name: install prometheus
+      command: 
+        cmd: kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.19/samples/addons/prometheus.yaml
+      environment:
+        KUBECONFIG: "/tmp/{{ cluster_name }}.yaml"

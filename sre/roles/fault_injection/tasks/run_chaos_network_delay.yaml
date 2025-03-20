@@ -1,0 +1,63 @@
+- name: Document this fault injection
+  set_fact:
+    injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
+  vars:
+    curr_docs:
+      name: "Chaos Network Delay"
+      author: "@divyapathak24"
+      description: "Create networkchaos of 20 seconds for request/responses in the network connections of the ProductCatalogService"
+      fault_type: "ChaosMesh"
+      required_fields:
+        - "chaos_mesh_namespace_project_name"
+        - "target_label_name1"
+        - "target_namespace_name"
+  tags:
+    - injection_docs
+
+- name: Inject network delay chaos leveraging the Chaos framework
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: NetworkChaos
+      metadata:
+        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        namespace: "{{ chaos_mesh_namespace_project_name }}"
+      spec:
+        action: delay
+        mode: one
+        selector:
+          namespaces:
+            - "{{ target_namespace_name }}"
+          labelSelectors:
+            "app.kubernetes.io/component": "{{ target_label_name1 }}"
+        delay:
+          latency: "20000ms"
+  register: fault_injection_status
+  tags: chaos_mesh
+  when: is_network_delay_chaos and is_fault_injection
+
+- name: Remove network delay chaos leveraging the Chaos framework
+  kubernetes.core.k8s:
+    state: absent
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: NetworkChaos
+      metadata:
+        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        namespace: "{{ chaos_mesh_namespace_project_name }}"
+      spec:
+        action: delay
+        mode: one
+        selector:
+          namespaces:
+            - "{{ target_namespace_name }}"
+          labelSelectors:
+            "app.kubernetes.io/component": "{{ target_label_name1 }}"
+        delay:
+          latency: "20000ms"
+  register: fault_injection_status
+  tags: chaos_mesh
+  when: is_network_delay_chaos and is_fault_removal

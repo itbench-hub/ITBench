@@ -1,0 +1,101 @@
+---
+- name: Document this fault injection
+  set_fact:
+    injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
+  vars:
+    curr_docs:
+      name: "Fault injection based on feature flags FlagD"
+      author: "@mudverma"
+      description: "Turn the FlagD on to inject various fault scenarios"
+      application: "otel_astronomy_shop"
+      fault_type: "FlagD"
+      required_fields:
+        - "otel_astronomy_app_namespace_project_name"
+        - "otel_astronomy_app_installation_name"
+        - "configmap_output.resources[0].data['demo.flagd.json']"
+        - "flagd_deployment_restart_output.stdout"
+  tags:
+    - injection_docs
+
+- name: Fetch the ConfigMap using the Kubernetes API
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ otel_astronomy_app_installation_name }}-flagd-config"
+  register: configmap_output
+  when: is_native and is_injection
+
+- name: Print the ConfigMap output
+  debug:
+    var: configmap_output
+  when: is_native and is_injection
+
+- name: Extract demo.flagd.json content
+  ansible.builtin.set_fact:
+    demo_flagd_json: "{{ configmap_output.resources[0].data['demo.flagd.json'] | from_json }}"
+  when: is_native and is_injection
+
+- name: Iterate through fault_injected list and modify defaultVariant to "on"
+  with_items: "{{ fault_injected }}"
+  loop_control:
+    loop_var: fault
+    pause: "{{ delay_between_faults }}"
+  ansible.builtin.set_fact:
+    demo_flagd_json: >-
+      {{
+        demo_flagd_json | combine({
+          "flags": demo_flagd_json.flags | combine({
+            fault: demo_flagd_json.flags[fault] | combine({
+              "defaultVariant": "on"
+            })
+          })
+        })
+      }}
+  when: is_native and is_injection
+
+- name: Construct the new ConfigMap with modified data
+  ansible.builtin.set_fact:
+    updated_configmap: >-
+      {{
+        {
+          "apiVersion": "v1",
+          "kind": "ConfigMap",
+          "data": {
+            "demo.flagd.json": demo_flagd_json | to_nice_json
+          }
+        }
+      }}
+  when: is_native and is_injection
+
+- name: Update the ConfigMap with modified demo.flagd.json
+  k8s:
+    api_version: v1
+    kind: ConfigMap
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ otel_astronomy_app_installation_name }}-flagd-config"
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    state: present
+    resource_definition: "{{ updated_configmap }}"
+  when: is_native and is_injection
+
+- name: Ensure the ConfigMap was updated successfully
+  ansible.builtin.debug:
+    msg: "ConfigMap successfully updated with defaultVariant set to 'on' for {{ fault_injected }}."
+  when: is_native and is_injection
+
+- name: Ensure the ConfigMap was updated successfully
+  ansible.builtin.debug:
+    msg: "ConfigMap successfully updated with defaultVariant set to 'on' for {{ fault_injected }}."
+  when: is_native and is_injection
+
+- name: Kubectl restart Flagd deployment
+  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "{{ otel_astronomy_app_namespace_project_name }}" rollout restart deployment "{{ otel_astronomy_app_installation_name }}-flagd"
+  register: flagd_deployment_restart_output
+  when: is_native and is_injection
+
+- name: FlagD deployment restart output
+  ansible.builtin.debug:
+    msg: "{{ flagd_deployment_restart_output.stdout }}"
+  when: is_native and is_injection

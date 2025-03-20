@@ -1,0 +1,64 @@
+---
+- name: Add Helm chart repo from the Prometheus community
+  kubernetes.core.helm_repository:
+    name: prometheus-community
+    kubeconfig_path: "{{ kubeconfig }}"
+    repo_url: "https://prometheus-community.github.io/helm-charts"
+
+- name: Update Helm repo
+  kubernetes.core.helm:
+    name: dummy
+    kubeconfig_path: "{{ kubeconfig }}"
+    state: absent
+    release_namespace: "{{ prometheus_namespace_project_name }}"
+    update_repo_cache: true
+
+- name: Create Prometheus rules list
+  set_fact:
+    prometheus_rules: []
+
+- name: Load OpenCost recording rules from yaml
+  set_fact:
+    opencost_recording_rules: "{{ lookup('ansible.builtin.file', 'files/recording_rules_opencost.yaml')| from_yaml }}"
+  when:
+    - domain == "finops"
+
+- name: Add OpenCost rules to Prometheus rules list
+  set_fact:
+    prometheus_rules: "{{ prometheus_rules + opencost_recording_rules }}"
+  when:
+    - domain == "finops"
+
+- name: Deploy the Prometheus stack
+  kubernetes.core.helm:
+    name: "{{ prometheus_installation_name }}"
+    kubeconfig_path: "{{ kubeconfig }}"
+    chart_ref: prometheus-community/kube-prometheus-stack 
+    chart_version: "{{ prometheus_chart_version }}"
+    release_namespace: "{{ prometheus_namespace_project_name }}"
+    release_state: present
+    create_namespace: true
+    wait: true
+    timeout: 10m0s
+    values:
+      additionalPrometheusRulesMap:
+        rule-name:
+          groups: "{{ prometheus_rules }}"
+      alertmanager:
+        ingress:
+          enabled: true
+      grafana:
+        enabled: false
+      prometheus:
+        enabled: true
+        prometheusSpec:
+          additionalArgs:
+            - name: web.enable-otlp-receiver
+              value: ""
+          defaultRules:
+            additionalRuleLabels:
+              - for_instance_in_namespace: "{{ prometheus_namespace_project_name }}"
+          enableFeatures:
+            - otlp-write-receiver
+          podMonitorSelectorNilUsesHelmValues: false
+          serviceMonitorSelectorNilUsesHelmValues: false

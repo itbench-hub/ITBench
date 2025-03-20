@@ -1,0 +1,172 @@
+- name: Document this fault injection
+  set_fact:
+    injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
+  vars:
+    curr_docs:
+      name: "Resource Unavailable and Memory Resource Limit on Namespace"
+      author: "@JacksonArthurClark"
+      description: "Make the search pod unavailable and apply memory limit on the namespace"
+      application: "deathstarbench_hotel_reservations"
+      fault_type: "Custom"
+      required_fields:
+        - "resource_quotas.resources"
+        - "item.metadata.name"
+        - "target_deployment_name"
+        - "target_namespace_name"
+        - "rs_name"
+  tags:
+    - injection_docs
+
+- name: Fetch resource quotas in the namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ResourceQuota
+    namespace: "{{ target_namespace_name }}"
+    kubeconfig: "{{ kubeconfig }}"
+  register: resource_quotas
+  tags: 
+    - incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_removal or is_fault_removal
+
+- name: Debug resource quotas
+  debug:
+    msg: "Resource quotas found: {{ resource_quotas.resources }}"
+  tags: 
+    - incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_removal or is_fault_removal
+
+- name: Print target namespace name
+  debug:
+    msg: "Target Namespace: {{ target_namespace_name }} Deployment: {{ target_deployment_name }}"
+  tags: incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_injection or is_fault_removal
+
+- name: Set memory limit on the Kubernetes namespace
+  kubernetes.core.k8s:
+    kind: ResourceQuota
+    name: memory-limit-quota
+    namespace: "{{ target_namespace_name }}"
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: memory-limit-quota
+        namespace: "{{ target_namespace_name }}"
+      spec:
+        hard:
+          memory: "1Gi"
+  register: resource_quota_result
+  tags: incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_injection
+
+- name: Remove resource quotas with memory limits
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: ResourceQuota
+    namespace: "{{ target_namespace_name }}"
+    name: "{{ item.metadata.name }}"
+    kubeconfig: "{{ kubeconfig }}"
+    state: absent
+  loop: "{{ resource_quotas.resources }}"
+  when:
+    - is_namespace_memory_limit
+    - item.spec.hard.memory is defined
+    - is_fault_removal
+  tags: 
+    - incident_102
+ 
+- name: Fetch all ReplicaSets in the target namespace
+  kubernetes.core.k8s_info:
+    kind: ReplicaSet
+    namespace: "{{ target_namespace_name }}"
+    kubeconfig: "{{ kubeconfig }}"
+  register: replicaset_list
+  tags: incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_injection or is_fault_removal
+
+- name: Filter ReplicaSet matching the target deployment name
+  set_fact:
+    rs_list: >-
+      {{ (replicaset_list.resources | default([])) |
+         selectattr('metadata.ownerReferences', 'defined') |
+         selectattr('metadata.ownerReferences.0.name', 'defined') |
+         selectattr('metadata.ownerReferences.0.kind', 'equalto', 'Deployment') |
+         selectattr('metadata.ownerReferences.0.name', 'match', target_deployment_name) |
+         list }}
+  tags: incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_injection or is_fault_removal
+
+- name: Debug filtered rs_list
+  debug:
+    msg: "Filtered RS List (matching deployment '{{ target_deployment_name }}'): {{ rs_list | default([]) }}"
+  tags: incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_injection or is_fault_removal
+
+- name: Fail if no ReplicaSet matches the target deployment name
+  fail:
+    msg: "No ReplicaSet found in namespace '{{ target_namespace_name }}' matching deployment '{{ target_deployment_name }}'."
+  when:
+    - (rs_list | default([])) | length == 0
+    - is_namespace_memory_limit
+    - is_fault_injection or is_fault_removal
+  tags:
+    - incident_102
+
+- name: Set ReplicaSet name for the matched deployment
+  set_fact:
+    rs_name: "{{ (rs_list[0]).metadata.name }}"
+  tags: incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_injection or is_fault_removal
+    - rs_list | length > 0
+
+- name: Debug selected ReplicaSet
+  debug:
+    msg: "ReplicaSet selected for deletion: {{ rs_name }}"
+  tags: incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_injection or is_fault_removal
+    - rs_name is defined
+
+- name: Delete the selected ReplicaSet and its pods
+  kubernetes.core.k8s:
+    kind: ReplicaSet
+    name: "{{ rs_name }}"
+    namespace: "{{ target_namespace_name }}"
+    state: absent
+    kubeconfig: "{{ kubeconfig }}"
+    delete_options:
+      propagationPolicy: "Foreground"
+  register: replicaset_deletion_result
+  tags: incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_injection or is_fault_removal
+    - rs_name is defined
+
+- name: Log deletion details
+  debug:
+    msg: "Deleted ReplicaSet: {{ rs_name }} and its associated pods."
+  tags: incident_102
+  when:
+    - is_namespace_memory_limit
+    - is_fault_injection or is_fault_removal
+    - rs_name is defined

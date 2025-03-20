@@ -1,0 +1,43 @@
+---
+- name: Configure AWS CLI
+  hosts: localhost
+  vars_files:
+    - variables.yaml
+    - secret.yaml
+
+  vars_prompt:
+    - name: "aws_access_key"
+      prompt: "Enter your AWS Access Key"
+      private: no
+
+    - name: "aws_secret_key"
+      prompt: "Enter your AWS Secret Key"
+      private: yes
+
+
+  tasks:
+    - name: Ensure ~/.aws directory exists
+      file:
+        path: "{{ ansible_env.HOME }}/.aws"
+        state: directory
+
+    - name: Configure AWS credentials
+      copy:
+        content: |
+          [default]
+          aws_access_key_id = {{ aws_access_key }}
+          aws_secret_access_key = {{ aws_secret_key }}
+        dest: "{{ ansible_env.HOME }}/.aws/credentials"
+
+    - name: Configure AWS config
+      copy:
+        content: |
+          [default]
+          region = {{ aws_region }}
+        dest: "{{ ansible_env.HOME }}/.aws/config"
+
+    - name: Ensure bucket exists
+      amazon.aws.s3_bucket:
+        name: "{{ s3name }}"
+        region: "{{ aws_region }}"
+        state: present

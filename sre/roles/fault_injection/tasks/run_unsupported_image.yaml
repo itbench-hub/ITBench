@@ -1,0 +1,66 @@
+---
+- name: Document this fault injection
+  set_fact:
+    injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
+  vars:
+    curr_docs:
+      name: "Unsupported Checkout Image"
+      author: "@fali007"
+      description: "modify the checkoutservice image to unsupported image (arm64) instead of amd64 image"
+      application: "otel_astronomy_shop"
+      fault_type: "Custom"
+      required_fields:
+        - "deployment_info.resources[0].spec.template.spec.containers[0].name"
+        - "otel_astronomy_app_namespace_project_name"
+        - "target_deployment_name"
+  tags:
+    - injection_docs
+- name: Fetch the current deployment
+  k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    name: "{{ target_deployment_name }}"
+    kubeconfig: "{{ kubeconfig }}"
+  register: deployment_info
+  tags: incident_23
+  when: is_image_unsupported and is_injection
+
+- name: Print current deployment details (for debugging)
+  debug:
+    var: deployment_info
+  tags: incident_23
+  when: is_image_unsupported and is_injection
+
+- name: Update environment variables (replicas to 0 amd image misconfigure) of Kubernetes deployment
+  kubernetes.core.k8s:
+    kind: Deployment
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ target_deployment_name }}"
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    state: present
+    resource_definition:
+      spec:
+        replicas: 0
+        template:
+          spec:
+            containers:
+              - name: "{{ deployment_info.resources[0].spec.template.spec.containers[0].name }}"  # Specify the container to update
+                image: "quay.io/felix_george/checkout_service:latest"  # Use the new env variables
+  register: deployment_update_result
+  tags: incident_23
+  when: is_image_unsupported and is_injection
+
+- name: Update environment variables of Kubernetes deployment
+  kubernetes.core.k8s:
+    kind: Deployment
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ target_deployment_name }}"
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    state: present
+    resource_definition:
+      spec:
+        replicas: 1
+  register: deployment_update_result
+  tags: incident_23
+  when: is_image_unsupported and is_injection

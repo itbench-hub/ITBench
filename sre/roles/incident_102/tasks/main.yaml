@@ -1,0 +1,22 @@
+---
+- name: Documenting Incident #102
+  set_fact:
+    all_incidents: "{{ all_incidents + [ docs_incident_102 ] }}"
+  tags: documentation, incident_102
+
+- name: fault_injection_incident_102
+  ansible.builtin.import_role:
+    name: fault_injection
+  vars:
+      is_injection: true
+      is_namespace_memory_limit: true
+  tags: incident_102
+  when: is_fault_injection | bool
+
+- name: fault_removoval_incident_102
+  ansible.builtin.import_role:
+    name: fault_injection
+  vars:
+    is_namespace_memory_limit: true
+  tags: incident_102
+  when: is_fault_removal | bool

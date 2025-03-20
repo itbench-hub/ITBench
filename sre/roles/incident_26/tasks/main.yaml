@@ -1,0 +1,28 @@
+---
+- name: Documenting Incident #26
+  set_fact:
+    all_incidents: "{{ all_incidents + [ docs_incident_26 ] }}"
+  tags: documentation, incident_26
+
+- name: fault_injection_incident_26
+  ansible.builtin.import_role:
+    name: fault_injection
+  vars:
+      is_injection: true
+      is_request_body_tamper_chaos: true
+      is_install_chaos_mesh: true
+      dynamic_load_vars:
+        - name: BROWSE_PRODUCT_WEIGHT
+          value: "1000"      
+  tags: incident_26
+  when: is_fault_injection | bool
+
+- name: fault_removal_incident_26
+  ansible.builtin.import_role:
+    name: fault_injection
+  vars:
+      is_request_body_tamper_chaos: true
+      is_removal: true
+      is_install_chaos_mesh: false
+  tags: incident_26
+  when: is_fault_removal | bool

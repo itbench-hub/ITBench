@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: topology-monitor
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: topology-monitor
+  template:
+    metadata:
+      labels:
+        app: topology-monitor
+    spec:
+      serviceAccountName: topology-monitor
+      securityContext:
+        fsGroup: 1000
+      containers:
+      - name: topology-monitor
+        image: quay.io/it-bench/topology-monitor:latest
+        imagePullPolicy: Always
+        command: ["python"]
+        args: 
+        - "main.py"
+        - "--data-dir=/app/topology_data"
+        - "--interval=300"
+        - "--max-snapshots=10"
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: topology-data
+          mountPath: /app/topology_data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: topology-data
+        persistentVolumeClaim:
+          claimName: topology-data-pvc

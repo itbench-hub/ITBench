@@ -1,0 +1,96 @@
+---
+- name: Document this fault injection
+  set_fact:
+    injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
+  vars:
+    curr_docs:
+      name: "Custom Misconfigure Service Port"
+      author: "@JacksonArthurClark"
+      description: "Misconfigure the port number of a service to a different port number"
+      application: "otel_astronomy_shop"
+      fault_type: "Custom"
+      required_fields:
+        - "target_namespace_project_name"
+        - "target_service"
+        - "service_info.resources[0].spec.ports"
+        - "modified_service_config"
+  tags:
+    - injection_docs
+
+- name: Fetch the service configuration
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: v1
+    kind: Service
+    namespace: "{{ target_namespace_project_name }}"
+    name: "{{ target_service }}"
+  register: service_info
+  when:
+    - is_custom
+    - is_fault_injection or is_fault_removal
+    - is_misconfigure_port
+
+- name: Modify the target port in service configuration (set to target_port)
+  set_fact:
+    modified_service_config: >-
+      {{
+        service_info.resources[0].spec.ports | map('combine', {'targetPort': 9999})
+      }}
+  when:
+    - is_custom
+    - is_fault_injection
+    - is_misconfigure_port
+
+- name: Modify the target port in service configuration (set to target_port)
+  set_fact:
+    modified_service_config: >-
+      {{
+        service_info.resources[0].spec.ports | map('combine', {'targetPort': 8080})
+      }}
+  when:
+    - is_custom
+    - is_fault_removal
+    - is_misconfigure_port
+
+- name: Apply the misconfigured service port
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    kind: Service
+    name: "{{ target_service }}"
+    namespace: "{{ target_namespace_project_name }}"
+    resource_definition:
+      spec:
+        ports: "{{ modified_service_config }}"
+  register: service_patch_result
+  when:
+    - is_custom
+    - is_fault_injection or is_fault_removal
+    - is_misconfigure_port
+
+- name: Fetch pods for the target service
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: v1
+    kind: Pod
+    namespace: "{{ target_namespace_project_name }}"
+    label_selectors:
+      - "opentelemetry.io/name={{ target_service }}"
+  register: pod_info
+  when:
+    - is_custom
+    - is_misconfigure_port
+
+- name: Delete the pod for the target service
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: v1
+    kind: Pod
+    namespace: "{{ target_namespace_project_name }}"
+    name: "{{ item.metadata.name }}"
+    state: absent
+  with_items: "{{ pod_info.resources }}"
+  when:
+    - pod_info is defined
+    - (pod_info.resources | default([])) | length > 0
+    - is_custom
+    - is_misconfigure_port

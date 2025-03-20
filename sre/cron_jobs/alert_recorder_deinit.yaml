@@ -1,0 +1,44 @@
+---
+- name: (Playbook) Remove alert recorder every minute
+  hosts: localhost
+  tasks:
+    - name: (Task) Remove alert recorder schedule which runs every minute
+      awx.awx.schedule:
+        controller_host: "{{ controller_host }}"
+        name: "Schedule for Alert Recorder - {{ scenario_number }}"
+        state: absent
+        unified_job_template: "Scenario-{{ scenario_number }}--Setup-Alert-Recorder"
+
+    - name: Get running jobs for the template
+      awx.awx.job_list:
+        controller_host: "{{ controller_host }}"
+        query: 
+          job_template__name: "Scenario-{{scenario_number}}--Setup-Alert-Recorder"
+          status: running
+      register: running_alert_recorder_jobs
+    
+    - name: Cancel running jobs
+      awx.awx.job_cancel:
+        controller_host: "{{ controller_host }}"
+        job_id: "{{ item.id }}"
+      loop: "{{ running_alert_recorder_jobs.results }}"
+      when: running_alert_recorder_jobs.results | length > 0
+    
+    - name: Wait briefly for jobs to cancel
+      pause:
+        seconds: 60
+      when: running_alert_recorder_jobs.results | length > 0
+    
+    - name: Delete alert recorder job template
+      awx.awx.job_template:
+        controller_host: "{{ controller_host }}"
+        name: "Scenario-{{scenario_number}}--Setup-Alert-Recorder"
+        job_type: "run"
+        organization: "Default"
+        inventory: "Demo Inventory"
+        state: absent
+      register: delete_attempt_jt_alert_recorder_job
+      until: delete_attempt_jt_alert_recorder_job is succeeded
+      retries: 3
+      delay: 30
+      ignore_errors: yes

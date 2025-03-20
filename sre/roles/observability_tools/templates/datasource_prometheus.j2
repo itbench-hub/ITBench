@@ -1,0 +1,22 @@
+- name: Prometheus
+  uid: prometheus
+  type: prometheus
+  access: proxy
+  url: http://{{ prometheus_service_name }}.{{ prometheus_namespace_project_name }}:9090
+  user: ""
+  database: ""
+  basicAuth: false
+  isDefault: false
+  jsonData: 
+    httpMethod: POST
+    timeInterval: 30s
+    tlsAuth: false
+    tlsSkipVerify: true
+- name: Alertmanager
+  type: alertmanager
+  uid: alertmanager
+  url: http://{{ prometheus_alertmanager_service_name }}.{{ prometheus_namespace_project_name }}:9093
+  access: proxy
+  jsonData:
+    handleGrafanaManagedAlerts: false
+    implementation: prometheus

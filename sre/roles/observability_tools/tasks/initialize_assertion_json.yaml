@@ -1,0 +1,18 @@
+---
+- name: Create empty assertion json
+  copy:
+    content: "{{ {\"status\": {\"conditions\": []}} | to_json | indent(2) }}"
+    dest: "/tmp/assertion.json"
+    mode: "0644"
+
+- name: Upload the empty assertion JSON to S3
+  amazon.aws.s3_object:
+    endpoint_url: "{{ s3_endpoint_url }}"
+    bucket: "{{ s3_bucket_name_for_results }}"
+    object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/assertion.json"
+    src: "/tmp/assertion.json"
+    mode: put
+  when:
+    - run_uuid is defined
+    - scenario_number is defined
+    - run_number is defined

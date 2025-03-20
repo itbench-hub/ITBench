@@ -1,0 +1,192 @@
+---
+- name: Add Helm chart repo from the OpenTelemetry community
+  kubernetes.core.helm_repository:
+    name: open-telemetry
+    kubeconfig_path: "{{ kubeconfig }}"
+    repo_url: "https://open-telemetry.github.io/opentelemetry-helm-charts"
+
+- name: Update Helm repo
+  kubernetes.core.helm:
+    name: dummy
+    kubeconfig_path: "{{ kubeconfig }}"
+    state: absent
+    release_namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    update_repo_cache: true
+
+- name: Deploy OpenTelemetry's Astronomy Shop Demo
+  kubernetes.core.helm:
+    name: "{{ otel_astronomy_app_installation_name }}"
+    kubeconfig_path: "{{ kubeconfig }}"
+    chart_ref: open-telemetry/opentelemetry-demo
+    chart_version: "{{ otel_astronomy_app_chart_version }}"
+    release_namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    release_state: present
+    wait: true
+    create_namespace: true
+    values:
+      default:
+        envOverrides:
+          - name: OTEL_SERVICE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.labels['app.kubernetes.io/name']
+      components:
+        accountingService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 100Mi
+        adService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 250Mi
+        cartService:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 100Mi
+        checkoutService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 15Mi
+        currencyService:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 10Mi
+        emailService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 75Mi
+        flagd:
+          command:
+            - /flagd-build
+            - start
+            - -p
+            - "8013"
+            - --uri
+            - file:./etc/flagd/demo.flagd.json
+          resources:
+            requests:
+              cpu: 15m
+              memory: 75Mi
+            limits:
+              memory: 512Mi
+        frauddetectionService:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 300Mi
+        frontend:
+          resources:
+            requests:
+              cpu: 300m
+              memory: 125Mi
+        frontendProxy:
+          resources:
+            requests:
+              cpu: 75m
+              memory: 25Mi
+            limits:
+              memory: 75Mi
+        kafka:
+          resources:
+            requests:
+              cpu: 25m
+              memory: 550Mi
+        loadgenerator:
+          imageOverride:
+            repository: quay.io/it-bench/loadgenerator
+            tag: "0.3"
+          resources:
+            limits:
+              memory: 1500Mi
+        imageprovider:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 25Mi
+        paymentService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 100Mi
+        productCatalogService:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 15Mi
+        quoteService:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 25Mi
+        recommendationService:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+        shippingService:
+          resources:
+            requests: 
+              cpu: 10m
+              memory: 10Mi
+        valkey:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 10Mi
+      grafana:
+        enabled: false
+      jaeger:
+        enabled: false
+      opensearch:
+        enabled: false
+      opentelemetry-collector:
+        config:
+          connectors:
+            spanmetrics:
+              dimensions:
+                - name: namespace
+                  default: "{{ otel_astronomy_app_namespace_project_name }}"
+          exporters:
+            opensearch:
+              http:
+                endpoint: "http://opensearch-cluster-master.{{ opensearch_namespace_project_name }}.svc.cluster.local:9200"
+            otlp:
+              endpoint: "{{ jaeger_installation_name }}-collector.{{ jaeger_namespace_project_name }}.svc.cluster.local:4317"
+            otlphttp/prometheus:
+              endpoint: "http://{{ prometheus_service_name }}.{{ prometheus_namespace_project_name }}:9090/api/v1/otlp"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 150Mi
+          limits:
+            memory: 512Mi
+      prometheus:
+        enabled: false
+
+- name: Service monitor to get metrics for the otel-collector pod
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: "otel-collector-metrics-to-prometheus"
+        namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+        labels:
+            "for_instance_in_namespace": "{{ prometheus_namespace_project_name }}"
+      spec:
+        endpoints:
+        - interval: 10s
+          path: /metrics
+          port: metrics
+        selector:
+          matchLabels:
+            "component": "standalone-collector"

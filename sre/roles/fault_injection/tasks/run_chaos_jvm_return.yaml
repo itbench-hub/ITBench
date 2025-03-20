@@ -1,0 +1,117 @@
+---
+- name: Document this fault injection
+  set_fact:
+    injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
+  vars:
+    curr_docs:
+      name: "Chaos JVM return"
+      author: "@divyapathak24"
+      description: "Create jvmchaos to modify return value of a method"
+      fault_type: "ChaosMesh"
+      required_fields:
+        - "chaos_mesh_namespace_project_name"
+        - "otel_astronomy_app_namespace_project_name"
+        - "deployment_info.result.spec.template.spec.containers[0].env"
+        - "target_label_name1"
+        - "target_namespace_name"
+        - "updated_env_vars"
+  tags:
+    - injection_docs
+
+
+- name: Get current deployment
+  kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    name: "{{ target_deployment_name }}"
+    kubeconfig: "{{ kubeconfig }}"
+  register: deployment_info
+  tags: incident_29
+  when: is_jvm_return_chaos and is_fault_injection
+
+- name: Get environment variables
+  set_fact:
+    current_env_vars: "{{ deployment_info.result.spec.template.spec.containers[0].env }}"
+  tags: incident_29
+  when: is_jvm_return_chaos and is_fault_injection
+
+- name: Update JAVA_TOOL_OPTIONS value
+  set_fact:
+    updated_env_vars: >-
+      {{
+        current_env_vars
+        | map('combine', {'value': '-XX:+EnableDynamicAgentLoading -javaagent:/usr/src/app/opentelemetry-javaagent.jar'})
+        | selectattr('name', 'equalto', 'JAVA_TOOL_OPTIONS') | list +
+        current_env_vars | selectattr('name', 'ne', 'JAVA_TOOL_OPTIONS') | list
+      }}
+  tags: incident_29
+  when: is_jvm_return_chaos and is_fault_injection
+
+- name: Update the deployment with new environment variables
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+        name: "{{ target_deployment_name }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ deployment_info.result.spec.template.spec.containers[0].name }}" 
+                env: "{{ updated_env_vars }}"
+  tags: incident_29
+  when: is_jvm_return_chaos and is_fault_injection
+
+
+- name: Inject JVM return chaos leveraging the Chaos framework
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: JVMChaos
+      metadata:
+        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        namespace: "{{ chaos_mesh_namespace_project_name }}"
+      spec:
+        action: ruleData
+        ruleData: "RULE modifyReturnValue\nCLASS AdService\nMETHOD getInstance\nAT ENTRY\nIF true\nDO return null\nENDRULE"
+        mode: all
+        selector:
+          namespaces:
+            - "{{ target_namespace_name }}"
+          labelSelectors:
+            "app.kubernetes.io/component": "{{ target_label_name1 }}"
+  register: fault_injection_status
+  tags: chaos_mesh
+  when: is_jvm_return_chaos and is_fault_injection
+
+- name: Remove JVM return chaos leveraging the Chaos framework
+  kubernetes.core.k8s:
+    state: absent
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: JVMChaos
+      metadata:
+        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        namespace: "{{ chaos_mesh_namespace_project_name }}"
+      spec:
+        action: ruleData
+        ruleData: "RULE modifyReturnValue\nCLASS AdService\nMETHOD getInstance\nAT ENTRY\nIF true\nDO return null\nENDRULE"
+        mode: all
+        selector:
+          namespaces:
+            - "{{ target_namespace_name }}"
+          labelSelectors:
+            "app.kubernetes.io/component": "{{ target_label_name1 }}"
+  register: fault_injection_status
+  tags: chaos_mesh
+  when: is_jvm_return_chaos and is_fault_removal
+
+

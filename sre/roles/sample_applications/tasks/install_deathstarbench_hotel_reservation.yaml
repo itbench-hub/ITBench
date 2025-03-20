@@ -1,0 +1,27 @@
+---
+- name: Clone fork of DeathStarBench repository
+  ansible.builtin.git:
+    repo: https://github.com/it-bench/DeathStarBench.git
+    dest: roles/sample_applications/DeathStarBench
+    single_branch: yes
+    version: master
+    force: yes
+
+- name: Deploy DeathStarBench's Hotel Reservation
+  kubernetes.core.helm:
+    name: "{{ deathstarbench_hotelreservation_app_installation_name }}"
+    kubeconfig_path: "{{ kubeconfig }}"
+    chart_ref: roles/sample_applications/DeathStarBench/hotelReservation/helm-chart/hotelreservation
+    release_namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+    release_state: present
+    create_namespace: true
+    wait: true
+    timeout: 10m0s
+    values:
+      global:
+        monitoring:
+          centralJaegerAddress: "{{ jaeger_installation_name }}-collector.{{ jaeger_namespace_project_name }}.svc.cluster.local"
+          centralPrometheusAddress: "http://{{ prometheus_service_name }}.{{ prometheus_namespace_project_name }}:9090/api/v1/otlp"
+          defaultJaegerEnabled: false
+          otelAddress: "otel-collector-{{ deathstarbench_hotelreservation_app_installation_name }}.{{ deathstarbench_hotelreservation_app_namespace_project_name }}.svc.cluster.local"
+        nameOverride: "{{ deathstarbench_hotelreservation_app_installation_name }}"

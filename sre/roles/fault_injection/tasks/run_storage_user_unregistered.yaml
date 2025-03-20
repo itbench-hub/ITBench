@@ -1,0 +1,136 @@
+---
+- name: Fetch MongoDB pod names for the specified service
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: v1
+    kind: Pod
+    namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+    label_selectors:
+      - "app.kubernetes.io/name={{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+      - "app=mongodb-{{ target_service }}-{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+  register: mongodb_pods_results
+  when: is_storage_user_unregistered
+  tags: 
+    - incident_103
+    - incident_104
+
+- name: Verify MongoDB pods were found
+  fail:
+    msg: "No MongoDB pods found for faulty service '{{ target_service }}' in namespace '{{ deathstarbench_hotelreservation_app_namespace_project_name }}'."
+  when:
+    - is_storage_user_unregistered
+    - mongodb_pods_results is defined
+    - mongodb_pods_results.resources is defined
+    - mongodb_pods_results.resources | length == 0
+  tags: 
+    - incident_103
+    - incident_104
+
+- name: Set target MongoDB pods fact
+  set_fact:
+    target_mongo_pods: "{{ mongodb_pods_results.resources | map(attribute='metadata.name') | list }}"
+  when:
+    - is_storage_user_unregistered
+    - mongodb_pods_results is defined
+    - mongodb_pods_results.resources is defined
+    - mongodb_pods_results.resources | length == 0
+  tags: 
+    - incident_103
+    - incident_104
+
+- name: Fetch container names for MongoDB pods
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  ansible.builtin.shell: >
+    kubectl get pod {{ item }} -n {{ deathstarbench_hotelreservation_app_namespace_project_name }} -o jsonpath="{.spec.containers[*].name}"
+  loop: "{{ target_mongo_pods }}"
+  register: container_names
+  when: is_storage_user_unregistered
+  tags: 
+    - incident_103
+    - incident_104
+
+- name: Set pod-to-container mapping fact
+  set_fact:
+    pod_container_mapping: "{{ dict(target_mongo_pods | zip(container_names.results | map(attribute='stdout'))) }}"
+  when: is_storage_user_unregistered
+  tags: 
+    - incident_103
+    - incident_104
+
+- name: Grant readWrite role for the database (fault removal)
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  ansible.builtin.shell: >
+    kubectl exec -n {{ deathstarbench_hotelreservation_app_namespace_project_name }} {{ item.key }} -c {{ item.value }} -- \
+    mongo admin -u admin -p admin --authenticationDatabase admin \
+    --eval "db.grantRolesToUser('admin', [{role: 'readWrite', db: '{{ target_service }}-db' }]);"
+  loop: "{{ pod_container_mapping | dict2items }}"
+  register: grant_role_results
+  retries: 3
+  delay: 5
+  changed_when: grant_role_results.rc == 0
+  when: is_fault_removal and is_storage_user_unregistered
+  tags: 
+    - incident_103
+    - incident_104
+
+- name: Downgrade admin user privileges for the database (fault injection)
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  ansible.builtin.shell: >
+    kubectl exec -n {{ deathstarbench_hotelreservation_app_namespace_project_name }} {{ item.key }} -c {{ item.value }} -- \
+    mongo admin -u admin -p admin --authenticationDatabase admin \
+    --eval "db.revokeRolesFromUser('admin', [{role: 'readWrite', db: '{{ target_service }}-db' }]);"
+  loop: "{{ pod_container_mapping | dict2items }}"
+  register: downgrade_privileges_results
+  retries: 3
+  delay: 5
+  changed_when: downgrade_privileges_results.rc == 0
+  when: is_fault_injection and is_storage_user_unregistered
+  tags: 
+    - incident_103
+    - incident_104
+
+- name: Fetch pod names for the specified service
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: v1
+    kind: Pod
+    namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+    label_selectors:
+      - "app.kubernetes.io/name={{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+      - "app={{ target_service }}-{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+  register: service_pods_results
+  when: is_storage_user_unregistered
+  tags: 
+    - incident_103
+    - incident_104
+
+- name: Set target service pods fact
+  set_fact:
+    target_service_pods: "{{ service_pods_results.resources | map(attribute='metadata.name') | list }}"
+  when: is_storage_user_unregistered
+  tags: 
+    - incident_103
+    - incident_104
+
+- name: Delete service pods for the specified service
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  ansible.builtin.shell: >
+    kubectl delete pod {{ item }} -n {{ deathstarbench_hotelreservation_app_namespace_project_name }}
+  loop: "{{ target_service_pods }}"
+  register: delete_pods_results
+  changed_when: delete_pods_results.rc == 0
+  when:
+    - is_storage_user_unregistered
+    - target_service_pods is defined
+    - target_service_pods | length > 0
+  tags: 
+    - incident_103
+    - incident_104

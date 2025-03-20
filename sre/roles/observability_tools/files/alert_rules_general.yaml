@@ -1,0 +1,144 @@
+- uid: aec6id9prpq80f
+  title: Pod deployments have been disrupted
+  condition: C
+  data:
+    - refId: A
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        disableTextWrap: false
+        editorMode: code
+        expr: sum by(namespace) (kube_pod_status_phase{phase="Running"})
+        fullMetaSearch: false
+        includeNullMetadata: true
+        instant: true
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        range: false
+        refId: A
+        useBackend: false
+    - refId: D
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        datasource:
+          type: prometheus
+          uid: prometheus
+        editorMode: code
+        expr: sum by(namespace) (kube_pod_status_phase{phase="Failed"})
+        instant: true
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        range: false
+        refId: D
+    - refId: E
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        datasource:
+          type: prometheus
+          uid: prometheus
+        editorMode: code
+        expr: sum by(namespace) (kube_pod_status_phase{phase="Pending"})
+        instant: true
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        range: false
+        refId: E
+    - refId: F
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: prometheus
+      model:
+        datasource:
+          type: prometheus
+          uid: prometheus
+        editorMode: code
+        expr: sum by(namespace) (kube_pod_status_phase{phase=~"Pending|Failed"})
+        instant: true
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        range: false
+        refId: F
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        conditions:
+          - evaluator:
+              params:
+                - 0
+                - 10
+              type: gt
+            operator:
+              type: and
+            query:
+              params:
+                - C
+            reducer:
+              params: []
+              type: last
+            type: query
+        datasource:
+          type: __expr__
+          uid: __expr__
+        expression: B
+        intervalMs: 1000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        conditions:
+          - evaluator:
+              params:
+                - 0
+                - 0
+              type: gt
+            operator:
+              type: and
+            query:
+              params: []
+            reducer:
+              params: []
+              type: avg
+            type: query
+        datasource:
+          name: Expression
+          type: __expr__
+          uid: __expr__
+        expression: F
+        intervalMs: 1000
+        maxDataPoints: 43200
+        reducer: last
+        refId: B
+        settings:
+          mode: dropNN
+        type: reduce
+  noDataState: NoData
+  execErrState: Error
+  for: 1m
+  annotations:
+    description: Namespace {{ $labels.namespace }} has {{ $values.A.Value }} pods Running state, {{ $values.D.Value }} pods in Failed state and {{ $values.E.Value }} pods in Pending state.
+    summary: '{{ $labels.namespace }} has {{ $values.D.Value }} pod failures.'
+  labels: {}
+  isPaused: false
+  notification_settings:
+    receiver: grafana-default-email

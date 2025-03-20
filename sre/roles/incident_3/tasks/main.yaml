@@ -1,0 +1,75 @@
+---
+- name: Documenting Incident #3
+  set_fact:
+    all_incidents: "{{ all_incidents + [ docs_incident_3 ] }}"
+  tags: documentation, incident_3
+
+- name: Limit CPU to 10m for the deployment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    kind: Deployment
+    name: "{{ target_deployment_name }}"
+    namespace: "{{ target_namespace_name }}"
+    resource_definition:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "adservice" 
+                resources:
+                  limits:
+                    cpu: "10m"
+  tags: incident_3
+  when: is_fault_injection | bool
+  register: deployment_limit_result
+
+- name: fault_injection_incident_3
+  ansible.builtin.import_role:
+    name: fault_injection
+  vars:
+      is_native: true
+      is_injection: true
+      is_otel_astronomy_shop_dynamic_load: true
+      dynamic_load_vars:
+        - name: GET_ADS_WEIGHT
+          value: "1000"
+        - name: WAIT_TIME_BETWEEN_TASKS_START
+          value: "1"
+        - name: WAIT_TIME_BETWEEN_TASKS_END
+          value: "5"            
+  tags: incident_3
+  when: is_fault_injection | bool
+
+- name: inc3fault_removal_incident_3
+  ansible.builtin.import_role:
+    name: fault_removal
+  vars:
+      is_native: true
+      is_removal: true
+      dynamic_load_vars:
+        - name: GET_ADS_WEIGHT
+          value: "1"
+        - name: WAIT_TIME_BETWEEN_TASKS_START
+          value: "1"
+        - name: WAIT_TIME_BETWEEN_TASKS_END
+          value: "10"
+  tags: incident_3
+  when: is_fault_removal | bool
+
+- name: inc3 fault removal Limit CPU to 200m for the deployment
+  kubernetes.core.k8s:
+    kind: Deployment
+    kubeconfig: "{{ kubeconfig }}"
+    name: "{{ target_deployment_name }}"
+    namespace: "{{ target_namespace_name }}"
+    resource_definition:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "adservice" 
+                resources:
+                  limits:
+                    cpu: "200m"
+  tags: incident_3
+  when: is_fault_removal | bool

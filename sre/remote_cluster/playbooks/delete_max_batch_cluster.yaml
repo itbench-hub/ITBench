@@ -1,0 +1,50 @@
+---
+- name: Launch async deletion tasks
+  command: "{{ kops_path }} delete cluster --name={{ item }} --state={{ state_store }} --wait 15m --interval 60s --yes"
+  async: "{{ async_timeout }}"
+  poll: 0
+  register: async_results
+  loop: "{{ batch }}"
+  loop_control:
+    loop_var: item
+    label: "{{ item }}"
+
+- name: Wait for cluster deletions
+  async_status:
+    jid: "{{ async_result_item.ansible_job_id }}"
+  loop: "{{ async_results.results }}"
+  loop_control:
+    loop_var: async_result_item
+    label: "{{ async_result_item.item }}"
+  register: job_results
+  until: job_results.finished | default(false)
+  retries: "{{ (async_timeout / poll_interval) | int }}"
+  delay: "{{ poll_interval }}"
+
+- name: Update successfully deleted clusters
+  set_fact:
+    successfully_deleted: "{{ successfully_deleted + [cluster_name] if cluster_name is not none else successfully_deleted }}"
+  loop: "{{ job_results.results }}"
+  loop_control:
+    loop_var: async_result_item
+  vars:
+    cluster_name: "{{ async_result_item.stdout | regex_search('Deleted cluster: \"([^\"]+)\"', '\\1') }}"
+  when:
+    - async_result_item.stdout is defined
+
+- name: Debug extracted cluster names
+  debug:
+    msg: "Cluster name extracted: {{ cluster_name }}"
+  loop: "{{ job_results.results }}"
+  loop_control:
+    loop_var: async_result_item
+  vars:
+    cluster_name: "{{ async_result_item.stdout | regex_search('Deleted cluster: \"([^\"]+)\"', '\\1') }}"
+
+- name: Update remaining clusters
+  set_fact:
+    remaining_clusters: "{{ remaining_clusters | difference(batch) }}"
+
+- name: Show progress
+  debug:
+    msg: "Successfully deleted: {{ successfully_deleted }}. Remaining clusters: {{ remaining_clusters }}."

@@ -1,0 +1,64 @@
+---
+- name: Add Helm chart repo from Elasticsearch
+  kubernetes.core.helm_repository:
+    name: elastic
+    kubeconfig_path: "{{ kubeconfig }}"
+    repo_url: https://helm.elastic.co
+  
+- name: Update Helm repo
+  kubernetes.core.helm:
+    name: dummy
+    kubeconfig_path: "{{ kubeconfig }}"
+    state: absent
+    release_namespace: "{{ elasticsearch_app_namespace_project_name }}"
+    update_repo_cache: true
+
+- name: Deploy Elasticsearch cluster
+  kubernetes.core.helm:
+    name: "{{ elasticsearch_app_installation_name }}"
+    chart_ref: elastic/elasticsearch
+    chart_version: "{{ elasticsearch_app_chart_version }}"
+    release_namespace: "{{ elasticsearch_app_namespace_project_name }}"
+    release_state: present
+    create_namespace: true
+    kubeconfig: "{{ kubeconfig }}"
+    wait: true
+    values:
+      replicas: 2
+      node:
+        roles: 
+          - master
+          - data
+          - ingest
+      volumeClaimTemplate:
+        accessModes: 
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+      esJavaOpts: "-Xms512m -Xmx512m"
+      discovery:
+        seed_hosts: 
+          - elasticsearch-incident-headless
+      cluster:
+        initial_master_nodes: 
+          - elasticsearch-incident-0
+          - elasticsearch-incident-1
+      network:
+        host: 0.0.0.0
+
+- name: Apply headless service
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    kind: Service
+    name: "{{ elasticsearch_app_installation_name }}-headless"
+    namespace: "{{ elasticsearch_app_namespace_project_name }}"
+    resource_definition:
+      spec:
+        clusterIP: None
+        selector:
+          app: "{{ elasticsearch_app_installation_name }}"
+        ports:
+          - port: 9300
+            name: transport

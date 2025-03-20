@@ -1,0 +1,125 @@
+---
+- name: Create ground_truth list
+  set_fact:
+    ground_truth_list: "{{ ground_truth_list | default([]) + [curr_ground_truth] }}"
+  loop: "{{ all_incidents }}"
+  loop_control:
+    loop_var: incident
+  vars:
+    curr_ground_truth:
+      platform: "{{ incident.platform }}"
+      dsl_format: "{{ incident.dsl_format }}"
+      id: "{{ incident.id }}"
+      name: "{{ incident.name }}"
+      description: "{{ incident.description }}"
+      complexity: "{{ incident.complexity }}"
+      category: "{{ incident.fault | map(attribute='category') | unique | sort | join(', ') }}"
+      golden_signal_cause: "{{ incident.golden_signal_cause if incident.golden_signal_cause is defined else None }}"
+      golden_signal_effect: "{{ incident.golden_signal_effect if incident.golden_signal_effect is defined else None }}"
+      incidentPattern: "{{ incident.incidentPattern if incident.incidentPattern is defined else None }}"
+      fault_mechanism: "{{ incident.fault | map(attribute='fault_mechanism') | unique | sort | join(', ') }}"
+      technologies: "{{ incident.technologies if incident.technologies is defined else [] }}"
+      alerts: "{{ incident.alerts }}"
+      groups: "{{ incident.groups if incident.groups is defined else [] }}"
+      aliases: "{{ incident.aliases if incident.aliases is defined else [] }}"
+      propagations: "{{ incident.propagations if incident.propagations is defined else [] }}"
+      recommended_actions: "{{ incident.recommended_actions if incident.recommended_actions is defined else [] }}"
+  tags:
+    - documentation
+
+- name: Get ground truth categories
+  set_fact:
+    ground_truth_categories: "{{ ground_truth_list | map(attribute='category') | unique | sort | list }}"
+  tags:
+    - documentation
+
+- name: Validate ground truth group IDs
+  assert:
+    that: ground_truth_groups == unique_groups
+    fail_msg: "Duplicate group ID in {{ gt.id }}: {{ ground_truth_groups | sort }}"
+    msg: "All ground truth groups in {{ gt.id }} have unique IDs."
+    quiet: yes
+  vars:
+    ground_truth_groups: "{{ gt.groups | map(attribute='id') | sort | list }}"
+    unique_groups: "{{ ground_truth_groups | unique | list }}"
+  loop: "{{ ground_truth_list }}"
+  loop_control:
+    loop_var: gt
+  tags:
+    - documentation
+
+- name: Groups list must have at least one root_cause true
+  assert:
+    that: gt.groups | selectattr('root_cause', 'defined') | selectattr('root_cause', 'equalto', true) | list | length > 0
+    fail_msg: "No root cause specified in groups for incident ID {{ gt.id }}"
+    msg: "Incident {{ gt.id }} has at least one root_cause specified"
+    quiet: yes
+  vars:
+    ground_truth_groups: "{{ gt.groups | map(attribute='id') | sort | list }}"
+  loop: "{{ ground_truth_list }}"
+  loop_control:
+    loop_var: gt
+  tags:
+    - documentation
+
+- name: Validate ground truth propagation group references
+  assert:
+    that: prop_sources is subset(ground_truth_groups) and prop_targets is subset(ground_truth_groups)
+    fail_msg: "Unknown ID in {{ gt.id }}: propagation source or target IDs {{ missing }} not defined in groups."
+    msg: "All ground truth propagation stages in {{ gt.id }} reference known group IDs."
+    quiet: yes
+  vars:
+    ground_truth_groups: "{{ gt.groups | map(attribute='id') | sort | list }}"
+    prop_sources: "{{ gt.propagations | map(attribute='source') | unique | list }}"
+    prop_targets: "{{ gt.propagations | map(attribute='target') | unique | list }}"
+    missing: "{{ prop_sources | union(prop_targets) | difference(ground_truth_groups) | list }}"
+  loop: "{{ ground_truth_list }}"
+  loop_control:
+    loop_var: gt
+  tags:
+    - documentation
+
+- name: Validate ground truth alias sets are all present in groups
+  assert:
+    that: alias_ids is subset(ground_truth_groups)
+    fail_msg: "Unknown ID in {{ gt.id }}: alias IDs {{ missing }} not defined in groups."
+    msg: "All ground truth aliases in {{ gt.id }} reference known group IDs."
+    quiet: yes
+  vars:
+    ground_truth_groups: "{{ gt.groups | map(attribute='id') | sort | list }}"
+    alias_ids: "{{ gt.aliases | flatten | unique | list }}"
+    missing: "{{ alias_ids | difference(ground_truth_groups) | list }}"
+  loop: "{{ ground_truth_list }}"
+  loop_control:
+    loop_var: gt
+  tags:
+    - documentation
+
+- name: Validate alert location group references
+  assert:
+    that: alert_locations is subset(ground_truth_groups)
+    fail_msg: "Unknown ID in {{ gt.id }}: alert group_id {{ missing }} not defined in groups."
+    msg: "All ground truth alert group_id values in {{ gt.id }} reference known group IDs."
+    quiet: yes
+  vars:
+    ground_truth_groups: "{{ gt.groups | map(attribute='id') | sort | list }}"
+    alert_locations: "{{ gt.alerts | map(attribute='group_id') | unique | list }}"
+    missing: "{{ alert_locations | difference(ground_truth_groups) | list }}"
+  loop: "{{ ground_truth_list }}"
+  loop_control:
+    loop_var: gt
+  tags:
+    - documentation
+
+- name: Write ground_truths to JSON file
+  copy:
+    dest: "ground_truths.json"
+    content: "{{ ground_truth_list | to_nice_json }}"
+  tags:
+    - documentation
+
+- name: Show ground truth categories
+  debug:
+    var: ground_truth_categories
+  tags:
+    - documentation

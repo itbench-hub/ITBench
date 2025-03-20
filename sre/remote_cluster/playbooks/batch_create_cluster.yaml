@@ -1,0 +1,340 @@
+---
+- hosts: localhost
+  vars:
+    state_store: "s3://{{ s3name }}"
+    cleanup_temp_files: true  
+
+  vars_files:
+    - batch_variables.yaml
+    - secret.yaml
+
+  gather_facts: true
+  collections:
+    - community.aws
+
+  tasks:
+    - name: Validate cluster_count is a number and within range
+      fail:
+        msg: "ERROR: cluster_count must be a number between 1 and 100. Current value: {{ cluster_count }}"
+      when: 
+        - not (cluster_count|int|string == cluster_count|string)
+        - cluster_count|int < 1 
+        - cluster_count|int > 100
+
+    - name: Validate node_count is a number
+      fail:
+        msg: "ERROR: node_count - {{ node_count }} - Not a valid number for number of nodes."
+      when: node_count is not number or node_count | int == 0
+
+    - name: Validate node_count is less than 10
+      fail:
+        msg: "ERROR: Tried to create more than 10 nodes. Not allowing!"
+      when: node_count | int >= 10
+
+    - name: Set kops path for Linux
+      set_fact:
+        kops_path: "/usr/local/bin/kops"
+      when: ansible_distribution in ['Ubuntu', 'Fedora', 'CentOS', 'RedHat']
+      tags: ['validate']
+      
+    - name: Set kops path for macOS
+      set_fact:
+        kops_path: "/opt/homebrew/bin/kops"
+      when: ansible_distribution == 'MacOSX'
+      tags: ['validate']
+
+    - name: Get list of existing clusters
+      command: "{{ kops_path }} get clusters --state={{ state_store }} -o json"
+      register: existing_clusters_output
+      ignore_errors: yes
+
+    - name: Parse existing clusters
+      set_fact:
+        existing_cluster_names: "{{ (existing_clusters_output.stdout | from_json | map(attribute='metadata.name') | list) if existing_clusters_output.rc == 0 else [] }}"
+      
+    - name: Show existing clusters
+      debug:
+        msg: "Found existing clusters: {{ existing_cluster_names }}"
+
+    - name: Generate full list of potential cluster names
+      set_fact:
+        potential_cluster_names: "{{ range(1, cluster_count|int + 1) | map('string') | map('regex_replace', '^(.*)$', cluster_name_prefix + '-' + instance_type + '-aws-\\1.k8s.local') | list }}"
+      tags: ['validate']
+
+    - name: Extract numbers from existing matching clusters
+      set_fact:
+        existing_cluster_numbers: "{{ existing_cluster_names 
+          | select('match', '^' + cluster_name_prefix + '-' + instance_type + '-aws-\\d+\\.k8s\\.local$') 
+          | map('regex_replace', '^' + cluster_name_prefix + '-' + instance_type + '-aws-(\\d+)\\.k8s\\.local$', '\\1') 
+          | map('int') 
+          | list }}"
+
+    - name: Determine new cluster numbers
+      set_fact:
+        new_cluster_numbers: "{{ range(1, cluster_count|int + 1) | list | reject('in', existing_cluster_numbers) | list }}"
+
+    - name: Generate full cluster names to create
+      set_fact:
+        clusters_to_create: "{{ new_cluster_numbers | map('string') | map('regex_replace', '^(.*)$', cluster_name_prefix + '-' + instance_type + '-aws-\\1.k8s.local') | list }}"
+
+    - name: Show clusters to be created
+      debug:
+        msg: "Will create the following clusters: {{ clusters_to_create }}"
+
+    - name: Skip if no new clusters to create
+      meta: end_play
+      when: clusters_to_create | length == 0
+
+    - name: Create a shared VPC
+      ec2_vpc_net:
+        name: "{{ cluster_name_prefix }}-shared-vpc"
+        cidr_block: "{{ vpc_cidr }}"
+        region: "{{ aws_region }}"
+        state: present
+      register: shared_vpc_info
+
+    - name: Create an Internet Gateway
+      ec2_vpc_igw:
+        vpc_id: "{{ shared_vpc_info.vpc.id }}"
+        region: "{{ aws_region }}"
+        state: present
+      register: shared_igw_info
+
+    - name: Extract cluster numbers for subnet creation
+      set_fact:
+        cluster_numbers: "{{ new_cluster_numbers }}"
+
+    - name: Get existing subnets
+      ec2_vpc_subnet_info:
+        region: "{{ aws_region }}"
+        filters:
+          vpc-id: "{{ shared_vpc_info.vpc.id }}"
+      register: existing_subnets_info
+
+    - name: Extract existing subnet names
+      set_fact:
+        existing_subnet_names: "{{ existing_subnets_info.subnets 
+          | selectattr('tags.Name','defined') 
+          | selectattr('tags.Name','match', cluster_name_prefix + '-public-subnet-\\d+') 
+          | map(attribute='tags.Name') 
+          | list }}"
+
+    - name: Extract existing subnet IDs
+      set_fact:
+        existing_subnet_ids: "{{ existing_subnets_info.subnets 
+          | selectattr('tags.Name','defined') 
+          | selectattr('tags.Name','match', cluster_name_prefix + '-public-subnet-\\d+') 
+          | map(attribute='subnet_id') 
+          | list }}"
+
+    - name: Extract existing subnet numbers
+      set_fact:
+        existing_subnet_numbers: "{{ existing_subnet_names 
+          | map('regex_replace', '^.*-public-subnet-(\\d+)$', '\\1') 
+          | map('int') 
+          | list }}"
+
+    - name: Determine which subnets to create
+      set_fact:
+        subnets_to_create: "{{ cluster_numbers | difference(existing_subnet_numbers) }}"
+
+    - name: Create initial cluster_subnet_mapping from existing subnets
+      set_fact:
+        cluster_subnet_mapping: "{{ dict(existing_subnet_numbers | zip(existing_subnet_ids)) }}"
+
+    - name: Create public subnets for each cluster that doesn't exist
+      ec2_vpc_subnet:
+        vpc_id: "{{ shared_vpc_info.vpc.id }}"
+        cidr: "{{ public_subnet_base }}.{{ item * 2 }}.0/23"
+        az: "{{ aws_region }}a"
+        region: "{{ aws_region }}"
+        map_public: yes
+        state: present
+        tags:
+          Name: "{{ cluster_name_prefix }}-public-subnet-{{ item }}"
+          Environment: "k8s"
+          ManagedBy: "ansible"
+      loop: "{{ subnets_to_create }}"
+      register: public_subnets
+
+    - name: Create a route table for public subnets
+      ec2_vpc_route_table:
+        vpc_id: "{{ shared_vpc_info.vpc.id }}"
+        region: "{{ aws_region }}"
+        subnets: "{{ public_subnets.results | map(attribute='subnet.id') | list }}"
+        routes:
+          - dest: "0.0.0.0/0"
+            gateway_id: "{{ shared_igw_info.gateway_id }}"
+        tags:
+          Name: "{{ cluster_name_prefix }}-public-rt"
+          Creator: "ansible"
+        state: present
+      register: shared_rt_info
+
+    - name: Update cluster_subnet_mapping with newly created subnets
+      set_fact:
+        cluster_subnet_mapping: "{{ cluster_subnet_mapping | combine(
+          dict(subnets_to_create | zip(public_subnets.results | map(attribute='subnet.id') | list))
+          ) }}"
+      when: public_subnets is defined and public_subnets.results|length > 0
+
+    - name: Debug cluster info
+      debug:
+        msg: 
+          - "Cluster subnet mapping: {{ cluster_subnet_mapping }}"
+
+    - name: Create cluster info dictionary
+      set_fact:
+        cluster_info: {}
+
+    - name: Populate cluster info
+      set_fact:
+        cluster_info: "{{ cluster_info | combine({
+          item: {
+            'public_subnet_id': cluster_subnet_mapping[item | regex_replace('^.*-aws-(\\d+)\\.k8s\\.local$', '\\1') | int]
+          }
+          }) }}"
+      loop: "{{ clusters_to_create }}"
+      when: cluster_subnet_mapping is defined and cluster_subnet_mapping|length > 0
+
+    - name: Debug final cluster info
+      debug:
+        msg: "Final cluster info: {{ cluster_info }}"
+
+    - name: Create cluster info dictionary
+      set_fact:
+        cluster_info: "{{ {} }}"
+
+    - name: Populate cluster info
+      set_fact:
+        cluster_info: "{{ cluster_info | combine({
+          item: {
+            'public_subnet_id': cluster_subnet_mapping[item | regex_replace('^.*-aws-(\\d+)\\.k8s\\.local$', '\\1') | int]
+          }
+          }) }}"
+      loop: "{{ clusters_to_create }}"
+
+    - name: Debug final cluster info
+      debug:
+        msg:
+          - "Final cluster info: {{ cluster_info }}"
+
+    # Create kops clusters concurrently
+    - name: Create kops clusters configurations concurrently
+      command: >
+        {{ kops_path }} create cluster
+        {{ item }}
+        --zones {{ zones }}
+        --cloud aws
+        --network-id {{ shared_vpc_info.vpc.id }}
+        --ssh-public-key {{ ssh_key_for_cluster }}
+        --control-plane-size {{ control_node_type }}
+        --node-size {{ instance_type }}
+        --topology public
+        --subnets {{ cluster_info[item].public_subnet_id }}
+        --node-count {{ node_count }}
+        --networking {{ network_cni }}
+        --state={{ state_store }}
+      loop: "{{ clusters_to_create }}"
+      register: create_tasks
+      poll: 0
+
+    - name: Cluster configuration creation results
+      debug:
+        msg:
+          - "{{ item }}"
+      loop: "{{ create_tasks.results }}"
+
+    # Build the clusters concurrently in batches
+    - name: Split clusters into batches of 5
+      set_fact:
+        cluster_batches: "{{ clusters_to_create | batch(5) }}"
+
+    - name: Building clusters in batches
+      include_tasks: build_cluster.yaml
+      loop: "{{ cluster_batches }}"
+      loop_control:
+        loop_var: cluster_batch
+
+    - name: Export kubeconfig files
+      shell: >
+        {{ kops_path }} export kubecfg
+        --name {{ item }}
+        --state={{ state_store }} --admin
+        --kubeconfig /tmp/{{ item }}.yaml
+      loop: "{{ potential_cluster_names }}"
+      tags: ['validate']
+
+    - name: Set validation constants
+      set_fact:
+        max_validation_retries: 1 # TODO: adjust if needed
+        validation_delay_seconds: 30
+        validation_timeout: 30
+      tags: ['validate']
+
+    - name: Initialize validation state
+      set_fact:
+        cluster_validation_state: "{{ dict(potential_cluster_names | list | zip([false]*(potential_cluster_names|length))) }}"
+        current_attempt: 1
+      tags: ['validate']
+
+    - name: Validate clusters
+      block:
+        - name: Attempt cluster validation
+          register: validation_result
+          ignore_errors: yes
+          retries: "{{ max_validation_retries }}"
+          delay: "{{ validation_delay_seconds }}"
+          until: validation_result.rc == 0 or validation_result.stderr is search("Your cluster .* is ready")
+          command: >
+            {{ kops_path }} validate cluster
+            --name {{ item }}
+            --state={{ state_store }}
+            --wait 10m
+          environment:
+            KUBECONFIG: "/tmp/{{ item }}.yaml"
+          loop: "{{ potential_cluster_names }}"
+          loop_control:
+            label: "Cluster {{ item }}"
+            pause: 5
+
+        - name: Update cluster validation state based on results
+          set_fact:
+            cluster_validation_state: "{{ cluster_validation_state | combine({
+              (item.item): (
+                item.rc == 0 or 
+                (item.stdout is defined and item.stdout is search('Your cluster.*is ready'))
+              )
+              }) }}"
+          loop: "{{ validation_result.results }}"
+          loop_control:
+            label: "Cluster {{ item.item }}"
+
+        - name: Show validation progress
+          debug:
+            msg: >
+              Validation results:
+              Successfully validated clusters: {{ cluster_validation_state | dict2items | selectattr('value', 'equalto', true) | map(attribute='key') | list | join(', ') }}
+              Failed clusters: {{ cluster_validation_state | dict2items | selectattr('value', 'equalto', false) | map(attribute='key') | list | join(', ') }}
+
+        - name: Fail if any clusters failed validation
+          fail:
+            msg: "The following clusters failed validation: {{ cluster_validation_state | dict2items | selectattr('value', 'equalto', false) | map(attribute='key') | list | join(', ') }}"
+          when: cluster_validation_state.values() | select('equalto', false) | list | length > 0
+
+      rescue:
+        - name: Validation block failed
+          debug:
+            msg: "Validation process encountered an error. Check cluster status manually."
+
+      always:
+        - name: Show final validation results
+          debug:
+            msg: "Final cluster validation state: {{ cluster_validation_state }}"
+
+        - name: Write validated clusters to a file
+          copy:
+            dest: "validated_clusters.json"
+            content: "{{ cluster_validation_state | to_nice_json }}"
+            mode: '0644'
+      tags: ['validate']

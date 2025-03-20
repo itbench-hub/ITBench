@@ -1,0 +1,149 @@
+---
+- name: Record agent run or execution time completion
+  ansible.builtin.copy:
+    content: "{{ now(utc=true,fmt='%Y-%m-%dT%H:%M:%S.%f') }}"
+    dest: /runner/handing_over_to_agent.txt
+  tags:
+    - handover_to_agent
+
+- name: Upload the agent_execution_completed_or_exited_at text to S3
+  amazon.aws.s3_object:
+    endpoint_url: "{{ s3_endpoint_url }}"
+    bucket: "{{ s3_bucket_name_for_results }}"
+    object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/handing_over_to_agent.txt"
+    src: /runner/handing_over_to_agent.txt
+    mode: put
+  tags:
+    - handover_to_agent
+
+- name: Retrieve existing bundle-alert-timestamps ConfigMap
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+    kind: ConfigMap
+    name: bundle-alert-timestamps
+  register: existing_configmap_info
+  when:
+    - sample_application == "otel_astronomy_shop"
+  tags:
+    - handover_to_agent
+
+- name: Add fault injection time to ConfigMap
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: bundle-alert-timestamps
+        namespace: "{{ otel_astronomy_app_namespace_project_name }}"
+      data:
+        deployment_time: "{{ existing_configmap_info.resources[0].data.deployment_time }}"
+        fault_injection_time : "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+  when:
+    - sample_application == "otel_astronomy_shop"
+  tags:
+    - handover_to_agent
+
+- name: Retrieve existing bundle-alert-timestamps ConfigMap
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+    kind: ConfigMap
+    name: bundle-alert-timestamps
+  register: existing_configmap_info
+  when:
+    - sample_application == "dsb_hotel_reservation"
+  tags:
+    - handover_to_agent
+
+- name: Add fault injection time to ConfigMap
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: bundle-alert-timestamps
+        namespace: "{{ deathstarbench_hotelreservation_app_namespace_project_name }}"
+      data:
+        deployment_time: "{{ existing_configmap_info.resources[0].data.deployment_time }}"
+        fault_injection_time : "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+  when:
+    - sample_application == "dsb_hotel_reservation"
+    - existing_configmap_info.resources | length > 0
+  tags:
+    - handover_to_agent
+
+- name: Get the assertion.json from S3
+  amazon.aws.s3_object:
+    endpoint_url: "{{ s3_endpoint_url }}"
+    bucket: "{{ s3_bucket_name_for_results }}"
+    object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/assertion.json"
+    dest: "/tmp/assertion.json"
+    mode: get
+  when:
+    - sre_bench_runner
+    - run_uuid is defined and scenario_number is defined and run_number is defined
+  tags:
+    - handover_to_agent
+    - capture_failed_fault_injection_state
+
+- name: Read deployment details from assertion json
+  set_fact:
+    assertion_array: "{{ lookup('file', '/tmp/assertion.json') | from_json | json_query('status.conditions') }}"
+  when:
+    - sre_bench_runner
+  tags:
+    - handover_to_agent
+    - capture_failed_fault_injection_state
+
+- name: Update assertion array content
+  set_fact:
+    updated_assertion_array: "{{ assertion_array + [{'type': 'FaultInjected', 'status': true, 'lastTransitionTime':now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')}] }}"
+  when: sre_bench_runner
+  tags:
+    - handover_to_agent
+
+- name: Update assertion array content
+  set_fact:
+    updated_assertion_array: "{{ assertion_array + [{'type': 'FaultInjected', 'status': false, 'lastTransitionTime':now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')}] }}"
+  when: sre_bench_runner
+  tags:
+    - capture_failed_fault_injection_state
+
+- name: Create assertion json
+  set_fact:
+    assertion_json:
+      status:
+        conditions: "{{ updated_assertion_array }}"
+  when: sre_bench_runner
+  tags:
+    - handover_to_agent
+    - capture_failed_fault_injection_state
+
+- name: Add fault injection details
+  copy:
+    content: "{{ assertion_json | to_json | indent(2) }}"
+    dest: "/tmp/assertion.json"
+    mode: "0644"
+  when: sre_bench_runner
+  tags:
+    - handover_to_agent
+    - capture_failed_fault_injection_state
+
+- name: Upload the assertion JSON to S3
+  amazon.aws.s3_object:
+    endpoint_url: "{{ s3_endpoint_url }}"
+    bucket: "{{ s3_bucket_name_for_results }}"
+    object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/assertion.json"
+    src: "/tmp/assertion.json"
+    mode: put
+  when:
+    - sre_bench_runner
+    - run_uuid is defined and scenario_number is defined and run_number is defined
+  tags:
+    - handover_to_agent
+    - capture_failed_fault_injection_state

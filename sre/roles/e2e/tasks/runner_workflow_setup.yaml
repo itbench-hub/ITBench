@@ -1,0 +1,203 @@
+---
+- name: Get AWX service information
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ awx_kubeconfig }}"
+    kind: Service
+    namespace: awx
+    name: awx-deployment-service
+  register: awx_service_information
+  tags:
+    - runner_workflow_setup
+
+- name: Set `controller_host` value for the Ansible tower
+  set_fact:
+    controller_host: "http://{{ awx_service_information.resources[0].status.loadBalancer.ingress[0].hostname }}"
+  tags:
+    - runner_workflow_setup
+
+- name: Set `controller_username` value for the Ansible tower
+  set_fact:
+    controller_username: "admin"
+  tags:
+    - runner_workflow_setup
+
+- name: Get AWX secret information
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ awx_kubeconfig }}"
+    kind: Secret
+    namespace: awx
+    name: awx-deployment-admin-password
+  register: awx_secret_information
+  tags:
+    - runner_workflow_setup
+
+- name: Set `controller_password` value for the Ansible tower
+  set_fact:
+    controller_password: "{{ awx_secret_information.resources[0].data.password | b64decode }}" # pragma: allowlist secret
+  tags:
+    - runner_workflow_setup
+
+- name: Create a workflow job template with workflow nodes in template
+  awx.awx.workflow_job_template:
+    controller_host: "{{ controller_host }}"
+    controller_username: "{{ controller_username }}"
+    controller_password: "{{ controller_password }}" # pragma: allowlist secret
+    name: "Scenario-{{scenario_number}}-One-Mode-Deployment"
+    inventory: Demo Inventory
+    extra_vars: {'run_uuid': 'run_uuid', 'scenario_number': -1, 'run_number': -1, 'sre_agent_name__version_number': 'sre_agent_name__version_number'}
+    ask_variables_on_launch: true
+    state: "{{ state }}"
+    workflow_nodes:
+      - identifier: node-install-observability-stack
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--InstallObservability-Stack"
+          type: job_template 
+        related:
+          success_nodes:
+            - identifier: node-install-sample-application
+          failure_nodes:
+            - identifier: node-uninstall-observability-stack
+          always_nodes: []
+      - identifier: node-install-sample-application
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Install-Sample-Application-{{ sample_application }}"
+          type: job_template 
+        related:
+          success_nodes:
+            - identifier: node-telemetry-access
+          failure_nodes:
+            - identifier: node-uninstall-sample-application
+          always_nodes: []
+      - identifier: node-telemetry-access
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Setup-For-Telemetry-Access"
+          type: job_template
+        related:
+          success_nodes:
+            - identifier: node-trace-gathering
+          failure_nodes:
+            - identifier: node-uninstall-sample-application
+          always_nodes: []
+      - identifier: node-trace-gathering
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Trace-Gathering"
+          type: job_template
+        related:
+          success_nodes:
+            - identifier: node-trigger-fault
+          failure_nodes:
+            - identifier: node-uninstall-sample-application
+          always_nodes: []
+      - identifier: node-trigger-fault
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Trigger-Fault"
+          type: job_template 
+        related:
+          success_nodes:
+            - identifier: node-post-fault-injection
+          failure_nodes:
+            - identifier: node-remove-fault
+          always_nodes: []
+      - identifier: node-post-fault-injection
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Post-Fault-Injection"
+          type: job_template 
+        related:
+          success_nodes:
+            - identifier: node-check-for-alerts
+          failure_nodes:
+            - identifier: node-pre-fault-removal
+          always_nodes: []
+      - identifier: node-check-for-alerts
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Check-for-Alerts"
+          type: job_template 
+        related:
+          success_nodes:
+            - identifier: node-alert-recorder-on
+          failure_nodes:
+            - identifier: node-pre-fault-removal
+          always_nodes: []
+      - identifier: node-alert-recorder-on
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Alert-Recorder-On"
+          type: job_template 
+        related:
+          success_nodes:
+            - identifier: node-pause
+          failure_nodes:
+            - identifier: node-pre-fault-removal
+          always_nodes: []
+      - identifier: node-pause
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Node-Pause"
+          type: job_template 
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-pre-fault-removal
+      - identifier: node-pre-fault-removal
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Pre-Fault-Removal"
+          type: job_template 
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-remove-fault
+      - identifier: node-remove-fault
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Remove-Fault"
+          type: job_template 
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-alert-recorder-off
+      - identifier: node-alert-recorder-off
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Alert-Recorder-Off"
+          type: job_template 
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-uninstall-sample-application-end
+      - identifier: node-uninstall-sample-application-end
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Uninstall-Sample-Application-{{ sample_application }}"
+          type: job_template
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-uninstall-observability-stack-end
+      - identifier: node-uninstall-observability-stack-end
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--UninstallObservability-Stack"
+          type: job_template 
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes: []
+      - identifier: node-uninstall-sample-application
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--Uninstall-Sample-Application-{{ sample_application }}"
+          type: job_template
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-uninstall-observability-stack
+      - identifier: node-uninstall-observability-stack
+        unified_job_template:
+          name: "Scenario-{{ scenario_number }}--UninstallObservability-Stack"
+          type: job_template
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes: []
+  register: one_mode_deployment_setup_result
+  tags:
+    - runner_workflow_setup

@@ -1,0 +1,118 @@
+---
+- hosts: localhost
+  vars_files:
+    - batch_variables.yaml
+    - secret.yaml
+  gather_facts: true
+  collections:
+    - community.aws
+  vars:
+    state_store: "s3://{{ s3name }}"
+    max_deletion_attempts: 5
+    deletion_delay_seconds: 30
+    batch_size: 8
+    async_timeout: 900
+    poll_interval: 60
+
+  tasks:
+    - name: Set kops path for Linux
+      set_fact:
+        kops_path: "/usr/local/bin/kops"
+      when: ansible_distribution in ['Ubuntu', 'Fedora', 'CentOS', 'RedHat']
+
+    - name: Set kops path for macOS
+      set_fact:
+        kops_path: "/opt/homebrew/bin/kops"
+      when: ansible_distribution == 'MacOSX'
+
+    - name: Get list of existing clusters
+      command: "{{ kops_path }} get clusters --state={{ state_store }} -o json"
+      register: existing_clusters_output
+      ignore_errors: yes
+
+    - name: Parse existing clusters
+      set_fact:
+        existing_cluster_names: "{{ (existing_clusters_output.stdout | from_json | map(attribute='metadata.name') | list) if existing_clusters_output.rc == 0 else [] }}"
+
+    - name: Show existing clusters
+      debug:
+        msg: "Found existing clusters: {{ existing_cluster_names }}"
+
+    - name: Generate list of clusters to delete
+      set_fact:
+        clusters_to_delete: "{{ existing_cluster_names | select('match', '^' + cluster_name_prefix + '-' + instance_type + '-aws-\\d+\\.k8s\\.local$') | list }}"
+
+    - name: Show clusters to delete
+      debug:
+        msg: "Clusters identified for deletion: {{ clusters_to_delete }}"
+
+    - name: Initialize deletion state
+      set_fact:
+        remaining_clusters: "{{ clusters_to_delete }}"
+        successfully_deleted: []
+
+    - name: Split clusters into batches
+      set_fact:
+        cluster_batches: "{{ remaining_clusters | batch(batch_size) }}"
+
+    - name: Delete clusters in batches
+      include_tasks: delete_max_batch_cluster.yaml
+      loop: "{{ cluster_batches }}"
+      loop_control:
+        loop_var: batch
+
+    - name: Find all route tables related to clusters
+      amazon.aws.ec2_vpc_route_table_info:
+        filters:
+          "tag:Name": "{{ cluster_name_prefix }}-public-rt"
+        region: "{{ aws_region }}"
+      register: route_tables_info
+
+    - name: Find all subnet related to clusters
+      amazon.aws.ec2_vpc_subnet_info:
+        filters:
+          vpc-id: "{{ item.vpc_id }}"
+        region: "{{ aws_region }}"
+      loop: "{{ route_tables_info.route_tables }}"
+      register: subnet_info_list
+
+    - name: Append list of subnet info entries
+      ansible.builtin.set_fact:
+        subnets_info: "{{ subnet_info_list.results | sum(attribute='subnets', start=[]) }}"
+
+    - name: Delete all new subnets created for related clusters
+      amazon.aws.ec2_vpc_subnet:
+        state: absent
+        vpc_id: "{{ item.vpc_id }}"
+        region: "{{ aws_region }}"
+        cidr: "{{ item.cidr_block }}"
+        debug_botocore_endpoint_logs: true
+      loop: "{{ subnets_info }}"
+
+    - name: Delete all route tables related to clusters
+      ec2_vpc_route_table:
+        vpc_id: "{{ item.vpc_id }}"
+        region: "{{ aws_region }}"
+        route_table_id: "{{ item.id }}"
+        lookup: id
+        state: absent
+      loop: "{{ route_tables_info.route_tables }}"
+
+    - name: Delete Internet Gateway for related clusters
+      amazon.aws.ec2_vpc_igw:
+        state: absent
+        vpc_id: "{{ item.vpc_id }}"
+        region: "{{ aws_region }}"
+      loop: "{{ route_tables_info.route_tables }}"
+
+    - name: Delete shared VPC for related clusters
+      amazon.aws.ec2_vpc_net:
+        state: absent
+        vpc_id: "{{ item.vpc_id }}"
+        region: "{{ aws_region }}"
+      loop: "{{ route_tables_info.route_tables }}"
+
+    - name: Delete validated clusters file
+      ansible.builtin.file:
+        path: validated_clusters.json
+        state: absent
