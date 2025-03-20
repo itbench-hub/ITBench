@@ -1,18 +1,4 @@
 ---
-- name: Add Helm chart repo from the Prometheus community
-  kubernetes.core.helm_repository:
-    name: prometheus-community
-    kubeconfig_path: "{{ kubeconfig }}"
-    repo_url: "https://prometheus-community.github.io/helm-charts"
-
-- name: Update Helm repo
-  kubernetes.core.helm:
-    name: dummy
-    kubeconfig_path: "{{ kubeconfig }}"
-    state: absent
-    release_namespace: "{{ prometheus_namespace_project_name }}"
-    update_repo_cache: true
-
 - name: Create Prometheus rules list
   set_fact:
     prometheus_rules: []
@@ -38,8 +24,6 @@
     release_namespace: "{{ prometheus_namespace_project_name }}"
     release_state: present
     create_namespace: true
-    wait: true
-    timeout: 10m0s
     values:
       additionalPrometheusRulesMap:
         rule-name:
