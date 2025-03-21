@@ -5,12 +5,10 @@
 # 📢 Announcements
 
 ## Latest Updates
-- **[February 7, 2025]** Initial release 0.1.0! 🎉 Includes research paper, self-hosted environment setup tooling, sample scenarios, and baseline agents
+- **[February 28, 2025]** Limited Access Beta 🏆: Invite-only access to the ITBench hosted scenario environments. ITBench handles scenario deployment, agent evaluation, and leaderboard updates. To request access, e-mail us [here](agent-bench-automation@ibm.com).
+- **[February 7, 2025]** Initial release! 🎉 Includes research paper, self-hosted environment setup tooling, sample scenarios, and baseline agents.
 
 ## Coming Soon
-- **[March 2025]** Limited Access Beta 🏆
-Get invite-only access to the ITBench hosted scenario evnironments and be one of the first participants on our leaderboard. You register your SRE, FinOps, or CISO AI agent and prep it for interacting with the ITBench-hosted scenario environments.  ITBench automatically handles scenario deployment, agent evaluation, and leaderboard updates. To request access, e-mail us [here](agent-bench-automation@ibm.com).
-
 - **[April 2025]** Public Launch 🚀
 Complete ITBench platform access opens to all.
 
@@ -33,6 +31,7 @@ As of February 2025, we are open-sourcing:
 1. Push-button deployment tooling for environment setup
 2. Framework for recreating:
    * 6 SRE scenarios
+   * 1 FinOps scenario
    * 4 categories of CISO scenarios
 3. Two reference AI agents:
    * CISO (Chief Information Security Officer) Agent
