@@ -605,12 +605,12 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
 1. Run your Agent with the goal description to achieve the objective. You can also use the CISO CAA agent (https://github.com/IBM/it-bench-ciso-caa-agent) as an example.
     - Please place `playbook.yml` and `policy.rego` in `<PATH/TO/AGENT_WORKDIR>` (The CISO CAA agent is already configured to place its output files in this directory by adding a single sentence `You can use "/tmp/agent" as your workdir."`. See [ciso-caa-agent#4-start-the-agent](https://github.com/IBM/it-bench-ciso-caa-agent?tab=readme-ov-file#4-start-the-agent) for the details.) These files will be used in the next step, "Evaluation".
     1. To run the CISO CAA agent (https://github.com/IBM/it-bench-ciso-caa-agent).
-        - Replace `{{ path_to_inventory }}` with `/tmp/agent/inventory.anible.ini` in the above goal description.
-        - Add on sentence "You can use `/tmp/agent\` as your workdir."
+        - Replace `{{ path_to_inventory }}` with `/tmp/agent/inventory.ansible.ini` in the above goal description.
+        - Add on sentence "You can use `/tmp/agent` as your workdir."
         ```
         docker run --rm -ti --name ciso-agent \
             -v <PATH/TO/AGENT_WORKDIR>:/tmp/agent \
-            -v /Users/yana/git/trl/study/agentic/ciso-agent-sample/.env:/etc/ciso-agent/.env \
+            -v <PATH/TO/YOUR .env File>:/etc/ciso-agent/.env \
             ciso-agent:latest \
             python src/ciso_agent/main.py \
             --goal "$(cat /tmp/goal.txt)" \
