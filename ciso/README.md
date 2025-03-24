@@ -13,7 +13,7 @@ This repository contains following 4 category of scenarios:
 └── README.md
 ```
 
-Each scenario includes a setup for a compliance misconfigured environment and tools to check and address if the misconfiguration is resolved or not. 
+Each scenario includes a setup for a compliance misconfigured environment and tools to check and address if the misconfiguration is resolved or not.
 
 ## Table of Contents
 
@@ -39,9 +39,9 @@ Each scenario includes a setup for a compliance misconfigured environment and to
 I would like to check if the following condition is satisfiled, given a Kubernetes cluster with `kubeconfig.yaml`
 Minimize the admission of containers wishing to share the host network namespace
 
-To check the condition, do the following steps. 
+To check the condition, do the following steps.
 - deploy a Kyverno policy to the cluster
-- chcek if the policy is correctly deployed. 
+- chcek if the policy is correctly deployed.
 
 If deploying the policy failed and if you can fix the issue, you will do it and try deploying again.
 Once you get a final answer, you can quit the work.
@@ -77,7 +77,7 @@ Please refer to [evaluation/main.py](/ciso/1.gen-cis-b-k8s-kyverno/evaluation/ma
 ```
 ├── 1.k8s-kyverno
 │   ├── evaluation  # Tools or scripts to check if the injected security issues are detected or not in this scenario
-│   ├── manifests   # Kubernetes resources to be deployed for compliance violation 
+│   ├── manifests   # Kubernetes resources to be deployed for compliance violation
 │   ├── playbooks   # Ansible playbooks to set up the scenario environment
 │   ├── examples    # Example Kyverno Policy to detect the compliance violation
 │   └── Makefile    # Commands to simplify setup and execution for the scenario
@@ -92,12 +92,12 @@ Please refer to [evaluation/main.py](/ciso/1.gen-cis-b-k8s-kyverno/evaluation/ma
 I would like to check if the following condition is satisfiled, given a Kubernetes cluster with `kubeconfig.yaml`
     Minimize the admission of containers wishing to share the host network namespace
 
-To check the condition, do the following steps. 
+To check the condition, do the following steps.
 - get related resource(s) on the cluster by kubectl command
 - chcek if the conditions are satisfied by OPA Rego policy
 
-for those steps, you need to create an OPA Rego policy `policy.rego`. 
-Also, save the kubectl command as `script.sh` with the following design. 
+for those steps, you need to create an OPA Rego policy `policy.rego`.
+Also, save the kubectl command as `script.sh` with the following design.
 - The script should output the collected related resources to a file named `collected_data.json` in the current working directory.
 - Please remove any kubeconfig configuration (e.g. --kubeconfig args) from the script, as users will configure the kubeconfig using environment variables or other methods.
 
@@ -129,7 +129,7 @@ When an agent is invoked, an input is provided about this scenario. The input is
 The evaluation verifies the following to return a pass:
 - Confirm that the script.sh and policy.rego are produced.
 - Ensure that script.sh runs successfuly and verify that the collected_data.json is produced.
-- Ensure that OPA command runs successfully with the policy.rego against the collected_data.json. 
+- Ensure that OPA command runs successfully with the policy.rego against the collected_data.json.
 - Verify that the OPA outputs expected result.
 
 Please refer to [evaluate.yml](/ciso/2.gen-cis-b-k8s-kubectl-opa/playbooks/evaluate.yml) for the details.
@@ -138,9 +138,9 @@ Please refer to [evaluate.yml](/ciso/2.gen-cis-b-k8s-kubectl-opa/playbooks/evalu
 ```
 ├── 2.k8s-kubectl-opa
 │   ├── evaluation  # Tools or scripts to check if the injected security issues are detected or not in this scenario
-│   ├── manifests   # Kubernetes resources to be deployed for compliance violation 
+│   ├── manifests   # Kubernetes resources to be deployed for compliance violation
 │   ├── playbooks   # Ansible playbooks to set up the scenario environment
-│   ├── examples    # Example scripts to fetch Kubernetes resources and OPA Rego policy to check if the statuses complies or not 
+│   ├── examples    # Example scripts to fetch Kubernetes resources and OPA Rego policy to check if the statuses complies or not
 │   └── Makefile    # Commands to simplify setup and execution for the scenario
 ```
 
@@ -153,9 +153,9 @@ Please refer to [evaluate.yml](/ciso/2.gen-cis-b-k8s-kubectl-opa/playbooks/evalu
 I would like to check if the following condition is satisfiled, given a host name `rhel9_servers`, on RHEL by using Ansible Playbook and OPA Rego policy
     Ensure SSH X11 forwarding is disabled
 
-To check the condition, do the following steps. 
-- collect configuration from the RHEL host and save it locally. you can use ansible-playbook to do that. 
-- chcek if the condition is met by using rego policy with the input given by the step above. 
+To check the condition, do the following steps.
+- collect configuration from the RHEL host and save it locally. you can use ansible-playbook to do that.
+- chcek if the condition is met by using rego policy with the input given by the step above.
 
 for those steps, you need to create ansible playbook `playbook.yml` and OPA rego policy `policy.rego`.
 The playbook is implemented to locate the collected data to a file named `collected_data.json` in the current working directory.
@@ -188,7 +188,7 @@ When an agent is invoked, an input is provided about this scenario. The input is
 The evaluation verifies the following to return a pass:
 - Confirm that the playbook.yml and policy.rego are produced.
 - Ensure that playbook.yml runs successfuly and verify that the collected_data.json is produced.
-- Ensure that OPA command runs successfully with the policy.rego against the collected_data.json. 
+- Ensure that OPA command runs successfully with the policy.rego against the collected_data.json.
 - Verify that the OPA outputs expected result.
 
 Please refer to [evaluate.yml](/ciso/3.gen-cis-b-rhel9-ansible-opa/playbooks/evaluate.yml) for the details.
@@ -198,7 +198,7 @@ Please refer to [evaluate.yml](/ciso/3.gen-cis-b-rhel9-ansible-opa/playbooks/eva
 ├── 3.rhel9-ansible-opa
 │   ├── evaluation  # Tools or scripts to check if the injected security issues are detected or not in this scenario
 │   ├── playbooks   # Ansible playbooks to set up the scenario environment
-│   ├── examples    # Example Ansible Playbook to fetch system statuses and OPA Rego policy to check if the statuses complies or not 
+│   ├── examples    # Example Ansible Playbook to fetch system statuses and OPA Rego policy to check if the statuses complies or not
 │   └── Makefile    # Commands to simplify setup and execution for the scenario
 │   └── tasks
 │       ├── fault_inject.yml # Ansible task to make the RHEL system compliance violation
@@ -258,7 +258,7 @@ Please refer to [evaluation.py](/ciso/4.upd-cis-b-k8s-kyverno/evaluation.py) for
 ```
 ├── 4.updating-k8s-kyverno
 │   ├── evaluation  # Tools or scripts to check if the injected security issues are detected or not in this scenario
-│   ├── manifests   # Kubernetes resources to be deployed for compliance violation 
+│   ├── manifests   # Kubernetes resources to be deployed for compliance violation
 │   ├── playbooks   # Ansible playbooks to set up the scenario environment
 │   ├── examples    # Example Kyverno Policy to detect the compliance violation
 │   └── Makefile    # Commands to simplify setup and execution for the scenario
@@ -336,16 +336,16 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     - For Kind, [prepare-kubeconfig-kind.md](/ciso/prepare-kubeconfig-kind.md)
     - For EKS, [prepare-kubeconfig-eks.md](/ciso/prepare-kubeconfig-eks.md)
 1. Prepare two working directories to be mounted by the Docker container
-    - One directory will be used for the Task Scenario (referenced as `<PATH/TO/SCENARIO_WORKDIR>` in later steps). 
-    - The other will be used for the Agent (referenced as `<PATH/TO/AGENT_WORKDIR>`). 
-   
+    - One directory will be used for the Task Scenario (referenced as `<PATH/TO/SCENARIO_WORKDIR>` in later steps).
+    - The other will be used for the Agent (referenced as `<PATH/TO/AGENT_WORKDIR>`).
+
     **These directories will be actively accessed during the benchmark, so make sure to use directories that are safe to modify.**
     - Examples:
         - `/tmp/ciso-scenario` for `<PATH/TO/SCENARIO_WORKDIR>`
         - `/tmp/ciso-agent` for `<PATH/TO/AGENT_WORKDIR>`
 
 #### Steps
-1. Setup a scenario environment against the Kubernetes cluster. 
+1. Setup a scenario environment against the Kubernetes cluster.
     This command installs Kyverno to the provided kubeconfig.yaml cluster. It takes few minutes to finish.
 
     ```
@@ -368,11 +368,11 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     changed: [localhost]
 
     PLAY RECAP ****************************************************************************************************************************
-    localhost                  : ok=55   changed=7    unreachable=0    failed=0    skipped=8    rescued=0    ignored=0   
+    localhost                  : ok=55   changed=7    unreachable=0    failed=0    skipped=8    rescued=0    ignored=0
     ```
 1. Inject compliance issues into the environment
     This command deploys nginx that violates the given policy, for example, "minimize the admission of containers wishing to share the host network namespace" in the case of `1.gen-cis-b-k8s-kyverno`, where hostNetwork in the pod manifest is set to true.
-        
+
     ```
     docker run --rm -ti --name ciso-task-scenario \
     -v <PATH/TO/SCENARIO_WORKDIR>:/tmp/scenario \
@@ -384,12 +384,12 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     ```
 
     Example output
-    
+
     ```
     PLAY [Execute fault injection] *******************************************************************************************
     ...
     PLAY RECAP ***************************************************************************************************************
-    localhost                  : ok=29   changed=3    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+    localhost                  : ok=29   changed=3    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0
     ```
     - Now a pod that violates the policy to minimize the admission of containers wishing to share the host network namespace. (Check that hostNetwork is set to true)
         ```
@@ -429,9 +429,9 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     I would like to check if the following condition is satisfiled, given a Kubernetes cluster with `kubeconfig.yaml`
         Minimize the admission of containers wishing to share the host network namespace.
 
-    To check the condition, do the following steps. 
+    To check the condition, do the following steps.
     - deploy a Kyverno policy to the cluster
-    - chcek if the policy is correctly deployed. 
+    - chcek if the policy is correctly deployed.
 
     If deploying the policy failed and if you can fix the issue, you will do it and try deploying again.
     Once you get a final answer, you can quit the work.
@@ -461,7 +461,7 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
             "generate_policy": false,
             "evidence_available": false
         }
-    }       
+    }
     ```
     - If the `pass` is `true`, the CISO CAA Agent has successfully deployed the correct Kyverno Policy. You can check the Kyverno Policy that the CISO CAA Agent created.
         ```
@@ -492,7 +492,7 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     ```
     Using default input file with override by parameters
     Using default input file with override by parameters
-    ansible-playbook -i dynamic_inventory.py ./playbooks/revert.yml   
+    ansible-playbook -i dynamic_inventory.py ./playbooks/revert.yml
 
     PLAY [Revert the environment] *********************************************************************************************************
     ...
@@ -500,7 +500,7 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     changed: [RHEL9 Machine -> localhost]
 
     PLAY RECAP ****************************************************************************************************************************
-    RHEL9 Machine              : ok=28   changed=6    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+    RHEL9 Machine              : ok=28   changed=6    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0
     ```
 
 ### 3b. Task Scenario for Targeting Red Hat Enterprise Linux 9
@@ -512,11 +512,11 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     - Fill in the following fields:
         - `<IP address or hostname of the RHEL9 machine>`
         - `<Username to access the RHEL9 machine>`
-    - Save the completed `input.json` in a designated location (e.g., /tmp/input.json). 
+    - Save the completed `input.json` in a designated location (e.g., /tmp/input.json).
 1. Prepare SSH Key to access the RHEL machine
 1. Prepare working directories to be mounted by the Docker container
     These directories will be actively accessed during the benchmark, so make sure to use directories that are safe to modify.
-    - For example: /tmp/ciso-agent for `<PATH/TO/AGENT_WORKDIR>` 
+    - For example: /tmp/ciso-agent for `<PATH/TO/AGENT_WORKDIR>`
     - Unlike to [3a. Task Scenario for Targeting Kubernetes Cluster](#3a-task-scenario-for-targeting-kubernetes-cluster), `<PATH/TO/SCENARIO_WORKDIR>` is not required.
 
 #### Steps
@@ -543,11 +543,11 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     changed: [RHEL9 Machine -> localhost]
 
     PLAY RECAP ****************************************************************************************************************************
-    RHEL9 Machine              : ok=32   changed=6    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+    RHEL9 Machine              : ok=32   changed=6    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0
     ```
 1. Inject compliance issues into the environment
     This command applies non-compliant settings to the system to simulate compliance issues. Please see [3.gen-cis-b-rhel9-ansible-opa/tasks/fault_inject.yml](/ciso/3.gen-cis-b-rhel9-ansible-opa/tasks/fault_inject.yml) for what is injected.
-        
+
     ```
     docker run --rm -ti --name ciso-task-scenario \
         -v <PATH/TO/AGENT_WORKDIR>:/tmp/agent\
@@ -563,10 +563,10 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     PLAY [Execute fault injection] *******************************************************************************************
     ...
     PLAY RECAP ****************************************************************************************************************************
-    RHEL9 Machine              : ok=24   changed=4    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0    
+    RHEL9 Machine              : ok=24   changed=4    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0
     ```
     - Now the target RHEL machine is configured as hitting the required compliance issue (X11Forwarding is enabled.)
-        - Login to your RHEL machine and check the /etc/ssh/sshd_config. 
+        - Login to your RHEL machine and check the /etc/ssh/sshd_config.
         ```
         cat /etc/ssh/sshd_config | grep X11Forwarding
         #X11Forwarding no
@@ -590,11 +590,11 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     Example output
     ```
     I would like to check if the following condition is satisfiled, given a host name `rhel9_servers`, on RHEL by using Ansible Playbook and OPA Rego policy
-        Ensure SSH X11 forwarding is disabled 
+        Ensure SSH X11 forwarding is disabled
 
-    To check the condition, do the following steps. 
-    - collect configuration from the RHEL host and save it locally. you can use ansible-playbook to do that. 
-    - chcek if the condition is met by using rego policy with the input given by the step above. 
+    To check the condition, do the following steps.
+    - collect configuration from the RHEL host and save it locally. you can use ansible-playbook to do that.
+    - chcek if the condition is met by using rego policy with the input given by the step above.
 
     for those steps, you need to create ansible playbook `playbook.yml` and OPA rego policy `policy.rego`.
     If you can fix the generated code, do it and run the fixed code again.
@@ -629,7 +629,7 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
 
     Example output
     ```
-    {"pass": true, "details": "[fetcher] cmd: ['ansible-playbook', '/tmp/agent/playbook.yml', '-i', '/tmp/agent/inventory.ansible.ini'], stdout: \nPLAY [Collect SSH configuration to check X11 forwarding] ***********************\n\nTASK [Gathering Facts] *********************************************************\nok: [rhel9]\n\nTASK [Check if X11 forwarding is disabled in SSH configuration] ****************\nchanged: [rhel9]\n\nTASK [Save the SSH configuration check result] *********************************\nchanged: [rhel9 -> localhost]\n\nTASK [Collect additional information if X11 forwarding is enabled] *************\nchanged: [rhel9]\n\nTASK [Save additional information if X11 forwarding is enabled] ****************\nchanged: [rhel9 -> localhost]\n\nPLAY RECAP *********************************************************************\nrhel9                      : ok=5    changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   , stderr: \n[checker] cmd: ['opa', 'eval', '--data', '/tmp/agent/policy.rego', '--input', '/tmp/agent/collected_data.json', 'data.check.result', '--format', 'raw'], stdout: false, stderr: \n"}    
+    {"pass": true, "details": "[fetcher] cmd: ['ansible-playbook', '/tmp/agent/playbook.yml', '-i', '/tmp/agent/inventory.ansible.ini'], stdout: \nPLAY [Collect SSH configuration to check X11 forwarding] ***********************\n\nTASK [Gathering Facts] *********************************************************\nok: [rhel9]\n\nTASK [Check if X11 forwarding is disabled in SSH configuration] ****************\nchanged: [rhel9]\n\nTASK [Save the SSH configuration check result] *********************************\nchanged: [rhel9 -> localhost]\n\nTASK [Collect additional information if X11 forwarding is enabled] *************\nchanged: [rhel9]\n\nTASK [Save additional information if X11 forwarding is enabled] ****************\nchanged: [rhel9 -> localhost]\n\nPLAY RECAP *********************************************************************\nrhel9                      : ok=5    changed=4    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   , stderr: \n[checker] cmd: ['opa', 'eval', '--data', '/tmp/agent/policy.rego', '--input', '/tmp/agent/collected_data.json', 'data.check.result', '--format', 'raw'], stdout: false, stderr: \n"}
     ```
     - If the `pass` is `true`, the CISO CAA Agent has successfully created playbook for status collection and OPA policy for compliance checking aganst the collected data.
 1. Now you successfully finished a single evaluation of the Agent. You can cleanup the scenario environment by `revert` command, which revert all the injected fault configuration and remove a temporary created user (the username is ansible_user).
@@ -647,7 +647,7 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     ```
     Using default input file with override by parameters
     Using default input file with override by parameters
-    ansible-playbook -i dynamic_inventory.py ./playbooks/revert.yml   
+    ansible-playbook -i dynamic_inventory.py ./playbooks/revert.yml
 
     PLAY [Revert the environment] *********************************************************************************************************
     ...
@@ -655,6 +655,5 @@ The example below demonstrates the steps for `1.gen-cis-b-k8s-kyverno`. When try
     changed: [RHEL9 Machine -> localhost]
 
     PLAY RECAP ****************************************************************************************************************************
-    RHEL9 Machine              : ok=28   changed=6    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0   
+    RHEL9 Machine              : ok=28   changed=6    unreachable=0    failed=0    skipped=2    rescued=0    ignored=0
     ```
-
