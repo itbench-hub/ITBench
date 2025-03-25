@@ -127,7 +127,7 @@ kubectl port-forward svc/ingress-nginx-controller -n ingress-nginx 8080:80
 5. To view Grafana dashboard in your web browser, use the following URL: 
 
 ```bash
-http://localhost:8080/prometheus/alerting/list
+http://localhost:8080/grafana/alerting/list
 ```
 
 6. In the right panel, under the `Grafana` section, click on the `AstronomyNotifications` folder to view the alerts on the dashboard. Four alerts are defined:
