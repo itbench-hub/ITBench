@@ -121,7 +121,7 @@ endif
 .PHONY: deploy_scenario_application
 ifeq ($(IS_HOTEL_RESERVATION_SCENARIO),true)
 deploy_scenario_application: deploy_hotel_reservation
-else 
+else
 deploy_scenario_application: deploy_astronomy_shop
 endif
 
@@ -201,23 +201,23 @@ fetch_alerts:
 	ansible-playbook -v base.yaml --tags "fetch_alerts" \
 		--extra-vars "incident_number=$(INCIDENT_NUMBER)" \
 		--extra-vars "sample_application=$(SAMPLE_APPLICATION)" \
-		> /tmp/fetch.out 2>&1 & 
+		> /tmp/fetch.out 2>&1 &
 
 .PHONY: e2e_awx_init_stage_one
 e2e_awx_init_stage_one: ## Given an incident number, run_uuid intitialize the scenario run leveraging an AWX node
-	kops export kubecfg --admin --name=${AWX_CLUSTERNAME} --state=s3://${S3_BUCKET_NAME} --kubeconfig /tmp/${AWX_CLUSTERNAME.yaml}
+	kops export kubecfg --admin --name=${AWX_CLUSTERNAME} --state=s3://${S3_BUCKET_NAME} --kubeconfig /tmp/${AWX_CLUSTERNAME}.yaml
 	# Get cluster to be used configuration
 	KOPS_STATE_STORE=s3://${S3_BUCKET_NAME} kops export kubecfg ${CLUSTER_ASSIGNED_NAME} --admin --kubeconfig /tmp/${CLUSTER_ASSIGNED_NAME}.yaml; \
         ansible-playbook -v base.yaml --tags "awx_scenario_setup" --extra-vars "relevant_kubeconfig_file_path=/tmp/${CLUSTER_ASSIGNED_NAME}.yaml scenario_number=${INCIDENT_NUMBER} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre"; \
-	ansible-playbook -v base.yaml --tags "workflow_setup_stage_one" --extra-vars "scenario_number=${INCIDENT_NUMBER} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} sre_bench_runner=true domain=sre"; \
-	ansible-playbook -v base.yaml --tags "workflow_launch_stage_one" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} number_of_runs=${NUMBER_OF_RUNS} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre";
+	ansible-playbook -v base.yaml --tags "workflow_setup_stage_one" --extra-vars "scenario_number=${INCIDENT_NUMBER} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} sre_bench_runner=true domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'"; \
+	ansible-playbook -v base.yaml --tags "workflow_launch_stage_one" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} number_of_runs=${NUMBER_OF_RUNS} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'";
 
 .PHONY: e2e_awx_stage_three
 e2e_awx_stage_three: ## Given an incident number, run_uuid end the scenario run leveraging an AWX node
 	# Get cluster to be used configuration
 	KOPS_STATE_STORE=s3://${S3_BUCKET_NAME} kops export kubecfg ${CLUSTER_ASSIGNED_NAME} --admin --kubeconfig /tmp/${CLUSTER_ASSIGNED_NAME}.yaml; \
-	ansible-playbook -v base.yaml --tags "workflow_setup_stage_three" --extra-vars "scenario_number=${INCIDENT_NUMBER} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} sre_bench_runner=true domain=sre"; \
-	ansible-playbook -v base.yaml --tags "workflow_launch_stage_three" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} number_of_runs=${NUMBER_OF_RUNS} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre";
+	ansible-playbook -v base.yaml --tags "workflow_setup_stage_three" --extra-vars "scenario_number=${INCIDENT_NUMBER} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} sre_bench_runner=true domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'"; \
+	ansible-playbook -v base.yaml --tags "workflow_launch_stage_three" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} number_of_runs=${NUMBER_OF_RUNS} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'";
 
 .PHONY: evaluation
 .SILENT: evaluation
@@ -233,16 +233,16 @@ evaluation:
 																	location=${location} \
 																	sre_bench_runner=true \
 																	kubeconfig=/tmp/${CLUSTER_ASSIGNED_NAME}.yaml \
-																	domain=sre" > /tmp/eval.out ; \
+																	domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'" > /tmp/eval.out ; \
 	cat evaluation/e2e_new/incident_reports/$(INCIDENT_NUMBER).json
 	rm evaluation/e2e_new/incident_reports/$(INCIDENT_NUMBER).json
 
 .SILENT: bundle_status
 bundle_status:
-	ansible-playbook base.yaml --tags "bundle_status" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} run_number=1 bundle_status_file=roles/bundle_status/status-$$INCIDENT_NUMBER.json s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre" > /tmp/status.out; \
+	ansible-playbook base.yaml --tags "bundle_status" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} run_number=1 bundle_status_file=roles/bundle_status/status-$$INCIDENT_NUMBER.json s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'" > /tmp/status.out; \
 	cat roles/bundle_status/status-${INCIDENT_NUMBER}.json
 	rm roles/bundle_status/status-${INCIDENT_NUMBER}.json
 
 .SILENT: bundle_info
 bundle_info:
-	ANSIBLE_STDOUT_CALLBACK=json ansible-playbook base.yaml --tags "get_bundle_info" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} run_number=1 s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true kubeconfig=/tmp/${CLUSTER_ASSIGNED_NAME}.yaml" | jq '.plays[].tasks[] | select(.task.name == "bundle_info : Return grafana url").hosts.localhost.msg'
+	ANSIBLE_STDOUT_CALLBACK=json ansible-playbook base.yaml --tags "get_bundle_info" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} run_number=1 s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true kubeconfig=/tmp/${CLUSTER_ASSIGNED_NAME}.yaml s3_endpoint_url='https://s3.us-east-2.amazonaws.com'" | jq '.plays[].tasks[] | select(.task.name == "bundle_info : Return grafana url").hosts.localhost.msg'
