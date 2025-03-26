@@ -1,6 +1,6 @@
 # ITBench
 
-**[📄 Paper](./it_bench_arxiv.pdf) | [🚀 Getting started] | [📦 Scenarios](#scenarios) | [🤖 Agents](#agents) | [📚 Cite](#how-to-cite) | [🧑‍💻 Contribute](#contribute) | [📬 Contacts](#contacts)**
+**[📄 Paper](./it_bench_arxiv.pdf) | [🚀 Getting started](#getting-started) | [📦 Scenarios](#scenarios) | [🤖 Agents](#agents) | [📚 Cite](#how-to-cite) | [🧑‍💻 Contribute](#contribute) | [📬 Contacts](#contacts)**
 
 ---
 
