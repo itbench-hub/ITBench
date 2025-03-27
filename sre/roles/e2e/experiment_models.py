@@ -21,7 +21,7 @@ class GitConfigModel(BaseModel):
 class LLMConfigModel(BaseModel):
     provider: str
     model: str
-    base_url: str
+    url: str
     api_key: str # pragma: allowlist secret
     api_version: str
     seed: int
@@ -35,10 +35,9 @@ class LLMConfigModel(BaseModel):
 
 class LLMConfigModelAgent(LLMConfigModel):
     enable_god_mode: bool = Field(default=True)
-
-
-class LLMConfigModelTools(LLMConfigModel):
-    is_native_function_calling_supported: bool = Field(default=True)
+    model_embedding: str = Field(default="")
+    url_embedding: str = Field(default="")
+    api_version_embedding: str = Field(default="")
 
 
 class WatsonXConfig(BaseModel):
@@ -52,7 +51,7 @@ class AgentAnalyticsSDKModel(BaseModel):
 
 class AgentConfigModel(BaseModel):
     agents_config: LLMConfigModelAgent
-    tools_config: LLMConfigModelTools
+    tools_config: LLMConfigModel
     watsonx_config: WatsonXConfig
     agent_analytics_sdk: AgentAnalyticsSDKModel
 
@@ -79,3 +78,5 @@ class ExperimentModel(BaseModel):
     controller_host: Optional[str] = None
     controller_username: Optional[str] = None
     controller_password: Optional[str] = None
+    s3_endpoint_url: str
+    s3_bucket_name_for_results: str
