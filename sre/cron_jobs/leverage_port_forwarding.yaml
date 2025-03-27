@@ -3,7 +3,7 @@
   ansible.builtin.shell: |
     lsof -i :{{ item }} > /dev/null && echo "in_use" || echo "available"
   register: lsof_check
-  loop: "{{ range(32100, 32125) | list }}"  
+  loop: "{{ range(32100, 32125) | list }}"
   changed_when: false
   failed_when: false
   loop_control:
@@ -16,7 +16,7 @@
   when: ingress_hostname is undefined or ingress_hostname | trim == ''
 
 - name: Kubectl port-forward on/for Grafana with dynamic port
-  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "{{ grafana_namespace_project_name }}" port-forward "svc/grafana" "{{ dynamic_port }}:80" --request-timeout=15m
+  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "grafana" port-forward "svc/grafana" "{{ dynamic_port }}:80" --request-timeout=15m
   async: 900
   poll: 0
   register: grafana_port_forward_for_datasources_creation
