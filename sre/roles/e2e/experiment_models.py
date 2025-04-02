@@ -34,7 +34,7 @@ class LLMConfigModel(BaseModel):
 
 
 class LLMConfigModelAgent(LLMConfigModel):
-    enable_god_mode: bool = Field(default=True)
+    god_mode: bool = Field(default=True)
     model_embedding: str = Field(default="")
     url_embedding: str = Field(default="")
     api_version_embedding: str = Field(default="")
