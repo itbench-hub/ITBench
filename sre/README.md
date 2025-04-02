@@ -121,7 +121,7 @@ Currently the incident scenarios open-sourced are incidents 1, 3, 23, 26, 27, an
 4. After fault injection, to view alerts in the grafana dashboard, use Port Forward to access the Grafana service.
 
 ```bash
-kubectl port-forward svc/ingress-nginx-controller -n ingress-nginx 8080:80
+kubectl port-forward svc/ingress-nginx-controller -n ingress-nginx 8080:80 &
 ```
 
 5. To view Grafana dashboard in your web browser, use the following URL: 
@@ -139,12 +139,12 @@ An Alert's default `State` is `Normal`. After few minutes, the fault `State` cha
 
 7. (Optional) You only need to do this if you plan to leverage our [SRE-Agent](https://github.com/IBM/itbench-sre-agent). Port forward the topology mapper service by running. 
 ```bash
-kubectl -n kube-system port-forward svc/topology-monitor 8081:8080
+kubectl -n kube-system port-forward svc/topology-monitor 8081:8080 &
 ```
 
 8. (Optional) You only need to do this if you plan to leverage our [SRE-Agent](https://github.com/IBM/itbench-sre-agent). Leverage the values below for the `.env.tmpl`
 ```
-GRAFANA_URL=http://localhost:8080/prometheus
+GRAFANA_URL=http://localhost:8080/grafana
 TOPOLOGY_URL=http://localhost:8081
 ```
 
