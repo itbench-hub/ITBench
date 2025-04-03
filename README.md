@@ -84,14 +84,6 @@ Once your request is approved, the onboarding workflow will generate an `agent_m
 
 You can now download this manifest and use it with the agent harness to initiate a benchmark run.
 
----
-
-## 📝 License
-
-This project is licensed under the [Apache License 2.0](LICENSE).
-
----
-
 ## Scenarios
 
 ITBench scenarios simulate realistic IT problems in live environments. For example:
