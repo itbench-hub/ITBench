@@ -1,10 +1,54 @@
 version: 2
 updates:
+  - package-ecosystem: github-actions
+    directories:
+      - /
+    groups:
+      actions-production-dependencies:
+        applies-to: version-updates
+        dependency-type: production
+    schedule:
+      interval: daily
+
   - package-ecosystem: docker
     directories:
       - sre/tools/**/*
     groups:
       docker-images-production:
         applies-to: version-updates
+        dependency-type: development
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: gomod
+    directories:
+      - sre/local_cluster
+    groups:
+      golang-tool-development-dependencies:
+        applies-to: version-updates
+        dependency-type: development
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pip
+    directories:
+      - /
+      - sre/remote_cluster/
+    groups:
+      pip-development-dependecies:
+        applies-to: version-updates
+        dependency-type: development
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: pip
+    directories:
+      - sre/
+      - sre/tools/**/*
+    groups:
+      pip-production-dependecies:
+        applies-to: security-updates
+        dependency-type: production
     schedule:
       interval: daily
+    open-pull-requests-limit: 0
