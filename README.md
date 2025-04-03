@@ -45,16 +45,50 @@ Through push-button workflows and interpretable metrics, ITBench helps AI resear
 ITBench is built on two core principles:
 
 1. **Realistic environments** that emulate actual IT infrastructure and incidents  
-2. **Open, extensible design** enabling community contributions and broad IT coverage
+2. **Open, extensible framework** with comprehensive IT coverage
 
 ---
 
 ## Getting started
 
-1. **Explore scenarios**: Check out [ITBench-Scenarios](https://github.com/IBM/ITBench-Scenarios) for setup and available [scenarios](#scenarios).
-2. **Choose an agent**: Try the [SRE agent](https://github.com/IBM/ITBench-SRE-Agent) or the [CISO agent](https://github.com/IBM/ITBench-CISO-CAA-Agent).  
-3. **Run and evaluate**: Deploy a scenario, let the agent attempt to solve it, and compare results on the [leaderboard](https://github.com/IBM/ITBench-Leaderboard).  
-4. **Contribute**: Propose new scenarios or agent improvements, and help expand the benchmark.
+- **Explore scenarios**: Check out [ITBench-Scenarios](https://github.com/IBM/ITBench-Scenarios) for setup and available [scenarios](#scenarios).
+- **Choose an agent**: Try the [SRE agent](https://github.com/IBM/ITBench-SRE-Agent) or the [CISO agent](https://github.com/IBM/ITBench-CISO-CAA-Agent).  
+- **Run and evaluate**: Deploy a scenario, let the agent attempt to solve it, and compare results on the [leaderboard](https://github.com/IBM/ITBench-Leaderboard).  
+
+### Agent onboarding
+
+To onboard your agent and begin benchmarking, follow these steps:
+
+#### 1. Create a private GitHub repository
+
+You may create an empty repository or use an existing one. Note:
+
+- The repository **must be set to private**.
+- ITBench automation will create a file named `agent_manifest.json` at the **root** of the repository.  
+  Make sure this won’t conflict with existing files if you're using an existing project.
+
+#### 2. Install the ITBench GitHub App
+
+Install the [`ibm-itbench`](https://github.com/apps/ibm-itbench) GitHub App into the repository you created in step 1.
+
+#### 3. Submit an onboarding request
+
+Fill out and submit [this onboarding issue template](https://github.com/jpwsutton/itbenchautomation/issues/new?template=onboarding.yaml) with:
+
+- Agent details
+- The URL of your GitHub repository (e.g. `https://github.com/your-org/your-agent-repo`)
+
+#### 4. Receive your agent manifest
+
+Once your request is approved, the onboarding workflow will generate an `agent_manifest.json` file and commit it to your repository.
+
+You can now download this manifest and use it with the agent harness to initiate a benchmark run.
+
+---
+
+## 📝 License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
