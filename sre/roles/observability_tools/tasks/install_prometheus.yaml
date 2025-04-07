@@ -1,48 +1,86 @@
 ---
-- name: Create Prometheus rules list
-  set_fact:
-    prometheus_rules: []
+- name: Set additional template variables
+  ansible.builtin.set_fact:
+    enable_finops_rules: "{{ domain == 'finops' }}"
 
-- name: Load OpenCost recording rules from yaml
-  set_fact:
-    opencost_recording_rules: "{{ lookup('ansible.builtin.file', 'files/recording_rules_opencost.yaml')| from_yaml }}"
-  when:
-    - domain == "finops"
+- name: Copy alerting rules template into tmp directory for processing
+  ansible.builtin.copy:
+    src: templates/prometheus-alerting-rules.j2
+    dest: /tmp/prometheus-alerting-rules.j2
 
-- name: Add OpenCost rules to Prometheus rules list
-  set_fact:
-    prometheus_rules: "{{ prometheus_rules + opencost_recording_rules }}"
-  when:
-    - domain == "finops"
+- name: Create a temporary template with fake curly brackets for processing
+  ansible.builtin.replace:
+    path: /tmp/prometheus-alerting-rules.j2
+    regexp: "\\{\\{([a-zA-Z\\.$_ ]*)\\}\\}"
+    replace: "<<\\1>>"
+
+- name: Create new alerting rules template from proccesed template
+  ansible.builtin.copy:
+    dest: /tmp/prometheus-required-alerting-rules.j2
+    content: "{{ lookup('ansible.builtin.template', '/tmp/prometheus-alerting-rules.j2') }}"
+
+- name: Escape double curly brackets in alerting rules yaml file
+  ansible.builtin.replace:
+    path: /tmp/prometheus-required-alerting-rules.j2
+    regexp: "<<([a-zA-Z\\.$_ ]*)>>"
+    replace: "\\{\\{\"\\{\\{\"\\}\\}\\1\\{\\{\"\\}\\}\"\\}\\}"
+
+- name: Remove double backslash in alerting rules yaml file
+  ansible.builtin.replace:
+    path: /tmp/prometheus-required-alerting-rules.j2
+    regexp: "\\\\"
+    replace: ""
 
 - name: Deploy the Prometheus stack
   kubernetes.core.helm:
     name: "{{ prometheus_installation_name }}"
     kubeconfig_path: "{{ kubeconfig }}"
-    chart_ref: prometheus-community/kube-prometheus-stack 
+    chart_ref: prometheus-community/prometheus
     chart_version: "{{ prometheus_chart_version }}"
     release_namespace: "{{ prometheus_namespace_project_name }}"
     release_state: present
     create_namespace: true
     values:
-      additionalPrometheusRulesMap:
-        rule-name:
-          groups: "{{ prometheus_rules }}"
-      alertmanager:
-        ingress:
-          enabled: true
-      grafana:
+      server:
+        extraFlags:
+          - web.enable-lifecycle
+          - web.enable-otlp-receiver
+      serverFiles:
+        alerting_rules.yml: "{{ lookup('ansible.builtin.template', '/tmp/prometheus-required-alerting-rules.j2') | from_yaml }}"
+        recording_rules.yml: "{{ lookup('ansible.builtin.template', 'templates/prometheus-recording-rules.j2') | from_yaml }}"
+      prometheus-pushgateway:
         enabled: false
-      prometheus:
-        enabled: true
-        prometheusSpec:
-          additionalArgs:
-            - name: web.enable-otlp-receiver
-              value: ""
-          defaultRules:
-            additionalRuleLabels:
-              - for_instance_in_namespace: "{{ prometheus_namespace_project_name }}"
-          enableFeatures:
-            - otlp-write-receiver
-          podMonitorSelectorNilUsesHelmValues: false
-          serviceMonitorSelectorNilUsesHelmValues: false
+
+- name: Deploy Ingress for Prometheus and AlertManager frontends
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    resource_definition:
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: prometheus
+        namespace: "{{ prometheus_namespace_project_name }}"
+        annotations:
+          nginx.ingress.kubernetes.io/rewrite-target: /$2
+      spec:
+        ingressClassName: nginx
+        rules:
+          - http:
+              paths:
+                - pathType: ImplementationSpecific
+                  path: /prometheus(/|$)(.*)
+                  backend:
+                    service:
+                      name: "{{ prometheus_installation_name }}-server"
+                      port:
+                        number: 80
+          - http:
+              paths:
+                - pathType: ImplementationSpecific
+                  path: /alertmanager(/|$)(.*)
+                  backend:
+                    service:
+                      name: "{{ prometheus_installation_name }}-alertmanager"
+                      port:
+                        number: 9093

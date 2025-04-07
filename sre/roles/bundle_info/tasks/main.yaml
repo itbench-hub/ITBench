@@ -1,13 +1,13 @@
 ---
-- name: Get the Ingress URL of Grafana
-  ansible.builtin.shell: "KUBECONFIG={{ kubeconfig }} kubectl get ingress grafana -n {{ grafana_namespace_project_name }} -o json"
-  register: grafana_ingress
+- name: Get the Ingress URL of Prometheus
+  ansible.builtin.shell: "KUBECONFIG={{ kubeconfig }} kubectl get ingress prometheus -n {{ prometheus_namespace_project_name }} -o json"
+  register: prometheus_ingress
   tags:
     - get_bundle_info
 
 - name: Construct the alerts API URI
   set_fact:
-    alerts_api_url: "http://{{ grafana_ingress.stdout | from_json | json_query('status.loadBalancer.ingress[0].hostname') }}/{{ grafana_namespace_project_name }}"
+    alerts_api_url: "http://{{ prometheus_ingress.stdout | from_json | json_query('status.loadBalancer.ingress[0].hostname') }}/{{ prometheus_namespace_project_name }}"
   tags:
     - get_bundle_info
 
@@ -33,12 +33,12 @@
   register: kubeconfig_output
   tags:
     - get_bundle_info
-    
-- name: Return grafana url
+
+- name: Return Prometheus url
   debug:
-    msg: > 
+    msg: >
       {{ {
-          'grafana_url': (alerts_api_url),
+          'prometheus_url': (alerts_api_url),
           'kubeconfig': (kubeconfig_output.stdout)
         } }}
   tags:
