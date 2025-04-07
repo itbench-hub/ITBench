@@ -7,7 +7,7 @@ _Note: The following setup guide presumes that the required software listed [her
 ## Recommended Software
 
 1. [Podman](https://podman.io/)
-2. [Golang](https://go.dev/)
+2. [Golang - v1.24 and above](https://go.dev/)
 2. [Kind](https://kind.sigs.k8s.io/)
 3. [Cloud Provider Kind](https://github.com/kubernetes-sigs/cloud-provider-kind)
 
