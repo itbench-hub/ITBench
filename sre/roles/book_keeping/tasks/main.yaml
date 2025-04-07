@@ -40,15 +40,21 @@
     headers:
       Content-Type: "application/json"
   register: api_response
-  until: "{{ api_response.json.data.alerts | selectattr('state', '==', 'Alerting') | list | length > 0 }}"
+  until: "{{ api_response.json.data.alerts | selectattr('state', '==', 'firing') | list | length > 0 }}"
   retries: 120
   delay: 10
   tags:
     - book_keeping
 
-- name: Parse JSON response and filter for alerts in state alerting
+- name: Debug - All alerts
+  debug:
+    var: api_response.json.data.alerts
+  tags:
+    - book_keeping
+
+- name: Parse JSON response and filter for alerts in state firing/alerting
   set_fact:
-    json_data: "{{ api_response.json.data.alerts | selectattr('state', '==', 'Alerting') | list }}"
+    json_data: "{{ api_response.json.data.alerts | selectattr('state', '==', 'firing') | list }}"
   tags:
     - book_keeping
 
@@ -56,11 +62,11 @@
   ansible.builtin.tempfile:
     state: file
     suffix: temp
-  register: tempfile_for_alerts_in_alerting_state
+  register: tempfile_for_alerts_in_firing_state
   tags:
     - book_keeping
 
-- name: Debug json_data
+- name: Debug - Alerts in firing / alerting state
   debug:
     var: json_data
   tags:
@@ -69,7 +75,7 @@
 - name: Copy alerts in JSON to temp file
   ansible.builtin.copy:
     content: "{{ json_data | to_json }}"
-    dest: "{{ tempfile_for_alerts_in_alerting_state.path }}"
+    dest: "{{ tempfile_for_alerts_in_firing_state.path }}"
   tags:
     - book_keeping
 
@@ -78,7 +84,7 @@
     endpoint_url: "{{ s3_endpoint_url }}"
     bucket: "{{ s3_bucket_name_for_results }}"
     object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/alerts_in_alerting_state_{{now(utc=true,fmt='%Y-%m-%dT%H:%M:%S.%f')}}.txt"
-    src: "{{ tempfile_for_alerts_in_alerting_state.path }}"
+    src: "{{ tempfile_for_alerts_in_firing_state.path }}"
     mode: put
   tags:
     - book_keeping
