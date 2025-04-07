@@ -10,7 +10,7 @@ _Note: The following setup guide presumes that the required software listed [her
 
 1. [make] -- Ensure you have `make` installed or install it via `sudo dnf install make`
 2. [lsof] -- Ensure you have `lsof` installed or install it via `sudo dnf install lsof`
-3. [Go] -- Ensure you have `go` installed or install it by following the instructions [here](https://go.dev/doc/install)
+3. [Golang - v1.24 and above] -- Ensure you have `go` installed or install it by following the instructions [here](https://go.dev/doc/install)
 4. [Docker](https://www.docker.com/) -- See the next sub-section for installation details
 5. [Kind](https://kind.sigs.k8s.io/) -- See the next sub-section for installation details
 6. [Cloud-Provider-Kind](https://github.com/kubernetes-sigs/cloud-provider-kind) -- See the next sub-section for installation details

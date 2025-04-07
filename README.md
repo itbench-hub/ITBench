@@ -8,6 +8,7 @@ These scenarios simulate compliance-related misconfigurations. Each scenario pro
 - A pre-configured environment with specific compliance issues
 - Tools to detect misconfigurations
 - Validation methods to verify successful remediation
+
 CISO scenarios are located [here](./ciso).
 
 ## [SRE Scenarios](./sre)
@@ -21,11 +22,13 @@ These scenarios focus on observability and incident response. Each scenario incl
   - Kubernetes events exporter
 - Simulated faults that trigger service degradation
 - Thereby leading to alerts associated with application performance issues such as increased error rates and latency spikes
-  SRE scenarios are located [here](./sre).
+
+SRE scenarios are located [here](./sre).
 
 ## [FinOps Scenarios](./sre)
 Each scenario includes:
 - The core SRE observability stack
 - OpenCost integration for cost monitoring
 - Simulated faults trigger cost overrun alerts
- FinOps scenarios are located [here](./sre) along-side SRE scenarios.
+
+FinOps scenarios are located [here](./sre) along-side SRE scenarios.
