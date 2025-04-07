@@ -15,11 +15,11 @@
     dynamic_port: "{{ (lsof_check.results | selectattr('stdout', 'equalto', 'available') | map(attribute='item') | list | first) }}"
   when: ingress_hostname is undefined or ingress_hostname | trim == ''
 
-- name: Kubectl port-forward on/for Grafana with dynamic port
-  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "{{ grafana_namespace_project_name }}" port-forward "svc/grafana" "{{ dynamic_port }}:80" --request-timeout=10m
+- name: Kubectl port-forward on/for the prometheus-server service with dynamic port
+  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "{{ prometheus_namespace_project_name }}" port-forward "svc/prometheus-server" "{{ dynamic_port }}:80" --request-timeout=10m
   async: 600
   poll: 0
-  register: grafana_port_forward_for_datasources_creation
+  register: prometheus_port_forward_for_datasources_creation
   when: ingress_hostname is undefined or ingress_hostname | trim == ''
 
 - name: Wait for port-forward to be available
@@ -28,7 +28,7 @@
     timeout: 30
   when: ingress_hostname is undefined or ingress_hostname | trim == ''
 
-- name: Set the Grafana URL
+- name: Set the Prometheus URL
   set_fact:
-    grafana_url: "http://127.0.0.1:{{ dynamic_port }}"
+    prometheus_url: "http://127.0.0.1:{{ dynamic_port }}"
   when: ingress_hostname is undefined or ingress_hostname | trim == ''
