@@ -24,6 +24,7 @@ python -m pip install -r requirements-dev.txt
 
 ```shell
 pre-commit install
+pre-commit install --hook-type commit-msg --hook-type pre-push
 ```
 
 ## Committing Code
