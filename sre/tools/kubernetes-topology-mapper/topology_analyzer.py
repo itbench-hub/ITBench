@@ -12,31 +12,31 @@ class TopologyAnalyzer:
     def __init__(self, topology_data: Dict):
         """
         Initialize the analyzer with topology data.
-        
+
         Args:
             topology_data (dict): Dictionary containing nodes and edges information
         """
         self.topology_data = topology_data
         self.graph = nx.DiGraph()
         self._build_graph()
-        
+
     def _build_graph(self):
         """Build the directed graph from topology data."""
         # Create a set of all node IDs for quick lookup
         node_ids = {node["id"] for node in self.topology_data.get("nodes", [])}
-        
+
         # Add nodes with their attributes
         for node in self.topology_data.get("nodes", []):
             self.graph.add_node(node["id"], **node.get("attributes", {}))
-        
+
         # Track missing nodes referenced in edges
         missing_nodes = set()
-            
+
         # Add edges with their attributes
         for edge in self.topology_data.get("edges", []):
             source = edge["source"]
             target = edge["target"]
-            
+
             # Check if both source and target nodes exist
             if source not in node_ids:
                 missing_nodes.add(source)
@@ -44,24 +44,24 @@ class TopologyAnalyzer:
             if target not in node_ids:
                 missing_nodes.add(target)
                 logger.warning(f"Edge references missing target node: {target}")
-                
+
             # Add the edge even if nodes are missing - we'll handle them as placeholder nodes
             if source not in self.graph:
                 self.graph.add_node(source, kind="Unknown", name=f"missing-{source}")
             if target not in self.graph:
                 self.graph.add_node(target, kind="Unknown", name=f"missing-{target}")
-                
+
             self.graph.add_edge(source, target, **edge.get("attributes", {}))
-        
+
         if missing_nodes:
             logger.warning(f"Found {len(missing_nodes)} nodes referenced in edges but not in nodes list")
-            
+
         logger.info(f"Graph built with {self.graph.number_of_nodes()} nodes and {self.graph.number_of_edges()} edges")
-        
+
     def _determine_position(self, node: str, subgraph: nx.DiGraph) -> str:
         in_degree = subgraph.in_degree(node)
         out_degree = subgraph.out_degree(node)
-        
+
         # Parent: No incoming edges but has outgoing edges, OR isolated node
         if in_degree == 0:
             return "parent"
@@ -71,37 +71,37 @@ class TopologyAnalyzer:
         # Leaf: Has incoming edges but no outgoing edges
         elif in_degree > 0 and out_degree == 0:
             return "leaf"
-        
+
         return "parent"  # Default case for any unhandled scenarios
-        
+
     def analyze(self) -> List[Dict]:
         # Get weakly connected components
         components = list(nx.weakly_connected_components(self.graph))
         result = []
-        
+
         logger.info(f"Found {len(components)} disconnected components")
-        
+
         for i, component in enumerate(components, 1):
             # Create subgraph for each component
             subgraph = self.graph.subgraph(component)
             logger.info(f"Processing component {i} with {len(component)} nodes and {subgraph.number_of_edges()} edges")
-            
+
             # Process nodes with position classification
             nodes = []
             node_positions = {}  # Keep track of positions for debugging
             for node in subgraph.nodes():
                 position = self._determine_position(node, subgraph)
                 node_positions[position] = node_positions.get(position, 0) + 1
-                
+
                 node_data = {
                     "id": node,
                     "attributes": dict(subgraph.nodes[node]),
                     "position": position
                 }
                 nodes.append(node_data)
-            
+
             logger.info(f"Component {i} node positions: {node_positions}")
-            
+
             # Process edges
             edges = []
             for source, target, data in subgraph.edges(data=True):
@@ -111,7 +111,7 @@ class TopologyAnalyzer:
                     "attributes": data
                 }
                 edges.append(edge_data)
-            
+
             # Create component data
             component_data = {
                 "nodes": sorted(nodes, key=lambda x: (
@@ -120,11 +120,11 @@ class TopologyAnalyzer:
                 )),
                 "edges": edges
             }
-            
+
             result.append(component_data)
-            
+
         return result
-        
+
     def export_to_json(self, filename: str):
         analysis_results = self.analyze()
         with open(filename, 'w') as f:
@@ -140,20 +140,20 @@ def main():
                       help='Output JSON file for analyzed results')
     parser.add_argument('--debug', action='store_true',
                       help='Enable debug logging')
-    
+
     args = parser.parse_args()
-    
+
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
-    
+
     try:
         with open(args.input_file, 'r') as f:
             topology_data = json.load(f)
-        
+
         analyzer = TopologyAnalyzer(topology_data)
-        
+
         analyzer.export_to_json(args.output_file)
-        
+
     except FileNotFoundError as e:
         logger.error(f"Could not find file - {e.filename}")
         sys.exit(1)
