@@ -2,7 +2,7 @@ OCI_BIN = $(shell which docker || which podman)
 
 IMG_REGISTRY ?= quay.io
 IMG_NAMESPACE ?= it-bench
-IMG = $(IMG_REGISTRY)/$(IMG_NAMESPACE)/k8s-topology-mapper:latest
+IMG = $(IMG_REGISTRY)/$(IMG_NAMESPACE)/topology-monitor:latest
 
 .PHONY: help
 help: ## Display this help.
