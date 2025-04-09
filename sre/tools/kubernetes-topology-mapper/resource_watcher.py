@@ -1,5 +1,3 @@
-# resource_watcher.py
-
 import logging
 import threading
 import queue
@@ -33,17 +31,17 @@ class K8sResourceWatcher:
         self.k8s_client = k8s_client
         self.topology = topology_manager
         self.event_logger = event_logger
-        
+
         self.watch_threads: Dict[str, threading.Thread] = {}
         self.resource_versions: Dict[str, str] = {}
 
         self.stop_event = threading.Event()
-        
+
         # Bounded queue to prevent unbounded growth
         self.event_queue = queue.Queue(maxsize=10000)
-        
+
         self.processor_thread = None
-        
+
         # Tuning parameters for batch refresh:
         self.REFRESH_EVENT_COUNT = 100   # e.g., refresh after 100 relevant events
         self.REFRESH_TIME_LIMIT = 30.0   # or 30 seconds
@@ -51,15 +49,15 @@ class K8sResourceWatcher:
     def start(self):
         """Start the watch threads and event processor."""
         self.stop_event.clear()
-        
+
         # Start consumer thread to process queued events
         self.processor_thread = threading.Thread(
-            target=self._process_events, 
-            daemon=True, 
+            target=self._process_events,
+            daemon=True,
             name="event-processor"
         )
         self.processor_thread.start()
-        
+
         # Start watches for each resource type
         self._start_resource_watches()
 
@@ -67,10 +65,10 @@ class K8sResourceWatcher:
         """Stop all watch threads and gracefully shut down the processor."""
         self.logger.info("Stopping resource watcher...")
         self.stop_event.set()
-        
+
         # Put sentinel in the queue so _process_events will exit
         self.event_queue.put(None)
-        
+
         # Join the processor thread
         if self.processor_thread:
             self.processor_thread.join(timeout=5)
@@ -94,12 +92,12 @@ class K8sResourceWatcher:
             'Pod', 'Service', 'ConfigMap', 'Secret', 'PersistentVolumeClaim',
             'PersistentVolume', 'Node', 'Namespace', 'ServiceAccount', 'Endpoints'
         }
-        
+
         # Start core resources first
         for kind in core_resources:
             self._start_watch("v1", kind)
             time.sleep(0.5)  # small delay to avoid spamming the API
-            
+
         # Then watch API group resources
         for api_version, kind in self.k8s_client.get_api_resources():
             if kind not in core_resources:
@@ -109,14 +107,14 @@ class K8sResourceWatcher:
     def _start_watch(self, api_version: str, kind: str):
         """Start a watch thread for a specific resource type."""
         watch_key = f"{api_version}/{kind}"
-        
+
         # Avoid duplicates
         if watch_key in self.watch_threads:
             if self.watch_threads[watch_key].is_alive():
                 return
             else:
                 self.logger.info(f"Restarting dead watch thread for {kind}")
-                
+
         self.logger.info(f"Starting watch for {kind}")
         thread = threading.Thread(
             target=self._watch_resource,
@@ -142,16 +140,16 @@ class K8sResourceWatcher:
                 try:
                     list_response = resource.get()
                     resource_version = list_response.metadata.resourceVersion
-                    
+
                     watch_iter = resource.watch(resource_version=resource_version)
                     start_time = time.time()
                     for event in watch_iter:
                         if self.stop_event.is_set() or (time.time() - start_time > 3600):
                             break
-                        
+
                         event_type = event['type']
                         obj = event['object']
-                        
+
                         # If queue is full, this blocks
                         self.event_queue.put({
                             'type': event_type,
@@ -188,10 +186,10 @@ class K8sResourceWatcher:
 
         namespace = getattr(obj.metadata, 'namespace', '')
         name = getattr(obj.metadata, 'name', '')
-        
+
         # Use the TopologyManager to get a stable ID (pre-existing function)
         stable_id = self.topology._get_stable_node_id(group, version, obj.kind, namespace, name)
-        
+
         # Extract owners
         owners = []
         if getattr(obj.metadata, 'ownerReferences', None):
@@ -201,7 +199,7 @@ class K8sResourceWatcher:
                     'name': ref.name,
                     'uid': ref.uid
                 })
-        
+
         return {
             'kind': obj.kind,
             'group': group,
@@ -216,7 +214,7 @@ class K8sResourceWatcher:
     def _process_events(self):
         """
         Main loop: pop events from the queue, log them (with ID/UID/owners),
-        and occasionally refresh topology. 
+        and occasionally refresh topology.
         """
         self.logger.info("Event processing thread started.")
 
@@ -232,7 +230,7 @@ class K8sResourceWatcher:
                 event = self.event_queue.get(timeout=1.0)
             except queue.Empty:
                 continue
-            
+
             if event is None:
                 # Sentinel for shutdown
                 break
@@ -264,7 +262,7 @@ class K8sResourceWatcher:
                         self.logger.debug(f"Triggering refresh_topology() after "
                                           f"{events_since_last_refresh} events or {int(elapsed)}s elapsed.")
                         self.topology.refresh_topology()
-                        
+
                         # Reset counters
                         last_refresh_time = now
                         events_since_last_refresh = 0
