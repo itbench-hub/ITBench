@@ -13,6 +13,20 @@
     release_namespace: "{{ otel_astronomy_app_namespace_project_name }}"
     update_repo_cache: true
 
+- name: Get Clickhouse credentials from secret
+  kubernetes.core.k8s_info:
+    kind: Secret
+    name: clickhouse-credentials
+    namespace: "{{ clickhouse_namespace_project_name }}"
+    kubeconfig: "{{ kubeconfig }}"
+    wait: true
+  register: clickhouse_secrets_info
+
+- name: Extract Clickhouse credentials from secret data
+  ansible.builtin.set_fact:
+    clickhouse_user: "{{ clickhouse_secrets_info.resources[0].data.user | b64decode }}"
+    clickhouse_password: "{{ clickhouse_secrets_info.resources[0].data.password | b64decode }}"
+
 - name: Deploy OpenTelemetry's Astronomy Shop Demo
   kubernetes.core.helm:
     name: "{{ otel_astronomy_app_installation_name }}"
@@ -166,13 +180,25 @@
                 - name: namespace
                   default: "{{ otel_astronomy_app_namespace_project_name }}"
           exporters:
+            clickhouse:
+              username: "{{ clickhouse_user }}"
+              password: "{{ clickhouse_password }}"
+              endpoint: tcp://{{ clickhouse_installation_name }}-clickhouse.{{ clickhouse_namespace_project_name }}.svc.cluster.local:9000
+              logs_table_name: otel_demo_logs
+              traces_table_name: otel_demo_traces
             opensearch:
               http:
                 endpoint: "http://opensearch-cluster-master.{{ opensearch_namespace_project_name }}.svc.cluster.local:9200"
             otlp:
-              endpoint: "{{ jaeger_installation_name }}-collector.{{ jaeger_namespace_project_name }}.svc.cluster.local:4317"
+              endpoint: "{{ opentelemetry_operator_collector_jaeger_name }}-collector.{{ opentelemetry_operator_collectors_namespace }}.svc.cluster.local:4317"
             otlphttp/prometheus:
               endpoint: http://{{ prometheus_service_name }}.{{ prometheus_namespace_project_name }}.svc.cluster.local:80/api/v1/otlp
+          service:
+            pipelines:
+              traces:
+                exporters: [otlp, debug, spanmetrics, clickhouse]
+              logs:
+                exporters: [opensearch, debug, clickhouse]
         resources:
           requests:
             cpu: 100m
