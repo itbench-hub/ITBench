@@ -13,14 +13,9 @@ _Note: The following setup guide presumes that the required software listed [her
 python -m pip install -r requirements.txt
 ```
 
-2. Create `variables.yaml` and update the python interpreter.
+2. Create `variables.yaml` from the example.
 ```bash
 cp -n playbooks/variables.yaml.example playbooks/variables.yaml
-```
-
-Inside `playbooks/variables.yaml`, update the value associated with the key `ansible_python_interpreter` to point to this environment (`which python`).
-```yaml
-ansible_python_interpreter: "<path to venv you created above>"
 ```
 
 5. Create `secret.yaml` (copy `secret.yaml.example`) and update the values. The `s3name` should be the cluster status s3 store (currently `sre-bench` for the `us-east-2` cluster and `sre-bench-de` for the `eu-central-1` cluster) as well as your AWS credentials. If you do not need access to the cluster nodes, then you can leave the ssh key field blank. Otherwise, create an ssh key and provide the absolute path to the public key.
@@ -33,7 +28,7 @@ ssh_key_for_cluster: "/home/<user>/.ssh/<key-name>.pub"
 
 6. To set up your local machine with the curl, aws-cli, jq, kubectl and kops run:
 ```bash
-# BECOME password is your user password or root password. 
+# BECOME password is your user password or root password.
 make configure_localmachine
 ```
 For Red Hat Enterprise Linux (RHEL), Fedora, CentOS installs to: /usr/local/bin
@@ -72,7 +67,7 @@ kubectl get pod --all-namespaces
 ```
 
 5. Now let's head back to the [parent README](../README.md) to deploy the incidents.
-   
+
 6. Once done with the experiment runs, to destroy the cluster, run the following command:
 ```bash
 make delete
