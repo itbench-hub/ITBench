@@ -5,31 +5,17 @@
     kubeconfig_path: "{{ kubeconfig }}"
     repo_url: "https://kubernetes.github.io/ingress-nginx"
 
-- name: Add Helm chart repo for Elasticsearch
+- name: Add Helm repo for Altinity's Clickhouse
   kubernetes.core.helm_repository:
-    name: bitnami
+    name: altinity
     kubeconfig_path: "{{ kubeconfig }}"
-    repo_url: "https://raw.githubusercontent.com/bitnami/charts/refs/heads/index/bitnami/"
-
-- name: Add Helm chart repo for Loki
-  kubernetes.core.helm_repository:
-    name: grafana
-    kubeconfig_path: "{{ kubeconfig }}"
-    repo_url: "https://grafana.github.io/helm-charts"
-  when:
-    - enable_loki_endpoint
+    repo_url: "https://helm.altinity.com"
 
 - name: Add Helm chart repo for OpenSearch
   kubernetes.core.helm_repository:
     name: opensearch
     kubeconfig_path: "{{ kubeconfig }}"
     repo_url: "https://opensearch-project.github.io/helm-charts"
-
-- name: Add Helm chart repo for Jaeger
-  kubernetes.core.helm_repository:
-    name: jaegertracing
-    kubeconfig_path: "{{ kubeconfig }}"
-    repo_url: "https://jaegertracing.github.io/helm-charts"
 
 - name: Add Helm chart repo from the Prometheus community
   kubernetes.core.helm_repository:
@@ -55,7 +41,7 @@
     kubeconfig_path: "{{ kubeconfig }}"
     repo_url: "https://kubernetes-sigs.github.io/metrics-server/"
   when:
-    - domain == "finops"   
+    - domain == "finops"
 
 - name: Add Helm chart repo for OpenCost
   kubernetes.core.helm_repository:

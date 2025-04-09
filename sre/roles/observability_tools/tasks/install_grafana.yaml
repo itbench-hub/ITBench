@@ -8,15 +8,15 @@
     src: templates/datasource_{{ item }}.j2
     dest: /tmp/datasource_{{ item }}.yaml
   loop:
+    - clickhouse
     - jaeger
-    - loki
     - opensearch
     - prometheus
 
 - name: Load datasources from files
   ansible.builtin.set_fact:
+    clickhouse_datasources: "{{ lookup('ansible.builtin.file', '/tmp/datasource_clickhouse.yaml') | from_yaml }}"
     jaeger_datasources: "{{ lookup('ansible.builtin.file', '/tmp/datasource_jaeger.yaml') | from_yaml }}"
-    loki_datasources: "{{ lookup('ansible.builtin.file', '/tmp/datasource_loki.yaml') | from_yaml }}"
     opensearch_datasources: "{{ lookup('ansible.builtin.file', '/tmp/datasource_opensearch.yaml') | from_yaml }}"
     prometheus_datasources: "{{ lookup('ansible.builtin.file', '/tmp/datasource_prometheus.yaml') | from_yaml }}"
 
@@ -30,11 +30,9 @@
   when:
     - enable_jaeger_query_endpoint
 
-- name: Append Loki datasource to list
+- name: Append Clickhouse datasource to list
   ansible.builtin.set_fact:
-    datasources: "{{ datasources + loki_datasources }}"
-  when:
-    - enable_loki_endpoint
+    datasources: "{{ datasources + clickhouse_datasources }}"
 
 - name: Append Opensearch datasource to list
   ansible.builtin.set_fact:
@@ -42,7 +40,7 @@
 
 - name: Create dashboard processing variables
   ansible.builtin.set_fact:
-    dashboard_file_names: 
+    dashboard_file_names:
       - demo-dashboard
       - opentelemetry-collector
       - opentelemetry-collector-data-flow
@@ -206,3 +204,4 @@
         pathType: ImplementationSpecific
       plugins:
         - grafana-opensearch-datasource
+        - vertamedia-clickhouse-datasource
