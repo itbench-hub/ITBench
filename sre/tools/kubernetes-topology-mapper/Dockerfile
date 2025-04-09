@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-312:9.5-1743509868
+FROM registry.access.redhat.com/ubi9/python-312:9.5-1744198409
 
 ENV DATA_DIRECTORY /app/topology_data
 
