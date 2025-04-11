@@ -139,7 +139,7 @@ An Alert's default `State` is `Inactive`. After few minutes, the fault `State` c
 
 9. (Optional) You only need to do this if you plan to leverage our [SRE-Agent](https://github.com/IBM/itbench-sre-agent). Leverage the values below for the `.env.tmpl`
 ```
-OBSERVABILITY_STACK_URL=http://localhost:8080/prometheus
+OBSERVABILITY_STACK_URL=http://localhost:8080
 TOPOLOGY_URL=http://localhost:8080/topology
 ```
 
