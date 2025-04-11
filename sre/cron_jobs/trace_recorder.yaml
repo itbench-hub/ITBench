@@ -3,6 +3,7 @@
   hosts: localhost
   vars:
     prometheus_namespace_project_name: prometheus
+    opentelemetry_operator_collectors_namespace: opentelemetry-collectors
   tasks:
   - name: Sleep for 300 seconds and continue with play
     ansible.builtin.pause:
@@ -21,7 +22,7 @@
       file: leverage_port_forwarding.yaml
 
   - name: Run traces.py from https://github.ibm.com/Saurabh-Jha/NTAM/blob/main/gather_traces.py
-    ansible.builtin.shell: "python /runner/project/cron_jobs/gather_traces.py --grafana_url {{ grafana_url }} --grafana_token 'NOT_NEEDED' --output_file /runner/traces.json"
+    ansible.builtin.shell: "python /runner/project/cron_jobs/gather_traces.py --jaeger_url {{ jaeger_url }} --jaeger_token 'NOT_NEEDED' --output_file /runner/traces.json"
 
   - name: Check if traces.json exists
     ansible.builtin.stat:

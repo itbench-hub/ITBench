@@ -20,8 +20,8 @@
       register: clusters_output
 
     - name: Format clusters output and display as a table
-      shell: |
-        echo "{{ clusters_output.stdout_lines | join('\n') }}" | column -t
+      ansible.builtin.shell: |
+        echo "{{ clusters_output.stdout }}" | column -t | tr '\\n' '\n'
       register: formatted_output
 
     - name: Parse out cluster names from formatted table

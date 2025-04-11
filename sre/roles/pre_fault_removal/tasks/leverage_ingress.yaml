@@ -1,16 +1,16 @@
 ---
-- name: Get the Ingress URL of Grafana
-  ansible.builtin.shell: "KUBECONFIG={{ kubeconfig }} kubectl get ingress grafana -n {{ grafana_namespace_project_name }} -o json"
-  register: grafana_ingress
+- name: Get the Ingress URL for the Observability Stack
+  ansible.builtin.shell: "KUBECONFIG={{ kubeconfig }} kubectl get ingress prometheus -n {{ prometheus_namespace_project_name }} -o json"
+  register: observability_stack_ingress
   retries: 5
   delay: 60
-  until: (grafana_ingress.stdout | length) > 0
+  until: (observability_stack_ingress.stdout | length) > 0
   ignore_errors: yes
 
 - name: Extract the Ingress hostname information
   set_fact:
-    ingress_hostname: "{{ grafana_ingress.stdout | from_json | json_query('status.loadBalancer.ingress[0].hostname') }}"
-  when: grafana_ingress.stdout | trim != ''
+    ingress_hostname: "{{ observability_stack_ingress.stdout | from_json | json_query('status.loadBalancer.ingress[0].hostname') }}"
+  when: observability_stack_ingress.stdout | trim != ''
 
 - name: Set the Topology URL
   set_fact:

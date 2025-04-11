@@ -1,13 +1,13 @@
 ---
 - name: Get the Ingress URL of Grafana
   ansible.builtin.shell: "KUBECONFIG={{ kubeconfig }} kubectl get ingress prometheus -n {{ prometheus_namespace_project_name }} -o json"
-  register: grafana_ingress
+  register: observability_stack_ingress
   tags:
     - fetch_alerts
 
 - name: Construct the alerts API URI
   set_fact:
-    alerts_api_url: "http://{{ grafana_ingress.stdout | from_json | json_query('status.loadBalancer.ingress[0].hostname') }}/{{ prometheus_namespace_project_name }}/api/v1/alerts"
+    alerts_api_url: "http://{{ observability_stack_ingress.stdout | from_json | json_query('status.loadBalancer.ingress[0].hostname') }}/{{ prometheus_namespace_project_name }}/api/v1/alerts"
   tags:
     - fetch_alerts
 
