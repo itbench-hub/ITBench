@@ -173,6 +173,9 @@
       opensearch:
         enabled: false
       opentelemetry-collector:
+        podAnnotations:
+          prometheus.io/path: /metrics
+          prometheus.io/port: "80"
         config:
           connectors:
             spanmetrics:
@@ -207,24 +210,3 @@
             memory: 512Mi
       prometheus:
         enabled: false
-
-- name: Service monitor to get metrics for the otel-collector pod
-  kubernetes.core.k8s:
-    state: present
-    kubeconfig: "{{ kubeconfig }}"
-    definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        name: "otel-collector-metrics-to-prometheus"
-        namespace: "{{ otel_astronomy_app_namespace_project_name }}"
-        labels:
-            "for_instance_in_namespace": "{{ prometheus_namespace_project_name }}"
-      spec:
-        endpoints:
-        - interval: 10s
-          path: /metrics
-          port: metrics
-        selector:
-          matchLabels:
-            "component": "standalone-collector"

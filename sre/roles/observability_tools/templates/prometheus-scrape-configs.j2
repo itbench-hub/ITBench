@@ -1,0 +1,24 @@
+- job_name: astronomy-shop-otel-collector
+  honor_labels: true
+  scrape_interval: 1m
+  scrape_timeout: 10s
+  metrics_path: /metrics
+  scheme: http
+  dns_sd_configs:
+    - names:
+        - "{{ otel_astronomy_app_installation_name }}-otelcol.{{ otel_astronomy_app_namespace_project_name }}"
+      type: 'A'
+      port: 8888
+{% if enable_finops_rules %}
+- job_name: opencost
+  honor_labels: true
+  scrape_interval: 1m
+  scrape_timeout: 10s
+  metrics_path: /metrics
+  scheme: http
+  dns_sd_configs:
+    - names:
+        - "{{ opencost_installation_name }}.{{ opencost_namespace_project_name }}"
+      type: 'A'
+      port: 9003
+{% endif %}
