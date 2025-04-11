@@ -88,11 +88,15 @@ Once you have deployed the observability stack, run the following command to fin
 kubectl get ingress -A
 ```
 
-To access the Granfana dashboard, copy the address for the `prometheus-grafana` ingress resource from the terminal and paste it into the browser with the following prefix: `/prometheus`.
-
 To access the Opencost dashboard, copy the address for the `opencost-ingress` ingress resource from the terminal and paste it into the browser.
 
+To access the Jaeger dashboard, copy the address for the `jaeger` ingress resource from the terminal and paste it into the browser with the following prefix: `/jaeger`.
+
+To access the Prometheus dashboard, copy the address for the `prometheus` ingress resource from the terminal and paste it into the browser with the following prefix: `/prometheus/query`.
+
+
 ```console
-http://<prometheus-granfana address>/prometheus
+http://<jaeger address>/jaeger
 http://<opencost-ingress address>
+http://<prometheus address>/prometheus/query
 ```

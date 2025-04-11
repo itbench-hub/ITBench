@@ -84,14 +84,6 @@
     state: absent
     wait: true
 
-- name: Uninstall Grafana
-  kubernetes.core.helm:
-    name: "{{ grafana_installation_name }}"
-    kubeconfig_path: "{{ kubeconfig }}"
-    release_namespace: "{{ grafana_namespace_project_name }}"
-    state: absent
-    wait: true
-
 - name: Uninstall the Prometheus stack
   kubernetes.core.helm:
     name: "{{ prometheus_installation_name }}"
@@ -145,15 +137,6 @@
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig }}"
     name: "{{ clickhouse_namespace_project_name }}"
-    api_version: v1
-    kind: Namespace
-    state: absent
-    wait: true
-
-- name: Remove the namespace associated with Grafana
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
-    name: "{{ grafana_namespace_project_name }}"
     api_version: v1
     kind: Namespace
     state: absent

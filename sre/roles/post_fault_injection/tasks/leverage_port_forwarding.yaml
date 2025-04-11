@@ -19,7 +19,7 @@
   ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n kube-system port-forward "svc/topology-monitor" "{{ dynamic_port }}:8080" --request-timeout=15m
   async: 900
   poll: 0
-  register: grafana_port_forward_for_topology_collection_post_fault_injection
+  register: topology_port_forward_for_topology_collection_post_fault_injection
   when: ingress_hostname is undefined or ingress_hostname | trim == ''
 
 - name: Wait for port-forward to be available
@@ -28,7 +28,7 @@
     timeout: 30
   when: ingress_hostname is undefined or ingress_hostname | trim == ''
 
-- name: Set the Grafana URL
+- name: Set the Topology URL
   set_fact:
     topology_url: "http://127.0.0.1:{{ dynamic_port }}"
   when: ingress_hostname is undefined or ingress_hostname | trim == ''

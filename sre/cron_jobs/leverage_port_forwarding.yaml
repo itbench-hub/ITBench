@@ -12,14 +12,14 @@
 
 - name: Assign a dynamic port if one is available
   set_fact:
-    dynamic_port: "{{ (lsof_check.results | selectattr('stdout', 'equalto', 'available') | map(attribute='item') | list | first) }}"
+    dynamic_port_for_prometheus: "{{ (lsof_check.results | selectattr('stdout', 'equalto', 'available') | map(attribute='item') | list | first) }}"
   when: ingress_hostname is undefined or ingress_hostname | trim == ''
 
-- name: Kubectl port-forward on/for Grafana with dynamic port
-  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "grafana" port-forward "svc/grafana" "{{ dynamic_port }}:80" --request-timeout=15m
-  async: 900
+- name: Kubectl port-forward on/for the prometheus-server service with dynamic port
+  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "{{ prometheus_namespace_project_name }}" port-forward "svc/prometheus-server" "{{ dynamic_port_for_prometheus }}:80" --request-timeout=10m
+  async: 600
   poll: 0
-  register: grafana_port_forward_for_datasources_creation
+  register: prometheus_port_forward_for_datasources_creation
   when: ingress_hostname is undefined or ingress_hostname | trim == ''
 
 - name: Wait for port-forward to be available
@@ -28,7 +28,41 @@
     timeout: 30
   when: ingress_hostname is undefined or ingress_hostname | trim == ''
 
-- name: Set the Grafana URL
+- name: Set the Prometheus URL
   set_fact:
-    grafana_url: "http://127.0.0.1:{{ dynamic_port }}"
+    prometheus_url: "http://127.0.0.1:{{ dynamic_port_for_prometheus }}"
+  when: ingress_hostname is undefined or ingress_hostname | trim == ''
+
+- name: Kubectl port-forward on/for Jaeger collector with dynamic port
+  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "{{ opentelemetry_operator_collectors_namespace }}" port-forward "svc/jaeger-collector" "{{ dynamic_port_for_jaeger }}:16686" --request-timeout=10m
+  async: 600
+  poll: 0
+  register: jaeger_port_forward
+  when: ingress_hostname is undefined or ingress_hostname | trim == ''
+
+- name: Check availability of ports
+  ansible.builtin.shell: |
+    lsof -i :{{ item }} > /dev/null && echo "in_use" || echo "available"
+  register: lsof_check
+  loop: "{{ range(32100, 32125) | list }}"
+  changed_when: false
+  failed_when: false
+  loop_control:
+    loop_var: item
+  when: ingress_hostname is undefined or ingress_hostname | trim == ''
+
+- name: Assign a dynamic port if one is available
+  set_fact:
+    dynamic_port_for_jaeger: "{{ (lsof_check.results | selectattr('stdout', 'equalto', 'available') | map(attribute='item') | list | first) }}"
+  when: ingress_hostname is undefined or ingress_hostname | trim == ''
+
+- name: Wait for port-forward to be available
+  wait_for_connection:
+    delay: 5
+    timeout: 30
+  when: ingress_hostname is undefined or ingress_hostname | trim == ''
+
+- name: Set the Jaeger URL
+  set_fact:
+    jaeger_url: "http://127.0.0.1:{{ dynamic_port_for_jaeger }}"
   when: ingress_hostname is undefined or ingress_hostname | trim == ''

@@ -32,43 +32,16 @@ def create_session() -> requests.Session:
     session.mount("https://", adapter)
     return session
 
-def get_datasource_id(
-    session: requests.Session, 
-    grafana_url: str, 
-    token: str, 
-    datasource_type: str
-) -> str:
-    """
-    Retrieve the UID for a given datasource type (e.g., "jaeger") from Grafana.
-    """
-    url = f"{grafana_url}/api/datasources"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
-
-    try:
-        resp = session.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-        datasources = resp.json()
-        for ds in datasources:
-            if ds.get("type") == datasource_type:
-                return ds["uid"]
-        raise ValueError(f"Datasource of type '{datasource_type}' not found.")
-    except Exception as e:
-        logger.error(f"Error fetching datasource ID: {e}")
-        raise
 
 def get_services(
     session: requests.Session, 
-    grafana_url: str, 
+    jaeger_url: str,
     token: str, 
-    datasource_uid: str
 ) -> Dict[str, Any]:
     """
-    Fetch the list of Jaeger services from Grafana.
+    Fetch the list of services from Jaeger.
     """
-    url = f"{grafana_url}/api/datasources/proxy/uid/{datasource_uid}/api/services"
+    url = f"{jaeger_url}/api/services"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -84,15 +57,14 @@ def get_services(
 
 def get_operations(
     session: requests.Session, 
-    grafana_url: str, 
+    jaeger_url: str,
     token: str, 
-    datasource_uid: str, 
     service: str
 ) -> Dict[str, Any]:
     """
-    Fetch the list of operations for a given service from Grafana/Jaeger.
+    Fetch the list of operations for a given service from Jaeger.
     """
-    url = f"{grafana_url}/api/datasources/proxy/uid/{datasource_uid}/api/operations"
+    url = f"{jaeger_url}/api/operations"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -109,9 +81,8 @@ def get_operations(
 
 def get_traces(
     session: requests.Session,
-    grafana_url: str,
+    jaeger_url: str,
     token: str,
-    datasource_uid: str,
     service: str,
     operation: Optional[str],
     start_time: int,
@@ -121,7 +92,7 @@ def get_traces(
     """
     Query Jaeger traces for a given service & operation over a time window.
     """
-    url = f"{grafana_url}/api/datasources/proxy/uid/{datasource_uid}/api/traces"
+    url = f"{jaeger_url}/api/traces"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -143,16 +114,16 @@ def get_traces(
         return {}
 
 def main():
-    parser = argparse.ArgumentParser(description="Collect one trace per service/operation from Grafana Jaeger.")
+    parser = argparse.ArgumentParser(description="Collect one trace per service/operation from Jaeger.")
     parser.add_argument(
-        "--grafana_url",
+        "--jaeger_url",
         required=True,
-        help="Grafana base URL (e.g., https://grafana-domain)"
+        help="Jaeger base URL (e.g., https://jaeger-domain)"
     )
     parser.add_argument(
-        "--grafana_token",
+        "--jaeger_token",
         required=True,
-        help="Grafana service account token."
+        help="Jaeger service account token."
     )
     parser.add_argument(
         "--time_window",
@@ -174,14 +145,8 @@ def main():
 
     session = create_session()
 
-    try:
-        datasource_uid = get_datasource_id(session, args.grafana_url, args.grafana_token, "jaeger")
-    except ValueError as e:
-        logger.error(e)
-        return
-
     # Retrieve services
-    services_data = get_services(session, args.grafana_url, args.grafana_token, datasource_uid)
+    services_data = get_services(session, args.jaeger_url, args.jaeger_token)
     if not services_data or "data" not in services_data:
         logger.info("No services found or unable to fetch services.")
         return
@@ -190,7 +155,7 @@ def main():
 
     # Iterate over services & operations, collect up to one trace each
     for service in services_data["data"]:
-        operations_data = get_operations(session, args.grafana_url, args.grafana_token, datasource_uid, service)
+        operations_data = get_operations(session, args.jaeger_url, args.jaeger_token, service)
         if not operations_data or "data" not in operations_data:
             logger.info(f"No operations found or unable to fetch operations for service: {service}")
             continue
@@ -200,9 +165,8 @@ def main():
             logger.info(f"Fetching trace for service '{service}' and operation '{operation_name}'")
             trace_json = get_traces(
                 session,
-                args.grafana_url,
-                args.grafana_token,
-                datasource_uid,
+                args.jaeger_url,
+                args.jaeger_token,
                 service,
                 operation_name,
                 start_time,
