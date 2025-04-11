@@ -15,52 +15,71 @@
         - "target_deployment_name"
   tags:
     - injection_docs
-- name: Fetch the current deployment
-  k8s_info:
+
+# Note: This incident assumes that the worker nodes all have the same architecture.
+
+- name: Retrieve worker nodes on the cluster
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: v1
+    kind: Node
+    label_selectors:
+      - node-role.kubernetes.io/node =
+  register: nodes_info
+  tags:
+    - incident_23
+  when:
+    - is_image_unsupported
+    - is_fault_injection
+
+- name: Parse worker node architectures
+  ansible.builtin.set_fact:
+    node_architectures: "{{ nodes_info | community.general.json_query('resources[*].status.nodeInfo.architecture') }}"
+  tags:
+    - incident_23
+  when:
+    - is_image_unsupported
+    - is_fault_injection
+
+- name: Filter available architectures
+  ansible.builtin.set_fact:
+    architectures: "{{ node_architectures | intersect(['amd64', 'arm64']) }}"
+  tags:
+    - incident_23
+  when:
+    - is_image_unsupported
+    - is_fault_injection
+
+- name: Set which unsupported image to use
+  ansible.builtin.set_fact:
+    image_arch: "{{ ['amd64', 'arm64'] | difference(architectures) | first }}"
+  tags:
+    - incident_23
+  when:
+    - is_image_unsupported
+    - is_fault_injection
+
+- name: Injecting Unsupported Image Fault
+  kubernetes.core.k8s_json_patch:
     api_version: apps/v1
     kind: Deployment
-    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
-    name: "{{ target_deployment_name }}"
-    kubeconfig: "{{ kubeconfig }}"
-  register: deployment_info
-  tags: incident_23
-  when: is_image_unsupported and is_injection
-
-- name: Print current deployment details (for debugging)
-  debug:
-    var: deployment_info
-  tags: incident_23
-  when: is_image_unsupported and is_injection
-
-- name: Update environment variables (replicas to 0 amd image misconfigure) of Kubernetes deployment
-  kubernetes.core.k8s:
-    kind: Deployment
     kubeconfig: "{{ kubeconfig }}"
     name: "{{ target_deployment_name }}"
     namespace: "{{ otel_astronomy_app_namespace_project_name }}"
-    state: present
-    resource_definition:
-      spec:
-        replicas: 0
-        template:
-          spec:
-            containers:
-              - name: "{{ deployment_info.resources[0].spec.template.spec.containers[0].name }}"  # Specify the container to update
-                image: "quay.io/felix_george/checkout_service:latest"  # Use the new env variables
-  register: deployment_update_result
-  tags: incident_23
-  when: is_image_unsupported and is_injection
+    patch:
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: quay.io/it-bench/unsupported-checkout-service-{{ image_arch }}:0.0.2
+  tags:
+    - incident_23
+  when:
+    - is_image_unsupported
+    - is_fault_injection
 
-- name: Update environment variables of Kubernetes deployment
-  kubernetes.core.k8s:
-    kind: Deployment
-    kubeconfig: "{{ kubeconfig }}"
-    name: "{{ target_deployment_name }}"
-    namespace: "{{ otel_astronomy_app_namespace_project_name }}"
-    state: present
-    resource_definition:
-      spec:
-        replicas: 1
-  register: deployment_update_result
-  tags: incident_23
-  when: is_image_unsupported and is_injection
+- name: Removing Unsupported Image Fault
+  ansible.builtin.shell: "KUBECONFIG={{ kubeconfig }} kubectl rollout undo deployment/{{ target_deployment_name }} -n {{ otel_astronomy_app_namespace_project_name }}"
+  tags:
+    - incident_23
+  when:
+    - is_image_unsupported
+    - is_fault_removal
