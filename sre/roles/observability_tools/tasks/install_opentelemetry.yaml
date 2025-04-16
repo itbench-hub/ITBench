@@ -161,3 +161,35 @@
                       name: "{{ opentelemetry_operator_collector_jaeger_name }}-collector"
                       port:
                         number: 16686
+
+- name: Wait for Kubernetes Events Collector pods to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    kind: Pod
+    namespace: "{{ opentelemetry_operator_collectors_namespace }}"
+    label_selectors:
+      - "app.kubernetes.io/name=kubernetes-events-collector"
+      - "app.kubernetes.io/instance=opentelemetry-collectors.kubernetes-events"
+      - "app.kubernetes.io/managed-by=opentelemetry-operator"
+    wait: yes
+    wait_sleep: 30
+    wait_timeout: 600
+    wait_condition:
+      type: Ready
+      status: "True"
+
+- name: Wait for Jaeger Collector pods to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    kind: Pod
+    namespace: "{{ opentelemetry_operator_collectors_namespace }}"
+    label_selectors:
+      - "app.kubernetes.io/name=jaeger-collector"
+      - "app.kubernetes.io/instance=opentelemetry-collectors.jaeger"
+      - "app.kubernetes.io/managed-by=opentelemetry-operator"
+    wait: yes
+    wait_sleep: 30
+    wait_timeout: 600
+    wait_condition:
+      type: Ready
+      status: "True"
