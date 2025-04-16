@@ -8,25 +8,30 @@
       set_fact:
         kops_path: "/usr/local/bin/kops"
       when: ansible_distribution == 'Ubuntu' or ansible_distribution == 'Fedora' or ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
-    
+
     - name: Set kops path for macOS
       set_fact:
         kops_path: "{{ '/opt/homebrew/bin/kops' if ansible_architecture == 'arm64' else '/usr/local/bin/kops' }}"
       when: ansible_distribution == 'MacOSX'
-    
+
     - name: Run kops get clusters to list all clusters
       command:
         cmd: "{{ kops_path }} get clusters --state s3://{{ s3name}} "
       register: clusters_output
 
-    - name: Format clusters output and display as a table
+    - name: Format clusters output
+      set_fact:
+        formatted_lines: '{{ clusters_output.stdout.split("\n") }}'
+      register: formatted_output
+
+    - name: Format as table
       ansible.builtin.shell: |
-        echo "{{ clusters_output.stdout }}" | column -t | tr '\\n' '\n'
+        echo "{{ formatted_lines | join('\n') }}" | column -t
       register: formatted_output
 
     - name: Parse out cluster names from formatted table
       set_fact:
-        known_clusters: "{{ (known_clusters | default([])) + [item | regex_search('^(\\S+)')] }}"
+        known_clusters: "{{ (known_clusters | default([])) + [item.split()[0]] }}"
       loop: "{{ formatted_output.stdout_lines }}"
       when: not item.startswith("NAME ")
 

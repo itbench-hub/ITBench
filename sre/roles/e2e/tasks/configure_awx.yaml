@@ -67,6 +67,9 @@
       ssh_key_data: "{{ lookup('file', git['deploy_key_it_automation_bench_private_ssh_key_path']) }}"
       ssh_key_unlock: "{{ git['deploy_key_it_automation_bench_private_ssh_key_passphrase'] }}"
     state: "{{ state }}"
+  when:
+    - git['deploy_key_it_automation_bench_private_ssh_key_path'] is defined
+    - git['deploy_key_it_automation_bench_private_ssh_key_path'] | length > 0
   tags:
     - awx_configuration
 
@@ -80,14 +83,14 @@
     description: Project-GitHub-IT-Automation-Bench
     organization: Default
     scm_type: git
-    scm_url: "git@github.ibm.com:DistributedCloudResearch/IT-Automation-Testbed.git"
+    scm_url: "{{ git['it_automation_bench_scm_url'] }}"
     scm_branch: "main"
     scm_clean: true
     scm_track_submodules: false
     scm_delete_on_update: true
     scm_allow_override: true
     state: "{{ state }}"
-    credential: Credential-GitHub-IT-Automation-Bench
+    credential: "{{ 'Credential-GitHub-IT-Automation-Bench' if (git['deploy_key_it_automation_bench_private_ssh_key_path'] | length > 0) else omit }}"
   tags:
     - awx_configuration
 
@@ -105,10 +108,13 @@
       ssh_key_data: "{{ lookup('file', git['deploy_key_agent_private_ssh_key_path']) }}"
       ssh_key_unlock: "{{ git['deploy_key_agent_private_ssh_key_passphrase'] }}"
     state: "{{ state }}"
+  when:
+    - git['deploy_key_agent_private_ssh_key_path'] is defined
+    - git['deploy_key_agent_private_ssh_key_path'] | length > 0
   tags:
     - awx_configuration
 
-- name: Add/Remove Project - GitHub Repository - Lumyn
+- name: Add/Remove Project - GitHub Repository - SRE Agent
   awx.awx.project:
     # (Hack): As the value set using set_fact controller_host is not picked up
     controller_host: "{{ controller_host }}"
@@ -118,14 +124,14 @@
     description: Project-GitHub-Lumyn
     organization: Default
     scm_type: git
-    scm_url: "git@github.ibm.com:DistributedCloudResearch/lumyn.git"
+    scm_url: "{{ git['it_sre_agent_scm_url'] }}"
     scm_branch: "main"
     scm_clean: true
     scm_track_submodules: false
     scm_delete_on_update: true
     scm_allow_override: true
     state: "{{ state }}"
-    credential: Credential-GitHub-Lumyn
+    credential: "{{ 'Credential-GitHub-Lumyn' if (git['deploy_key_agent_private_ssh_key_path'] | length > 0) else omit }}"
   tags:
     - awx_configuration
 

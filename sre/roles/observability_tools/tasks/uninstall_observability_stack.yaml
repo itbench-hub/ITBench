@@ -24,6 +24,20 @@
     - api_version: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       namespace: "{{ opentelemetry_operator_collectors_namespace }}"
+  register: resource_deletion
+  failed_when:
+    - resource_deletion.failed
+    - not ('Failed to find exact match' in resource_deletion.msg)
+
+- name: Remove the secret(s) associated with Clickhouse (holding up Helm uninstall for Clickhouse)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: v1
+    kind: Secret
+    name: "sh.helm.release.v1.clickhouse.v1"
+    namespace: "{{ clickhouse_namespace_project_name }}"
+    state: absent
+    wait: true
 
 - name: Remove the Custom Resource Definitions (CRDs)
   kubernetes.core.k8s:
@@ -43,6 +57,10 @@
     - opampbridges.opentelemetry.io
     - instrumentations.opentelemetry.io
     - targetallocators.opentelemetry.io
+  register: crd_deletion
+  failed_when:
+    - crd_deletion.failed
+    - not ('Failed to find exact match' in crd_deletion.msg)
 
 - name: Remove non-namespaced resources
   kubernetes.core.k8s:
@@ -59,6 +77,10 @@
     - api_version: rbac.authorization.k8s.io/v1
       kind: ClusterRole
       name: "{{ opentelemetry_operator_collector_kubernetes_events_name }}-collector"
+  register: non_namespaced_resource_deletion
+  failed_when:
+    - non_namespaced_resource_deletion.failed
+    - not ('Failed to find exact match' in non_namespaced_resource_deletion.msg)
 
 - name: Uninstall OpenTelemetry Operator
   kubernetes.core.helm:
@@ -67,6 +89,7 @@
     release_namespace: "{{ opentelemetry_operator_namespace_project_name }}"
     state: absent
     wait: true
+    timeout: 10m
 
 - name: Uninstall OpenSearch
   kubernetes.core.helm:
@@ -75,6 +98,7 @@
     release_namespace: "{{ opensearch_namespace_project_name }}"
     state: absent
     wait: true
+    timeout: 10m
 
 - name: Uninstall Clickhouse
   kubernetes.core.helm:
@@ -83,6 +107,7 @@
     release_namespace: "{{ clickhouse_namespace_project_name }}"
     state: absent
     wait: true
+    timeout: 10m
 
 - name: Uninstall the Prometheus stack
   kubernetes.core.helm:
@@ -91,6 +116,7 @@
     release_namespace: "{{ prometheus_namespace_project_name }}"
     state: absent
     wait: true
+    timeout: 10m
 
 - name: Uninstall the Kubernetes Metrics Server
   kubernetes.core.helm:
@@ -99,6 +125,7 @@
     release_namespace: "{{ metrics_server_namespace_project_name }}"
     state: absent
     wait: true
+    timeout: 10m
 
 - name: Uninstall the Kubernetes topology mapper
   kubernetes.core.helm:
@@ -107,6 +134,7 @@
     release_namespace: "{{ topology_mapper_namespace_project_name }}"
     state: absent
     wait: true
+    timeout: 10m
 
 - name: Uninstall OpenCost
   kubernetes.core.helm:
@@ -115,6 +143,7 @@
     release_namespace: "{{ opencost_namespace_project_name }}"
     state: absent
     wait: true
+    timeout: 10m
 
 - name: Uninstall Ingress
   kubernetes.core.helm:
@@ -123,6 +152,7 @@
     release_namespace: "{{ ingress_namespace_project_name }}"
     state: absent
     wait: true
+    timeout: 10m
 
 - name: Remove the namespace associated with OpenSearch
   kubernetes.core.k8s:

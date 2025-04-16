@@ -158,11 +158,11 @@ awx_setup:
 
 .PHONY: awx_configure_init
 awx_configure_init:
-	ansible-playbook -v base.yaml --tags "awx_configuration" --extra-vars "state=present"
+	ansible-playbook -vvv base.yaml --tags "awx_configuration" --extra-vars "state=present"
 
 .PHONY: awx_configure_deinit
 awx_configure_deinit:
-	ansible-playbook -v base.yaml --tags "awx_configuration" --extra-vars "state=absent"
+	ansible-playbook -vvv base.yaml --tags "awx_configuration" --extra-vars "state=absent"
 
 # TODO: See why the OBJC_DISABLE_INITIALIZE_FORK_SAFETY is needed
 
