@@ -1,36 +1,41 @@
 version: 2
 updates:
-  - package-ecosystem: github-actions
+  - package-ecosystem: "github-actions"
     directories:
-      - /
+      - "/"
+    groups:
+      actions-production-dependencies:
+        dependency-type: "production"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "docker"
+    directories:
+      - "ciso/"
+      - "sre/tools/**/"
+    groups:
+      docker-production-dependencies:
+        dependency-type: "production"
     schedule:
       interval: daily
 
-  - package-ecosystem: docker
+  - package-ecosystem: "gomod"
     directories:
-      - sre/tools/kubernetes-topology-mapper/
-      - sre/tools/elasticsearch-dummy-app/
-      - ciso/
+      - "sre/local_cluster/"
+    groups:
+      go-production-dependencies:
+        dependency-type: "production"
     schedule:
-      interval: weekly
+      interval: "daily"
 
-  - package-ecosystem: gomod
+  - package-ecosystem: "pip"
     directories:
-      - sre/local_cluster/
+      - "/"
+      - "sre/"
+      - "sre/tools/**/"
+      - "sre/remote_cluster/"
+    groups:
+      pip-production-dependencies:
+        dependency-type: "production"
     schedule:
-      interval: weekly
-
-  - package-ecosystem: pip
-    directories:
-      - /
-      - sre/remote_cluster/
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: pip
-    directories:
-      - sre/
-      - sre/tools/**/
-    schedule:
-      interval: daily
-    open-pull-requests-limit: 0
+      interval: "daily"
