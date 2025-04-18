@@ -38,65 +38,51 @@
     wait: true
     create_namespace: true
     values:
-      default:
-        envOverrides:
-          - name: OTEL_SERVICE_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.labels['app.kubernetes.io/name']
       components:
-        accountingService:
+        accounting:
           resources:
             requests:
               cpu: 10m
               memory: 100Mi
             limits:
               memory: 256Mi
-        adService:
+        ad:
           resources:
             requests:
               cpu: 10m
               memory: 250Mi
             limits:
               memory: 512Mi
-        cartService:
+        cart:
           resources:
             requests:
               cpu: 25m
               memory: 100Mi
-        checkoutService:
+        checkout:
           resources:
             requests:
               cpu: 10m
               memory: 15Mi
             limits:
               memory: 32Mi
-        currencyService:
+        currency:
           resources:
             requests:
               cpu: 25m
               memory: 10Mi
-        emailService:
+        email:
           resources:
             requests:
               cpu: 10m
               memory: 75Mi
         flagd:
-          command:
-            - /flagd-build
-            - start
-            - -p
-            - "8013"
-            - --uri
-            - file:./etc/flagd/demo.flagd.json
           resources:
             requests:
               cpu: 15m
               memory: 75Mi
             limits:
               memory: 512Mi
-        frauddetectionService:
+        fraud-detection:
           resources:
             requests:
               cpu: 25m
@@ -108,13 +94,18 @@
             requests:
               cpu: 300m
               memory: 125Mi
-        frontendProxy:
+        frontend-proxy:
           resources:
             requests:
               cpu: 75m
               memory: 25Mi
             limits:
               memory: 75Mi
+        image-provider:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 25Mi
         kafka:
           resources:
             requests:
@@ -122,46 +113,38 @@
               memory: 550Mi
             limits:
               memory: 800Mi
-        loadgenerator:
-          imageOverride:
-            repository: quay.io/it-bench/loadgenerator
-            tag: "0.3"
+        load-generator:
           resources:
             limits:
               memory: 2048Mi
-        imageprovider:
-          resources:
-            requests:
-              cpu: 10m
-              memory: 25Mi
-        paymentService:
+        payment:
           resources:
             requests:
               cpu: 10m
               memory: 100Mi
-        productCatalogService:
+        product-catalog:
           resources:
             requests:
               cpu: 50m
               memory: 15Mi
             limits:
               memory: 32Mi
-        quoteService:
+        quote:
           resources:
             requests:
               cpu: 10m
               memory: 25Mi
-        recommendationService:
+        recommendation:
           resources:
             requests:
               cpu: 50m
               memory: 100Mi
-        shippingService:
+        shipping:
           resources:
             requests:
               cpu: 10m
               memory: 10Mi
-        valkey:
+        valkey-cart:
           resources:
             requests:
               cpu: 10m

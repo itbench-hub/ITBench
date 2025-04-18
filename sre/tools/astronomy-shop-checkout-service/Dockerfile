@@ -1,3 +1,3 @@
-FROM ghcr.io/open-telemetry/demo:1.12.0-checkoutservice
+FROM ghcr.io/open-telemetry/demo:2.0.1-checkout
 
 ENTRYPOINT [ "./checkout" ]

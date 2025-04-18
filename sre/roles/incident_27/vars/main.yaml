@@ -3,7 +3,7 @@ scenario_domain: sre
 sample_application: otel_astronomy_shop
 
 target_namespace_name: "{{ otel_astronomy_app_namespace_project_name }}"
-target_label_name1: "quoteservice"
+target_label_name1: "quote"
 target_label_name2: ""
 
 docs_incident_27:
@@ -34,62 +34,65 @@ docs_incident_27:
     - Rust
     - Tonic
   alerts:
-    - id: Error_Rate_is_Above_Threshold_frontend
-      text: Error Rate is Above Threshold
+    - id: ErrorRate
       group_id: frontend-service-1
-    - id: Error_Rate_is_Above_Threshold_checkout
-      text: Error Rate is Above Threshold
+      metadata:
+        description: Error rate is above threshold for frontend service
+    - id: ErrorRate
       group_id: checkout-service-1
-    - id: Error_Rate_is_Above_Threshold_shipping
-      text: Error Rate is Above Threshold
+      metadata:
+        description: Error rate is above threshold for checkout service
+    - id: ErrorRate
       group_id: shipping-service-1
+      metadata:
+        description: Error rate is above threshold for shipping service
   groups:
     - id: http-abort-otel-demo-quoteservice-1
       kind: HttpChaos
-      filter: 
-      - .*quoteservice
+      filter:
+      - quote\b
       namespace: chaos-mesh
       root_cause: true
     - id: quote-service-1
       kind: Service
-      filter: 
-      - .*quoteservice\b
+      filter:
+      - quote\b
       namespace: otel-demo
     - id: checkout-service-1
       kind: Service
-      filter: 
-      - .*checkoutservice\b
+      filter:
+      - checkout\b
       namespace: otel-demo
     - id: shipping-service-1
       kind: Service
-      filter: 
-      - .*shippingservice\b
+      filter:
+      - shipping\b
       namespace: otel-demo
     - id: frontend-service-1
       kind: Service
-      filter: 
-      - .*frontend\b
+      filter:
+      - frontend\b
       namespace: otel-demo
     - id: frontend-pod-1
       kind: Pod
       namespace: otel-demo
       filter:
-      - .*frontend-.*
+      - frontend-.*
     - id: checkout-pod-1
       kind: Pod
       namespace: otel-demo
       filter:
-      - .*checkoutservice-.*
+      - checkout-.*
     - id: quote-pod-1
       kind: Pod
       namespace: otel-demo
       filter:
-      - .*quoteservice-.*
+      - quote-.*
     - id: shipping-pod-1
       kind: Pod
       namespace: otel-demo
       filter:
-      - .*shippingservice-.*
+      - shipping-.*
   aliases:
     - - frontend-service-1
       - frontend-pod-1

@@ -3,7 +3,7 @@ scenario_domain: sre
 sample_application: otel_astronomy_shop
 
 is_install_chaos_mesh: false
-target_deployment_name: "{{ otel_astronomy_app_installation_name }}-checkoutservice"
+target_deployment_name: "checkout"
 
 docs_incident_23:
   platform: kubernetes
@@ -31,9 +31,10 @@ docs_incident_23:
   technologies:
     - Node.js
   alerts:
-    - id: Error_Rate_is_Above_Threshold_frontend
-      text: Error Rate is Above Threshold
+    - id: ErrorRate
       group_id: frontend-service-1
+      metadata:
+        description: Error rate is above threshold for frontend service
   groups:
     - id: checkout-pod-1
       kind: Pod
@@ -43,12 +44,12 @@ docs_incident_23:
       root_cause: true
     - id: frontend-service-1
       kind: Service
-      filter: 
+      filter:
       - .*frontend\b
       namespace: otel-demo
     - id: checkout-service-1
       kind: Service
-      filter: 
+      filter:
       - .*checkoutservice\b
       namespace: otel-demo
     - id: frontend-pod-1

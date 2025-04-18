@@ -18,13 +18,13 @@ Currently, ITBench comprises of an initial set of 42 SRE scenarios and 2 FinOps 
 **Fault Details:**
 - Frontend service experiencing high HTTP error rate
 - Recommendation service experiencing high HTTP error rate
-- Feature flag `recommendationServiceCacheFailure` set to "on" in flagd configuration
+- Feature flag `recommendationCacheFailure` set to "on" in flagd configuration
 
 **Alerts:**
 - Error Rate Above Threshold (frontend-service-1)
 
 **Recommended Actions:**
-1. Disable recommendationServiceCacheFailure feature flag
+1. Disable recommendationCacheFailure feature flag
 2. Increase Memory Allocation
 
 ### [ID 3: Ad Service CPU](../roles/incident_3/tasks/main.yaml)
@@ -32,13 +32,13 @@ Currently, ITBench comprises of an initial set of 42 SRE scenarios and 2 FinOps 
 **Fault Details:**
 - Frontend service experiencing high HTTP error rate
 - Cart service experiencing high HTTP error rate
-- Feature flag `adServiceHighCpu` set to "on" in flagd configuration
+- Feature flag `adHighCpu` set to "on" in flagd configuration
 
 **Alerts:**
 - Error Rate Above Threshold (frontend-service-1)
 
 **Recommended Actions:**
-- Disable adServiceHighCpu feature flag
+- Disable adHighCpu feature flag
 
 ### [ID 23: CheckoutService Corrupt Image](../roles/incident_23/tasks/main.yaml)
 

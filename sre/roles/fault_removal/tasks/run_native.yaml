@@ -5,7 +5,7 @@
     kind: ConfigMap
     namespace: "{{ otel_astronomy_app_namespace_project_name }}"
     kubeconfig: "{{ kubeconfig }}"
-    name: "{{ otel_astronomy_app_installation_name }}-flagd-config"
+    name: "flagd-config"
   register: configmap_output
   when: is_native and is_removal
 
@@ -56,7 +56,7 @@
     api_version: v1
     kind: ConfigMap
     kubeconfig: "{{ kubeconfig }}"
-    name: "{{ otel_astronomy_app_installation_name }}-flagd-config"
+    name: "flagd-config"
     namespace: "{{ otel_astronomy_app_namespace_project_name }}"
     state: present
     resource_definition: "{{ updated_configmap }}"
@@ -68,7 +68,7 @@
   when: is_native and is_removal
 
 - name: Kubectl restart Flagd deployment
-  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "{{ otel_astronomy_app_namespace_project_name }}" rollout restart deployment "{{ otel_astronomy_app_installation_name }}-flagd"
+  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "{{ otel_astronomy_app_namespace_project_name }}" rollout restart deployment flagd
   register: flagd_deployment_restart_output
   when: is_native and is_removal
 
