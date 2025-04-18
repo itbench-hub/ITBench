@@ -40,7 +40,7 @@ sample_application: otel_astronomy_shop
 
 is_install_chaos_mesh: false
 fault_injected:
-  - recommendationServiceCacheFailure
+  - recommendationCacheFailure
 
 docs_incident_1:
   "id": 1
@@ -69,7 +69,7 @@ In the example of [incident_1](../roles/incident_1/tasks/main.yaml) The first bl
 
 <img src="incident_1_tasks_21feb2025.png" />
 
-### Lines 2-5: 
+### Lines 2-5:
 ```yaml
 - name: Documenting Incident #1
   set_fact:
@@ -96,7 +96,7 @@ Forgetting to include the tags when adding a new task is a common error.
 If you leave the tags block off, the task will be ignored with no debugging output or acknowledgement.
 </span>
 
-### Lines 7-18: 
+### Lines 7-18:
 ```yaml
 - name: fault_injection_incident_1
   ansible.builtin.import_role:
@@ -137,7 +137,7 @@ An [example of both](https://docs.ansible.com/ansible/latest/collections/ansible
 but if you can find a succinct way of explaining when a string (`"{{ value | bool }}"`) is required, and when to use a simple `value | bool`, please suggest it here.  I don't have one.
 In general, one will work and the other won't.  If one gives an error, try the other.
 
-### Lines 20-27: 
+### Lines 20-27:
 ```yaml
 - name: fault_removal_incident_1
   ansible.builtin.import_role:
