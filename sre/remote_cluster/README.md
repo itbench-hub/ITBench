@@ -10,7 +10,7 @@ _Note: The following setup guide presumes that the required software listed [her
 
 1. Install Python dependencies. (Working directory is `remote_cluster`.)
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
 
 2. Create `variables.yaml` from the example.
