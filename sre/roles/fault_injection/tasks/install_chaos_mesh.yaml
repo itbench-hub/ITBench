@@ -30,13 +30,12 @@
     release_namespace: "{{ chaos_mesh_namespace_project_name }}"
     release_state: present
     create_namespace: true
-    set_values:
-      - value: chaosDaemon.runtime=containerd
-        value_type: raw
-      - value: chaosDaemon.socketPath=/run/containerd/containerd.sock
-        value_type: raw
-      - value: "version={{ chaos_mesh_version_number }}"
-        value_type: raw
+    values:
+      chaosDaemon:
+        runtime: containerd
+        socketPath: /run/containerd/containerd.sock
+      dnsServer:
+        create: false
   tags:
     - fault_injection
     - chaos_mesh_installation
@@ -51,4 +50,3 @@
     - fault_injection
     - chaos_mesh_installation
   when: is_install_chaos_mesh | bool
-
