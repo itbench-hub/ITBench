@@ -1,11 +1,14 @@
-FROM registry.access.redhat.com/ubi9/python-312:9.5-1744198409
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5-1742914212
 
 ENV DATA_DIRECTORY /app/topology_data
 
 WORKDIR /app
 
+RUN microdnf update -y && \
+    microdnf install -y python3.12 python3.12-pip
+
 COPY requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python3.12 -m pip install --no-cache-dir -r requirements.txt
 
 COPY __init__.py __init__.py
 COPY app.py app.py
@@ -24,4 +27,4 @@ RUN mkdir ${DATA_DIRECTORY} && \
 
 USER 1001
 
-CMD ["python", "main.py"]
+CMD ["python3.12", "main.py"]
