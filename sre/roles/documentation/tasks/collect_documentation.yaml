@@ -1,15 +1,15 @@
 ---
-- name: Find all incident roles
+- name: Find all/select incident roles
   find:
     paths: "roles" 
-    patterns: "incident_*"
+    patterns: "{{ selected_incidents | map('regex_replace', '^', 'incident_') | list | default('incident_*') }}"
     file_type: "directory"
     recurse: False
   register: incident_roles
   tags:
     - documentation
 
-- name: Include all of the incident roles
+- name: Include all of or selected incident roles
   ansible.builtin.include_role:
     name: '{{ item["path"] }}'
   loop: "{{ incident_roles['files'] }}"
