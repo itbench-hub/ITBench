@@ -14,12 +14,12 @@ groups:
     interval: 1m
     rules:
       - alert: RequestLatency
-        expr: histogram_quantile(0.95, sum by(le, service_name, namespace) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name!~"flagd|otel-demo-loadgenerator"}[2m]))) > 1500
+        expr: histogram_quantile(0.95, sum by(le, service_name, namespace) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name!~"flagd|load-generator"}[2m]))) > 1500
         for: 1m
         annotations:
           description: 'Latency in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 1500ms (current value: {{ $value }}s)'
       - alert: RequestErrorRate
-        expr: sum by (service_name, namespace) (delta(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR", service_name!~"flagd|otel-demo-loadgenerator"}[2m])) > 0
+        expr: sum by (service_name, namespace) (delta(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR", service_name!~"flagd|load-generator"}[2m])) > 0
         for: 1m
         annotations:
           description: 'Request error rate in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 0 (current value: {{ $value }})'
@@ -36,12 +36,12 @@ groups:
     interval: 1m
     rules:
       - alert: CPUSpend
-        expr: sum by (exported_namespace) (exported_container_exported_namespace_node:container_cpu_allocation_cost_per_node:avg5m{exported_container!="loadgenerator", exported_namespace="otel-demo"}) > 0.03
+        expr: sum by (exported_namespace) (exported_container_exported_namespace_node:container_cpu_allocation_cost_per_node:avg5m{exported_container!="load-generator", exported_namespace="otel-demo"}) > 0.03
         for: 1m
         annotations:
           description: '{{ $labels.exported_namespace }} has exceeded the allocated budget for vCPU for 5m (current value: ${{ $value }})'
       - alert: MemorySpend
-        expr: sum by (exported_namespace) (exported_container_exported_namespace_node:container_memory_allocation_gigabytes_cost_per_node:avg5m{exported_container!="loadgenerator", exported_namespace="otel-demo"}) > 0.009
+        expr: sum by (exported_namespace) (exported_container_exported_namespace_node:container_memory_allocation_gigabytes_cost_per_node:avg5m{exported_container!="load-generator", exported_namespace="otel-demo"}) > 0.009
         for: 1m
         annotations:
           description: '{{ $labels.exported_namespace }} has exceeded the allocated budget for RAM for 5m (current value: ${{ $value }})'
@@ -49,12 +49,12 @@ groups:
     interval: 1m
     rules:
       - alert: CPUEfficiency
-        expr: avg by (container, namespace) (container_namespace:container_cpu_usage_seconds_per_requests:ratio_irate5m{container!="loadgenerator", namespace="otel-demo"}) * 100 < 85
+        expr: avg by (container, namespace) (container_namespace:container_cpu_usage_seconds_per_requests:ratio_irate5m{container!="load-generator", namespace="otel-demo"}) * 100 < 85
         for: 1m
         annotations:
           description: '{{ $labels.container }} in {{ $labels.namespace }} has a cpu efficiency below 85% for 5m (current value: {{ $value }}%)'
       - alert: MemoryEfficiency
-        expr: avg by (container, namespace) (container_namespace:container_memory_working_set_bytes_per_requests_bytes:ratio_avg5m{container!="loadgenerator", namespace="otel-demo"}) * 100 < 70
+        expr: avg by (container, namespace) (container_namespace:container_memory_working_set_bytes_per_requests_bytes:ratio_avg5m{container!="load-generator", namespace="otel-demo"}) * 100 < 70
         for: 1m
         annotations:
           description: '{{ $labels.container }} in {{ $labels.namespace }} has a memory efficiency below 70% for 5m (current value: {{ $value }}%)'
