@@ -19,7 +19,7 @@ groups:
         annotations:
           description: 'Latency in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 1500ms (current value: {{ $value }}s)'
       - alert: RequestErrorRate
-        expr: sum by (service_name, namespace) (delta(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR", service_name!~"flagd|load-generator"}[2m])) > 0
+        expr: sum by (service_name, namespace) (irate(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR", service_name!~"flagd|load-generator"}[2m])) > 0
         for: 1m
         annotations:
           description: 'Request error rate in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 0 (current value: {{ $value }})'
