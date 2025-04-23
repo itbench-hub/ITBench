@@ -99,3 +99,27 @@
   ansible.builtin.debug:
     msg: "{{ flagd_deployment_restart_output.stdout }}"
   when: is_native and is_injection
+
+- name: Create a dictionary of Flagd-based flags and their corresponding deployment mappings
+  ansible.builtin.set_fact:
+    flagd_failure_flag_deployment_mapping:
+      "adFailure": "ad"
+      "adHighCpu": "ad"
+      "adManualGc": "ad"
+      "cartFailure": "cart"
+      "imageSlowLoad": "image-provider"
+      "kafkaQueueProblems": "kafka"
+      "loadGeneratorFloodHomepage": "load-generator"
+      "paymentFailure": "payment"
+      "paymentUnreachable": "payment"
+      "productCatalogFailure": "product"
+      "recommendationCacheFailure": "recommendation"
+  when: is_native and is_injection
+
+- name: Kubectl restart corresponding deployment(s)
+  with_items: "{{ fault_injected }}"
+  loop_control:
+    loop_var: fault
+    pause: "{{ delay_between_faults }}"
+  ansible.builtin.shell: KUBECONFIG={{ kubeconfig }} kubectl -n "{{ otel_astronomy_app_namespace_project_name }}" rollout restart deployment "{{ flagd_failure_flag_deployment_mapping[fault] }}"
+  when: is_native and is_injection
