@@ -1,14 +1,14 @@
 # ITBench for Site Reliability Engineering (SRE) and Financial Operations (FinOps)
 
-**[Paper](#paper) | [Incident Scenarios](./docs/incident_scenarios.md) | [Tools](./docs/tools.md) | [Maintainers](#maintainers)**
+**[Paper](https://github.com/IBM/ITBench/blob/main/it_bench_arxiv.pdf) | [Incident Scenarios](./docs/incident_scenarios.md) | [Tools](./docs/tools.md)
 
 ## Overview
-ITBench uses open source technologies to create completely repeatable and reproducible scenarios on a Kubernetes platform. A scenario involves deploying a set of observability tools, a sample application and triggering an incident (referred to as task) in the environment.
+ITBench uses open source technologies to create completely repeatable and reproducible scenarios on a Kubernetes platform. A SRE scenario involves deploying a set of observability tools, a sample application, and triggering an incident (referred to as task) in the environment.
 
 ![itbench_sre_task_scenario.png](./docs/itbench_sre_task_scenario.png)
-While this repository focuses on scenarios, an open-source Language Model (LM)-based SRE-Agent that aims to diagnose and remediate issues in these scenario environments can be found [here](https://github.com/IBM/itbench-sre-agent).
+While this repository focuses on scenarios, an open-source Language Model (LM)-based SRE-Agent that aims to diagnose and remediate issues in these scenario environments can be found [here](https://github.com/IBM/ITBench-SRE-Agent).
 
-### Project Structure
+### Structure
 
 This project uses Ansible to automate the deployment and undeployment of technologies to a Kubernetes cluster and the injection and removal of faults.
 The playbook run is configured using variables defined in `group\_vars`.
@@ -161,11 +161,3 @@ _Note_: For a full list of `make` commands, run the following command:
 ```bash
 make help
 ```
-
-## Maintainers
-- Mudit Verma - [@mudverma](https://github.com/mudverma)
-- Divya Pathak - [@divyapathak24](https://github.com/divyapathak24)
-- Felix George - [@fali007](https://github.com/fali007)
-- Ting Dai - [@tingdai](https://github.com/tingdai)
-- Gerard Vanloo - [@Red-GV](https://github.com/Red-GV)
-- Bekir O Turkkan - [@bekiroguzhan](https://github.com/bekiroguzhan)
