@@ -41,11 +41,15 @@
     release_state: present
     create_namespace: true
     values:
+      alertmanager:
+        extraArgs:
+          "web.route-prefix": /alertmanager
       extraScrapeConfigs: "{{ lookup('ansible.builtin.template', 'templates/prometheus-scrape-configs.j2') | from_yaml | to_yaml }}"
       server:
         extraFlags:
           - web.enable-lifecycle
           - web.enable-otlp-receiver
+        prefixURL: /prometheus
       serverFiles:
         alerting_rules.yml: "{{ lookup('ansible.builtin.template', '/tmp/prometheus-required-alerting-rules.j2') | from_yaml }}"
         recording_rules.yml: "{{ lookup('ansible.builtin.template', 'templates/prometheus-recording-rules.j2') | from_yaml }}"
@@ -62,8 +66,6 @@
       metadata:
         name: prometheus
         namespace: "{{ prometheus_namespace_project_name }}"
-        annotations:
-          nginx.ingress.kubernetes.io/rewrite-target: /$2
       spec:
         ingressClassName: nginx
         rules:

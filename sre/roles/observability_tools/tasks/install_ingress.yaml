@@ -1,13 +1,35 @@
 ---
+- name: Set Context Security Policies
+  ansible.builtin.set_fact:
+    security_policies:
+      - "img-src 'self' data:"
+      - connect-src 'self'
+      - font-src 'self'
+      - object-src 'none'
+      - form-action 'none'
+      - frame-ancestors 'none'
+
 - name: Set up Nginx Ingress
   kubernetes.core.helm:
     name: "{{ ingress_installation_name }}"
     kubeconfig_path: "{{ kubeconfig }}"
     chart_ref: ingress-nginx/ingress-nginx
     chart_version: "{{ ingress_chart_version }}"
+    create_namespace: true
     release_namespace: "{{ ingress_namespace_project_name }}"
     release_state: present
-    create_namespace: true
     wait: true
     timeout: 20m0s
+    values:
+      controller:
+        addHeaders:
+          "X-Content-Type-Options": nosniff
+          "X-Frame-Options": DENY
+          "X-XSS-Protection": "0"
+          "Strict-Transport-Security": max-age=31536000; includeSubDomains; preload
+          "Content-Security-Policy": "{{ security_policies | join('; ') }}"
+          "Cross-Origin-Resource-Policy": same-origin
+          "Referrer-Policy": strict-origin-when-cross-origin
+        config:
+          server-tokens: "false"
   ignore_errors: yes
