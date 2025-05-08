@@ -4,12 +4,25 @@
   tags:
     - install_tools
   when:
-    - sre_bench_runner
+    - (sre_bench_runner | default(false))
 
 - ansible.builtin.import_tasks:
     file: set_up_helm_charts.yaml
   tags:
     - install_tools
+
+- ansible.builtin.import_tasks:
+    file: set_up_namespaces.yaml
+  tags:
+    - install_tools
+
+- ansible.builtin.import_tasks:
+    file: set_up_service_account_scc_for_openshift.yaml
+  tags:
+    - install_tools
+  when:
+    - cluster_type is defined
+    - cluster_type == "openshift" or cluster_type == "openshift_crc_local"
 
 - ansible.builtin.import_tasks:
     file: install_ingress.yaml
@@ -31,22 +44,6 @@
   tags:
     - install_tools
 
-- name: List of common (SRE+FinOps) Helm installations
-  ansible.builtin.set_fact:
-    common_helm_installations:
-      - name: "{{ opensearch_installation_name }}"
-        namespace: "{{ opensearch_namespace_project_name }}"
-      - name: "{{ prometheus_namespace_project_name }}"
-        namespace: "{{ prometheus_installation_name }}"
-
-- name: Wait for common (SRE + FinOps) installations to complete
-  ansible.builtin.command: "helm status {{ item.name }} -n {{ item.namespace }}"
-  register: helm_status
-  until: "helm_status.rc == 0 and helm_status.stdout.find('STATUS: deployed') != -1"
-  retries: 10
-  delay: 60
-  loop: "{{ common_helm_installations }}"
-
 - ansible.builtin.import_tasks:
     file: install_opentelemetry.yaml
   tags:
@@ -58,29 +55,13 @@
     - install_tools
   when:
     - domain == "finops"
+    - cluster_type is undefined
+    - cluster_type is defined and (cluster_type == "kops" or cluster_type == "kind_local")
 
 - ansible.builtin.import_tasks:
     file: install_opencost.yaml
   tags:
     - install_tools
-  when:
-    - domain == "finops"
-
-- name: List of common FinOps Helm installations
-  ansible.builtin.set_fact:
-    finops_related_helm_installations:
-      - name: "{{ opencost_installation_name }}"
-        namespace:  "{{ opencost_namespace_project_name }}"
-      - name: "{{ metrics_server_installation_name }}"
-        namespace: "{{ metrics_server_namespace_project_name }}"
-
-- name: Wait for common FinOps installations to complete
-  ansible.builtin.command: "helm status {{ item.name }} -n {{ item.namespace }}"
-  register: helm_status
-  until: "helm_status.rc == 0 and helm_status.stdout.find('STATUS: deployed') != -1"
-  retries: 10
-  delay: 60
-  loop: "{{ finops_related_helm_installations }}"
   when:
     - domain == "finops"
 
@@ -94,4 +75,4 @@
   tags:
     - uninstall_tools
   when:
-    - sre_bench_runner
+    - (sre_bench_runner | default(false))

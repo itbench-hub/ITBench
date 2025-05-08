@@ -7,13 +7,16 @@
     chart_version: "{{ clickhouse_chart_version }}"
     release_namespace: "{{ clickhouse_namespace_project_name }}"
     release_state: present
-    create_namespace: true
-    wait: true
     timeout: 10m0s
+    wait: true
     values:
       clickhouse:
         defaultUser:
           allowExternalAccess: true
+        podSecurityContext:
+          runAsUser: 101
+          runAsGroup: 101
+          fsGroup: 101
 
 - name: Wait for Clickhouse install to complete
   kubernetes.core.k8s_info:
@@ -27,7 +30,7 @@
   until:
     - clickhouse_installation_info.resources[0].status.status is defined
     - clickhouse_installation_info.resources[0].status.status == 'Completed'
-  retries: 4
+  retries: 10
   delay: 30
 
 - name: Get Clickhouse credentials from secret
