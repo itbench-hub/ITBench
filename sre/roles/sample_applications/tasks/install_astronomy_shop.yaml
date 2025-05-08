@@ -27,6 +27,45 @@
     clickhouse_user: "{{ clickhouse_secrets_info.resources[0].data.user | b64decode }}"
     clickhouse_password: "{{ clickhouse_secrets_info.resources[0].data.password | b64decode }}"
 
+- name: Create custom Security Context Constraint (SCC) for OpenTelemetry's Astronomy Shop
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    resource_definition:
+      apiVersion: security.openshift.io/v1
+      kind: SecurityContextConstraints
+      metadata:
+        name: otel-astronomy-shop-scc
+      allowPrivilegedContainer: true
+      allowPrivilegeEscalation: true
+      readOnlyRootFilesystem: false
+      defaultAddCapabilities: []
+      requiredDropCapabilities:
+        - ALL
+      runAsUser:
+        type: RunAsAny
+      seLinuxContext:
+        type: RunAsAny
+      fsGroup:
+        type: RunAsAny
+      supplementalGroups:
+        type: RunAsAny
+      seccompProfiles:
+        - 'runtime/default'
+  when:
+    - cluster_type is defined
+    - cluster_type == "openshift" or cluster_type == "openshift_crc_local"
+
+- name: Apply SCC to all service accounts in the namespace where OpenTelemetry's Astronomy Shop namespace is installed
+  ansible.builtin.command:
+    cmd: >
+      oc adm policy add-scc-to-group otel-astronomy-shop-scc system:serviceaccounts:{{ otel_astronomy_app_namespace_project_name }}
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  when:
+    - cluster_type is defined
+    - cluster_type == "openshift" or cluster_type == "openshift_crc_local"
+
 - name: Deploy OpenTelemetry's Astronomy Shop Demo
   kubernetes.core.helm:
     name: "{{ otel_astronomy_app_installation_name }}"
@@ -46,6 +85,10 @@
               memory: 100Mi
             limits:
               memory: 256Mi
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+            runAsUser: 0
         ad:
           resources:
             requests:
@@ -106,6 +149,10 @@
             requests:
               cpu: 10m
               memory: 25Mi
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+            runAsUser: 0
         kafka:
           resources:
             requests:

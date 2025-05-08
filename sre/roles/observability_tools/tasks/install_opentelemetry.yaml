@@ -7,7 +7,6 @@
     chart_version: "{{ opentelemetry_operator_chart_version }}"
     release_namespace: "{{ opentelemetry_operator_namespace_project_name }}"
     release_state: present
-    create_namespace: true
     wait: true
     values:
       manager:
@@ -19,58 +18,11 @@
         autoGenerateCert:
           enabled: true
 
-- name: Create a namespace for OpenTelemetry Collectors
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
-    name: "{{ opentelemetry_operator_collectors_namespace }}"
-    api_version: v1
-    kind: Namespace
-    state: present
-
-- name: Create a service account for OpenTelemetry Collector (Kubernetes Events)
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
-    name: "{{ opentelemetry_operator_collector_kubernetes_events_name }}-collector"
-    namespace: "{{ opentelemetry_operator_collectors_namespace }}"
-    api_version: v1
-    kind: ServiceAccount
-    state: present
-
-- name: Create a cluster role for OpenTelemetry Collector (Kubernetes Events)
+- name: Create RBAC objects for OpenTelemetry Collector (Kubernetes Events)
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig }}"
     state: present
-    resource_definition:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRole
-      metadata:
-        name: "{{ opentelemetry_operator_collector_kubernetes_events_name }}-collector"
-      rules:
-        - apiGroups:
-            - events.k8s.io
-          resources:
-            - events
-          verbs:
-            - watch
-            - list
-
-- name: Create a cluster role binding for OpenTelemetry Collector (Kubernetes Events)
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
-    state: present
-    resource_definition:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRoleBinding
-      metadata:
-        name: "{{ opentelemetry_operator_collector_kubernetes_events_name }}-collector"
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
-        kind: ClusterRole
-        name: "{{ opentelemetry_operator_collector_kubernetes_events_name }}-collector"
-      subjects:
-        - kind: ServiceAccount
-          name: "{{ opentelemetry_operator_collector_kubernetes_events_name }}-collector"
-          namespace: "{{ opentelemetry_operator_collectors_namespace }}"
+    template: templates/rbac.j2
 
 - name: Deploy OpenTelemetry Collector (Kubernetes Events)
   kubernetes.core.k8s:

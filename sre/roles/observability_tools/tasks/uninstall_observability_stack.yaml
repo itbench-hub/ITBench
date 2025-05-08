@@ -62,25 +62,22 @@
     - crd_deletion.failed
     - not ('Failed to find exact match' in crd_deletion.msg)
 
-- name: Remove non-namespaced resources
+- name: Remove RBAC objects
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig }}"
-    api_version: "{{ item.api_version }}"
-    name: "{{ item.name }}"
-    kind: "{{ item.kind }}"
     state: absent
+    template: templates/rbac.j2
     wait: true
-  loop:
-    - api_version: rbac.authorization.k8s.io/v1
-      kind: ClusterRoleBinding
-      name: "{{ opentelemetry_operator_collector_kubernetes_events_name }}-collector"
-    - api_version: rbac.authorization.k8s.io/v1
-      kind: ClusterRole
-      name: "{{ opentelemetry_operator_collector_kubernetes_events_name }}-collector"
-  register: non_namespaced_resource_deletion
-  failed_when:
-    - non_namespaced_resource_deletion.failed
-    - not ('Failed to find exact match' in non_namespaced_resource_deletion.msg)
+
+- name: Remove custom Security Context Constraints (SCC) on OpenShift
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    state: absent
+    src: files/security-context-constraints.yaml
+    wait: true
+  when:
+    - cluster_type is defined
+    - cluster_type == "openshift" or cluster_type == "openshift_crc_local"
 
 - name: Uninstall OpenTelemetry Operator
   kubernetes.core.helm:
@@ -154,65 +151,9 @@
     wait: true
     timeout: 10m
 
-- name: Remove the namespace associated with OpenSearch
+- name: Remove all namespaces
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig }}"
-    name: "{{ opensearch_namespace_project_name }}"
-    api_version: v1
-    kind: Namespace
     state: absent
-    wait: true
-
-- name: Remove the namespace associated with Clickhouse
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
-    name: "{{ clickhouse_namespace_project_name }}"
-    api_version: v1
-    kind: Namespace
-    state: absent
-    wait: true
-
-- name: Remove the namespace associated with Prometheus
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
-    name: "{{ prometheus_namespace_project_name }}"
-    api_version: v1
-    kind: Namespace
-    state: absent
-    wait: true
-
-- name: Remove the namespace associated with OpenTelemetry Collectors
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
-    name: "{{ opentelemetry_operator_collectors_namespace }}"
-    api_version: v1
-    kind: Namespace
-    state: absent
-    wait: true
-
-- name: Remove the namespace associated with Kubernetes Metric Server
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
-    name: "{{ metrics_server_namespace_project_name }}"
-    api_version: v1
-    kind: Namespace
-    state: absent
-    wait: true
-
-- name: Remove the namespace associated with OpenCost
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
-    name: "{{ opencost_namespace_project_name }}"
-    api_version: v1
-    kind: Namespace
-    state: absent
-    wait: true
-
-- name: Remove the namespace associated with Ingress
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubeconfig }}"
-    name: "{{ ingress_namespace_project_name }}"
-    api_version: v1
-    kind: Namespace
-    state: absent
+    template: templates/namespaces.j2
     wait: true

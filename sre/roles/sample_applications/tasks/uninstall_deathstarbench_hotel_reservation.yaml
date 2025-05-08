@@ -8,6 +8,18 @@
     state: absent
     wait: true
 
+- name: Remove custom Security Context Constraints (SCC) for DeathStartBench Hotel Researvation on OpenShift
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: security.openshift.io/v1
+    kind: SecurityContextConstraints
+    name: dsb-hotel-reservation-scc
+    state: absent
+    wait: true
+  when:
+    - cluster_type is defined
+    - cluster_type == "openshift" or cluster_type == "openshift_crc_local"
+
 - name: Remove the namespace associated with the installation of DeathStarBench's Hotel Reservation
   kubernetes.core.k8s:
     kubeconfig: "{{ kubeconfig }}"
