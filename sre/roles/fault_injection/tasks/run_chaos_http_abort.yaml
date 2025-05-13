@@ -14,56 +14,48 @@
   tags:
     - injection_docs
 
-- name: Inject HTTP abort chaos leveraging the Chaos framework
+- name: Inject HTTP abort chaos leveraging the Chaos framework with scheduling
   kubernetes.core.k8s:
     state: present
     kubeconfig: "{{ kubeconfig }}"
     definition:
       apiVersion: chaos-mesh.org/v1alpha1
-      kind: HTTPChaos
+      kind: Schedule
       metadata:
-        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        name: "schedule-httpabort-{{ target_namespace_name }}-{{ target_label_name1 }}"
         namespace: "{{ chaos_mesh_namespace_project_name }}"
       spec:
-        mode: all
-        selector:
-          namespaces:
-            - "{{ target_namespace_name }}"
-          labelSelectors:
-            "app.kubernetes.io/component": "{{ target_label_name1 }}"
-        target: Request
-        port: 8080
-        method: POST
-        path: '*'
-        abort: true
+        schedule: "* * * * *"  # Run every minute
+        historyLimit: 1  # Only keep record of the latest experiment
+        concurrencyPolicy: "Forbid"  # Don't start a new one if previous is still running
+        type: "HTTPChaos"
+        httpChaos:
+          mode: all
+          selector:
+            namespaces:
+              - "{{ target_namespace_name }}"
+            labelSelectors:
+              "app.kubernetes.io/component": "{{ target_label_name1 }}"
+          target: Request
+          port: 8080
+          method: POST
+          path: '*'
+          abort: true
+          duration: "55s"  # Set slightly less than a minute to ensure completion before next run
   register: fault_injection_status
   tags: chaos_mesh
   when: is_http_abort_chaos and is_fault_injection
 
-- name: Remove HTTP abort chaos leveraging the Chaos framework
+- name: Remove scheduled HTTP abort chaos
   kubernetes.core.k8s:
     state: absent
     kubeconfig: "{{ kubeconfig }}"
     definition:
       apiVersion: chaos-mesh.org/v1alpha1
-      kind: HTTPChaos
+      kind: Schedule
       metadata:
-        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        name: "schedule-httpabort-{{ target_namespace_name }}-{{ target_label_name1 }}"
         namespace: "{{ chaos_mesh_namespace_project_name }}"
-      spec:
-        mode: all
-        selector:
-          namespaces:
-            - "{{ target_namespace_name }}"
-          labelSelectors:
-            "app.kubernetes.io/component": "{{ target_label_name1 }}"
-        target: Request
-        port: 8080
-        method: POST
-        path: '*'
-        abort: true
   register: fault_removal_status
   tags: chaos_mesh
   when: is_http_abort_chaos and is_fault_removal
-
-

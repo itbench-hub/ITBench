@@ -149,21 +149,27 @@
     kubeconfig: "{{ kubeconfig }}"
     definition:
       apiVersion: chaos-mesh.org/v1alpha1
-      kind: StressChaos
+      kind: Schedule
       metadata:
-        name: "{{ target_namespace_name }}-{{ target_deployment_name}}"
+        name: "schedule-memorystress-{{ target_namespace_name }}-{{ target_deployment_name}}"
         namespace: "{{ chaos_mesh_namespace_project_name }}"
       spec:
-        mode: one
-        selector:
-          namespaces:
-            - "{{ target_namespace_name }}"
-          labelSelectors:
-            "app.kubernetes.io/component": "{{ target_label_name1 }}"
-        stressors:
-          memory:
-            workers: 4
-            size: "100%"
+        schedule: "* * * * *"
+        historyLimit: 1
+        concurrencyPolicy: "Forbid"
+        type: "StressChaos"
+        stressChaos:
+          mode: all
+          selector:
+            namespaces:
+              - "{{ target_namespace_name }}"
+            labelSelectors:
+              "app.kubernetes.io/component": "{{ target_label_name1 }}"
+          stressors:
+            memory:
+              workers: 4
+              size: "100%"
+          duration: "55s"
   register: fault_injection_status
   tags: chaos-mesh
   when: is_memory_stress_chaos and is_fault_injection
@@ -174,22 +180,11 @@
     kubeconfig: "{{ kubeconfig }}"
     definition:
       apiVersion: chaos-mesh.org/v1alpha1
-      kind: StressChaos
+      kind: Schedule
       metadata:
-        name: "{{ target_namespace_name }}-{{ target_deployment_name}}"
+        name: "schedule-memorystress-{{ target_namespace_name }}-{{ target_deployment_name}}"
         namespace: "{{ chaos_mesh_namespace_project_name }}"
-      spec:
-        mode: one
-        selector:
-          namespaces:
-            - "{{ target_namespace_name }}"
-          labelSelectors:
-            "app.kubernetes.io/component": "{{ target_label_name1 }}"
-        stressors:
-          memory:
-            workers: 4
-            size: "100%"
-  register: fault_injection_status
+  register: fault_removal_status
   tags: chaos-mesh
   when: is_memory_stress_chaos and is_fault_removal
 

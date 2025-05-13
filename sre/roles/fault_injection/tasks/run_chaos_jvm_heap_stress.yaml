@@ -151,19 +151,25 @@
     kubeconfig: "{{ kubeconfig }}"
     definition:
       apiVersion: chaos-mesh.org/v1alpha1
-      kind: JVMChaos
+      kind: Schedule
       metadata:
-        name: "heapstress-{{ target_deployment_name }}"
+        name: "schedule-jvmheapstress-{{ target_deployment_name }}"
         namespace: "{{ chaos_mesh_namespace_project_name }}"
       spec:
-        mode: all
-        selector:
-          namespaces:
-            - "{{ target_namespace_name }}"
-          labelSelectors:
-            "app.kubernetes.io/component": "{{ target_label_name1 }}"
-        action: stress
-        memType: 'heap'
+        schedule: "* * * * *"
+        historyLimit: 1
+        concurrencyPolicy: "Forbid"
+        type: "JVMChaos"
+        jvmChaos:
+          mode: all
+          selector:
+            namespaces:
+              - "{{ target_namespace_name }}"
+            labelSelectors:
+              "app.kubernetes.io/component": "{{ target_label_name1 }}"
+          action: stress
+          memType: 'heap'
+          duration: "55s"
   register: fault_injection_status
   tags: chaos-mesh
   when: is_jvm_heap_chaos and is_fault_injection
@@ -174,20 +180,11 @@
     kubeconfig: "{{ kubeconfig }}"
     definition:
       apiVersion: chaos-mesh.org/v1alpha1
-      kind: JVMChaos
+      kind: Schedule
       metadata:
-        name: "heapstress-{{ target_deployment_name }}"
+        name: "schedule-jvmheapstress-{{ target_deployment_name }}"
         namespace: "{{ chaos_mesh_namespace_project_name }}"
-      spec:
-        mode: all
-        selector:
-          namespaces:
-            - "{{ target_namespace_name }}"
-          labelSelectors:
-            "app.kubernetes.io/component": "{{ target_label_name1 }}"
-        action: stress
-        memType: 'heap'
-  register: fault_injection_status
+  register: fault_removal_status
   tags: chaos-mesh
   when: is_jvm_heap_chaos and is_fault_removal
 

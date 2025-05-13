@@ -1,3 +1,4 @@
+---
 - name: Document this fault injection
   set_fact:
     injection_docs: "{{ injection_docs | default([]) + [curr_docs] }}"
@@ -20,18 +21,24 @@
     kubeconfig: "{{ kubeconfig }}"
     definition:
       apiVersion: chaos-mesh.org/v1alpha1
-      kind: PodChaos
+      kind: Schedule
       metadata:
-        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        name: "schedule-podchaos-{{ target_namespace_name }}-{{ target_label_name1 }}"
         namespace: "{{ chaos_mesh_namespace_project_name }}"
       spec:
-        action: pod-failure
-        mode: one
-        selector:
-          namespaces:
-              - "{{ target_namespace_name }}"
-          labelSelectors:
-            "app.kubernetes.io/component": "{{ target_label_name1 }}"
+        schedule: "* * * * *"
+        historyLimit: 1
+        concurrencyPolicy: "Forbid"
+        type: "PodChaos"
+        podChaos:
+          action: pod-failure
+          mode: all
+          selector:
+            namespaces:
+                - "{{ target_namespace_name }}"
+            labelSelectors:
+              "app.kubernetes.io/component": "{{ target_label_name1 }}"
+          duration: "55s"
   register: fault_injection_status
   tags: chaos_mesh
   when: is_pod_chaos and is_fault_injection
@@ -42,18 +49,10 @@
     kubeconfig: "{{ kubeconfig }}"
     definition:
       apiVersion: chaos-mesh.org/v1alpha1
-      kind: PodChaos
+      kind: Schedule
       metadata:
-        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        name: "schedule-podchaos-{{ target_namespace_name }}-{{ target_label_name1 }}"
         namespace: "{{ chaos_mesh_namespace_project_name }}"
-      spec:
-        action: pod-failure
-        mode: one
-        selector:
-          namespaces:
-              - "{{ target_namespace_name }}"
-          labelSelectors:
-            "app.kubernetes.io/component": "{{ target_label_name1 }}"
   register: fault_removal_status
   tags: chaos_mesh
   when: is_pod_chaos and is_fault_removal

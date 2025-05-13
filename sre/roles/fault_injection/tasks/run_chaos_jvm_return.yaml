@@ -67,26 +67,31 @@
   tags: incident_29
   when: is_jvm_return_chaos and is_fault_injection
 
-
 - name: Inject JVM return chaos leveraging the Chaos framework
   kubernetes.core.k8s:
     state: present
     kubeconfig: "{{ kubeconfig }}"
     definition:
       apiVersion: chaos-mesh.org/v1alpha1
-      kind: JVMChaos
+      kind: Schedule
       metadata:
-        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        name: "schedule-jvmreturn-{{ target_namespace_name }}-{{ target_label_name1 }}"
         namespace: "{{ chaos_mesh_namespace_project_name }}"
       spec:
-        action: ruleData
-        ruleData: "RULE modifyReturnValue\nCLASS AdService\nMETHOD getInstance\nAT ENTRY\nIF true\nDO return null\nENDRULE"
-        mode: all
-        selector:
-          namespaces:
-            - "{{ target_namespace_name }}"
-          labelSelectors:
-            "app.kubernetes.io/component": "{{ target_label_name1 }}"
+        schedule: "* * * * *"
+        historyLimit: 1
+        concurrencyPolicy: "Forbid"
+        type: "JVMChaos"
+        jvmChaos:
+          action: ruleData
+          ruleData: "RULE modifyReturnValue\nCLASS AdService\nMETHOD getInstance\nAT ENTRY\nIF true\nDO return null\nENDRULE"
+          mode: all
+          selector:
+            namespaces:
+              - "{{ target_namespace_name }}"
+            labelSelectors:
+              "app.kubernetes.io/component": "{{ target_label_name1 }}"
+          duration: "55s"
   register: fault_injection_status
   tags: chaos_mesh
   when: is_jvm_return_chaos and is_fault_injection
@@ -97,21 +102,10 @@
     kubeconfig: "{{ kubeconfig }}"
     definition:
       apiVersion: chaos-mesh.org/v1alpha1
-      kind: JVMChaos
+      kind: Schedule
       metadata:
-        name: "{{ target_namespace_name }}-{{ target_label_name1 }}"
+        name: "schedule-jvmreturn-{{ target_namespace_name }}-{{ target_label_name1 }}"
         namespace: "{{ chaos_mesh_namespace_project_name }}"
-      spec:
-        action: ruleData
-        ruleData: "RULE modifyReturnValue\nCLASS AdService\nMETHOD getInstance\nAT ENTRY\nIF true\nDO return null\nENDRULE"
-        mode: all
-        selector:
-          namespaces:
-            - "{{ target_namespace_name }}"
-          labelSelectors:
-            "app.kubernetes.io/component": "{{ target_label_name1 }}"
-  register: fault_injection_status
+  register: fault_removal_status
   tags: chaos_mesh
   when: is_jvm_return_chaos and is_fault_removal
-
-
