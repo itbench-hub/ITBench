@@ -33,6 +33,17 @@ fs.inotify.max_user_instances = 512
 sudo sysctl -p
 ```
 
+6. A pre-requisite for Chaos-Mesh-based fault mechanisms is to ensure ebtable-related modules are loaded. Add/edit the file and add the following lines:
+```bash
+ebtable_broute
+ebtable_nat
+```
+The modules will be loaded automatically at the next boot. Until the next boot, run:
+```bash
+sudo modprobe ebtable_broute
+sudo modprobe ebtable_nat
+```
+
 ## Setup
 
 1. Create a kind cluster. A barebone kind configuration file has been provided [here](./kind-config.yaml).
