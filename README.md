@@ -38,8 +38,8 @@ ITBench enables researchers and developers to replicate real-world incidents in 
 
 **We provide:**
 1. **Push-button deployment tooling** for environment setup *(open-source)*
-2. **Framework for recreating:**
-   - **6 SRE scenarios** *(open-source)*
+2. **Framework for recreating realistic IT scenarios using the deployment tooling:**
+   - **6 SRE scenarios** and **21 mechanisms* *(open-source)*
    - **4 categories of CISO scenarios** *(open-source)*
    - **1 FinOps scenario** *(open-source)*
 3. **Two reference AI agents:**
@@ -70,6 +70,7 @@ ITBench incorporates a collection of problems that we call **scenarios**. Each s
 - **SRE**: Resolve "High error rate on service checkout" in a Kubernetes environment
 - **CISO**: Assess compliance posture for "new control rule detected for RHEL 9"
 - **FinOps**: Assess compliance posture for "new control rule detected for RHEL 9"
+
 **Find all scenarios**: [ITBench-Scenarios Repository](https://github.com/IBM/ITBench-Scenarios)
 
 ---
