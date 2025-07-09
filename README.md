@@ -54,7 +54,7 @@ ITBench enables researchers and developers to replicate real-world incidents in 
 
 | Timeline | Key Deliverables |
 |----------|------------------|
-| **July 2025** | Scenario specification generator and runner allowing for most (if not all) fault mechanisms to be re-used across diverse applications and microservices |
+| **July 2025** | Scenario specification generator and runner allowing for most (if not all) mechanisms to be re-used across diverse applications and microservices |
 | **August 2025** | • **SRE-Agent-Lite**: Lightweight agent to assist non-systems personnel with environment debugging<br/>• **Snapshot & Replay**: Data capture and replay capabilities |
 | **Fall 2025** | **BYOA (Bring Your Own Application)**: Support for custom application integration |
 
