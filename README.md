@@ -32,17 +32,19 @@ ITBench measures the performance of AI agents across a wide variety of **complex
 - **Kubernetes-based** scenario environments  
 
 ### What's Included
+
 ITBench enables researchers and developers to replicate real-world incidents in Kubernetes environments and develop AI agents to address them.
 
-**As of February 2025, we are open-sourcing:**
-1. Push-button deployment tooling for environment setup
-2. Framework for recreating:
-   - **6 SRE scenarios**
-   - **1 FinOps scenario**
-   - **4 categories of CISO scenarios**
-3. Two reference AI agents:
-   - CISO (Chief Information Security Officer) Agent
-   - SRE (Site Reliability Engineering) Agent
+**We provide:**
+1. **Push-button deployment tooling** for environment setup *(open-source)*
+2. **Framework for recreating:**
+   - **6 SRE scenarios** *(open-source)*
+   - **1 FinOps scenario** *(open-source)*
+   - **4 categories of CISO scenarios** *(open-source)*
+3. **Two reference AI agents:**
+   - CISO (Chief Information Security Officer) Agent *(open-source)*
+   - SRE (Site Reliability Engineering) Agent *(open-source)*
+4. **Fully-managed leaderboard** for agent evaluation and comparison
 
 ---
 
