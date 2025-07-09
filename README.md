@@ -7,6 +7,7 @@
 ## 📢 Announcements
 
 ### Latest Updates
+- **[June 13, 2025]** Identified 25+ additional scenarios to be developed over the summer.
 - **[May 2, 2025]** 🚀 ITBench now provides **fully-managed scenario environments** for everyone! Our platform handles the complete workflow — from scenario deployment to agent evaluation and leaderboard updates. Visit our GitHub repository [here](https://github.com/ibm/ITBench-Leaderboard) for guidelines and get started today.
 - **[February 28, 2025]** 🏆 **Limited Access Beta**: Invite-only access to the ITBench hosted scenario environments. ITBench handles scenario deployment, agent evaluation, and leaderboard updates. To request access, e-mail us [here](agent-bench-automation@ibm.com).
 - **[February 7, 2025]** 🎉 **Initial release!** Includes research paper, self-hosted environment setup tooling, sample scenarios, and baseline agents.
@@ -53,9 +54,8 @@ ITBench enables researchers and developers to replicate real-world incidents in 
 
 | Timeline | Key Deliverables |
 |----------|------------------|
-| **June 2025** | • Identified 25+ additional scenarios to be developed over the summer<br> |
-| **July 2025** | • Scenario specification generator and runner allowing for most (if not all) fault mechanisms to be re-used across diverse applications and microservices<br> |
-| **August 2025** | • **SRE-Agent-Lite**: Lightweight agent to assist non-systems personnel with environment debugging<br>• **Snapshot & Replay**: Data capture and replay capabilities<br> |
+| **July 2025** | Scenario specification generator and runner allowing for most (if not all) fault mechanisms to be re-used across diverse applications and microservices |
+| **August 2025** | • **SRE-Agent-Lite**: Lightweight agent to assist non-systems personnel with environment debugging<br/>• **Snapshot & Replay**: Data capture and replay capabilities |
 | **Fall 2025** | **BYOA (Bring Your Own Application)**: Support for custom application integration |
 
 ---
