@@ -49,6 +49,17 @@ ITBench enables researchers and developers to replicate real-world incidents in 
 
 ---
 
+## Roadmap
+
+| Timeline | Key Deliverables |
+|----------|------------------|
+| **June 2025** | • Identified 25+ additional scenarios to be developed over the summer<br> |
+| **July 2025** | • Scenario specification generator and runner allowing for most (if not all) fault mechanisms to be re-used across diverse applications and microservices<br> |
+| **August 2025** | • **SRE-Agent-Lite**: Lightweight agent to assist non-systems personnel with environment debugging<br>• **Snapshot & Replay**: Data capture and replay capabilities<br> |
+| **Fall 2025** | **BYOA (Bring Your Own Application)**: Support for custom application integration |
+
+---
+
 ## 🏆 Leaderboard
 
 The ITBench Leaderboard tracks agent performance across SRE, FinOps, and CISO scenarios. We provide fully-managed scenario environments while researchers/developers run their agents on their own systems and submit their outputs for evaluation.
