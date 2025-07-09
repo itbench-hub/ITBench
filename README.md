@@ -1,60 +1,111 @@
 # ITBench
 
-**[Paper](./it_bench_arxiv.pdf) | [Scenarios](#scenarios) | [Agents](#agents) | [How to Cite]()| [Contributors](#contributors) | [Contacts](#contacts)**
+**[Paper](./it_bench_arxiv.pdf) | [Leaderboard](#leaderboard) | [Scenarios](#scenarios) | [Agents](#agents) | [How to Cite](#how-to-cite) | [Contributors](./CONTRIBUTORS.md) | [Contacts](#contacts)**
 
-# 📢 Announcements
+---
 
-## Latest Updates
-- **[May 2, 2025]** ITBench now provides fully-managed scenario environments for everyone! Our platform handles the complete workflow — from scenario deployment to agent evaluation and leaderboard updates. Visit our GitHub repository [here](https://github.com/ibm/ITBench-Leaderboard) for guidelines and get started today.
-- **[February 28, 2025]** Limited Access Beta 🏆: Invite-only access to the ITBench hosted scenario environments. ITBench handles scenario deployment, agent evaluation, and leaderboard updates. To request access, e-mail us [here](agent-bench-automation@ibm.com).
-- **[February 7, 2025]** Initial release! 🎉 Includes research paper, self-hosted environment setup tooling, sample scenarios, and baseline agents.
+## 📢 Announcements
+
+### Latest Updates
+- **[June 13, 2025]** Identified 25+ additional scenarios to be developed over the summer.
+- **[May 2, 2025]** 🚀 ITBench now provides **fully-managed scenario environments** for everyone! Our platform handles the complete workflow—from scenario deployment to agent evaluation and leaderboard updates. Visit our GitHub repository [here](https://github.com/ibm/ITBench-Leaderboard) for guidelines and get started today.
+- **[February 28, 2025]** 🏆 **Limited Access Beta**: Invite-only access to the ITBench hosted scenario environments. ITBench handles scenario deployment, agent evaluation, and leaderboard updates. To request access, e-mail us [here](agent-bench-automation@ibm.com).
+- **[February 7, 2025]** 🎉 **Initial release!** Includes research paper, self-hosted environment setup tooling, sample scenarios, and baseline agents.
+
+---
 
 ## Overview
 
-The goal of ITBench is to measure the performance of AI agents across a wide variety of complex and real-life IT automation tasks targetting three key personas:
-- Site Reliability Engineering (SRE) - focusing on availability and resiliency
-- Financial Operations (FinOps) - focusing on enforcing cost efficiencies and optimizing return on investment
-- Compliance and Security Operations (CISO) - focusing on ensuring compliance and security of IT implementations
+ITBench measures the performance of AI agents across a wide variety of **complex and real-world inspired IT automation tasks** targeting three key use cases:
+
+| Use Case | Focus Area |
+|----------|------------|
+| **SRE** (Site Reliability Engineering) | Availability and resiliency |
+| **CISO** (Compliance & Security Operations) | Compliance and security enforcement |
+| **FinOps** (Financial Operations) | Cost efficiencies and ROI optimization |
 
 ![sample_tasks](./images/sample_it_tasks.png)
-Through push-button workflows and interpretable metrics, it helps AI researchers and developers explore both the challenges and potential of IT automation.
 
-ITBench centers on two core principles:
-1. Real-world representation of IT environments and incident scenarios that happen in such environments
-2. Open, extensible framework with comprehensive IT coverage
+### Key Features
 
-ITBench enables researchers and developers to replicate real-world incidents in Kubernetes environments (scenarios) and develop AI agents to address them.
-As of February 2025, we are open-sourcing:
-1. Push-button deployment tooling for environment setup
-2. Framework for recreating:
-   * 6 SRE scenarios
-   * 1 FinOps scenario
-   * 4 categories of CISO scenarios
-3. Two reference AI agents:
-   * CISO (Chief Information Security Officer) Agent
-   * SRE (Site Reliability Engineering) Agent
+- **Real-world representation** of IT environments and incident scenarios  
+- **Open, extensible framework** with comprehensive IT coverage  
+- **Push-button workflows** and interpretable metrics  
+- **Kubernetes-based** scenario environments  
+
+### What's Included
+
+ITBench enables researchers and developers to replicate real-world incidents in Kubernetes environments and develop AI agents to address them.
+
+**We provide:**
+1. **Push-button deployment tooling** for environment setup *(open-source)*
+2. **Framework for recreating realistic IT scenarios using the deployment tooling:**
+   - **6 SRE scenarios** and **21 mechanisms* *(open-source)*
+   - **4 categories of CISO scenarios** *(open-source)*
+   - **1 FinOps scenario** *(open-source)*
+3. **Two reference AI agents:**
+   - SRE (Site Reliability Engineering) Agent *(open-source)*
+   - CISO (Chief Information Security Officer) Agent *(open-source)*
+4. **Fully-managed leaderboard** for agent evaluation and comparison
+
+---
+
+## Roadmap
+
+| Timeline | Key Deliverables |
+|----------|------------------|
+| **July 2025** | • Refactor leading to a scenario specification generator and runner allowing for most (if not all) mechanisms to be re-used across diverse applications and microservices<br/> • Implementation of 10 of the additional scenarios identified |
+| **August 2025** | • **SRE-Agent-Lite**: Lightweight agent to assist non-systems personnel with environment debugging<br/>• **Snapshot & Replay**: Data capture and replay capabilities<br/> • Implementation of 15 of the additional scenarios to be developed over the summer|
+| **Fall 2025** | **BYOA (Bring Your Own Application)**: Support for custom application integration |
+
+---
+
+## 🏆 Leaderboard
+
+The ITBench Leaderboard tracks agent performance across SRE, FinOps, and CISO scenarios. We provide fully managed scenario environments while researchers/developers run their agents on their own systems and submit their outputs for evaluation.
+
+| Domain | Leaderboard |
+|--------|-------------|
+| **SRE**     | [View SRE Leaderboard](https://github.com/IBM/ITBench-Leaderboard/blob/main/LEADERBOARD_SRE.md) |
+| **CISO**    | [View CISO Leaderboard](https://github.com/IBM/ITBench-Leaderboard/blob/main/LEADERBOARD_CISO.md) |
+
+> **Get Started**: Visit our [Leaderboard repository](https://github.com/ibm/ITBench-Leaderboard) for access and evaluation guidelines.
+
+---
 
 ## Scenarios
-ITBench incorporates a collection of problems that we call scenarios. For example, one of the SRE scenarios in ITBench is to resolve a “High error rate on service order-management” in a Kubernetes environment. Another scenario that is relevant for the CISO persona involves assessing the compliance posture for a “new control rule detected for RHEL 9.” Each of the ITBench scenarios are deployed in an operational environment in which problem(s) occur.
 
-The scenarios can be found [here](https://github.com/IBM/ITBench-Scenarios).
+ITBench incorporates a collection of problems that we call **scenarios**. Each scenario is deployed in an operational environment where specific problems occur.
+
+### Examples of Scenarios
+- **SRE**: Resolve "High error rate on service checkout" in a Kubernetes environment
+- **CISO**: Assess compliance posture for "new control rule detected for RHEL 9"
+- **FinOps**: Assess compliance posture for "new control rule detected for RHEL 9"
+
+**Find all scenarios**: [Scenarios repository](https://github.com/IBM/ITBench-Scenarios)
+
+---
 
 ## Agents
-Two baseline agents (SRE-FinOps and CISO) are being open-sourced with the ITBench.
-We use the open-source CrewAI framework to create and manage agents.
-The agents can be configured to use various LLMs either through watsonx, Azure, or vLLM.
-Each agent is initialized with a prompt that describes its goal, the context, the tasks, and the expected output format.
-In-context learning examples are included to guide the agent and demonstrate tool usage.
-Agents use natural language to access tools to interact with the environment for information gathering.
 
-### CAA Agent
-Source code repository [here](https://github.com/IBM/itbench-ciso-caa-agent).
+Two baseline agents are being open-sourced with ITBench, built using the **CrewAI framework**.
 
-### SRE Agent
-Source code repository [here](https://github.com/IBM/itbench-sre-agent).
+### Agent Features
+- **Configurable LLMs**: watsonx, Azure, or vLLM support
+- **Natural language tools**: Interactions with the environment for information gathering
 
-### How to Cite
-```
+### Available Agents
+
+| Agent | Repository |
+|-------|------------|
+| **SRE Agent** | [itbench-sre-agent](https://github.com/IBM/itbench-sre-agent) |
+| **CISO Agent** | [itbench-ciso-caa-agent](https://github.com/IBM/itbench-ciso-caa-agent) |
+
+---
+
+## How to Cite
+
+```bibtex
 @misc{jha2025itbench,
       title={ITBench: Evaluating AI Agents across Diverse Real-World IT Automation Tasks},
       author={Jha, Saurabh and Arora, Rohan and Watanabe, Yuji and others},
@@ -63,54 +114,20 @@ Source code repository [here](https://github.com/IBM/itbench-sre-agent).
 }
 ```
 
-## Contributors
-- Saurabh Jha
-- Rohan Arora
-- Yuji Watanabe
-- Takumi Yanagawa
-- Yinfang Chen (UIUC - University of Illinois at Urbana-Champaign)
-- Jackson Clark (UIUC - University of Illinois at Urbana-Champaign)
-- Bhavya Bhavya
-- Mudit Verma
-- Harshit Kumar
-- Hirokuni Kitahara
-- Noah Zheutlin
-- Saki Takano
-- Divya Pathak
-- Felix George
-- Xinbo Wu (UIUC - University of Illinois at Urbana-Champaign)
-- Bekir O Turkkan
-- Gerard Vanloo
-- Michael Nidd
-- Ting Dai
-- Oishik Chatterjee
-- Pranjal Gupta
-- Suranjana Samanta
-- Pooja Aggarwal
-- Rong Lee
-- Pavankumar Murali
-- Jae-wook Ahn
-- Debanjana Kar
-- Ameet Rahane
-- Carlos Fonseca
-- Amit Paradkar
-- Yu Deng
-- Pratibha Moogi
-- Prateeti Mohapatra
-- Naoki Abe
-- Chandrasekhar Narayanaswami
-- Tianyin Xu (UIUC - University of Illinois at Urbana-Champaign)
-- Lav R. Varshney (UIUC - University of Illinois at Urbana-Champaign)
-- Ruchi Mahindru
-- Anca Sailer
-- Laura Shwartz
-- Daby Sow
-- Nicholas C. M. Fuller
-- Ruchir Puri
+---
+
+## Join the Discussion
+
+Have questions or need help getting started with ITBench?
+
+- [**Create a GitHub issue**](https://github.com/IBM/ITBench/issues/new) for bug reports or feature requests
+- [**Join our Discord community**](https://discord.gg/6fzy3JRHmt) for real-time discussions
+- For formal inquiries, please see the [contacts section](#contacts)
+
+---
 
 ## Contacts
-- agent-bench-automation@ibm.com
-- Saurabh Jha (saurabh.jha@ibm.com)
-- Yuji Wantabe (muew@jp.ibm.com)
-- Ruchi Mahindru (rmahindr@us.ibm.com)
-- Anca Sailer (ancas@us.ibm.com)
+
+- **General inquiries**: agent-bench-automation@ibm.com
+- **Saurabh Jha**: saurabh.jha@ibm.com
+- **Yuji Watanabe**: muew@jp.ibm.com
