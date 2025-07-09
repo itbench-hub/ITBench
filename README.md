@@ -1,6 +1,6 @@
 # ITBench
 
-**[Paper](./it_bench_arxiv.pdf) | [Scenarios](#scenarios) | [Agents](#agents) | [Leaderboard](#leaderboard) | [How to Cite](#how-to-cite) | [Contributors](#contributors) | [Contacts](#contacts)**
+**[Paper](./it_bench_arxiv.pdf) | [Scenarios](#scenarios) | [Agents](#agents) | [Leaderboard](#leaderboard) | [How to Cite](#how-to-cite) | [Contributors](./CONTRIBUTORS.md) | [Contacts](#contacts)**
 
 ---
 
@@ -20,8 +20,8 @@ ITBench measures the performance of AI agents across a wide variety of **complex
 | Use Case | Focus Area |
 |----------|------------|
 | **SRE** (Site Reliability Engineering) | Availability and resiliency |
-| **FinOps** (Financial Operations) | Cost efficiencies and ROI optimization |
 | **CISO** (Compliance & Security Operations) | Compliance and security enforcement |
+| **FinOps** (Financial Operations) | Cost efficiencies and ROI optimization |
 
 ![sample_tasks](./images/sample_it_tasks.png)
 
@@ -40,11 +40,11 @@ ITBench enables researchers and developers to replicate real-world incidents in 
 1. **Push-button deployment tooling** for environment setup *(open-source)*
 2. **Framework for recreating:**
    - **6 SRE scenarios** *(open-source)*
-   - **1 FinOps scenario** *(open-source)*
    - **4 categories of CISO scenarios** *(open-source)*
+   - **1 FinOps scenario** *(open-source)*
 3. **Two reference AI agents:**
-   - CISO (Chief Information Security Officer) Agent *(open-source)*
    - SRE (Site Reliability Engineering) Agent *(open-source)*
+   - CISO (Chief Information Security Officer) Agent *(open-source)*
 4. **Fully-managed leaderboard** for agent evaluation and comparison
 
 ---
@@ -86,8 +86,8 @@ Two baseline agents are being open-sourced with ITBench, built using the **CrewA
 
 | Agent | Repository |
 |-------|------------|
-| **CISO Agent** | [itbench-ciso-caa-agent](https://github.com/IBM/itbench-ciso-caa-agent) |
 | **SRE Agent** | [itbench-sre-agent](https://github.com/IBM/itbench-sre-agent) |
+| **CISO Agent** | [itbench-ciso-caa-agent](https://github.com/IBM/itbench-ciso-caa-agent) |
 
 ---
 
