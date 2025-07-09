@@ -1,6 +1,6 @@
 # ITBench
 
-**[Paper](./it_bench_arxiv.pdf) | [Scenarios](#scenarios) | [Agents](#agents) | [Leaderboard](#leaderboard) | [How to Cite](#how-to-cite) | [Contributors](./CONTRIBUTORS.md) | [Contacts](#contacts)**
+**[Paper](./it_bench_arxiv.pdf) | [Leaderboard](#leaderboard) | [Scenarios](#scenarios) | [Agents](#agents) | [How to Cite](#how-to-cite) | [Contributors](./CONTRIBUTORS.md) | [Contacts](#contacts)**
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### Latest Updates
 - **[June 13, 2025]** Identified 25+ additional scenarios to be developed over the summer.
-- **[May 2, 2025]** 🚀 ITBench now provides **fully-managed scenario environments** for everyone! Our platform handles the complete workflow — from scenario deployment to agent evaluation and leaderboard updates. Visit our GitHub repository [here](https://github.com/ibm/ITBench-Leaderboard) for guidelines and get started today.
+- **[May 2, 2025]** 🚀 ITBench now provides **fully-managed scenario environments** for everyone! Our platform handles the complete workflow—from scenario deployment to agent evaluation and leaderboard updates. Visit our GitHub repository [here](https://github.com/ibm/ITBench-Leaderboard) for guidelines and get started today.
 - **[February 28, 2025]** 🏆 **Limited Access Beta**: Invite-only access to the ITBench hosted scenario environments. ITBench handles scenario deployment, agent evaluation, and leaderboard updates. To request access, e-mail us [here](agent-bench-automation@ibm.com).
 - **[February 7, 2025]** 🎉 **Initial release!** Includes research paper, self-hosted environment setup tooling, sample scenarios, and baseline agents.
 
@@ -16,7 +16,7 @@
 
 ## Overview
 
-ITBench measures the performance of AI agents across a wide variety of **complex and real-life IT automation tasks** targeting three key use cases:
+ITBench measures the performance of AI agents across a wide variety of **complex and real-world inspired IT automation tasks** targeting three key use cases:
 
 | Use Case | Focus Area |
 |----------|------------|
@@ -62,14 +62,14 @@ ITBench enables researchers and developers to replicate real-world incidents in 
 
 ## 🏆 Leaderboard
 
-The ITBench Leaderboard tracks agent performance across SRE, FinOps, and CISO scenarios. We provide fully-managed scenario environments while researchers/developers run their agents on their own systems and submit their outputs for evaluation.
+The ITBench Leaderboard tracks agent performance across SRE, FinOps, and CISO scenarios. We provide fully managed scenario environments while researchers/developers run their agents on their own systems and submit their outputs for evaluation.
 
 | Domain | Leaderboard |
 |--------|-------------|
 | **SRE**     | [View SRE Leaderboard](https://github.com/IBM/ITBench-Leaderboard/blob/main/LEADERBOARD_SRE.md) |
 | **CISO**    | [View CISO Leaderboard](https://github.com/IBM/ITBench-Leaderboard/blob/main/LEADERBOARD_CISO.md) |
 
-> **Get Started**: Visit our [leaderboard repository](https://github.com/ibm/ITBench-Leaderboard) for access and evaluation guidelines.
+> **Get Started**: Visit our [Leaderboard repository](https://github.com/ibm/ITBench-Leaderboard) for access and evaluation guidelines.
 
 ---
 
@@ -77,12 +77,12 @@ The ITBench Leaderboard tracks agent performance across SRE, FinOps, and CISO sc
 
 ITBench incorporates a collection of problems that we call **scenarios**. Each scenario is deployed in an operational environment where specific problems occur.
 
-### Example Scenarios
+### Examples of Scenarios
 - **SRE**: Resolve "High error rate on service checkout" in a Kubernetes environment
 - **CISO**: Assess compliance posture for "new control rule detected for RHEL 9"
 - **FinOps**: Assess compliance posture for "new control rule detected for RHEL 9"
 
-**Find all scenarios**: [ITBench-Scenarios Repository](https://github.com/IBM/ITBench-Scenarios)
+**Find all scenarios**: [Scenarios repository](https://github.com/IBM/ITBench-Scenarios)
 
 ---
 
