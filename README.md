@@ -60,7 +60,7 @@ ITBench enables researchers and developers to replicate real-world incidents in 
 
 ---
 
-## Leaderboard 🏆
+## Leaderboard
 
 The ITBench Leaderboard tracks agent performance across SRE, FinOps, and CISO scenarios. We provide fully managed scenario environments while researchers/developers run their agents on their own systems and submit their outputs for evaluation.
 
