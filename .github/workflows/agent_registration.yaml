@@ -1,0 +1,309 @@
+name: Register a new agent
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  register_agent:
+    if: github.event.label.name == 'approved' && contains(github.event.issue.labels.*.name, 'registration')
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    environment: onboarding
+    name: Registers an Agent
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Parse issue
+        id: parse
+        run: |
+          echo "${{ github.event.issue.body }}" > issue_body.txt
+          python ./.github/workflows/parse_issue.py < issue_body.txt > parsed_output.json
+          echo "payload=$(cat parsed_output.json)" >> $GITHUB_OUTPUT
+      # Examples on how to use the output
+      - name: Show parsed payload data and store variables
+        id: extract-parsed-data
+        run: |
+          echo '${{ steps.parse.outputs.payload }}'
+          agent_repo="${{ fromJson(steps.parse.outputs.payload)['Config Repo']}}"
+          agent_repo_owner="$(echo $agent_repo | awk -F/ '{print $4}')"
+          agent_repo_name="$(echo $agent_repo | awk -F/ '{print $5}')"
+          echo $agent_repo_owner
+          echo $agent_repo_name
+          echo "agent_repo_owner=$agent_repo_owner" >> "$GITHUB_OUTPUT"
+          echo "agent_repo_name=$agent_repo_name" >> "$GITHUB_OUTPUT"
+      - name: Comment on issue
+        uses: actions/github-script@v7
+        env:
+          COMMENT_BODY: |
+            👋 ${{ github.event.issue.user.login }}
+
+            Thank you for submitting your agent registration details, we are currently processing your request and will
+            be in contact shortly with connection details for your agent harness to use to connect to the IT Bench service.
+
+            ## Agent Details:
+
+            Name:  ${{ fromJson(steps.parse.outputs.payload)['Agent Name'] }}
+            Type:  ${{ fromJson(steps.parse.outputs.payload)['Agent Type'] }}
+            Level:  ${{ fromJson(steps.parse.outputs.payload)['Agent Level'] }}
+
+            Target Config Repo: ${{ fromJson(steps.parse.outputs.payload)['Config Repo']}}
+        
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: process.env.COMMENT_BODY
+            })
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['registering']
+            })
+
+
+      - name: Generate GitHub token on behalf of repo
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.ITBENCH_APP_ID }}
+          private-key: ${{ secrets.ITBENCH_APP_KEY }}
+          owner: ${{ steps.extract-parsed-data.outputs.agent_repo_owner}}
+          repositories: ${{ steps.extract-parsed-data.outputs.agent_repo_name}}
+
+      - name: Check repository is private
+        id: check-repo-private
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          repo_full_path="repos/${{ steps.extract-parsed-data.outputs.agent_repo_owner}}/${{ steps.extract-parsed-data.outputs.agent_repo_name}}"
+          repo_private=$(gh api $repo_full_path -q '.private')
+
+          echo "Repo Private: $repo_private"
+
+          if [ "$repo_private" = "true" ]; then
+            echo "Target repository is set to private."
+          else
+            echo "Target repository is not set to private. Failing!"
+            echo "error_public_repo=1" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Check Issue opened by repo collaborator
+        id: check-repo-collaborator
+        env: 
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run : |
+           repo_full_path="repos/${{ steps.extract-parsed-data.outputs.agent_repo_owner}}/${{ steps.extract-parsed-data.outputs.agent_repo_name}}/collaborators"
+           repo_collaborators=$(gh api $repo_full_path -q '[.[].login] |  contains(["${{ github.event.issue.user.login }}"])')
+
+           echo "Issue creator is collaborator: $repo_collaborators"
+
+            if [ "$repo_collaborators" = "true" ]; then
+              echo "Issue creator is collaborator."
+            else
+              echo "Issue creator is not a collaborator. Failing!"
+              exit 1
+            fi
+
+      - name: generate-manifest
+        id: generate-manifest
+        run: |
+
+          echo "Registering Agent with IT Bench API"
+
+          response_json='${{steps.parse.outputs.payload}}'
+
+          agent_body=$(echo $response_json | jq '{"name": ."Agent Name", "type" : ."Agent Type", "level" : ."Agent Level", "scenario_categories" : [."Agent Scenarios" | to_entries[] | select(.value).key]}')
+          
+          echo $agent_body | jq
+          
+          response_file=$(mktemp)
+          trap 'echo "Cleaning up $response_file"; rm -f "$response_file"' EXIT
+          status_code=$(curl \
+            --url ${{vars.ITBENCH_API}}/gitops/agents?github_username=${{ github.event.issue.user.login }} \
+            --header "authorization: Bearer ${{ secrets.ITBENCH_API_TOKEN }}" \
+            --header 'content-type: application/json' \
+            --data "$agent_body" \
+            --output "$response_file" \
+            --write-out "%{http_code}")
+
+          if [[ $? -eq 0 ]]; then
+          
+            echo "Curl execution was successful"
+
+            echo "::debug:: $(cat $response_file)"
+            # Check that the spec is in the response body
+          
+            if [[ "$status_code" == "200" || "$status_code" == "201" ]]; then
+              
+              echo "manifest=$( cat $response_file | jq '.spec.agent_manifest + {metadata: {id: .metadata.id}}' | base64 -w 0)" >> "$GITHUB_OUTPUT"
+
+            else
+              msg="Body recieved from IT bench was invalid."
+              echo "$msg"
+              echo "error=1" >> "$GITHUB_OUTPUT"
+              error_detail=$(jq -r '.detail // "No detail message in response."' "$response_file")
+              echo "error_detail=${error_detail}" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+
+          else
+            echo "Request failed."
+            msg="CURL execution was failed with status code $status_code."
+            echo "$msg"
+            echo "error=1" >> "$GITHUB_OUTPUT"
+            echo "error_detail=$msg" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Push manifest to config repository
+        id: file-push
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          gh api octocat
+
+          repo_full_path="repos/${{ steps.extract-parsed-data.outputs.agent_repo_owner}}/${{ steps.extract-parsed-data.outputs.agent_repo_name}}/contents/agent-manifest.json"
+
+          echo "Repo Path: $repo_full_path"
+
+          current_sha=$(gh api $repo_full_path -q '.sha' || echo "")
+          
+          echo "Current SHA: $current_sha"
+
+          ghout=$(gh api -X PUT \
+          -H "Accept: application/vnd.github.v3+json" \
+          $repo_full_path \
+          -f message="Add agent-manifest.json via API" \
+          -f content="${{ steps.generate-manifest.outputs.manifest}}" \
+          -f branch="main" \
+          -f sha="$current_sha")
+
+          if [[ $? -eq 0 ]]; then
+            echo $ghout | jq
+
+
+            file_path=$(echo $ghout | jq .content.html_url)
+            echo "File path: $file_path"
+
+            echo "manifest_path=$file_path" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment on issue
+        uses: actions/github-script@v7
+        env:
+          COMMENT_BODY: |
+            👋 ${{ github.event.issue.user.login }}
+
+            The registration of your agent is now complete.
+
+            Your agent manifest is located at: ${{ steps.file-push.outputs.manifest_path}}
+
+
+            ## Agent Details:
+
+            Name:  ${{ fromJson(steps.parse.outputs.payload)['Agent Name'] }}
+            Type:  ${{ fromJson(steps.parse.outputs.payload)['Agent Type'] }}
+            Level:  ${{ fromJson(steps.parse.outputs.payload)['Agent Level'] }}
+
+            Target Config Repo: ${{ fromJson(steps.parse.outputs.payload)['Config Repo']}}
+        
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: process.env.COMMENT_BODY
+            })
+
+            github.rest.issues.update({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed'
+            })
+
+
+      - name: Report Failure
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          PRIVATE_REPO:  ${{ steps.check-repo-private.outputs.error_public_repo == 1}}
+          ERROR_ON_GENERATE_MANIFEST: ${{ steps.generate-manifest.outputs.error == 1 }}
+          COMMENT_BODY: |
+            👋 ${{ github.event.issue.user.login }}
+
+            Unfortunately there was an unknown issue with registering the agent.
+
+            This issue has been marked for manual intervention and the team has been notified.
+
+            ----
+
+            Run link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          PRIV_REPO_COMMENT_BODY: |
+            👋 ${{ github.event.issue.user.login }}
+
+            It looks like the repository you've provided to us is not set to private.
+            As we will be committing a token to your repository, it needs to be set to private before we can continue.
+
+            Please make the nessesary changes and reply back to this issue, our team will then re-start the registration process.
+
+            ----
+
+            Run link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          ERROR_ON_GENERATE_MANIFEST_COMMENT_BODY: |
+            👋 ${{ github.event.issue.user.login }}
+        
+            There was an issue while registering the agent.
+        
+            Error Detail:
+            ${{ steps.generate-manifest.outputs.error_detail }}
+        
+            ----
+        
+            Run link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        
+        with:
+          script: |
+            console.log(`Private Repo: ${process.env.PRIVATE_REPO}`)
+
+            if (process.env.PRIVATE_REPO == 'true'){
+              console.log("Responding with non private repo message.")
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: process.env.PRIV_REPO_COMMENT_BODY
+              })
+            } else if (process.env.ERROR_ON_GENERATE_MANIFEST == 'true') {
+               console.log("Responding with manifest error message.")
+               github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: process.env.ERROR_ON_GENERATE_MANIFEST_COMMENT_BODY
+              })
+            } else {
+              console.log("Responding with generic error message.")
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: process.env.COMMENT_BODY
+              })
+            }
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['error']
+            })
+        
+            

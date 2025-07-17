@@ -1,0 +1,89 @@
+name: Leaderboard Update
+on:
+  workflow_dispatch:
+    inputs:
+      use-sample:
+        type: boolean
+        required: false
+        description: If set, display leaderboard with sample data
+      benchmark-id:
+        type: string
+        required: false
+        description: If set, display leaderboard of the provided benchmark id
+      github-username:
+        type: string
+        required: false
+        description: If set, display leaderboard of the provided github username
+jobs:
+  update_leaderboard:
+    runs-on: ubuntu-latest
+    environment: onboarding
+    name: Update the Leaderboard
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: List Issues of Finished Benchmark
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh issue list --label "benchmark" --state "closed" --json number,author,comments > issues.json
+          jq -c '[.[].number]' issues.json
+          
+          usernames=($(jq -r '.[].author.login' issues.json | sort -u))
+          query='{'$'\n'
+          for i in "${!usernames[@]}"; do
+            login="${usernames[$i]}"
+            query+="  u$((i+1)): user(login: \"${login}\") { login company }"$'\n'
+          done
+          query+='}'
+
+          gh api graphql -f query="$query" | jq -r '
+            .data | 
+            to_entries | 
+            map({ key: .value.login, value: { company: .value.company } }) | 
+            from_entries
+          ' > users.json
+
+      - name: Pull Leaderboard data
+        env:
+          ITBENCH_API: ${{vars.ITBENCH_API}}
+          ITBENCH_API_TOKEN: ${{ secrets.ITBENCH_API_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          USE_SAMPLE: ${{ github.event.inputs.use-sample }}
+          BENCHMARK_ID: ${{ github.event.inputs.benchmark-id }}
+          GITHUB_USERNAME: ${{ github.event.inputs.github-username }}
+        run: |
+
+          echo "Parse gh issues"
+          python ./.github/workflows/update_benchmark_helper.py parse -i issues.json -o updated_issues.json
+
+          echo "Requesting Leaderboard data from API"
+
+          if [ "$USE_SAMPLE" == "true" ]; then
+            python ./.github/workflows/leaderboard.py global --sample -b $BENCHMARK_ID -u $GITHUB_USERNAME --issues updated_issues.json --users users.json --out-overall LEADERBOARD.md --out-ciso LEADERBOARD_CISO.md --out-sre LEADERBOARD_SRE.md
+          else
+            python ./.github/workflows/leaderboard.py global --issues updated_issues.json --users users.json --out-overall LEADERBOARD.md --out-ciso LEADERBOARD_CISO.md --out-sre LEADERBOARD_SRE.md
+          fi
+         
+      - name: Open PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          git checkout -b leaderboard
+
+          git add LEADERBOARD_CISO.md LEADERBOARD_SRE.md
+
+          git commit -m "chore: update leaderboard data"
+
+          git push origin leaderboard -f
+
+          gh pr create \
+            --base main \
+            --head leaderboard \
+            --title "chore: update leaderboard data" \
+            --body "This PR updates the leaderboard automatically via GitHub Actions."

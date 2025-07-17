@@ -1,0 +1,93 @@
+name: Update Benchmark Status
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  issue_comment:
+    types: [created]
+  workflow_dispatch: 
+
+env:
+  REQUEST_TIMEOUT: ${{ vars.REQUEST_TIMEOUT }}
+
+jobs:
+  update_status:
+    runs-on: ubuntu-latest
+    environment: onboarding
+    name: Update the Benchmark Progress
+    steps:
+      - name: Determine Trigger Type
+        id: check_trigger
+        run: |
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            COMMENT_BODY=$(jq -r '.comment.body' "$GITHUB_EVENT_PATH")
+            if [[ "$COMMENT_BODY" == "/refresh" ]]; then
+              echo "TRIGGER=issue_comment" >> $GITHUB_ENV
+              ISSUE_NUMBER=$(jq -r '.issue.number' "$GITHUB_EVENT_PATH")
+              echo "ISSUE_NUMBER=$ISSUE_NUMBER" >> $GITHUB_ENV
+            else
+              echo "Not a /refresh command, skipping."
+              exit 0
+            fi
+          else
+            echo "TRIGGER=schedule" >> $GITHUB_ENV
+          fi
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: List Issues with 'track-progress' Label
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [[ "$TRIGGER" == "schedule" ]]; then
+            echo "Scheduled task: List all issues with the 'track-progress' label"
+            gh issue list --label "track-progress" --state "open" --json number,author,comments > issues.json
+          elif [[ "$TRIGGER" == "issue_comment" ]]; then
+            echo "Issue comment trigger: Store only the commented issue"
+            gh issue view "$ISSUE_NUMBER" --json number,author,comments | jq '[.]' > issues.json
+          fi
+          echo "Tracked issues"
+          jq -c '[.[].number]' issues.json
+      - name: Process and Update Status
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ITBENCH_API: ${{vars.ITBENCH_API}}
+          ITBENCH_API_TOKEN: ${{ secrets.ITBENCH_API_TOKEN }}
+        run: |
+          if [ ! -s issues.json ]; then
+            echo "No issues found."
+            exit 0
+          fi
+          echo "Parse gh issues"
+          python ./.github/workflows/update_benchmark_helper.py parse -i issues.json -o updated_issues.json
+          echo "Fetch benchmark status"
+          python ./.github/workflows/update_benchmark_helper.py status -i updated_issues.json -o benchmark_statuses.json
+          echo "Generate benchmark status comment"
+          python .github/workflows/update_benchmark_helper.py comment -i benchmark_statuses.json -o benchmark_status_comments.jsonl
+          
+          echo "Update each issues"
+          cat benchmark_status_comments.jsonl | while IFS= read -r line
+          do
+              number=$(printf "%s" "$line" | jq -r '.number')
+              if [[ -z "$number" ]]; then
+                continue
+              fi
+
+              status_comment_id=$(printf "%s" "$line" | jq -r '.status_comment_id')
+              closed=$(printf "%s" "$line" | jq -r '.closed')
+              body=$(printf "%s" "$line" | jq -r '.comment')
+
+              if [[ "$status_comment_id" == "null" ]]; then
+                  echo "  Creating new comment for issue #$number"
+                  gh issue comment "$number" --body "$body"
+              else
+                  echo "  Editing comment $status_comment_id for issue #$number"
+                  gh api --silent -X PATCH /repos/${GH_REPO}/issues/comments/${status_comment_id} -F "body=${body}"
+              fi
+
+              if [[ "$closed" == "true" ]]; then
+                  echo "  Close the issue #$number"
+                  gh issue close $number
+              fi
+          done
+

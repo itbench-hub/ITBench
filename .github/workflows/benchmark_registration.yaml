@@ -1,0 +1,234 @@
+name: Register a new agent benchmark
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  register_agent:
+    if: github.event.label.name == 'approved' && contains(github.event.issue.labels.*.name, 'benchmark')
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    environment: onboarding
+    name: Registers a benchmark
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Parse issue
+        id: parse
+        run: |
+          echo "${{ github.event.issue.body }}" > issue_body.txt
+          python ./.github/workflows/parse_issue.py < issue_body.txt > parsed_output.json
+          echo "payload=$(cat parsed_output.json)" >> $GITHUB_OUTPUT
+      # Examples on how to use the output
+      - name: Show parsed payload data and store variables
+        id: extract-parsed-data
+        run: |
+          echo '${{ steps.parse.outputs.payload }}'
+          agent_repo="${{ fromJson(steps.parse.outputs.payload)['Config Repo']}}"
+          agent_repo_owner="$(echo $agent_repo | awk -F/ '{print $4}')"
+          agent_repo_name="$(echo $agent_repo | awk -F/ '{print $5}')"
+          echo $agent_repo_owner
+          echo $agent_repo_name
+          echo "agent_repo_owner=$agent_repo_owner" >> "$GITHUB_OUTPUT"
+          echo "agent_repo_name=$agent_repo_name" >> "$GITHUB_OUTPUT"
+      - name: Comment on issue
+        uses: actions/github-script@v7
+        env:
+          COMMENT_BODY: |
+            👋 ${{ github.event.issue.user.login }}
+
+            Thank you for submitting your benchmark registration details, we are currently processing your request and will
+            comment back once the registration has been completed.
+
+            ## Benchmark Details:
+
+            Name:  ${{ fromJson(steps.parse.outputs.payload)['Benchmark Name'] }}
+            Schedule now?  ${{ fromJson(steps.parse.outputs.payload)['Schedule Now'] }}
+
+            Target Config Repo: ${{ fromJson(steps.parse.outputs.payload)['Config Repo']}}
+        
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: process.env.COMMENT_BODY
+            })
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['registering']
+            })
+
+
+      - name: Generate GitHub token on behalf of repo
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.ITBENCH_APP_ID }}
+          private-key: ${{ secrets.ITBENCH_APP_KEY }}
+          owner: ${{ steps.extract-parsed-data.outputs.agent_repo_owner}}
+          repositories: ${{ steps.extract-parsed-data.outputs.agent_repo_name}}
+
+      - name: Check repository is private
+        id: check-repo-private
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          repo_full_path="repos/${{ steps.extract-parsed-data.outputs.agent_repo_owner}}/${{ steps.extract-parsed-data.outputs.agent_repo_name}}"
+          repo_private=$(gh api $repo_full_path -q '.private')
+
+          echo "Repo Private: $repo_private"
+
+          if [ "$repo_private" = "true" ]; then
+            echo "Target repository is set to private."
+          else
+            echo "Target repository is not set to private. Failing!"
+            echo "error_public_repo=1" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Check Issue opened by repo collaborator
+        id: check-repo-collaborator
+        env: 
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run : |
+           repo_full_path="repos/${{ steps.extract-parsed-data.outputs.agent_repo_owner}}/${{ steps.extract-parsed-data.outputs.agent_repo_name}}/collaborators"
+           repo_collaborators=$(gh api $repo_full_path -q '[.[].login] |  contains(["${{ github.event.issue.user.login }}"])')
+
+           echo "Issue creator is collaborator: $repo_collaborators"
+
+            if [ "$repo_collaborators" = "true" ]; then
+              echo "Issue creator is collaborator."
+            else
+              echo "Issue creator is not a collaborator. Failing!"
+              exit 1
+            fi
+
+      - name: Get Agent Details
+        id: get-agent-config
+        env: 
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run : |
+           repo_full_path="repos/${{ steps.extract-parsed-data.outputs.agent_repo_owner}}/${{ steps.extract-parsed-data.outputs.agent_repo_name}}/contents/agent-manifest.json"
+           agent_id=$(gh api $repo_full_path -q '.content' | base64 -d | jq '.metadata.id')
+
+           echo "Agent ID: $agent_id"
+           
+           echo "agent_id=$agent_id" >> "$GITHUB_OUTPUT"
+
+      - name: register-benchmark
+        id: register-benchmark
+        run: |
+
+          echo "Registering Benchmark request with IT Bench API"
+
+          response_json='${{steps.parse.outputs.payload}}'
+
+          benchmark_body=$(echo $response_json | jq  '{ "name" : ."Benchmark Name", "immediate" : ."Schedule Now"}' | jq --arg AGENT_ID ${{steps.get-agent-config.outputs.agent_id}} '. += {"agent_id": $AGENT_ID}')
+          
+          echo $benchmark_body | jq
+
+
+          reg_resp=$(curl \
+            --url ${{vars.ITBENCH_API}}/gitops/create-benchmark?github_username=${{ github.event.issue.user.login }} \
+            --header "authorization: Bearer ${{ secrets.ITBENCH_API_TOKEN }}" \
+            --header 'content-type: application/json' \
+            --data "$benchmark_body")
+
+          echo $reg_resp
+
+          if [[ $? -eq 0 ]]; then
+          
+            echo "Request was successful"
+
+            # Check that the spec is in the response body
+            echo $reg_resp | jq -e '.id?'
+   
+
+            if [[ $? -eq 0 ]]; then
+
+              echo "benchmark_id=$(echo $reg_resp | jq -r '.id')" >> "$GITHUB_OUTPUT"
+              echo "benchmark_name=$(echo $reg_resp | jq -r '.name')" >> "$GITHUB_OUTPUT"
+
+             
+             
+            else
+              echo "Body recieved from IT bench was invalid."
+              echo $reg_resp
+              exit 1
+            fi
+
+          else
+            echo "Request failed."
+            echo $reg_resp
+            exit 1
+          fi
+
+      
+      - name: Comment on issue
+        uses: actions/github-script@v7
+        env:
+          COMMENT_BODY: |
+            👋 ${{ github.event.issue.user.login }}
+
+            The registration of your benchmark is now complete.
+
+            Here are the Details:
+
+
+            Name:  ${{ steps.register-benchmark.outputs.benchmark_name }}
+            Type:  ${{ steps.register-benchmark.outputs.benchmark_id }}
+           
+            <!--hidden-benchmark-id>${{ steps.register-benchmark.outputs.benchmark_id }}</hidden-benchmark-id-->
+
+        
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: process.env.COMMENT_BODY
+            })
+
+
+      - name: Report Failure
+        if: failure()
+        uses: actions/github-script@v7
+        env:
+          PRIVATE_REPO:  ${{ steps.check-repo-private.outputs.error_public_repo == 1}}
+          COMMENT_BODY: |
+            👋 ${{ github.event.issue.user.login }}
+
+            Unfortunately there was an unknown issue with registering the benchmark.
+
+            This issue has been marked for manual intervention and the team has been notified.
+
+            ----
+
+            Run link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+        
+        
+        with:
+          script: |
+
+            console.log("Responding with generic error message.")
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: process.env.COMMENT_BODY
+            })
+            github.rest.issues.addLabels({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: ['error']
+            })
+        
+            

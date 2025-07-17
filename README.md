@@ -66,10 +66,10 @@ The ITBench Leaderboard tracks agent performance across SRE, FinOps, and CISO sc
 
 | Domain | Leaderboard |
 |--------|-------------|
-| **SRE**     | [View SRE Leaderboard](https://github.com/IBM/ITBench-Leaderboard/blob/main/LEADERBOARD_SRE.md) |
-| **CISO**    | [View CISO Leaderboard](https://github.com/IBM/ITBench-Leaderboard/blob/main/LEADERBOARD_CISO.md) |
+| **SRE**     | [View SRE Leaderboard](https://github.com/itbench-hub/ITBench/blob/main/LEADERBOARD_SRE.md) |
+| **CISO**    | [View CISO Leaderboard](https://github.com/itbench-hub/ITBench/blob/main/LEADERBOARD_CISO.md) |
 
-> **Get Started**: Visit our [Leaderboard repository](https://github.com/ibm/ITBench-Leaderboard) for access and evaluation guidelines.
+> **Get Started**: Visit our [Leaderboard repository](docs/leaderboard.md) for access and evaluation guidelines.
 
 ---
 
