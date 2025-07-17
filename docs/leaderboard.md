@@ -7,20 +7,6 @@
 | 🔐 **CISO**    | 👉 [View CISO Leaderboard](../LEADERBOARD_CISO.md) |
 | ⚙️ **SRE**     | 👉 [View SRE Leaderboard](../LEADERBOARD_SRE.md) |
 
-## What Is ITBench?
-
-Measure the performance of your AI agent(s) across a wide variety of complex and real-life IT automation tasks targetting three key use cases:
-- Site Reliability Engineering (SRE): focusing on availability and resiliency
-- Financial Operations (FinOps): focusing on enforcing cost efficiencies and optimizing return on investment
-- Compliance and Security Operations (CISO): focusing on ensuring compliance and security of IT implementations
-
-This is a public leaderboard. ITBench handles the deployment of the environments and scenarios, and it evaluates the submissions made by the agent.
-
-## Key Terminologies
-- **Scenario**: ITBench incorporates a collection of problems that we call "scenarios." For example, one of the SRE scenarios in ITBench is to resolve a “High error rate on service checkout” in a Kubernetes environment. Another scenario that is relevant for the CISO use case involves assessing the compliance posture for a “new control rule detected for RHEL 9.”
-- **Environment**: Each of the ITBench scenarios are deployed in an operational sandboxed Kubernetes environment.
-- **Benchmark**: Collection of scenarios that are excuted parallel or in sequence but independent of each other. An agent makes a submission to address. diagnose, or remediate the scenario at hand.
-
 ## Getting Started
 ### Prerequisites
 - **A private GitHub repository**
@@ -30,7 +16,7 @@ This is a public leaderboard. ITBench handles the deployment of the environments
   - Do not use a production cluster, because the benchmark process will create and delete resources dynamically.
   - Please refer to [prepare-kubeconfig-kind.md](https://github.com/itbench-hub/ITBench-Scenarios/blob/main/ciso/prepare-kubeconfig-kind.md)
 - **An agent to benchmark**
-  - A base agent is available from IBM for immediate use. The base agent for the CISO use case can be found [here](https://github.com/itbench-hub/itbench-ciso-caa-agent), and one for SRE and FinOps use cases can be found [here]. This allows you to leverage your methodologies and make improvements without having to worry about interactions between the agent and leaderboard service.
+  - A base agent is available from IBM for immediate use. The base agent for the CISO use case can be found [here](https://github.com/itbench-hub/ITBench-CISO-CAA-Agent), and one for SRE and FinOps use cases can be found [here](https://github.com/itbench-hub/ITBench-SRE-Agent). This allows you to leverage your methodologies and make improvements without having to worry about interactions between the agent and leaderboard service.
 
 ### Setup
 
@@ -106,17 +92,3 @@ The following guides and videos demonstrate how to run the benchmark using our b
   
 - **CISO Agent** – [Documentation](docs/how-to-launch-benchmark-ciso.md) ・ [Demo Video](https://ibm.box.com/s/3i7mapxyit7ugnbldigqunzs6bkvv4cy)
 - **SRE Agent** – [Documentation](https://github.com/itbench-hub/ITBench-SRE-Agent/blob/main/Leaderboard.md)
-
-## ITBench Ecosystem and Related Repositories
-
-- [ITBench](https://github.com/itbench-hub/ITBench): Central repository providing an overview of the ITBench ecosystem, related announcements, and publications.
-- [CISO-CAA Agent](https://github.com/itbench-hub/ITBench-CISO-CAA-Agent): CISO (Chief Information Security Officer) agents that automate compliance assessments by generating policies from natural language, collecting evidence, integrating with GitOps workflows, and deploying policies for assessment.
-- [SRE Agent](https://github.com/itbench-hub/ITBench-SRE-Agent): SRE (Site Reliability Engineering) agents designed to diagnose and remediate problems in Kubernetes-based environments. Leverage logs, metrics, traces, and Kubernetes states/events from the IT enviroment.
-- [ITBench Scenarios](https://github.com/itbench-hub/ITBench-Scenarios): Environment setup and mechanism to trigger scenarios.
-- [ITBench Utilities](https://github.com/itbench-hub/ITBench-Utilities): Collection of supporting tools and utilities for participants in the ITBench ecosystem and leaderboard challenges.
-- [ITBench Tutorials](https://github.com/itbench-hub/ITBench-Tutorials): Repository containing the latest tutorials, workshops, and educational content for getting started with ITBench.
-
-## Maintainers
-- Takumi Yanagawa  - [@yana1205](https://github.com/yana1205)
-- Yuji Watanabe    - [@yuji-watanabe-jp](https://github.com/yuji-watanabe-jp)
-- Rohan R. Arora   - [@rohanarora](https://github.com/rohanarora)
