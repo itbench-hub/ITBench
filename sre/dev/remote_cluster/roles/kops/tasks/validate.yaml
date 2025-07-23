@@ -1,0 +1,55 @@
+---
+- name: Check for kOps
+  ansible.builtin.command:
+    cmd: which kops
+  register: kops_system_path
+  changed_when: false
+
+- name: Validate that kOps exists
+  ansible.builtin.assert:
+    that: kops_system_path.stdout_lines | length > 0
+    fail_msg: kOps is not installed. Please install kops.
+    success_msg: Using kOps at {{ kops_system_path.stdout_lines[0] }}
+
+- name: Check kOps version
+  ansible.builtin.command:
+    cmd: "{{ kops_system_path.stdout_lines[0] }} version --short"
+  register: kops_system_version
+  changed_when: false
+
+- name: Validate the kOps version
+  ansible.builtin.assert:
+    that: "'1.31' is version_compare(kops_system_version.stdout, '<=')"
+    fail_msg: "kOps version for system {{ kops_system_version.stdout }} must be at least 1.31 or later."
+    success_msg: "kOps version {{ kops_system_version.stdout }} (>= 1.31) is OK."
+
+- name: Gather all regions
+  amazon.aws.aws_region_info:
+  register: kops_region_info
+
+- name: Parse region names
+  ansible.builtin.set_fact:
+    kops_regions: "{{ kops_region_info.regions | community.general.json_query('[*].region_name') }}"
+
+- name: Validate that region exists
+  ansible.builtin.assert:
+    that: kops_cluster.aws.region in kops_regions
+    fail_msg: "Invalid region. Please select from region: {{ kops_regions }}"
+    success_msg: AWS region validated.
+
+- name: Gather available zones in the region
+  amazon.aws.aws_az_info:
+    region: "{{ kops_cluster.aws.region }}"
+    filters:
+      state: available
+  register: kops_availability_zone_info
+
+- name: Parse zone names
+  ansible.builtin.set_fact:
+    kops_available_zones: "{{ kops_availability_zone_info.availability_zones | community.general.json_query('[*].zone_name') }}"
+
+- name: Validate that zones are available
+  ansible.builtin.assert:
+    that: kops_cluster.aws.zones | difference(kops_available_zones) | length == 0
+    fail_msg: "At least one zone is not available. Please select from available zones: {{ kops_available_zones }}"
+    success_msg: All zones in region are available.

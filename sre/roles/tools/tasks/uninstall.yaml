@@ -1,0 +1,77 @@
+---
+- name: Import Kubernetes Topology Monitor uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_kubernetes_topology_monitor.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.kubernetes_topology_monitor }}"
+  when:
+    - tools_enabled.kubernetes_topology_monitor
+
+- name: Import Kubernetes Metrics Server uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_kubernetes_metrics_server.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.kubernetes_metrics_server }}"
+  when:
+    - tools_enabled.kubernetes_metrics_server
+    - tools_cluster.platform == "kubernetes"
+
+- name: Import Chaos Mesh uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_chaos_mesh.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.chaos_mesh }}"
+  when:
+    - tools_enabled.chaos_mesh
+
+- name: Import OpenCost uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_opencost.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.opencost }}"
+  when:
+    - tools_enabled.opencost
+
+- name: Import OpenTelemetry uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_opentelemetry.yaml
+  vars:
+    helm_releases:
+      collectors: "{{ tools_helm_releases.opentelemetry_collectors }}"
+      operator: "{{ tools_helm_releases.opentelemetry_operator }}"
+  when:
+    - tools_enabled.jaeger or tools_enabled.opentelemetry
+
+- name: Import Clickhouse installation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_clickhouse.yaml
+  vars:
+    helm_releases:
+      instance: "{{ tools_helm_releases.clickhouse }}"
+      operator: "{{ tools_helm_releases.clickhouse_operator }}"
+  when:
+    - tools_enabled.clickhouse or tools_enabled.opentelemetry
+
+- name: Import OpenSearch uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_opensearch.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.opensearch }}"
+  when:
+    - tools_enabled.opensearch or tools_enabled.jaeger
+
+- name: Import Prometheus uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_prometheus.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.prometheus }}"
+  when:
+    - tools_enabled.prometheus or tools_enabled.opencost
+
+- name: Import Ingress uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_ingress.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.ingress }}"
+  when:
+    - tools_enabled.ingress

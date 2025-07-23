@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: topology-monitor
+  namespace: kube-system
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /topology(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: topology-monitor
+            port:
+              number: 8080

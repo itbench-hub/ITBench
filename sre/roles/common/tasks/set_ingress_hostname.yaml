@@ -1,0 +1,31 @@
+---
+- name: Get the Ingress object
+  kubernetes.core.k8s_info:
+    api_version: networking.k8s.io/v1
+    kind: Ingress
+    name: "{{ common_ingress.name }}"
+    namespace: "{{ common_ingress.namespace }}"
+    kubeconfig: "{{ common_cluster.kubeconfig }}"
+    wait: true
+  register: ingress_info
+  until:
+    - ingress_info.resources[0].status.loadBalancer.ingress is defined
+  delay: 15
+  retries: 12
+
+- name: Extract the Ingress hostname information
+  ansible.builtin.set_fact:
+    ingress_hostname: "{{ ingress_info.resources[0].status.loadBalancer.ingress[0].hostname }}"
+  when:
+    - ingress_info.resources[0].status.loadBalancer.ingress is defined
+    - ingress_info.resources[0].status.loadBalancer.ingress | length > 0
+    - ingress_info.resources[0].status.loadBalancer.ingress[0].hostname is defined
+
+- name: Extract the Ingress IP information
+  ansible.builtin.set_fact:
+    ingress_hostname: "{{ ingress_info.resources[0].status.loadBalancer.ingress[0].ip }}"
+  when:
+    - ingress_info.resources[0].status.loadBalancer.ingress is defined
+    - ingress_info.resources[0].status.loadBalancer.ingress | length > 0
+    - ingress_info.resources[0].status.loadBalancer.ingress[0].hostname is undefined
+    - ingress_info.resources[0].status.loadBalancer.ingress[0].ip is defined

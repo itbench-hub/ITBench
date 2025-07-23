@@ -4,8 +4,10 @@
 
   vars_files:
     - group_vars/all.yaml
+    - group_vars/environment/cluster.yaml
+    - group_vars/environment/tools.yaml
+    - roles/tools/defaults/main/helm_releases.yaml
     - group_vars/documentation.yaml
-    - group_vars/observability_tools.yaml
     - group_vars/sample_applications.yaml
     - group_vars/fault_injection.yaml
     - group_vars/sre_agent.yaml
@@ -49,7 +51,6 @@
         - always
 
   roles:
-    - role: observability_tools
     - role: sample_applications
     - role: fault_injection
     - role: post_fault_injection
@@ -64,6 +65,6 @@
     - role: e2e
 
   tasks:
-    - name: Include incident role 
+    - name: Include incident role
       ansible.builtin.import_role:
         name: "incident_{{ incident_number }}"

@@ -1,0 +1,96 @@
+---
+argument_specs:
+  main:
+    short_description: Entry point for kOps cluster management tasks
+    description:
+      - This is a collection of validation tasks needed to manage the lifecyle of a kOps cluster.
+    author:
+      - Saurabh Jha
+      - Gerard Vanloo
+    options:
+      kops_cluster:
+        description: The configuration of the cluster
+        required: true
+        type: dict
+      kops_kubeconfig_path:
+        description: The absolute path of the kubeconfig
+        required: false
+        type: str
+      kops_full_cluster_name_override:
+        description: The full name of the cluster to use
+        required: false
+        type: str
+  validate:
+    short_description: Entry point for kOps configuration validation tasks
+    description:
+      - This is a collection of validation tasks needed to run the various other tasks.
+      - These tasks should be run as a pre-task in playbooks which invoke this role.
+    author:
+      - Gerard Vanloo
+    options:
+      kops_cluster:
+        required: true
+        type: dict
+        options:
+          aws:
+            required: true
+            type: dict
+            options:
+              region:
+                required: true
+                type: str
+              zones:
+                elements: str
+                required: true
+                type: list
+          name_prefix:
+            required: true
+            type: str
+          kubernetes_version:
+            required: true
+            type: str
+          networking:
+            required: true
+            type: dict
+            options:
+              mode:
+                required: true
+                type: str
+          nodes:
+            required: true
+            type: dict
+            options:
+              control:
+                required: true
+                type: dict
+                options:
+                  count:
+                    required: true
+                    type: int
+                  instance_type:
+                    required: true
+                    type: str
+              worker:
+                required: true
+                type: dict
+                options:
+                  count:
+                    required: true
+                    type: int
+                  instance_type:
+                    required: true
+                    type: str
+          ssh:
+            required: true
+            type: dict
+            options:
+              public_key_path:
+                required: true
+                type: str
+          s3:
+            required: true
+            type: dict
+            options:
+              bucket_name:
+                required: true
+                type: str

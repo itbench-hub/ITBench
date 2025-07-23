@@ -1,0 +1,47 @@
+---
+- name: Record Deployment time
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: bundle-alert-timestamps
+        namespace: "{{ item.namespace }}"
+      data:
+        deployment_time: "{{ now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+  loop:
+    - enabled: "{{ applications_enabled.otel_demo }}"
+      namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+  when:
+    - item.enabled
+
+- name: Create deployment record
+  set_fact:
+    assertion_json:
+      status:
+        conditions:
+          - type: Deployed
+            status: True
+            lastTransitionTime: "{{ now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+  when:
+    - sre_bench_runner
+
+- name: Create a JSON with application deployment details
+  copy:
+    content: "{{ assertion_json | to_json | indent(2) }}"
+    dest: "/tmp/assertion.json"
+    mode: "0644"
+  when:
+    - sre_bench_runner
+
+- name: Upload the JSON with application deployment details to S3
+  amazon.aws.s3_object:
+    endpoint_url: "{{ s3_endpoint_url }}"
+    bucket: "{{ s3_bucket_name_for_results }}"
+    object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/assertion.json"
+    src: "/tmp/assertion.json"
+    mode: put
+  when:
+    - sre_bench_runner
+    - run_uuid is defined and scenario_number is defined and run_number is defined

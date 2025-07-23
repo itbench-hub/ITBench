@@ -1,0 +1,39 @@
+---
+- name: Set variables
+  ansible.builtin.set_fact:
+    kops_cluster_name: "{{ kops_cluster.name_prefix }}-aws.k8s.local"
+    kops_state_store: s3://{{ kops_cluster.s3.bucket_name }}
+  tags:
+    - always
+
+- name: Override cluster name
+  ansible.builtin.set_fact:
+    kops_cluster_name: "{{ kops_full_cluster_name_override }}"
+  tags:
+    - always
+  when:
+    - kops_full_cluster_name_override is defined
+
+- name: Import kOps cluster creation tasks
+  ansible.builtin.import_tasks:
+    file: create.yaml
+  tags:
+    - create
+
+- name: Import kOps cluster list tasks
+  ansible.builtin.import_tasks:
+    file: list.yaml
+  tags:
+    - list
+
+- name: Import kOps cluster export tasks
+  ansible.builtin.import_tasks:
+    file: export.yaml
+  tags:
+    - export
+
+- name: Import kOps cluster deletion tasks
+  ansible.builtin.import_tasks:
+    file: delete.yaml
+  tags:
+    - delete

@@ -1,0 +1,50 @@
+name: Lint SRE playbooks
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - sre/playbooks/*
+      - sre/roles/*
+      - sre/dev/remote_cluster/playbooks/*
+      - sre/dev/remote_cluster/roles/*
+
+jobs:
+  lint-main-playbooks:
+    name: Lint playbooks and roles in main directory
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install Python dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          pip install -r sre/dev/remote_cluster/requirements-dev.txt
+      - name: Run ansible-lint
+        uses: ansible/ansible-lint@v25.5.0
+        with:
+          args: playbooks/manage_applications.yaml playbooks/manage_tools.yaml playbooks/manage_incidents.yaml
+          setup_python: "false"
+          working_directory: sre
+          requirements_file: requirements.yaml
+  lint-remote-cluster-playbooks:
+    name: Lint playbooks and roles in remote cluster directory
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install Python dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          pip install -r sre/dev/remote_cluster/requirements-dev.txt
+      - name: Run ansible-lint
+        uses: ansible/ansible-lint@v25.5.0
+        with:
+          setup_python: "false"
+          working_directory: sre/dev/remote_cluster
+          requirements_file: ../../requirements.yaml

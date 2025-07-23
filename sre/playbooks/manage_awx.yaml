@@ -1,0 +1,36 @@
+- name: Manage SRE and FinOps AWX Stack
+  hosts:
+    - runner
+  pre_tasks:
+    - name: Import common role for Helm version check
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: check_helm_version
+      tags:
+        - always
+
+    - name: Import common role for provider configuration
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: set_cluster_provider
+      tags:
+        - always
+      vars:
+        common_cluster:
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
+  tasks:
+    - name: Import awx role
+      ansible.builtin.import_role:
+        name: awx
+      vars:
+        awx_cluster:
+          cloud_provider: "{{ cluster_provider }}"
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
+        awx_credentials: "{{ credentials }}"
+        awx_experiments:
+          incidents: "{{ experiments.incidents }}"
+          storage: "{{ storage }}"
+          trials: "{{ experiments.trials }}"
+        awx_github: "{{ github }}"
+        awx_runners:
+          kubeconfigs: "{{ stack.runners.kubeconfigs }}"

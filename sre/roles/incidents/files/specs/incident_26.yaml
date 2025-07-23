@@ -1,0 +1,44 @@
+---
+metadata:
+  complexity: Medium
+  id: 26
+  name: HTTP request tamper fault
+  platform: kubernetes
+  technologies:
+    - Go
+    - Ruby
+spec:
+  environment:
+    applications:
+      otel_demo:
+        enabled: true
+    tools:
+      category: sre
+      selected:
+        - chaos-mesh
+        - kubernetes-topology-monitor
+  faults:
+    - chaos_mesh:
+        schedules:
+          - name: otel-demo-email-http-chaos-post-body-tamper
+            spec:
+              schedule: "* * * * *"
+              historyLimit: 1
+              concurrencyPolicy: Forbid
+              type: HTTPChaos
+              httpChaos:
+                mode: all
+                target: Request
+                port: 8080
+                method: POST
+                path: "*"
+                selector:
+                  namespaces:
+                    - "{{ applications_helm_releases.otel_demo.namespace }}"
+                  labelSelectors:
+                    "app.kubernetes.io/component": "email"
+                patch:
+                  body:
+                    type: JSON
+                    value: '{"email": "12345", "order": "error body"}'
+                duration: "55s"

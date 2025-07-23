@@ -15,27 +15,16 @@ Depending on the scenario domain (SRE or FinOps), the following tools are deploy
 | OpenTelemetry Collector | FinOps, SRE | https://github.com/open-telemetry/opentelemetry-collector |
 | OpenTelemetry Operator | FinOps, SRE | https://github.com/open-telemetry/opentelemetry-operator |
 | Prometheus | FinOps, SRE | https://github.com/prometheus/prometheus |
+| Prometheus Operator | FinOps, SRE | https://github.com/prometheus-operator/prometheus-operator |
 
-### Installing Observability stack for SRE scenarios
+### Installing observability tools for SRE scenarios
 Run:
 ```bash
-make deploy_observability_stack
+make deploy_tools
 ```
 
-### Uninstalling Observability stack for SRE scenarios
+### Uninstalling observability tools for SRE scenarios
 Run:
 ```bash
-make undeploy_observability_stack
-```
-
-### Installing FinOps stack (Observability stack + OpenCost + Metrics Server) for FinOps scenarios
-Run:
-```bash
-make deploy_finops_stack
-```
-
-### Uninstalling FinOps stack for FinOps scenarios
-Run:
-```bash
-make undeploy_finops_stack
+make undeploy_tools
 ```

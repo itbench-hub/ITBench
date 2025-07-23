@@ -1,168 +1,195 @@
 # Makefile to run Ansible playbooks
 
 EXECUTE_CHECKS_IN_BACKGROUND ?= false
-USE_JAEGER_QUERY_ENDPOINT ?= true
 
-INCIDENT_NUMBER ?= 1
 NUMBER_OF_RUNS = 1
-# TODO: Re-think the end to end experience
 
-FINOPS_SCENARIOS := 37
-HOTEL_RESERVATION_SCENARIOS := 102
-
-IS_DEBUG_SCENARIO ?= true
-IS_FINOPS_SCENARIO := $(shell echo "$(FINOPS_SCENARIOS)" | grep -w "$(INCIDENT_NUMBER)" > /dev/null && echo "true" || echo "false")
-IS_HOTEL_RESERVATION_SCENARIO := $(shell echo "$(HOTEL_RESERVATION_SCENARIOS)" | grep -w "$(INCIDENT_NUMBER)" > /dev/null && echo "true" || echo "false")
-
-SAMPLE_APPLICATION := otel_astronomy_shop
-ifeq ($(IS_HOTEL_RESERVATION_SCENARIO),true)
-SAMPLE_APPLICATION := dsb_hotel_reservation
-else
-endif
 
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-.PHONY: deploy_observability_stack
-deploy_observability_stack: ## Deploys the observability tools to cluster
-ifeq ($(USE_JAEGER_QUERY_ENDPOINT),false)
-	ansible-playbook -v base.yaml --tags "install_tools" \
-		--extra-vars "domain=sre" \
-		--extra-vars "enable_jaeger_query_endpoint=false"
+.PHONY: group_vars
+group_vars: ## Generates the group variables
+	echo "ansible_python_interpreter: $(shell which python)" > group_vars/all/ansible.yaml
+	cp group_vars/all/storage.yaml.example group_vars/all/storage.yaml
+	cp group_vars/environment/applications.yaml.example group_vars/environment/applications.yaml
+	cp group_vars/environment/cluster.yaml.example group_vars/environment/cluster.yaml
+	cp group_vars/environment/tools.yaml.example group_vars/environment/tools.yaml
+	cp group_vars/runner/agent.yaml.example group_vars/runner/agent.yaml
+	cp group_vars/runner/credentials.yaml.example group_vars/runner/credentials.yaml
+	cp group_vars/runner/experiments.yaml.example group_vars/runner/experiments.yaml
+	cp group_vars/runner/github.yaml.example group_vars/runner/github.yaml
+	cp group_vars/runner/stack.yaml.example group_vars/runner/stack.yaml
+
+.PHONY: deploy_tools
+deploy_tools: ## Deploys the observability and fault tools to cluster
+ifdef INCIDENT_NUMBER
+	ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "install_tools" \
+		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
 else
-	ansible-playbook -v base.yaml --tags "install_tools" \
-		--extra-vars "domain=sre" \
-		--extra-vars "enable_jaeger_query_endpoint=true"
+	ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "install_tools"
 endif
 
-.PHONY: undeploy_observability_stack
-undeploy_observability_stack: ## Undeploys observability tools to cluster
-	ansible-playbook -v base.yaml --tags "uninstall_tools" \
-		--extra-vars "domain=sre"
+.PHONY: reinit_tools
+reinit_tools: ## Re-initialize observability and fault tools to cluster
+	ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "reinit_tools"
 
-.PHONY: deploy_finops_stack
-deploy_finops_stack: ## Deploys the finops tools to cluster
-	ansible-playbook -v base.yaml --tags "install_tools" \
-		--extra-vars "domain=finops"
+.PHONY: undeploy_tools
+undeploy_tools: ## Undeploys the observability and fault tools to cluster
+ifdef INCIDENT_NUMBER
+	ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools" \
+		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+else
+	ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools"
+endif
 
-.PHONY: undeploy_finops_stack
-undeploy_finops_stack: ## Undeploys finops tools to cluster
-	ansible-playbook -v base.yaml --tags "uninstall_tools" \
-		--extra-vars "domain=finops"
+.PHONY: deploy_applications
+deploy_applications: ## Deploys the applications to cluster
+ifdef INCIDENT_NUMBER
+	ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "install_applications" \
+		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+else
+	ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "install_applications"
+endif
 
-.PHONY: deploy_astronomy_shop
-deploy_astronomy_shop: ## Deploys the Astronomy Shop application
-	ansible-playbook -v base.yaml --tags "install_sample_applications" \
-		--extra-vars "sample_application=otel_astronomy_shop"
-
-.PHONY: undeploy_astronomy_shop
-undeploy_astronomy_shop: ## Undeploys the Astronomy Shop application
-	ansible-playbook -v base.yaml --tags "uninstall_sample_applications" \
-		--extra-vars "sample_application=otel_astronomy_shop"
-
-.PHONY: deploy_hotel_reservation
-deploy_hotel_reservation: ## Deploys the Hotel Reservation application
-	ansible-playbook -v base.yaml --tags "install_sample_applications" \
-		--extra-vars "sample_application=dsb_hotel_reservation"
-
-.PHONY: undeploy_hotel_reservation
-undeploy_hotel_reservation: ## Undeploys the Hotel Reservation application
-	ansible-playbook -v base.yaml --tags "uninstall_sample_applications" \
-		--extra-vars "sample_application=dsb_hotel_reservation"
-
-.PHONY: deploy_elasticsearch
-deploy_elasticsearch: ## Deploys the Elasticsearch cluster
-	ansible-playbook -v base.yaml --tags "install_sample_applications" \
-		--extra-vars "sample_application=elasticsearch"
-
-.PHONY: undeploy_elasticsearch
-undeploy_elasticsearch: ## Undeploys the Elasticsearch cluster
-	ansible-playbook -v base.yaml --tags "uninstall_sample_applications" \
-		--extra-vars "sample_application=elasticsearch"
-
-.PHONY: install_chaos_mesh
-install_chaos_mesh: ## Installs a Chaos mesh to the cluster
-	ansible-playbook -v base.yaml --tags "chaos_mesh_installation" \
-		--extra-vars "is_install_chaos_mesh=true"
+.PHONY: undeploy_applications
+undeploy_applications: ## Undeploys the applications to cluster
+ifdef INCIDENT_NUMBER
+	ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "uninstall_applications" \
+		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+else
+	ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "uninstall_applications"
+endif
 
 .PHONY: inject_incident_fault
 inject_incident_fault: ## Injects the fault used in a specific incident
-ifeq ($(IS_DEBUG_SCENARIO),true)
-	ansible-playbook -v base.yaml --tags "incident_$(INCIDENT_NUMBER)" \
-		--extra-vars "debug=true" \
-		--extra-vars "is_fault_injection=true" \
-		--extra-vars "incident_number=$(INCIDENT_NUMBER)" \
-		--extra-vars "sample_application=$(SAMPLE_APPLICATION)"
+ifdef INCIDENT_NUMBER
+	ansible-playbook -i inventory.yaml playbooks/manage_incidents.yaml --tags "inject_faults" \
+		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
 else
-	ansible-playbook -v base.yaml --tags "incident_$(INCIDENT_NUMBER)" \
-		--extra-vars "is_fault_injection=true" \
-		--extra-vars "incident_number=$(INCIDENT_NUMBER)" \
-		--extra-vars "sample_application=$(SAMPLE_APPLICATION)"
+	@echo "Missing INCIDENT_NUMBER argument. Please run this command with this variable."
 endif
-	ansible-playbook -v base.yaml --tags "post_fault_injection"
 
 .PHONY: remove_incident_fault
 remove_incident_fault: ## Removes the fault used in a specific incident
-	ansible-playbook -v base.yaml --tags "pre_fault_removal"
-ifeq ($(IS_DEBUG_SCENARIO),true)
-	ansible-playbook -v base.yaml --tags "incident_$(INCIDENT_NUMBER)" \
-		--extra-vars "debug=true" \
-		--extra-vars "is_fault_removal=true" \
-		--extra-vars "incident_number=$(INCIDENT_NUMBER)" \
-		--extra-vars "sample_application=$(SAMPLE_APPLICATION)"
+ifdef INCIDENT_NUMBER
+	ansible-playbook -i inventory.yaml playbooks/manage_incidents.yaml --tags "remove_faults" \
+		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
 else
-	ansible-playbook -v base.yaml --tags "incident_$(INCIDENT_NUMBER)" \
-		--extra-vars "is_fault_removal=true" \
-		--extra-vars "incident_number=$(INCIDENT_NUMBER)" \
-		--extra-vars "sample_application=$(SAMPLE_APPLICATION)"
+	@echo "Missing INCIDENT_NUMBER argument. Please run this command with this variable."
 endif
 
-.PHONY: deploy_scenario_application
-ifeq ($(IS_HOTEL_RESERVATION_SCENARIO),true)
-deploy_scenario_application: deploy_hotel_reservation
-else
-deploy_scenario_application: deploy_astronomy_shop
-endif
+.PHONY: create_environment
+create_environment: deploy_tools deploy_applications ## Deploys tools and applications to cluster
 
-.PHONY: undeploy_scenario_application
-ifeq ($(IS_HOTEL_RESERVATION_SCENARIO),true)
-undeploy_scenario_application: undeploy_hotel_reservation
-else
-undeploy_scenario_application: undeploy_astronomy_shop
-endif
-
-.PHONY: deploy_scenario_tools
-ifeq ($(IS_FINOPS_SCENARIO),true)
-deploy_scenario_tools: deploy_finops_stack
-else
-deploy_scenario_tools: deploy_observability_stack
-endif
-
-.PHONY: undeploy_scenario_tools
-ifeq ($(IS_FINOPS_SCENARIO),true)
-undeploy_scenario_tools: undeploy_finops_stack
-else
-undeploy_scenario_tools: undeploy_observability_stack
-endif
+.PHONY: destroy_environment
+destroy_environment: undeploy_applications undeploy_tools ## Undeploys tools and applications to cluster
 
 .PHONY: start_incident
-start_incident: deploy_scenario_tools deploy_scenario_application inject_incident_fault ## Starts an incident by deploying a stack, application, and fault for an incident
+start_incident: create_environment inject_incident_fault ## Starts an incident by deploying a stack, application, and fault for an incident
 
 .PHONY: stop_incident
-stop_incident: remove_incident_fault undeploy_scenario_application undeploy_scenario_tools ## Stops an incident by undeploying a stack, application, and fault for an incident
+stop_incident: remove_incident_fault destroy_environment ## Stops an incident by undeploying a stack, application, and fault for an incident
 
-.PHONY: awx_setup
-awx_setup:
-	ansible-playbook -v base.yaml --tags "awx_setup"
+.PHONY: deploy_observability_stack
+deploy_observability_stack: ## Deploys the observability tools to cluster
+	@echo "WARNING: 'make deploy_observability_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make deploy_tools'..."
+	@echo ""
+	$(MAKE) deploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: undeploy_observability_stack
+undeploy_observability_stack: ## Undeploys observability tools to cluster
+	@echo "WARNING: 'make undeploy_observability_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make undeploy_environment_tools'..."
+	@echo ""
+	$(MAKE) undeploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: deploy_finops_stack
+deploy_finops_stack: ## Deploys the finops tools to cluster
+	@echo "WARNING: 'make deploy_finops_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make deploy_environment_tools'..."
+	@echo ""
+	$(MAKE) deploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: undeploy_finops_stack
+undeploy_finops_stack: ## Undeploys finops tools to cluster
+	@echo "WARNING: 'make undeploy_finops_stack' is deprecated. Please use 'make undeploy_environment_tools' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make undeploy_environment_tools'..."
+	@echo ""
+	$(MAKE) undeploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: deploy_astronomy_shop
+deploy_astronomy_shop: ## Deploys the Astronomy Shop application
+	@echo "WARNING: 'make deploy_astronomy_shop' is deprecated. Please use 'make deploy_applications' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make deploy_applications'..."
+	@echo ""
+	$(MAKE) deploy_applications $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: undeploy_astronomy_shop
+undeploy_astronomy_shop: ## Undeploys the Astronomy Shop application
+	@echo "WARNING: 'make undeploy_astronomy_shop' is deprecated. Please use 'make undeploy_applications' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make undeploy_applications'..."
+	@echo ""
+	$(MAKE) undeploy_applications $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: deploy_hotel_reservation
+deploy_hotel_reservation: ## Deploys the Hotel Reservation application
+	@echo "WARNING: Hotel Reservation has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
+	@echo "This command will be removed in a future version."
+
+.PHONY: undeploy_hotel_reservation
+undeploy_hotel_reservation: ## Undeploys the Hotel Reservation application
+	@echo "WARNING: Hotel Reservation has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
+	@echo "This command will be removed in a future version."
+
+.PHONY: deploy_elasticsearch
+deploy_elasticsearch: ## Deploys the Elasticsearch cluster
+	@echo "WARNING: Elasticsearch has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
+	@echo "This command will be removed in a future version."
+
+.PHONY: undeploy_elasticsearch
+undeploy_elasticsearch: ## Undeploys the Elasticsearch cluster
+	@echo "WARNING: Elasticsearch has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
+	@echo "This command will be removed in a future version."
+
+.PHONY: deploy_awx_stack
+deploy_awx_stack: ## Deploys AWX to a cluster
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "install_tools"
+
+.PHONY: undeploy_awx_stack
+undeploy_awx_stack: ## Undeploys AWX to a cluster
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "uninstall_tools"
+
+.PHONY: launch_start_incident_workflow
+launch_start_workflow: ## Launches the AWX workflow's equivalent of make start_incident
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_start_workflow"
+
+launch_stop_workflow: ## Launches the AWX workflow's equivalent of make stop_incident
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_stop_workflow"
 
 .PHONY: awx_configure_init
 awx_configure_init:
-	ansible-playbook -vvv base.yaml --tags "awx_configuration" --extra-vars "state=present"
+	@echo "WARNING: 'make awx_configure_init' is deprecated. Please use 'make deploy_awx_stack' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make deploy_awx_stack'..."
+	@echo ""
+	$(MAKE) deploy_awx_stack
 
 .PHONY: awx_configure_deinit
 awx_configure_deinit:
-	ansible-playbook -vvv base.yaml --tags "awx_configuration" --extra-vars "state=absent"
+	@echo "WARNING: 'make awx_configure_deinit' is deprecated. Please use 'make undeploy_awx_stack' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make undeploy_awx_stack'..."
+	@echo ""
+	$(MAKE) undeploy_awx_stack
 
 # TODO: See why the OBJC_DISABLE_INITIALIZE_FORK_SAFETY is needed
 
@@ -204,20 +231,20 @@ fetch_alerts:
 		> /tmp/fetch.out 2>&1 &
 
 .PHONY: e2e_awx_init_stage_one
-e2e_awx_init_stage_one: ## Given an incident number, run_uuid intitialize the scenario run leveraging an AWX node
-	kops export kubecfg --admin --name=${AWX_CLUSTERNAME} --state=s3://${S3_BUCKET_NAME} --kubeconfig /tmp/${AWX_CLUSTERNAME}.yaml
-	# Get cluster to be used configuration
-	KOPS_STATE_STORE=s3://${S3_BUCKET_NAME} kops export kubecfg ${CLUSTER_ASSIGNED_NAME} --admin --kubeconfig /tmp/${CLUSTER_ASSIGNED_NAME}.yaml; \
-        ansible-playbook -v base.yaml --tags "awx_scenario_setup" --extra-vars "relevant_kubeconfig_file_path=/tmp/${CLUSTER_ASSIGNED_NAME}.yaml scenario_number=${INCIDENT_NUMBER} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre"; \
-	ansible-playbook -v base.yaml --tags "workflow_setup_stage_one" --extra-vars "scenario_number=${INCIDENT_NUMBER} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} sre_bench_runner=true domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'"; \
-	ansible-playbook -v base.yaml --tags "workflow_launch_stage_one" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} number_of_runs=${NUMBER_OF_RUNS} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'";
+e2e_awx_init_stage_one: ## DEPRECATED: Given an incident number, run_uuid intitialize the scenario run leveraging an AWX node
+	@echo "WARNING: 'make e2e_awx_init_stage_one' is deprecated. Please use 'make launch_start_workflow' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make launch_start_workflow'..."
+	@echo ""
+	$(MAKE) launch_start_workflow
 
 .PHONY: e2e_awx_stage_three
-e2e_awx_stage_three: ## Given an incident number, run_uuid end the scenario run leveraging an AWX node
-	# Get cluster to be used configuration
-	KOPS_STATE_STORE=s3://${S3_BUCKET_NAME} kops export kubecfg ${CLUSTER_ASSIGNED_NAME} --admin --kubeconfig /tmp/${CLUSTER_ASSIGNED_NAME}.yaml; \
-	ansible-playbook -v base.yaml --tags "workflow_setup_stage_three" --extra-vars "scenario_number=${INCIDENT_NUMBER} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} sre_bench_runner=true domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'"; \
-	ansible-playbook -v base.yaml --tags "workflow_launch_stage_three" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} number_of_runs=${NUMBER_OF_RUNS} state=present sample_application=${SAMPLE_APPLICATION} awx_kubeconfig=${AWX_KUBECONFIG} s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'";
+e2e_awx_stage_three: ## DEPRECATED: Given an incident number, run_uuid end the scenario run leveraging an AWX node
+	@echo "WARNING: 'make e2e_awx_stage_three' is deprecated. Please use 'make launch_stop_workflow' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make launch_stop_workflow'..."
+	@echo ""
+	$(MAKE) launch_stop_workflow
 
 .PHONY: evaluation
 .SILENT: evaluation

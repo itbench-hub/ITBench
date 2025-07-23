@@ -1,0 +1,101 @@
+---
+- name: Create the release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ helm_release.namespace }}"
+        annotations:
+          openshift.io/sa.scc.mcs: s0:c36,c15
+          openshift.io/sa.scc.supplemental-groups: 1001/1000
+          openshift.io/sa.scc.uid-range: 1000/10000
+        labels:
+          it-bench/monitoring: "true"
+    state: present
+
+- name: Create bearer token
+  ansible.builtin.command:
+    cmd: oc whoami -t
+  environment:
+    KUBECONFIG: "{{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}"
+  register: tools_prometheus_token
+  changed_when: false
+  when:
+    - tools_cluster.platform == "openshift"
+
+- name: Retrieve Prometheus route
+  kubernetes.core.k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: prometheus-k8s
+    namespace: openshift-monitoring
+  register: tools_prometheus_k8s_route_info
+  when:
+    - tools_cluster.platform == "openshift"
+
+- name: Parse Prometheus hostname
+  ansible.builtin.set_fact:
+    tools_prometheus_k8s_url: https://{{ tools_prometheus_k8s_route_info.resources[0].spec.host }}
+  when:
+    - tools_cluster.platform == "openshift"
+
+- name: Install OpenCost
+  kubernetes.core.helm:
+    chart_ref: opencost
+    chart_repo_url: https://opencost.github.io/opencost-helm-chart
+    chart_version: 2.1.6
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ helm_release.name }}"
+    release_namespace: "{{ helm_release.namespace }}"
+    release_state: present
+    timeout: 10m0s
+    values:
+      opencost:
+        customPricing:
+          enabled: true
+          createConfigmap: true
+          provider: custom
+          costModel:
+            description: Modified pricing configuration.
+            CPU: 10.00
+            spotCPU: 7.50
+            RAM: 5.00
+            spotRAM: 2.50
+            GPU: 50.00
+            storage: 2.50
+            zoneNetworkEgress: 1.00
+            regionNetworkEgress: 1.00
+            internetNetworkEgress: 1.00
+        exporter:
+          extraEnv:
+            INSECURE_SKIP_VERIFY: "{{ tools_cluster.platform == 'openshift' }}"
+            USE_CUSTOM_PROVIDER: true
+        metrics:
+          serviceMonitor:
+            enabled: true
+        platforms:
+          openshift:
+            enabled: "{{ tools_cluster.platform == 'openshift' }}"
+        prometheus:
+          bearer_token: "{{ tools_prometheus_token.stdout if tools_cluster.platform == 'openshift' else omit }}"
+          external:
+            enabled: "{{ tools_cluster.platform == 'openshift' }}"
+            url: "{{ tools_prometheus_k8s_url | default(omit) }}"
+          internal:
+            enabled: "{{ tools_cluster.platform == 'kubernetes' }}"
+            serviceName: "{{ tools_helm_releases.prometheus.name }}-kube-prometheus-prometheus"
+            namespaceName: "{{ tools_helm_releases.prometheus.namespace }}"
+            port: 9090
+      podAnnotations:
+        openshift.io/required-scc: "restricted-v2"
+    wait: true
+
+- name: Create Prometheus rules for OpenCost
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: "{{ helm_release.namespace }}"
+    state: present
+    src: files/rules/opencost.yaml

@@ -1,0 +1,48 @@
+---
+- name: Include Helm Release variables from applications role
+  ansible.builtin.include_vars:
+    file: ../applications/defaults/main/helm_releases.yaml
+
+- name: Load incident spec from file
+  ansible.builtin.set_fact:
+    incident_spec: "{{ lookup('ansible.builtin.template', 'files/specs/incident_{{ incidents_file.id }}.yaml') | from_yaml }}"
+
+- name: Extract environment configuration from spec
+  ansible.builtin.set_fact:
+    env_configuration: "{{ incident_spec.spec.environment }}"
+
+- name: Create tools_enabled dictionary for tools role
+  ansible.builtin.set_fact:
+    tools_enabled:
+      chaos_mesh: "{{ 'chaos-mesh' in env_configuration.tools.selected }}"
+      clickhouse: "{{ 'clickhouse' in env_configuration.tools.selected or env_configuration.tools.category != '' }}"
+      ingress: "{{ 'ingress' in env_configuration.tools.selected or env_configuration.tools.category != '' }}"
+      jaeger: "{{ 'jaeger' in env_configuration.tools.selected or env_configuration.tools.category != '' }}"
+      kubernetes_metrics_server: "{{ 'kubernetes-metrics-server' in env_configuration.tools.selected }}"
+      kubernetes_topology_monitor: "{{ 'kubernetes-topology-monitor' in env_configuration.tools.selected }}"
+      opencost: "{{ 'kubernetes-metrics-server' in env_configuration.tools.selected or env_configuration.tools.category == 'finops' }}"
+      opensearch: "{{ 'opensearch' in env_configuration.tools.selected }}"
+      opentelemetry: "{{ 'opentelemetry' in env_configuration.tools.selected or env_configuration.tools.category != '' }}"
+      prometheus: "{{ 'prometheus' in env_configuration.tools.selected or env_configuration.tools.category != '' }}"
+
+- name: Create applications_enabled dictionary for applications role
+  ansible.builtin.set_fact:
+    applications_enabled:
+      otel_demo: "{{ env_configuration.applications.otel_demo.enabled }}"
+
+- name: Load otel_demo configuration from applications role
+  ansible.builtin.include_vars:
+    file: ../applications/defaults/main/otel_demo_configuration.yaml
+  when:
+    - applications_enabled.otel_demo
+
+- name: Combine defaults with configuration from incident spec
+  ansible.builtin.set_fact:
+    applications_otel_demo_configuration: |
+      {{
+        applications_otel_demo_configuration |
+        combine(env_configuration.applications.otel_demo.configuration, recursive=true)
+      }}
+  when:
+    - applications_enabled.otel_demo
+    - env_configuration.applications.otel_demo.configuration is defined

@@ -1,0 +1,273 @@
+---
+- name: Create the release namespace for OpenTelemetry Collectors
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ helm_releases.collectors.namespace }}"
+        labels:
+          it-bench/monitoring: "true"
+    state: present
+
+- name: Get Clickhouse credentials from secret
+  kubernetes.core.k8s_info:
+    kind: Secret
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ helm_releases.clickhouse.name }}-credentials"
+    namespace: "{{ helm_releases.clickhouse.namespace }}"
+    wait: true
+  register: tools_clickhouse_secrets_info
+  when:
+    - tools_enabled.opentelemetry
+
+- name: Install OpenTelemetry Collector for Kubernetes Events
+  kubernetes.core.helm:
+    chart_ref: opentelemetry-collector
+    chart_repo_url: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart_version: 0.122.5
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ helm_releases.collectors.names.kubernetes_events }}"
+    release_namespace: "{{ helm_releases.collectors.namespace }}"
+    release_state: present
+    timeout: 10m0s
+    values:
+      mode: deployment
+      replicaCount: 1
+      presets:
+        kubernetesEvents:
+          enabled: true
+      image:
+        repository: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib
+        tag: 0.127.0
+      podAnnotations:
+        openshift.io/required-scc: restricted-v2
+      ports:
+        jaeger-compact:
+          enabled: false
+        jaeger-thrift:
+          enabled: false
+        jaeger-grpc:
+          enabled: false
+        zipkin:
+          enabled: false
+        metrics:
+          enabled: "{{ tools_enabled.prometheus }}"
+      serviceMonitor:
+        enabled: "{{ tools_enabled.prometheus }}"
+      config:
+        exporters:
+          clickhouse:
+            username: "{{ tools_clickhouse_secrets_info.resources[0].data.user | b64decode }}"
+            password: "{{ tools_clickhouse_secrets_info.resources[0].data.password | b64decode }}"
+            endpoint: http://{{ helm_releases.clickhouse.name }}-clickhouse.{{ helm_releases.clickhouse.namespace }}.svc.cluster.local:8123
+            logs_table_name: kubernetes_events
+        service:
+          pipelines:
+            logs:
+              exporters:
+                - debug
+                - clickhouse
+    wait: true
+  when:
+    - tools_enabled.opentelemetry
+
+- name: Create the release namespace for OpenTelemetry Operator
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ helm_releases.operator.namespace }}"
+        annotations:
+          openshift.io/sa.scc.mcs: s0:c29,c9
+          openshift.io/sa.scc.supplemental-groups: 65532/10000
+          openshift.io/sa.scc.uid-range: 65000/10000
+        labels:
+          it-bench/monitoring: "true"
+    state: present
+  when:
+    - tools_enabled.jaeger
+    - tools_cluster.platform == "kubernetes"
+
+- name: Create the project for RH build of OpenTelemetry Operator
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: project.openshift.io/v1
+      kind: Project
+      metadata:
+        name: openshift-opentelemetry-operator
+        labels:
+          kubernetes.io/metadata.name: openshift-opentelemetry-operator
+          openshift.io/cluster-monitoring: "true"
+    state: present
+  when:
+    - tools_enabled.jaeger
+    - tools_cluster.platform == "openshift"
+
+- name: Create the operator group for RH build of OpenTelemetry Operator
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: operators.coreos.com/v1
+      kind: OperatorGroup
+      metadata:
+        name: openshift-opentelemetry-operator
+        namespace: openshift-opentelemetry-operator
+      spec:
+        upgradeStrategy: Default
+    state: present
+  when:
+    - tools_enabled.jaeger
+    - tools_cluster.platform == "openshift"
+
+- name: Create the subscription for RH build of OpenTelemetry Operator
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: opentelemetry-product
+        namespace: openshift-opentelemetry-operator
+      spec:
+        channel: stable
+        installPlanApproval: Automatic
+        name: opentelemetry-product
+        source: redhat-operators
+        sourceNamespace: openshift-marketplace
+    state: present
+  when:
+    - tools_enabled.jaeger
+    - tools_cluster.platform == "openshift"
+
+- name: Install OpenTelemetry Operator
+  kubernetes.core.helm:
+    chart_ref: opentelemetry-operator
+    chart_repo_url: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart_version: 0.90.4
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ helm_releases.operator.name }}"
+    release_namespace: "{{ helm_releases.operator.namespace }}"
+    release_state: present
+    timeout: 10m0s
+    values:
+      manager:
+        podAnnotations:
+          openshift.io/required-scc: restricted-v2
+        serviceMonitor:
+          enabled: "{{ tools_enabled.prometheus }}"
+      admissionWebhooks:
+        certManager:
+          enabled: false
+        autoGenerateCert:
+          enabled: true
+    wait: true
+  when:
+    - tools_enabled.jaeger
+    - tools_cluster.platform == "kubernetes"
+
+- name: Wait for RH build of OpenTelemetry Operator
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1alpha1
+    kind: ClusterServiceVersion
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: openshift-opentelemetry-operator
+    wait: true
+  register: tools_csv_info
+  until:
+    - tools_csv_info.resources | community.general.json_query('[*].status.phase') | difference(['Succeeded']) | length == 0
+  retries: 10
+  delay: 30
+  when:
+    - tools_enabled.jaeger
+    - tools_cluster.platform == "openshift"
+
+- name: Wait for OpenTelemetry CRD to be installed
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: opentelemetrycollectors.opentelemetry.io
+    wait: true
+  when:
+    - tools_enabled.jaeger
+    - tools_cluster.platform == "openshift"
+
+- name: Install Jaeger
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
+      metadata:
+        name: jaeger
+        namespace: "{{ helm_releases.collectors.namespace }}"
+      spec:
+        image: jaegertracing/jaeger:2.8.0
+        mode: deployment
+        observability:
+          metrics:
+            enableMetrics: true
+        podAnnotations:
+          openshift.io/required-scc: restricted-v2
+        ports:
+          - name: jaeger
+            port: 16686
+        config:
+          service:
+            extensions:
+              - jaeger_storage
+              - jaeger_query
+            pipelines:
+              traces:
+                receivers:
+                  - otlp
+                exporters:
+                  - debug
+                  - jaeger_storage_exporter
+          extensions:
+            jaeger_query:
+              base_path: /jaeger
+              storage:
+                traces: traces_store
+            jaeger_storage:
+              backends:
+                traces_store:
+                  opensearch:
+                    server_urls:
+                      - http://{{ helm_releases.opensearch.name }}-cluster-master.{{ helm_releases.opensearch.namespace }}.svc.cluster.local:9200
+          receivers:
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4317
+                http:
+                  endpoint: 0.0.0.0:4318
+          exporters:
+            debug: {}
+            jaeger_storage_exporter:
+              trace_storage: traces_store
+    state: present
+  when:
+    - tools_enabled.jaeger
+
+- name: Wait for Jaeger deployment to complete
+  kubernetes.core.k8s_info:
+    api_version: opentelemetry.io/v1beta1
+    kind: OpenTelemetryCollector
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: jaeger
+    namespace: "{{ helm_releases.collectors.namespace }}"
+    wait: true
+  register: tools_jaeger_collector_info
+  until:
+    - tools_jaeger_collector_info.resources[0].status.scale is defined
+    - tools_jaeger_collector_info.resources[0].status.scale.statusReplicas | split('/') | unique | length == 1
+  retries: 10
+  delay: 30
+  when:
+    - tools_enabled.jaeger

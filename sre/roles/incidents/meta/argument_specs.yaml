@@ -1,0 +1,86 @@
+---
+argument_specs:
+  load:
+    short_description: Entry point for the load tasks
+    description:
+      - This set of tasks loads a file containing an incident spec. The spec is then used to generate the relevant variables required for code execution.
+    author:
+      - Gerard Vanloo
+    options:
+      incidents_file:
+        required: true
+        type: dict
+        options:
+          id:
+            required: true
+            type: int
+  main:
+    short_description: Main entry point for tools role
+    description:
+      - This is the main entry point for the tools role.
+      - This role is responsible for installing and uninstalling tools and services.
+    author:
+      - Gerard Vanloo
+    options:
+      incidents_cluster:
+        required: false
+        type: dict
+        options:
+          kubeconfig:
+            default: ~/.kube/config
+            required: false
+            type: str
+          platform:
+            choices:
+              - kubernetes
+              - openshift
+            default: kubernetes
+            required: false
+            type: str
+      incidents_spec:
+        required: true
+        type: dict
+        options:
+          metadata:
+            required: true
+            type: dict
+          spec:
+            required: true
+            type: dict
+            options:
+              environment:
+                required: true
+                type: dict
+                options:
+                  applications:
+                    required: true
+                    type: dict
+                    options:
+                      otel_demo:
+                        required: true
+                        type: dict
+                        options:
+                          enabled:
+                            required: true
+                            type: bool
+                          configuration:
+                            required: false
+                            type: dict
+                  tools:
+                    required: true
+                    type: dict
+                    options:
+                      category:
+                        choices:
+                          - sre
+                          - finops
+                        required: false
+                        type: str
+                      selected:
+                        elements: str
+                        required: false
+                        type: list
+              faults:
+                elements: dict
+                required: true
+                type: list

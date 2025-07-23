@@ -1,0 +1,18 @@
+---
+- name: Remove invalid Persistent Volume Claim
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: it-bench-invalid
+        namespace: "{{ namespace }}"
+    state: absent
+  loop: "{{ (targets | default([])) | community.general.json_query('[*].namespace') | unique }}"
+  loop_control:
+    loop_var: namespace
+
+- name: Print help message
+  ansible.builtin.debug:
+    msg: To finish removing this fault, please uninstall and reinstall the application it was injected into.

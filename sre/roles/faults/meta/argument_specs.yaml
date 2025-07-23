@@ -1,0 +1,128 @@
+---
+argument_specs:
+  main:
+    short_description: Main entry point for faults role
+    description:
+      - This is the main entry point for the environment role.
+      - This role is responsible for modifying the environment before fault injection and after fault removal.
+    author:
+      - Gerard Vanloo
+    options:
+      faults_cluster:
+        required: true
+        type: dict
+        options:
+          kubeconfig:
+            default: ~/.kube/config
+            required: false
+            type: str
+      faults_specs:
+        elements: dict
+        required: true
+        type: list
+        options:
+          chaos_mesh:
+            required: false
+            type: dict
+            options:
+              schedules:
+                elements: dict
+                required: true
+                type: list
+          custom:
+            required: false
+            type: dict
+            options:
+              name:
+                choices:
+                  - invalid-node-selector
+                  - misconfigured-command
+                  - misconfigured-horizontal-pod-autoscaler
+                  - misconfigured-persitent-volume-claim
+                  - misconfigured-resource-quota
+                  - misconfigured-service-port
+                  - unsupported-image
+                required: true
+                type: str
+              targets:
+                required: true
+                type: dict
+                options:
+                  horizontal_pod_autoscalers:
+                    elements: dict
+                    required: false
+                    type: list
+                    options:
+                      name:
+                        required: true
+                        type: str
+                      namespace:
+                        required: true
+                        type: str
+                  namespaces:
+                    elements: dict
+                    required: false
+                    type: list
+                    options:
+                      name:
+                        required: true
+                        type: str
+                  services:
+                    elements: dict
+                    required: false
+                    type: list
+                    options:
+                      name:
+                        required: true
+                        type: str
+                      namespace:
+                        required: true
+                        type: str
+                      targetPort:
+                        required: true
+                        type: int
+                  workload_managers:
+                    elements: dict
+                    required: false
+                    type: list
+                    options:
+                      kind:
+                        choices:
+                          - Deployment
+                          - ReplicaSet
+                          - StatefulSet
+                        required: true
+                        type: str
+                      name:
+                        required: true
+                        type: str
+                      namespace:
+                        required: true
+                        type: str
+          otel_demo:
+            required: false
+            type: dict
+            options:
+              flags:
+                elements: dict
+                required: true
+                type: list
+                options:
+                  name:
+                    choices:
+                      - adHighCpu
+                      - adFailure
+                      - adManualGc
+                      - cartFailure
+                      - imageSlowLoad
+                      - kafkaQueueProblems
+                      - loadGeneratorFloodHomepage
+                      - paymentFailure
+                      - paymentUnreachable
+                      - productCatalogFailure
+                      - recommendationCacheFailure
+                    required: true
+                    type: str
+                  state:
+                    required: true
+                    type: str

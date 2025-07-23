@@ -1,0 +1,88 @@
+---
+- name: Manage SRE and FinOps Incident Environment Tool Stack
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Import common role for Helm version check
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: check_helm_version
+      tags:
+        - always
+
+    - name: Import common role for platform configuration
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: set_cluster_platform
+      tags:
+        - always
+      vars:
+        common_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import common role for provider configuration
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: set_cluster_provider
+      tags:
+        - always
+      vars:
+        common_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import variables for incident
+      ansible.builtin.import_role:
+        name: incidents
+        tasks_from: load
+      tags:
+        - always
+      vars:
+        incidents_file:
+          id: "{{ incident_id }}"
+      when:
+        - incident_id is defined
+
+    - name: Create tools_enabled dictionary
+      ansible.builtin.set_fact:
+        tools_enabled:
+          chaos_mesh: "{{ tools.chaos_mesh | default(false) }}"
+          clickhouse: "{{ tools.clickhouse | default(false) }}"
+          ingress: "{{ tools.ingress | default(false) }}"
+          jaeger: "{{ tools.jaeger | default(false) }}"
+          kubernetes_metrics_server: "{{ tools.kubernetes_metrics_server | default(false) }}"
+          kubernetes_topology_monitor: "{{ tools.kubernetes_topology_monitor | default(false) }}"
+          opencost: "{{ tools.opencost | default(false) }}"
+          opensearch: "{{ tools.opensearch | default(false) }}"
+          opentelemetry: "{{ tools.opentelemetry | default(false) }}"
+          prometheus: "{{ tools.prometheus | default(false) }}"
+      tags:
+        - always
+      when:
+        - incident_id is undefined
+  tasks:
+    # - name: Import e2e role
+    #   ansible.builtin.import_role:
+    #     name: e2e
+    #     tasks_from: initialize_assertion_json
+    #   tags:
+    #     - install_tools
+    #   when:
+    #     - incident.runner != 'local'
+
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+      vars:
+        tools_cluster:
+          provider: "{{ cluster_provider }}"
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+
+    # - name: Import e2e role
+    #   ansible.builtin.import_role:
+    #     name: e2e
+    #     tasks_from: finalize_assertion_json
+    #   tags:
+    #     - uninstall_tools
+    #   when:
+    #     - incident.runner != 'local'

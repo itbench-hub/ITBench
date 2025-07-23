@@ -1,0 +1,89 @@
+---
+- name: Create SCC for Chaos Mesh
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: security.openshift.io/v1
+      kind: SecurityContextConstraints
+      metadata:
+        name: it-bench-chaos-daemon-restricted
+      readOnlyRootFilesystem: false
+      allowHostDirVolumePlugin: true
+      allowHostIPC: false
+      allowHostNetwork: false
+      allowHostPID: true
+      allowHostPorts: false
+      allowPrivilegeEscalation: false
+      allowPrivilegedContainer: false
+      allowedCapabilities:
+        - IPC_LOCK
+        - KILL
+        - MKNOD
+        - NET_ADMIN
+        - NET_RAW
+        - SYS_ADMIN
+        - SYS_CHROOT
+        - SYS_PTRACE
+      defaultAddCapabilities:
+      fsGroup:
+        type: MustRunAs
+      runAsUser:
+        type: MustRunAsRange
+      seLinuxContext:
+        type: MustRunAs
+      seccompProfiles:
+        - runtime/default
+      supplementalGroups:
+        type: RunAsAny
+      volumes:
+        - configMap
+        - csi
+        - downwardAPI
+        - emptyDir
+        - ephemeral
+        - hostPath
+        - persistentVolumeClaim
+        - projected
+        - secret
+      users:
+        - system:serviceaccount:{{ helm_release.namespace }}:chaos-daemon
+    state: present
+  when:
+    - tools_cluster.platform == "openshift"
+
+- name: Create release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ helm_release.namespace }}"
+        labels:
+          it-bench/monitoring: "true"
+    state: present
+
+- name: Install Chaos Mesh
+  kubernetes.core.helm:
+    chart_ref: chaos-mesh
+    chart_repo_url: https://charts.chaos-mesh.org
+    chart_version: 2.7.2
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ helm_release.name }}"
+    release_namespace: "{{ helm_release.namespace }}"
+    release_state: present
+    values:
+      controllerManager:
+        podAnnotations:
+          openshift.io/required-scc: restricted-v2
+      chaosDaemon:
+        podAnnotations:
+          openshift.io/required-scc: it-bench-chaos-daemon-restricted
+        privileged: false
+        runtime: "{{ 'containerd' if tools_cluster.platform == 'kubernetes' else 'crio' }}"
+        socketPath: "{{ '/run/containerd/containerd.sock' if tools_cluster.platform == 'kubernetes' else '/var/run/crio/crio.sock' }}"
+      dashboard:
+        create: false
+      dnsServer:
+        create: false
+    wait: true

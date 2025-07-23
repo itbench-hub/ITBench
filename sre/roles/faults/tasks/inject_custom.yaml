@@ -1,0 +1,74 @@
+---
+- name: Import invalid node selector injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_custom_invalid_node_selector.yaml
+  vars:
+    targets: "{{ fault.custom.targets.workload_managers }}"
+  when:
+    - fault.custom.name == 'invalid-node-selector'
+    - fault.custom.targets.workload_managers is defined
+    - fault.custom.targets.workload_managers | length > 0
+
+- name: Import misconfigured command injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_custom_misconfigured_command.yaml
+  vars:
+    targets: "{{ fault.custom.targets.workload_managers }}"
+  when:
+    - fault.custom.name == 'misconfigured-command'
+    - fault.custom.targets.workload_managers is defined
+    - fault.custom.targets.workload_managers | length > 0
+
+- name: Import misconfigured horizontal pod autoscaler injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_custom_misconfigured_horizontal_pod_autoscaler.yaml
+  vars:
+    targets: "{{ fault.custom.targets.horizontal_pod_autoscalers }}"
+  when:
+    - fault.custom.name == 'misconfigured-horizontal-pod-autoscaler'
+    - fault.custom.targets.horizontal_pod_autoscalers is defined
+    - fault.custom.targets.horizontal_pod_autoscalers | length > 0
+
+- name: Import misconfigured persistent volume claim injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_custom_misconfigured_persistent_volume_claim.yaml
+  vars:
+    targets: "{{ fault.custom.targets.workload_managers }}"
+  when:
+    - fault.custom.name == 'misconfigured-persitent-volume-claim'
+    - fault.custom.targets.workload_managers is defined
+    - fault.custom.targets.workload_managers | length > 0
+
+- name: Import misconfigured resource quota injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_custom_misconfigured_resource_quota.yaml
+  vars:
+    targets:
+      namespaces: "{{ fault.custom.targets.namespaces }}"
+      workload_managers: "{{ fault.custom.targets.workload_managers }}"
+  when:
+    - fault.custom.name == 'misconfigured-resource-quota'
+    - fault.custom.targets.namespaces is defined
+    - fault.custom.targets.namespaces | length > 0
+    - fault.custom.targets.workload_managers is defined
+    - fault.custom.targets.workload_managers | length > 0
+
+- name: Import misconfigured service port injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_custom_misconfigured_service_port.yaml
+  vars:
+    targets: "{{ fault.custom.targets.services }}"
+  when:
+    - fault.custom.name == 'misconfigured-service-port'
+    - fault.custom.targets.services is defined
+    - fault.custom.targets.services | length > 0
+
+- name: Import unsupported image injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_custom_unsupported_image.yaml
+  vars:
+    targets: "{{ fault.custom.targets.workload_managers }}"
+  when:
+    - fault.custom.name == 'unsupported-image'
+    - fault.custom.targets.workload_managers is defined
+    - fault.custom.targets.workload_managers | length > 0

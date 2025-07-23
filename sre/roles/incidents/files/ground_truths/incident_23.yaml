@@ -1,0 +1,39 @@
+---
+fault:
+  - entity:
+      name: checkout-pod-1
+      group_id: checkout-pod-1
+      kind: Pod
+    condition: "To Be Specified"
+    category: "Change"
+    fault_mechanism: custom
+alerts:
+  - id: PendingPodsDetected
+    group_id: checkout-pod-1
+    metadata:
+      description: Pods in pending state for checkout service
+groups:
+  - id: checkout-pod-1
+    kind: Pod
+    filter:
+      - checkout-.*
+    namespace: otel-demo
+    root_cause: true
+  - id: checkout-service-1
+    kind: Service
+    filter:
+      - checkout\b
+    namespace: otel-demo
+aliases:
+  - - checkout-service-1
+    - checkout-pod-1
+propagations:
+  - source: checkout-pod-1
+    target: checkout-service-1
+    condition: checkout pod is in ImagePullBackOff error
+    effect: ""
+recommended_actions:
+  - solution:
+      id: change_the_image_of_checkout_to_correct_image_for_amd64_system
+      actions:
+        - change the image of checkout to correct image for amd64 system

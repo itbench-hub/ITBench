@@ -1,0 +1,67 @@
+---
+fault:
+  - entity:
+      name: load-generator-pod-1
+      group_id: load-generator-pod-1
+      kind: Pod
+    condition: To be specified
+    category: Change
+    fault_mechanism: custom
+alerts:
+  - id: RequestErrorRate
+    group_id: frontend-proxy-service-1
+    metadata:
+      description: Error rate is above threshold for frontend-proxy service
+  - id: RequestLatency
+    group_id: frontend-proxy-service-1
+    metadata:
+      description: Latency is above threshold for frontend-proxy service
+groups:
+  - id: load-generator-pod-1
+    kind: Pod
+    filter:
+      - load-generator-.*
+    namespace: otel-demo
+    root_cause: true
+  - id: load-generator-service-1
+    kind: Service
+    filter:
+      - load-generator\b
+    namespace: otel-demo
+  - id: frontend-proxy-service-1
+    kind: Service
+    filter:
+      - frontend-proxy\b
+    namespace: otel-demo
+  - id: frontend-proxy-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - frontend-proxy-.*
+aliases:
+  - - load-generator-service-1
+    - load-generator-pod-1
+    - frontend-proxy-service-1
+    - frontend-proxy-pod-1
+propagations:
+  - source: load-generator-pod-1
+    target: load-generator-service-1
+    condition: load-generator pod is configured with a higher number of users
+    effect: load-generator creates a high number of requests as a result
+  - source: load-generator-service-1
+    target: frontend-proxy-service-1
+    condition: frontend-proxy service overloaded - request volume exceeds configured capacity
+    effect: frontend-proxy service error rate is above threshold
+  - source: load-generator-service-1
+    target: frontend-proxy-service-1
+    condition: frontend-proxy service overloaded - request volume exceeds configured capacity
+    effect: frontend-proxy service latency is above threshold
+recommended_actions:
+  - solution:
+      id: deem_if_traffic_is_legit
+      actions:
+        - deem if traffic is legit
+  - solution:
+      id: set_up_autoscaler
+      actions:
+        - set up autoscaler

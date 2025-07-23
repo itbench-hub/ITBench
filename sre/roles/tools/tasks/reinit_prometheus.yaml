@@ -1,0 +1,48 @@
+---
+- name: Scale down Prometheus and Prometheus-related statefulsets to reset data
+  kubernetes.core.k8s_scale:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    api_version: apps/v1
+    kind: StatefulSet
+    name: "{{ helm_release.name }}-prometheus-kube-prometheus-prometheus"
+    namespace: "{{ helm_release.namespace }}"
+    replicas: 0
+    wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+# # NOTE: Not needed as installation triggers scale up
+# - name: Scale up Prometheus statefulsets
+
+- name: Scale down OpenShift monitoring-related statefulset(s) to reset data
+  kubernetes.core.k8s_scale:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    api_version: apps/v1
+    kind: StatefulSet
+    name: "{{ item }}"
+    namespace: openshift-monitoring
+    replicas: 0
+    wait: true
+  loop:
+    - prometheus-k8s
+    - alertmanager-main
+  when:
+    - tools_cluster.platform == "openshift"
+
+- name: Scale down OpenShift user workload monitoring-related statefulset(s) to reset data
+  kubernetes.core.k8s_scale:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    api_version: apps/v1
+    kind: StatefulSet
+    name: "{{ item }}"
+    namespace: openshift-user-workload-monitoring
+    replicas: 0
+    wait: true
+  loop:
+    - prometheus-user-workload
+    - thanos-ruler-user-workload
+  when:
+    - tools_cluster.platform == "openshift"
+
+# # NOTE: Not needed as installation triggers scale up
+# - name: Scale up OpenShift monitoring and user workload monitoring-related statefulsets
