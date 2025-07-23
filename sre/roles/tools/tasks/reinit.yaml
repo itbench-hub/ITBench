@@ -1,0 +1,74 @@
+---
+- name: Import Prometheus reinitialization tasks
+  ansible.builtin.import_tasks:
+    file: reinit_prometheus.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.prometheus }}"
+  when:
+    - tools_enabled.prometheus or tools_enabled.opencost
+
+- name: Import OpenSearch reinitialization tasks
+  ansible.builtin.import_tasks:
+    file: reinit_opensearch.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.opensearch }}"
+  when:
+    - tools_enabled.opensearch or tools_enabled.jaeger
+
+- name: Import OpenTelemetry reinitialization tasks
+  ansible.builtin.import_tasks:
+    file: reinit_opentelemetry.yaml
+  vars:
+    helm_releases:
+      clickhouse: "{{ tools_helm_releases.clickhouse }}"
+      collectors: "{{ tools_helm_releases.opentelemetry_collectors }}"
+      operator: "{{ tools_helm_releases.opentelemetry_operator }}"
+      opensearch: "{{ tools_helm_releases.opensearch }}"
+  when:
+    - tools_enabled.opentelemetry or tools_enabled.jaeger
+
+- name: Import Chaos Mesh reinitialization tasks
+  ansible.builtin.import_tasks:
+    file: reinit_chaos_mesh.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.chaos_mesh }}"
+  when:
+    - tools_enabled.chaos_mesh
+
+- name: Import Kubernetes Metrics Server reinitialization tasks
+  ansible.builtin.import_tasks:
+    file: reinit_kubernetes_metrics_server.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.kubernetes_metrics_server }}"
+  when:
+    - tools_enabled.kubernetes_metrics_server
+    - tools_cluster.platform == "kubernetes"
+
+- name: Import Kubernetes Topology Monitor reinitialization tasks
+  ansible.builtin.import_tasks:
+    file: reinit_kubernetes_topology_monitor.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.kubernetes_topology_monitor }}"
+  when:
+    - tools_enabled.kubernetes_topology_monitor
+
+- name: Import Clickhouse reinitialization tasks
+  ansible.builtin.import_tasks:
+    file: reinit_clickhouse.yaml
+  vars:
+    helm_releases:
+      instance: "{{ tools_helm_releases.clickhouse }}"
+      operator: "{{ tools_helm_releases.clickhouse_operator }}"
+  when:
+    - tools_enabled.clickhouse or tools_enabled.opentelemetry
+
+- name: Delete events across namespaces
+  ansible.builtin.command:
+    cmd: kubectl delete events --all-namespaces --all --ignore-not-found=true
+  environment:
+    KUBECONFIG: "{{ tools_cluster.kubeconfig }}"
+  register: delete_events_result
+  changed_when: delete_events_result.rc == 0
+  failed_when: delete_events_result.rc not in [0, 1]
+  when:
+    - tools_cluster.platform == "kubernetes"

@@ -1,0 +1,30 @@
+---
+- name: Include Helm Release variables from Observability Tools role
+  ansible.builtin.include_vars:
+    file: ../tools/defaults/main/helm_releases.yaml
+
+- name: Import OpenTelemetry Demo installation tasks
+  ansible.builtin.import_tasks:
+    file: install_otel_demo.yaml
+  vars:
+    configuration: "{{ applications_otel_demo_configuration }}"
+    helm_releases:
+      clickhouse: "{{ tools_helm_releases.clickhouse }}"
+      collectors: "{{ tools_helm_releases.opentelemetry_collectors }}"
+      opensearch: "{{ tools_helm_releases.opensearch }}"
+      otel_demo: "{{ applications_helm_releases.otel_demo }}"
+      prometheus: "{{ tools_helm_releases.prometheus }}"
+  when:
+    - applications_enabled.otel_demo
+
+# TODO: Enable these tasks during the refactor of the e2e
+
+# - name: Import Deployment Time tasks
+#   ansible.builtin.import_tasks:
+#     file: register_deployment_time.yaml
+
+# - name: Import Deployment Failure tasks
+#   ansible.builtin.import_tasks:
+#     file: register_deployment_failure.yaml
+#   when:
+#     - (sre_bench_runner | default(false))

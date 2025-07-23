@@ -1,0 +1,20 @@
+---
+- name: Delete ResourceQuota
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: "{{ namespace.name }}-resource-quota"
+        namespace: "{{ namespace.name }}"
+    state: absent
+    wait: true
+  loop: "{{ targets }}"
+  loop_control:
+    label: "namespace/{{ namespace.name }}"
+    loop_var: namespace
+
+- name: Print help message
+  ansible.builtin.debug:
+    msg: To finish removing this fault, please uninstall and reinstall the application it was injected into.

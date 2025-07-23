@@ -1,0 +1,39 @@
+---
+# Note: This fault assumes that the worker nodes all have the same architecture.
+
+- name: Retrieve worker nodes on the cluster
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: Node
+    label_selectors:
+      - node-role.kubernetes.io/node =
+  register: nodes_info
+
+- name: Parse worker node architectures
+  ansible.builtin.set_fact:
+    node_architectures: "{{ nodes_info | community.general.json_query('resources[*].status.nodeInfo.architecture') }}"
+
+- name: Filter available architectures
+  ansible.builtin.set_fact:
+    architectures: "{{ node_architectures | intersect(['amd64', 'arm64']) }}"
+
+- name: Set which unsupported image to use
+  ansible.builtin.set_fact:
+    image_arch: "{{ ['amd64', 'arm64'] | difference(architectures) | first }}"
+
+- name: Inject fault (unsupported image)
+  kubernetes.core.k8s_json_patch:
+    api_version: apps/v1
+    kind: "{{ manager.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ manager.name }}"
+    namespace: "{{ manager.namespace }}"
+    patch:
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: quay.io/it-bench/hello-bench-{{ image_arch }}:1.0.0
+  loop: "{{ targets }}"
+  loop_control:
+    label: "{{ manager.kind | lower }}/{{ manager.name }}"
+    loop_var: manager

@@ -1,0 +1,79 @@
+---
+- name: Manage SRE and FinOps Incident Environment Sample Application Stack
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Import common role for Helm version check
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: check_helm_version
+      tags:
+        - always
+
+    - name: Import common role for platform configuration
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: set_cluster_platform
+      tags:
+        - always
+      vars:
+        common_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import common role for provider configuration
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: set_cluster_provider
+      tags:
+        - always
+      vars:
+        common_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import variables for incident
+      ansible.builtin.import_role:
+        name: incidents
+        tasks_from: load
+      tags:
+        - always
+      vars:
+        incidents_file:
+          id: "{{ incident_id }}"
+      when:
+        - incident_id is defined
+
+    - name: Create applications_enabled dictionary
+      ansible.builtin.set_fact:
+        applications_enabled:
+          otel_demo: "{{ applications.otel_demo | default(false) }}"
+      tags:
+        - always
+      when:
+        - incident_id is undefined
+  tasks:
+    - name: Import applications role
+      ansible.builtin.import_role:
+        name: applications
+      vars:
+        applications_cluster:
+          cloud_provider: "{{ cluster_provider }}"
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+
+    # - name: Import e2e role
+    #   ansible.builtin.import_role:
+    #     name: e2e
+    #     tasks_from: register_deployment_time
+    #   tags:
+    #     - install_applications
+    #   when:
+    #     - incident.runner != 'local'
+
+    # - name: Import e2e role
+    #   ansible.builtin.import_role:
+    #     name: e2e
+    #     tasks_from: register_deployment_failure
+    #   tags:
+    #     - capture_failed_deployment_state
+    #   when:
+    #     - incident.runner != 'local'

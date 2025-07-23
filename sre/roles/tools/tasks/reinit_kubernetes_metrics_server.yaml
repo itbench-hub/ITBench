@@ -1,0 +1,21 @@
+---
+- name: Scale down Kubernetes metrics server
+  kubernetes.core.k8s_scale:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: metrics-server
+    namespace: "{{ helm_release.namespace }}"
+    replicas: 0
+    wait: true
+
+- name: Scale up Kubernetes metrics server
+  kubernetes.core.k8s_scale:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: metrics-server
+    namespace: "{{ helm_release.namespace }}"
+    replicas: 1
+    wait: true
+    wait_timeout: 60

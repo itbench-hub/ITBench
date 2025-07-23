@@ -1,0 +1,32 @@
+---
+- name: Uninstall AWX
+  kubernetes.core.k8s:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: awx.ansible.com/v1beta1
+      kind: AWX
+      metadata:
+        name: awx-deployment
+        namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+    state: absent
+    wait: true
+
+- name: Uninstall AWX operator
+  kubernetes.core.helm:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    release_name: "{{ awx_helm_releases.awx_operator.name }}"
+    release_namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+    release_state: absent
+    timeout: 10m0s
+    wait: true
+
+- name: Delete the release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: v1
+      kind: Namespace
+      metadata:
+        name: "{{ awx_helm_releases.awx_operator.namespace }}"
+    state: absent
+    wait: true

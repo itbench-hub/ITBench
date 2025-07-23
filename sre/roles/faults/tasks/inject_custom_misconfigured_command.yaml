@@ -1,0 +1,16 @@
+---
+- name: Inject fault (misconfigured command)
+  kubernetes.core.k8s_json_patch:
+    api_version: apps/v1
+    kind: "{{ manager.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ manager.name }}"
+    namespace: "{{ manager.namespace }}"
+    patch:
+      - op: replace
+        path: /spec/template/spec/containers/0/command
+        value: [invalid-command]
+  loop: "{{ targets }}"
+  loop_control:
+    label: "{{ manager.kind | lower }}/{{ manager.name }}"
+    loop_var: manager

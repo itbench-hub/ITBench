@@ -1,0 +1,86 @@
+---
+- name: Manage SRE and FinOps Incident Environment Tool Stack
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Ensure incident file is defined
+      ansible.builtin.assert:
+        that: incident_id is defined
+        fail_msg: incident_id is not defined. Please run playbook with variable defined via CLI arguments.
+        success_msg: incident_id is defined.
+      tags:
+        - always
+
+    - name: Import common role for kubectl version check
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: check_kubectl_version
+      tags:
+        - always
+      vars:
+        common_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import common role for platform configuration
+      ansible.builtin.import_role:
+        name: common
+        tasks_from: set_cluster_platform
+      tags:
+        - always
+      vars:
+        common_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import variables for incident
+      ansible.builtin.import_role:
+        name: incidents
+        tasks_from: load
+      tags:
+        - always
+      vars:
+        incidents_file:
+          id: "{{ incident_id }}"
+  tasks:
+    # - name: Pause for 600 seconds pre-fault removal for alert recording
+    #   ansible.builtin.pause:
+    #     seconds: 600
+    #   tags:
+    #     - pre_fault_removal
+    #   when:
+    #     - incident.runner != 'local'
+
+    # - name: Import e2e role
+    #   ansible.builtin.import_role:
+    #     name: e2e
+    #     tasks_from: record_topology_information
+    #   tags:
+    #     - pre_fault_removal
+    #   when:
+    #     - incident.runner != 'local'
+
+    - name: Import incidents role
+      ansible.builtin.import_role:
+        name: incidents
+      vars:
+        incidents_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+        incidents_spec: "{{ incident_spec }}"
+
+    # - name: Import e2e role
+    #   ansible.builtin.import_role:
+    #     name: e2e
+    #     tasks_from: record_topology_information
+    #   tags:
+    #     - post_fault_injection
+    #   when:
+    #     - incident.runner != 'local'
+
+    # - name: Import e2e role
+    #   ansible.builtin.import_role:
+    #     name: e2e
+    #     tasks_from: register_fault_injection_time
+    #   tags:
+    #     - inject_faults
+    #   when:
+    #     - incident.runner != 'local'

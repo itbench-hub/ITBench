@@ -1,0 +1,413 @@
+---
+# Note: The Prometheus offered by OpenShift is v2, while the one installed
+#       in the chart is v3. While otel-demo supports the `otlphttp` exporter,
+#       this is not easily exposed in OpenShift. So, IT-Bench uses the `prometheus`
+#       exporter instead to support both platforms until the functionality of
+#       Prometheus is the same on both platforms.
+
+# Note: Due to a Helm bug, the value of the `otlphttp` and `opensearch` exports cannot
+#       be set to null in order to remove the chart's values. So, the configuration of
+#       the exporters is still correctly set, but not used for forwarding the data.
+#       Requires backport: https://github.com/helm/helm/issues/30587
+
+# Note: The `latest` images from otel-demo are currently used as there has not been
+#       a new release of the image-provider. Until a new verion (>=2.0.3) is cut, latest
+#       needs to be used in order to use this application with OpenShift's restricted-v2 SCC.
+
+# TODO: Remove the image override on Kafka after the new images are cut for otel-demo
+#       (>=2.0.3). This is a temporary fix to keep kafka working without making too many
+#       additional edits that need to be reverted in the configuration.
+
+- name: Create the release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ helm_releases.otel_demo.namespace }}"
+        annotations:
+          openshift.io/sa.scc.mcs: s0:c30,c10
+          openshift.io/sa.scc.uid-range: 1/2000
+          openshift.io/sa.scc.supplemental-groups: 1/1000
+        labels:
+          it-bench/monitoring: "true"
+    state: present
+
+- name: Get Clickhouse credentials from secret
+  kubernetes.core.k8s_info:
+    kind: Secret
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    name: "{{ helm_releases.clickhouse.name }}-credentials"
+    namespace: "{{ helm_releases.clickhouse.namespace }}"
+    wait: true
+  register: clickhouse_secrets_info
+
+# TODO: To-be made optional when support for APMs is enabled
+- name: Validate existence of Clickhouse credentials
+  ansible.builtin.assert:
+    that:
+      - clickhouse_secrets_info.resources | length > 0
+    fail_msg: "Clickhouse credentials secret not found"
+    success_msg: "Clickhouse credentials secret found"
+
+- name: Retrieve Prometheus route
+  kubernetes.core.k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    name: prometheus-k8s
+    namespace: openshift-monitoring
+  register: prometheus_k8s_route_info
+  when:
+    - applications_cluster.platform == "openshift"
+
+- name: Parse Prometheus hostname
+  ansible.builtin.set_fact:
+    prometheus_url: https://{{ prometheus_k8s_route_info.resources[0].spec.host }}
+  when:
+    - applications_cluster.platform == "openshift"
+
+- name: Verify Prometheus service exists
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: "{{ helm_releases.prometheus.name }}-kube-prometheus-prometheus"
+    namespace: "{{ helm_releases.prometheus.namespace }}"
+  register: prometheus_service
+  when:
+    - applications_cluster.platform == "kubernetes"
+
+# TODO: To-be made optional when support for APMs is enabled
+- name: Validate relevant Prometheus service exists
+  ansible.builtin.assert:
+    that:
+      - prometheus_service.resources | length > 0
+    fail_msg: "Prometheus service not found in namespace {{ helm_releases.prometheus.namespace }}"
+    success_msg: "Prometheus service {{ helm_releases.prometheus.name }}-kube-prometheus-prometheus found in namespace {{ helm_releases.prometheus.namespace }}"
+  when:
+    - applications_cluster.platform == "kubernetes"
+
+- name: Set Prometheus internal service url
+  ansible.builtin.set_fact:
+    prometheus_url: http://{{ helm_releases.prometheus.name }}-kube-prometheus-prometheus.{{ helm_releases.prometheus.namespace }}.svc.cluster.local:9090
+  when:
+    - applications_cluster.platform == "kubernetes"
+
+- name: Install OpenTelemetry Demo (Astronomy Shop)
+  kubernetes.core.helm:
+    chart_ref: opentelemetry-demo
+    chart_repo_url: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart_version: 0.37.1
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    release_name: "{{ helm_releases.otel_demo.name }}"
+    release_namespace: "{{ helm_releases.otel_demo.namespace }}"
+    release_state: present
+    timeout: 10m0s
+    values:
+      default:
+        image:
+          tag: latest # New version with compatible image provider not released yet
+      components:
+        accounting:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          podSecurityContext:
+            runAsNonRoot: true
+            runAsUser: 1654
+          resources:
+            requests:
+              cpu: 10m
+              memory: 100Mi
+            limits:
+              memory: 256Mi
+        ad:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 10m
+              memory: 250Mi
+            limits:
+              memory: 512Mi
+        cart:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 25m
+              memory: 100Mi
+        checkout:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 10m
+              memory: 15Mi
+            limits:
+              memory: 32Mi
+        currency:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 25m
+              memory: 10Mi
+        email:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 10m
+              memory: 75Mi
+        flagd:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 15m
+              memory: 75Mi
+            limits:
+              memory: 512Mi
+        fraud-detection:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 25m
+              memory: 300Mi
+            limits:
+              memory: 512Mi
+        frontend:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 300m
+              memory: 125Mi
+        frontend-proxy:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 75m
+              memory: 25Mi
+            limits:
+              memory: 75Mi
+        image-provider:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          podSecurityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+          resources:
+            requests:
+              cpu: 10m
+              memory: 25Mi
+        kafka:
+          imageOverride:
+            tag: 2.0.2-kafka
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 25m
+              memory: 550Mi
+            limits:
+              memory: 800Mi
+        load-generator:
+          envOverrides:
+            - name: LOCUST_BROWSER_TRAFFIC_ENABLED
+              value: "false"
+            - name: LOCUST_SPAWN_RATE
+              value: "{{ configuration.load_generator.spawn_rate }}"
+            - name: LOCUST_USERS
+              value: "{{ configuration.load_generator.users }}"
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+        payment:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 10m
+              memory: 100Mi
+        product-catalog:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 15Mi
+            limits:
+              memory: 32Mi
+        quote:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 10m
+              memory: 25Mi
+        recommendation:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 100Mi
+        shipping:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 10m
+              memory: 10Mi
+        valkey-cart:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          resources:
+            requests:
+              cpu: 10m
+              memory: 10Mi
+      grafana:
+        enabled: false
+      jaeger:
+        enabled: false
+      opensearch:
+        enabled: false
+      opentelemetry-collector:
+        config:
+          connectors:
+            spanmetrics:
+              dimensions:
+                - name: namespace
+                  default: "{{ helm_releases.otel_demo.namespace }}"
+          exporters:
+            clickhouse:
+              username: "{{ clickhouse_secrets_info.resources[0].data.user | b64decode }}"
+              password: "{{ clickhouse_secrets_info.resources[0].data.password | b64decode }}"
+              endpoint: http://{{ helm_releases.clickhouse.name }}-clickhouse.{{ helm_releases.clickhouse.namespace }}.svc.cluster.local:8123
+              logs_table_name: otel_demo_logs
+            opensearch:
+              http:
+                endpoint: http://{{ helm_releases.opensearch.name }}-master.{{ helm_releases.opensearch.namespace }}.svc.cluster.local:9200
+            otlp:
+              endpoint: http://jaeger-collector.{{ helm_releases.collectors.namespace }}.svc.cluster.local:4317
+            otlphttp/prometheus:
+              endpoint: "{{ prometheus_url }}/api/v1/otlp"
+            prometheus:
+              endpoint: 0.0.0.0:8889
+          service:
+            pipelines:
+              logs:
+                exporters:
+                  - clickhouse
+                  - debug
+              metrics:
+                exporters:
+                  - debug
+                  - prometheus
+        serviceMonitor:
+          enabled: true
+          metricsEndpoints:
+            - port: demo-metrics
+            - port: metrics
+        podAnnotations:
+          openshift.io/required-scc: restricted-v2
+        ports:
+          demo-metrics:
+            enabled: true
+            containerPort: 8889
+            servicePort: 8889
+            protocol: TCP
+        resources:
+          requests:
+            cpu: 100m
+            memory: 150Mi
+          limits:
+            memory: 512Mi
+      prometheus:
+        enabled: false
+    wait: true
+
+- name: Create Recording Prometheus Rules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ helm_releases.otel_demo.namespace }}"
+    state: present
+    src: files/rules/workload.yaml
+
+- name: Create Alerting Prometheus Rules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ helm_releases.otel_demo.namespace }}"
+    state: present
+    src: files/rules/otel-demo.yaml
+
+# Since Jinja2 will only template the variables as strings, this scale
+# operation is used instead of setting the replica value in the Helm values.
+
+- name: Scale deployments
+  kubernetes.core.k8s_scale:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    name: "{{ item | regex_replace('_', '-') }}"
+    namespace: "{{ helm_releases.otel_demo.namespace }}"
+    replicas: "{{ configuration[item].replicas }}"
+  loop: "{{ configuration.keys() | list }}"
+  loop_control:
+    label: deployment/{{ item | regex_replace('_', '-') }}
+  when:
+    - (configuration[item].replicas | default(1)) > 1
+    - not (configuration[item].autoscaling | default(false))
+
+- name: Create Horizontal Pod Autoscalers
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: "{{ item | regex_replace('_', '-') }}"
+        namespace: "{{ helm_releases.otel_demo.namespace }}"
+      spec:
+        scaleTargetRef:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: "{{ item | regex_replace('_', '-') }}"
+        minReplicas: 1
+        maxReplicas: 10
+        metrics:
+          - type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 70
+          - type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 80
+        behavior:
+          scaleDown:
+            policies:
+              - type: Percent
+                value: 50
+                periodSeconds: 60
+              - type: Pods
+                value: 2
+                periodSeconds: 60
+            selectPolicy: Min
+    state: present
+  loop: "{{ configuration.keys() | list }}"
+  loop_control:
+    label: horizontalpodautoscaler/{{ item | regex_replace('_', '-') }}
+  when:
+    - configuration[item].autoscaling | default(false)

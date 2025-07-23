@@ -1,0 +1,41 @@
+---
+- name: Retrieve services from cluster
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ service.name }}"
+    namespace: "{{ service.namespace }}"
+  register: services_info
+  loop: "{{ targets }}"
+  loop_control:
+    label: service/{{ service.name }}
+    loop_var: service
+
+- name: Create list of indicies of target port in service definition
+  ansible.builtin.set_fact:
+    indexes: |
+      {{
+        (indexes | default([])) +
+        [[item[1],  lookup('ansible.utils.index_of', item[0].resources[0].spec.ports, 'eq', item[1].targetPort, 'targetPort')]]
+      }}
+  loop: "{{ services_info.results | zip(targets) | list }}"
+  loop_control:
+    label: service/{{ item[1].name }}
+  when:
+    - item[0].resources | length > 0
+
+- name: Inject fault (misconfigured service port)
+  kubernetes.core.k8s_json_patch:
+    api_version: v1
+    kind: Service
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ item[0].name }}"
+    namespace: "{{ item[0].namespace }}"
+    patch:
+      - op: replace
+        path: /spec/ports/{{ item[1] }}/targetPort
+        value: 9999
+  loop: "{{ indexes }}"
+  loop_control:
+    label: service/{{ item[0].name }}

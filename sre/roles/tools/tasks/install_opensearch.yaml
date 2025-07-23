@@ -1,0 +1,53 @@
+---
+- name: Create the release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ helm_release.namespace }}"
+        annotations:
+          openshift.io/sa.scc.mcs: s0:c33,c22
+          openshift.io/sa.scc.uid-range: 1000/1000
+          openshift.io/sa.scc.supplemental-groups: 1000/1000
+        labels:
+          it-bench/monitoring: "true"
+    state: present
+
+- name: Install OpenSearch
+  kubernetes.core.helm:
+    chart_ref: opensearch
+    chart_repo_url: https://opensearch-project.github.io/helm-charts
+    chart_version: 2.32.0
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ helm_release.name }}"
+    release_namespace: "{{ helm_release.namespace }}"
+    release_state: present
+    timeout: 10m
+    values:
+      replicas: 1
+      config:
+        opensearch.yml: |
+          cluster.name: opensearch-cluster
+          # Bind to all interfaces because we don't know what IP address will be assigned
+          network.host: 0.0.0.0
+          plugins.security.disabled: true
+      extraEnvs:
+        - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+          value: "Opensearch@admin@password@1234"
+      persistence:
+        enabled: true
+        enableInitChown: false
+      podAnnotations:
+        openshift.io/required-scc: restricted-v2
+      podSecurityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: "RuntimeDefault"
+      rbac:
+        create: "{{ tools_cluster.platform == 'openshift' }}"
+        automountServiceAccountToken: true
+      securityContext:
+        allowPrivilegeEscalation: false
+    wait: true

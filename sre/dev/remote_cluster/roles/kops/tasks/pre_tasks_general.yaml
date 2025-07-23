@@ -1,0 +1,13 @@
+---
+- name: Validate if the bucket exists (when listing clusters)
+  amazon.aws.s3_bucket_info:
+    name: "{{ cluster.s3.bucket_name }}"
+    region: "{{ cluster.aws.region }}"
+  register: kops_bucket_info
+
+- name: Assert bucket exists
+  ansible.builtin.assert:
+    that:
+      - cluster.s3.bucket_name in (kops_bucket_info.buckets | map(attribute='name') | list)
+    fail_msg: S3 bucket {{ cluster.s3.bucket_name }} does not exist. Please check the 'cluster.s3.bucket_name' value in group_vars/development/kops_cluster.yaml
+    success_msg: S3 bucket {{ cluster.s3.bucket_name }} exists.

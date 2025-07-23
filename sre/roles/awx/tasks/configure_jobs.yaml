@@ -1,0 +1,412 @@
+---
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_awx_controller_host.yaml
+
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_awx_controller_password.yaml
+
+- name: Add job template for installing tools
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    extra_vars:
+      incident_id: "{{ incident }}"
+    inventory: IT-Bench-SRE
+    job_tags: install_tools
+    job_type: run
+    name: "Incident {{ incident }}: Deploy Tools"
+    organization: ITBench-Scenarios
+    playbook: sre/playbooks/manage_tools.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for uninstalling tools
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    extra_vars:
+      incident_id: "{{ incident }}"
+    inventory: IT-Bench-SRE
+    job_tags: uninstall_tools
+    job_type: run
+    name: "Incident {{ incident }}: Undeploy Tools"
+    organization: ITBench-Scenarios
+    playbook: sre/playbooks/manage_tools.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for installing applicaions
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    extra_vars:
+      incident_id: "{{ incident }}"
+    inventory: IT-Bench-SRE
+    job_tags: install_applications
+    job_type: run
+    name: "Incident {{ incident }}: Deploy Applications"
+    organization: ITBench-Scenarios
+    playbook: sre/playbooks/manage_applications.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for uninstalling applications
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    extra_vars:
+      incident_id: "{{ incident }}"
+    inventory: IT-Bench-SRE
+    job_tags: uninstall_applications
+    job_type: run
+    name: "Incident {{ incident }}: Undeploy Applications"
+    organization: ITBench-Scenarios
+    playbook: sre/playbooks/manage_applications.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for injecting faults
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    extra_vars:
+      incident_id: "{{ incident }}"
+    inventory: IT-Bench-SRE
+    job_tags: inject_faults
+    job_type: run
+    name: "Incident {{ incident }}: Inject Faults"
+    organization: ITBench-Scenarios
+    playbook: sre/playbooks/manage_incidents.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for removing faults
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    extra_vars:
+      incident_id: "{{ incident }}"
+    inventory: IT-Bench-SRE
+    job_tags: remove_faults
+    job_type: run
+    name: "Incident {{ incident }}: Remove Faults"
+    organization: ITBench-Scenarios
+    playbook: sre/playbooks/manage_incidents.yaml
+    project: GitHub-ITBench
+    state: present
+
+# TODO: Complete the refactoring of the following code:
+#
+#       Telemetry Access code will be added directly to the Applications Role
+#       Recording code will be added directory to the Applications Role
+#       Post fault injection and pre fault removal will move to a Job
+
+- name: Creating/removing job template to setup for telemetry access
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    extra_vars:
+      sample_application: otel_astronomy_shop
+    job_tags: telemetry_access
+    job_type: run
+    name: "Scenario-{{ incident }}--Setup-For-Telemetry-Access"
+    organization: ITBench-Scenarios
+    playbook: sre/base.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Creating/removing job template for trace gathering
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    job_tags: telemetry_access
+    job_type: run
+    name: "Scenario-{{ incident }}--Trace-Gathering"
+    organization: ITBench-Scenarios
+    playbook: sre/cron_jobs/trace_recorder.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Creating/removing job template for post fault injection task(s)
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    job_tags: post_fault_injection
+    job_type: run
+    name: "Scenario-{{ incident }}--Post-Fault-Injection"
+    organization: ITBench-Scenarios
+    playbook: sre/base.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Creating/removing job template for pre fault removal task(s)
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    job_tags: pre_fault_removal
+    job_type: run
+    name: "Scenario-{{ incident }}--Post-Fault-Injection"
+    organization: ITBench-Scenarios
+    playbook: sre/base.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Capture failed deployment state
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    job_tags: capture_failed_deployment_state
+    job_type: run
+    name: "Scenario-{{ incident }}--Capture-Failed-Deployment"
+    organization: ITBench-Scenarios
+    playbook: sre/base.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Capture failed fault injection state
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    job_tags: capture_failed_fault_injection_state
+    job_type: run
+    name: "Scenario-{{ incident }}--Capture-Failed-Fault-Injection"
+    organization: ITBench-Scenarios
+    playbook: sre/base.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Node pause in lieu of SRE Agent
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: AWX-EE-Custom
+    job_tags: sre_agent
+    job_type: run
+    name: "Scenario-{{ incident }}--Node-Pause"
+    organization: ITBench-Scenarios
+    playbook: sre/base.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Uninstalling K8s resources in default namespace
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+    execution_environment: AWX-EE-Custom
+    job_tags: uninstall_sre_agent
+    job_type: run
+    name: "Scenario-{{ incident }}--Uninstalling-K8s-Resources-Default-Namespace"
+    organization: ITBench-Scenarios
+    playbook: sre/base.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Creating/removing job template to check for alerts
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    job_type: run
+    name: "Scenario-{{ incident }}--Check-for-Alerts"
+    organization: ITBench-Scenarios
+    playbook: sre/cron_jobs/alert_recorder.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Creating/removing job template to turn alert recorder on
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - Credential-AWX
+    execution_environment: AWX-EE-Custom
+    extra_vars:
+      controller_host: "{{ awx_controller_host }}"
+      scenario_number: "{{ incident }}"
+    job_type: run
+    name: "Scenario-{{ incident }}--Alert-Recorder-On"
+    organization: ITBench-Scenarios
+    playbook: sre/cron_jobs/alert_recorder_init.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Creating/removing job template to turn alert recorder off
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - Credential-AWX
+    execution_environment: AWX-EE-Custom
+    extra_vars:
+      controller_host: "{{ awx_controller_host }}"
+      scenario_number: "{{ incident }}"
+    job_type: run
+    name: "Scenario-{{ incident }}--Alert-Recorder-Off"
+    organization: ITBench-Scenarios
+    playbook: sre/cron_jobs/alert_recorder_deinit.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Handover to Agent
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    inventory: Demo Inventory
+    job_tags: handover_to_agent
+    job_type: run
+    name: "Scenario-{{ incident }}--Handover-To-Agent"
+    organization: ITBench-Scenarios
+    playbook: sre/base.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Handover from Agent
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    inventory: Demo Inventory
+    job_tags: handover_from_agent
+    job_type: run
+    name: "Scenario-{{ incident }}--Handover-From-Agent"
+    organization: ITBench-Scenarios
+    playbook: sre/base.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Run the SRE Agent
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credentials:
+      - Cluster-{{ incident_index + 1 }}-Kubeconfig
+      - AWS
+    execution_environment: AWX-EE-Custom
+    job_tags: sre_agent
+    job_type: run
+    name: "Scenario-{{ incident }}--Run-SRE-Agent"
+    organization: ITBench-Scenarios
+    playbook: deployments/ansible/base.yaml
+    project: GitHub-LLM-Agent
+    state: present
+    extra_vars:
+      prometheus_namespace_project_name: prometheus
+      sre_agent_directory: /runner/project
+      conda_sh_directory: /opt/conda/etc/profile.d/conda.sh
+      conda_env_directory: /runner/project/lumyn_env
+      provider_agents: "{{ awx_agent.configuration['agents_config']['provider'] }}"
+      model_agents: "{{ awx_agent.configuration['agents_config']['model'] }}"
+      url_agents: "{{ awx_agent.configuration['agents_config']['url'] }}"
+      api_key_agents: "{{ awx_agent.configuration['agents_config']['api_key'] }}" # pragma: allowlist secret
+      api_version_agents: "{{ awx_agent.configuration['agents_config']['api_version'] }}"
+      seed_agents: "{{ awx_agent.configuration['agents_config']['seed'] }}"
+      top_p_agents: "{{ awx_agent.configuration['agents_config']['top_p'] }}"
+      temperature_agents: "{{ awx_agent.configuration['agents_config']['temperature'] }}"
+      reasoning_effort_agents: "{{ awx_agent.configuration['agents_config']['reasoning_effort'] }}"
+      thinking_agents: "{{ awx_agent.configuration['agents_config']['thinking'] }}"
+      thinking_budget_agents: "{{ awx_agent.configuration['agents_config']['thinking_budget'] }}"
+      max_tokens_agents: "{{ awx_agent.configuration['agents_config']['max_tokens'] }}"
+      model_embedding: "{{ awx_agent.configuration['agents_config']['model_embedding'] }}"
+      url_embedding: "{{ awx_agent.configuration['agents_config']['url_embedding'] }}"
+      api_version_embedding: "{{ awx_agent.configuration['agents_config']['api_version_embedding'] }}"
+      provider_tools: "{{ awx_agent.configuration['tools_config']['provider'] }}"
+      model_tools: "{{ awx_agent.configuration['tools_config']['model'] }}"
+      url_tools: "{{ awx_agent.configuration['tools_config']['url'] }}"
+      api_key_tools: "{{ awx_agent.configuration['tools_config']['api_key'] }}" # pragma: allowlist secret
+      api_version_tools: "{{ awx_agent.configuration['tools_config']['api_version'] }}"
+      seed_tools: "{{ awx_agent.configuration['tools_config']['seed'] }}"
+      top_p_tools: "{{ awx_agent.configuration['tools_config']['top_p'] }}"
+      temperature_tools: "{{ awx_agent.configuration['tools_config']['temperature'] }}"
+      reasoning_effort_tools: "{{ awx_agent.configuration['tools_config']['reasoning_effort'] }}"
+      thinking_tools: "{{ awx_agent.configuration['tools_config']['thinking'] }}"
+      thinking_budget_tools: "{{ awx_agent.configuration['tools_config']['thinking_budget'] }}"
+      max_tokens_tools: "{{ awx_agent.configuration['tools_config']['max_tokens'] }}"
+      wx_project_id: "{{ awx_agent.configuration['watsonx_config']['wx_project_id'] }}"
+      god_mode: "{{ awx_agent.configuration['agents_config']['god_mode'] }}"
+      agent_analytics_sdk_username: "{{ awx_agent.configuration['agent_analytics_sdk']['git_username'] }}"
+      agent_analytics_sdk_token: "{{ awx_agent.configuration['agent_analytics_sdk']['git_token'] }}"
+      sre_agent_max_runtime_in_seconds: 900

@@ -1,0 +1,39 @@
+---
+- name: Install AWX operator
+  kubernetes.core.helm:
+    chart_ref: awx-operator
+    chart_repo_url: https://ansible-community.github.io/awx-operator-helm
+    chart_version: 3.1.0
+    create_namespace: true
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    release_name: "{{ awx_helm_releases.awx_operator.name }}"
+    release_namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+    release_state: present
+    timeout: 10m0s
+    wait: true
+
+- name: Install AWX
+  kubernetes.core.k8s:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: awx.ansible.com/v1beta1
+      kind: AWX
+      metadata:
+        name: awx-deployment
+        namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+      spec:
+        service_type: loadbalancer
+        postgres_data_volume_init: true
+        postgres_init_container_commands: |
+          chown 26:0 /var/lib/pgsql/data
+          chmod 700 /var/lib/pgsql/data
+        postgres_storage_requirements:
+          requests:
+            storage: 32Gi
+    state: present
+    wait: true
+    wait_condition:
+      reason: Successful
+      status: "True"
+      type: Successful
+    wait_timeout: 900

@@ -1,0 +1,65 @@
+---
+- name: Create workflow launch list
+  ansible.builtin.set_fact:
+    workflows: |
+      {{
+        awx_experiments.incidents |
+        product(range(1, ((awx_experiments.trials | int) + 1)))
+      }}
+  tags:
+    - launch_start_workflow
+    - launch_stop_workflow
+
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_awx_controller_host.yaml
+  tags:
+    - launch_start_workflow
+    - launch_stop_workflow
+
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_awx_controller_password.yaml
+  tags:
+    - launch_start_workflow
+    - launch_stop_workflow
+
+# TODO: Replace the fake UUID with a real generated one
+
+- name: Launch the workflow for `Start Incident`
+  awx.awx.workflow_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    workflow_template: "Start Incident {{ item[0] }}"
+    extra_vars:
+      run_uuid: this-is-a-fake-id
+      scenario_number: "{{ item[0] }}"
+      run_number: "{{ item[1] }}"
+      sre_agent_name__version_number: "{{ awx_agent.version }}"
+      s3_bucket_name_for_results: "{{ awx_experiments.storage.s3.bucket_name | default('') }}"
+      s3_endpoint_url: "{{ awx_experiments.storage.s3.endpoint_url | default('') }}"
+      sre_bench_runner: "{{ sre_bench_runner | default(true) }}"
+    wait: false
+  loop: "{{ workflows }}"
+  tags:
+    - launch_start_workflow
+
+- name: Launch the workflow for `Stop Incident`
+  awx.awx.workflow_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    workflow_template: "Stop Incident {{ item[0] }}"
+    extra_vars:
+      run_uuid: this-is-a-fake-id
+      scenario_number: "{{ item[0] }}"
+      run_number: "{{ item[1] }}"
+      sre_agent_name__version_number: "{{ awx_agent.version }}"
+      s3_bucket_name_for_results: "{{ awx_experiments.storage.s3.bucket_name | default('') }}"
+      s3_endpoint_url: "{{ awx_experiments.storage.s3.endpoint_url | default('') }}"
+      sre_bench_runner: "{{ sre_bench_runner | default(true) }}"
+    wait: false
+  loop: "{{ workflows }}"
+  tags:
+    - launch_stop_workflow

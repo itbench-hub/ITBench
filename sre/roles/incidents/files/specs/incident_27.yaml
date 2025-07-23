@@ -1,0 +1,42 @@
+---
+metadata:
+  complexity: Medium
+  id: 27
+  name: Abort HTTP request fault
+  platform: kubernetes
+  technologies:
+    - Go
+    - PHP
+    - Rust
+    - Tonic
+environment:
+  applications:
+    otel_demo:
+      enabled: true
+  tools:
+    category: sre
+    selected:
+      - chaos-mesh
+      - kubernetes-topology-monitor
+  faults:
+    - chaos_mesh:
+        schedules:
+          - name: otel-demo-quote-http-chaos-abort
+            spec:
+              schedule: "* * * * *" # Run every minute
+              historyLimit: 1 # Only keep record of the latest experiment
+              concurrencyPolicy: Forbid # Don't start a new one if previous is still running
+              type: HTTPChaos
+              httpChaos:
+                mode: all
+                selector:
+                  namespaces:
+                    - "{{ applications_helm_releases.otel_demo.namespace }}"
+                  labelSelectors:
+                    "app.kubernetes.io/component": "quote"
+                target: Request
+                port: 8080
+                method: POST
+                path: "*"
+                abort: true
+                duration: "55s"

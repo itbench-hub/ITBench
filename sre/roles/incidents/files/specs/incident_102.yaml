@@ -1,0 +1,28 @@
+---
+metadata:
+  complexity: Medium
+  id: 102
+  name: Misconfigured resource quota
+  platform: kubernetes
+  technologies:
+    - Python
+    - Node.js
+spec:
+  environment:
+    applications:
+      otel_demo:
+        enabled: true
+    tools:
+      category: sre
+      selected:
+        - kubernetes-topology-monitor
+  faults:
+    - custom:
+        name: misconfigured-resource-quota
+        targets:
+          namespaces:
+            - name: "{{ applications_helm_releases.otel_demo.namespace }}"
+          workload_managers:
+            - kind: Deployment
+              name: product-catalog
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"

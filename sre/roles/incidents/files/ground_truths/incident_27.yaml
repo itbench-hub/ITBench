@@ -1,0 +1,100 @@
+---
+fault:
+  - entity:
+      name: http-abort-otel-demo-quoteservice-1
+      group_id: http-abort-otel-demo-quoteservice-1
+      kind: Service
+    condition: "To Be Specified"
+    category: "Change"
+    fault_mechanism: chaos
+alerts:
+  - id: RequestErrorRate
+    group_id: frontend-service-1
+    metadata:
+      description: Error rate is above threshold for frontend service
+  - id: RequestErrorRate
+    group_id: checkout-service-1
+    metadata:
+      description: Error rate is above threshold for checkout service
+  - id: RequestErrorRate
+    group_id: shipping-service-1
+    metadata:
+      description: Error rate is above threshold for shipping service
+groups:
+  - id: http-abort-otel-demo-quoteservice-1
+    kind: HttpChaos
+    filter:
+      - quote\b
+    namespace: chaos-mesh
+    root_cause: true
+  - id: quote-service-1
+    kind: Service
+    filter:
+      - quote\b
+    namespace: otel-demo
+  - id: checkout-service-1
+    kind: Service
+    filter:
+      - checkout\b
+    namespace: otel-demo
+  - id: shipping-service-1
+    kind: Service
+    filter:
+      - shipping\b
+    namespace: otel-demo
+  - id: frontend-service-1
+    kind: Service
+    filter:
+      - frontend\b
+    namespace: otel-demo
+  - id: frontend-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - frontend-.*
+  - id: checkout-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - checkout-.*
+  - id: quote-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - quote-.*
+  - id: shipping-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - shipping-.*
+aliases:
+  - - frontend-service-1
+    - frontend-pod-1
+  - - checkout-service-1
+    - checkout-pod-1
+  - - quote-service-1
+    - quote-pod-1
+  - - shipping-service-1
+    - shipping-pod-1
+propagations:
+  - source: http-abort-otel-demo-quoteservice-1
+    target: quote-service-1
+    condition: http-abort-otel-demo-quoteservice httpchaos Aborts all POST request to quoteservice /getquote
+    effect: quote service Error Rate is Above Threshold
+  - source: quote-service-1
+    target: checkout-service-1
+    condition: quote service Error Rate is Above Threshold
+    effect: checkout service Error Rate is Above Threshold
+  - source: checkout-service-1
+    target: shipping-service-1
+    condition: checkout service Error Rate is Above Threshold
+    effect: shipping service Error Rate is Above Threshold
+  - source: shipping-service-1
+    target: frontend-service-1
+    condition: shipping service Error Rate is Above Threshold
+    effect: frontend service Error Rate is Above Threshold
+recommended_actions:
+  - solution:
+      id: Delete_the_resource_httpchaos_on_quoteservice
+      actions:
+        - Delete the resource httpchaos on quoteservice

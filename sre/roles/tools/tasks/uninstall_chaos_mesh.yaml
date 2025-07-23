@@ -1,0 +1,56 @@
+---
+- name: Uninstall Chaos Mesh
+  kubernetes.core.helm:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ helm_release.name }}"
+    release_namespace: "{{ helm_release.namespace }}"
+    release_state: absent
+    wait: true
+
+- name: Retrieve all CRDs
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+  register: tools_crd_info
+
+- name: Remove Chaos Mesh related CRDs from the cluster
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: apiextensions.k8s.io/v1
+      kind: CustomResourceDefinition
+      metadata:
+        name: "{{ item }}"
+    state: absent
+    wait: true
+  loop: |
+    {{
+      tools_crd_info.resources |
+      selectattr('spec.group', '==', 'chaos-mesh.org') |
+      community.general.json_query('[*].metadata.name')
+    }}
+
+- name: Delete the release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: v1
+      kind: Namespace
+      metadata:
+        name: "{{ helm_release.namespace }}"
+    state: absent
+    wait: true
+
+- name: Delete SCC for Chaos Mesh
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: security.openshift.io/v1
+      kind: SecurityContextConstraints
+      metadata:
+        name: it-bench-chaos-daemon-restricted
+    state: absent
+    wait: true
+  when:
+    - tools_cluster.platform == "openshift"

@@ -1,0 +1,21 @@
+---
+- name: Scale down topology monitor
+  kubernetes.core.k8s_scale:
+    api_version: apps/v1
+    kind: StatefulSet
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: topology-monitor
+    namespace: "{{ helm_release.namespace }}"
+    replicas: 0
+    wait: true
+    wait_timeout: 60
+
+- name: Scale up topology monitor
+  kubernetes.core.k8s_scale:
+    api_version: apps/v1
+    kind: StatefulSet
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: topology-monitor
+    namespace: "{{ helm_release.namespace }}"
+    replicas: 1
+    wait: true

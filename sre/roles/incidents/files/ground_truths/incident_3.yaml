@@ -1,0 +1,306 @@
+---
+fault:
+  - "entity":
+      "name": "frontend"
+      "kind": "Service"
+    "condition": "High HTTP error rate"
+    "category": "Resource Saturation"
+    "fault_mechanism": "custom(flagd)"
+  - "entity":
+      "name": "cart"
+      "kind": "Service"
+    "condition": "High HTTP error rate"
+    "category": "Resource Saturation"
+    "fault_mechanism": "custom(flagd)"
+  - "entity":
+      "name": "flagd-config"
+      "kind": "ConfigMap"
+      "changed":
+        "element": "data.demo\\.flagd\\.json"
+        "from": |
+          {
+            "$schema": "https://flagd.dev/schema/v0/flags.json",
+            "flags": {
+              "productCatalogFailure": {
+                "description": "Fail product catalog service on a specific product",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "recommendationCacheFailure": {
+                "description": "Fail recommendation service cache",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "adManualGc": {
+                "description": "Triggers full manual garbage collections in the ad service",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "adHighCpu": {
+                "description": "Triggers high cpu load in the ad service",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "adFailure": {
+                "description": "Fail ad service",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "kafkaQueueProblems": {
+                "description": "Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike",
+                "state": "ENABLED",
+                "variants": {
+                  "on": 100,
+                  "off": 0
+                },
+                "defaultVariant": "off"
+              },
+              "cartFailure": {
+                "description": "Fail cart service",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "paymentFailure": {
+                "description": "Fail payment service charge requests n%",
+                "state": "ENABLED",
+                "variants": {
+                  "100%": 1,
+                  "90%": 0.95,
+                  "75%": 0.75,
+                  "50%": 0.5,
+                  "25%": 0.25,
+                  "10%": 0.1,
+                  "off": 0
+                },
+                "defaultVariant": "off"
+              },
+              "paymentUnreachable": {
+                "description": "Payment service is unavailable",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "loadGeneratorFloodHomepage": {
+                "description": "Flood the frontend with a large amount of requests.",
+                "state": "ENABLED",
+                "variants": {
+                  "on": 100,
+                  "off": 0
+                },
+                "defaultVariant": "off"
+              },
+              "imageSlowLoad": {
+                "description": "slow loading images in the frontend",
+                "state": "ENABLED",
+                "variants": {
+                  "10sec": 10000,
+                  "5sec": 5000,
+                  "off": 0
+                },
+                "defaultVariant": "off"
+              }
+            }
+          }
+        "to": |
+          {
+            "$schema": "https://flagd.dev/schema/v0/flags.json",
+            "flags": {
+              "productCatalogFailure": {
+                "description": "Fail product catalog service on a specific product",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "recommendationCacheFailure": {
+                "description": "Fail recommendation service cache",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "adManualGc": {
+                "description": "Triggers full manual garbage collections in the ad service",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "adHighCpu": {
+                "description": "Triggers high cpu load in the ad service",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "on"
+              },
+              "adFailure": {
+                "description": "Fail ad service",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "kafkaQueueProblems": {
+                "description": "Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike",
+                "state": "ENABLED",
+                "variants": {
+                  "on": 100,
+                  "off": 0
+                },
+                "defaultVariant": "off"
+              },
+              "cartFailure": {
+                "description": "Fail cart service",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "paymentFailure": {
+                "description": "Fail payment service charge requests n%",
+                "state": "ENABLED",
+                "variants": {
+                  "100%": 1,
+                  "90%": 0.95,
+                  "75%": 0.75,
+                  "50%": 0.5,
+                  "25%": 0.25,
+                  "10%": 0.1,
+                  "off": 0
+                },
+                "defaultVariant": "off"
+              },
+              "paymentUnreachable": {
+                "description": "Payment service is unavailable",
+                "state": "ENABLED",
+                "variants": {
+                  "on": true,
+                  "off": false
+                },
+                "defaultVariant": "off"
+              },
+              "loadGeneratorFloodHomepage": {
+                "description": "Flood the frontend with a large amount of requests.",
+                "state": "ENABLED",
+                "variants": {
+                  "on": 100,
+                  "off": 0
+                },
+                "defaultVariant": "off"
+              },
+              "imageSlowLoad": {
+                "description": "slow loading images in the frontend",
+                "state": "ENABLED",
+                "variants": {
+                  "10sec": 10000,
+                  "5sec": 5000,
+                  "off": 0
+                },
+                "defaultVariant": "off"
+              }
+            }
+          }
+    "condition": "adHighCpu feature flag set"
+    "category": "Configuration Setting"
+    "fault_mechanism": "custom(flagd)"
+groups:
+  - id: flagd-config-1
+    kind: ConfigMap
+    namespace: otel-demo
+    filter:
+      - flagd-config\b
+    root_cause: true
+  - id: flagd-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - flagd-.*
+  - id: flagd-service-1
+    kind: Service
+    namespace: otel-demo
+    filter:
+      - flagd\b
+  - id: ad-pod-1
+    kind: Pod
+    filter:
+      - adservice-.*
+    namespace: otel-demo
+  - id: ad-service-1
+    kind: Service
+    filter:
+      - adservice\b
+    namespace: otel-demo
+  - id: frontend-service-1
+    kind: Service
+    filter:
+      - frontend\b
+    namespace: otel-demo
+  - id: frontend-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - frontend-.*
+aliases:
+  - - flagd-pod-1
+    - flagd-service-1
+  - - frontend-service-1
+    - frontend-pod-1
+  - - ad-service-1
+    - ad-pod-1
+propagations:
+  - source: flagd-config-1
+    target: flagd-service-1
+    condition: flagd-config ConfigMap adHighCpu feature flag set
+    effect: flagd enables injection
+  - source: flagd-service-1
+    target: ad-service-1
+    condition: flagd enables injection
+    effect: ad pod High CPU Utilization. ad service Error Rate is Above Threshold
+  - source: ad-service-1
+    target: frontend-service-1
+    condition: ad service is returning errors
+    effect: frontend Error Rate is Above Threshold
+recommended_actions:
+  - solution:
+      id: Disable_adHighCpu_feature_flag
+      actions:
+        - Disable adHighCpu feature flag

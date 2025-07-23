@@ -1,0 +1,43 @@
+---
+- name: Check for OpenShift CLI
+  ansible.builtin.command:
+    cmd: which oc
+  register: system_oc_path
+  changed_when: false
+  failed_when: false
+
+- name: Display message
+  ansible.builtin.debug:
+    msg:
+      - Unable to find the OpenShift CLI (oc). Assuming it is not installed.
+      - The cluster provider variable will be set to 'kubernetes' because the OpenShift version cannot be determined.
+  when:
+    - system_oc_path.rc != 0
+
+- name: Set cluster platform variable
+  ansible.builtin.set_fact:
+    cluster_platform: kubernetes
+  when:
+    - system_oc_path.rc != 0
+
+- name: Retrieve cluster version information using OpenShift CLI
+  ansible.builtin.command:
+    cmd: "{{ system_oc_path.stdout }} version -o json"
+  environment:
+    KUBECONFIG: "{{ common_cluster.kubeconfig }}"
+  register: oc_version_output
+  changed_when: false
+  when:
+    - system_oc_path.rc == 0
+
+- name: Convert version output into JSON object
+  ansible.builtin.set_fact:
+    oc_version: "{{ oc_version_output.stdout | from_json }}"
+  when:
+    - system_oc_path.rc == 0
+
+- name: Set cluster platform variable based on version output
+  ansible.builtin.set_fact:
+    cluster_platform: "{{ 'openshift' if oc_version.openshiftVersion is defined else 'kubernetes' }}"
+  when:
+    - system_oc_path.rc == 0

@@ -1,0 +1,596 @@
+name: Perform integration smoke tests for SRE incidents
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - sre/dev/local_cluster/go.*
+      - sre/playbooks/*
+      - sre/roles/applications/*
+      - sre/roles/faults/*
+      - sre/roles/incidents/*
+      - sre/roles/tools/*
+      - sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/*
+
+jobs:
+  chaos-mesh:
+    name: Chaos Mesh Smoke Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "tools: { chaos_mesh: true }" > sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run re-initialization smoke test
+        run: |
+          make -C sre reinit_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+  clickhouse:
+    name: Alinity Clickhouse Smoke Tests
+    needs:
+      - ingress
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "tools: { clickhouse: true, ingress: true }" > sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run re-initialization smoke test
+        run: |
+          make -C sre reinit_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+  ingress:
+    name: Ingress Smoke Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "tools: { ingress: true }" > sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run re-initialization smoke test
+        run: |
+          make -C sre reinit_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+  jaeger:
+    name: Jaeger Smoke Tests
+    needs:
+      - ingress
+      - opensearch
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "tools: { ingress: true, jaeger: true }" > sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run re-initialization smoke test
+        run: |
+          make -C sre reinit_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+  kubernetes-metrics-server:
+    name: Kubernetes Metrics Server Smoke Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "tools: { kubernetes_metrics_server: true }" > sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run re-initialization smoke test
+        run: |
+          make -C sre reinit_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+  kubernetes-topology-monitor:
+    name: Kubernetes Topology Monitor Smoke Tests
+    needs:
+      - ingress
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "tools: { ingress: true, kubernetes_topology_monitor: true }" > sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run re-initialization smoke test
+        run: |
+          make -C sre reinit_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+  opencost:
+    name: OpenCost Smoke Tests
+    needs:
+      - ingress
+      - prometheus
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "tools: { ingress: true, opencost: true }" > sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+  opensearch:
+    name: OpenSearch Smoke Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "tools: { opensearch: true }" > sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run re-initialization smoke test
+        run: |
+          make -C sre reinit_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+  opentelemetry:
+    name: OpenTelemetry Collector Smoke Tests
+    needs:
+      - clickhouse
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "tools: { opentelemetry: true }" > sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run re-initialization smoke test
+        run: |
+          make -C sre reinit_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+  otel-demo:
+    name: OpenTelemetry Demo (Astronomy Shop) Smoke Tests
+    needs:
+      - clickhouse
+      - jaeger
+      - prometheus
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "applications: { otel_demo: true }" > sre/group_vars/environment/applications.yaml
+          echo "tools: { clickhouse: true, jaeger: true, prometheus: true }" > sre/group_vars/environment/tools.yaml
+      - name: Install tools
+        run: |
+          make -C sre deploy_tools
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_applications
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_applications
+  prometheus:
+    name: Prometheus Smoke Tests
+    needs:
+      - ingress
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          echo "tools: { ingress: true, prometheus: true }" > sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run re-initialization smoke test
+        run: |
+          make -C sre reinit_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+  sre-incident-3:
+    name: SRE Incident 3 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Test incident start
+        run: |
+          INCIDENT_NUMBER=3 make -C sre start_incident
+      - name: Test incident stop
+        run: |
+          INCIDENT_NUMBER=3 make -C sre stop_incident
+  sre-incident-23:
+    name: SRE Incident 23 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Test incident start
+        run: |
+          INCIDENT_NUMBER=23 make -C sre start_incident
+      - name: Test incident stop
+        run: |
+          INCIDENT_NUMBER=23 make -C sre stop_incident
+  sre-incident-26:
+    name: SRE Incident 26 Smoke Test
+    needs:
+      - chaos-mesh
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Test incident start
+        run: |
+          INCIDENT_NUMBER=26 make -C sre start_incident
+      - name: Test incident stop
+        run: |
+          INCIDENT_NUMBER=26 make -C sre stop_incident
+  sre-incident-102:
+    name: SRE Incident 102 Smoke Test
+    needs:
+      - chaos-mesh
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Test incident start
+        run: |
+          INCIDENT_NUMBER=102 make -C sre start_incident
+      - name: Test incident stop
+        run: |
+          INCIDENT_NUMBER=102 make -C sre stop_incident
+  finops-incident-37:
+    name: FinOps Incident 37 Smoke Test
+    needs:
+      - kubernetes-metrics-server
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - opencost
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Test incident start
+        run: |
+          INCIDENT_NUMBER=37 make -C sre start_incident
+      - name: Test incident stop
+        run: |
+          INCIDENT_NUMBER=37 make -C sre stop_incident

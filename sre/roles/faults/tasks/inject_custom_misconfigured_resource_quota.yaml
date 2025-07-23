@@ -1,0 +1,66 @@
+---
+- name: Create ResourceQuota with hard memory limits
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: "{{ namespace.name }}-resource-quota"
+        namespace: "{{ namespace.name }}"
+      spec:
+        hard:
+          memory: 2Gi
+    state: present
+  loop: "{{ targets.namespaces }}"
+  loop_control:
+    label: "namespace/{{ namespace.name }}"
+    loop_var: namespace
+
+- name: Retrieve replica information from the workload managers
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: "{{ manager.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ manager.name }}"
+    namespace: "{{ manager.namespace }}"
+  register: faults_workloads_info
+  loop: "{{ targets.workload_managers }}"
+  loop_control:
+    label: "{{ manager.kind | lower }}/{{ manager.name }}"
+    loop_var: manager
+  when:
+    - manager.name != 'otel-collector'
+
+- name: Scale workload manager replicas to 0
+  kubernetes.core.k8s_scale:
+    api_version: "{{ manager.resources[0].apiVersion }}"
+    kind: "{{ manager.resources[0].kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ manager.resources[0].metadata.name }}"
+    namespace: "{{ manager.resources[0].metadata.namespace }}"
+    replicas: 0
+    wait: true
+    wait_timeout: 60
+  loop: "{{ faults_workloads_info.results }}"
+  loop_control:
+    label: "{{ manager.resources[0].kind | lower }}/{{ manager.resources[0].metadata.name }}"
+    loop_var: manager
+  when:
+    - manager.resources | length == 1
+
+- name: Scale workload manager replicas back to original count
+  kubernetes.core.k8s_scale:
+    api_version: "{{ manager.resources[0].apiVersion }}"
+    kind: "{{ manager.resources[0].kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ manager.resources[0].metadata.name }}"
+    namespace: "{{ manager.resources[0].metadata.namespace }}"
+    replicas: "{{ manager.resources[0].spec.replicas }}"
+    wait: false
+  loop: "{{ faults_workloads_info.results }}"
+  loop_control:
+    label: "{{ manager.resources[0].kind | lower }}/{{ manager.resources[0].metadata.name }}"
+    loop_var: manager
+  when:
+    - manager.resources | length == 1

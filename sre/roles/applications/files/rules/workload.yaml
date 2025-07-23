@@ -1,0 +1,35 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: workload-recording-rules
+spec:
+  groups:
+    - name: workload.efficiency
+      rules:
+        - record: container_namespace:container_cpu_usage_seconds_per_requests:ratio_irate5m
+          expr: |
+            sum (
+              irate(
+                container_cpu_usage_seconds_total{container=~".+"}[5m]
+              )
+            ) by(container, namespace)
+            /
+            sum (
+              avg_over_time(
+                kube_pod_container_resource_requests{container=~".+", job="kubernetes-service-endpoints", resource="cpu"}[5m]
+              )
+            ) by(container, namespace)
+        - record: container_namespace:container_memory_working_set_bytes_per_requests_bytes:ratio_avg5m
+          expr: |
+            sum (
+              avg_over_time(
+                container_memory_working_set_bytes{container=~".+"}[5m]
+              )
+            ) by(container, namespace)
+            /
+            sum (
+              avg_over_time(
+                kube_pod_container_resource_requests{container=~".+", job="kubernetes-service-endpoints", resource="memory"}[5m]
+              )
+            ) by(container, namespace)

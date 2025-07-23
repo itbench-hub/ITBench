@@ -1,0 +1,80 @@
+---
+fault:
+  - entity:
+      name: product-catalog-pod-1
+      group_id: product-catalog-pod-1
+      kind: Pod
+    condition: "To Be Specified"
+    category: "Other"
+    fault_mechanism: custom
+alerts:
+  - id: RequestErrorRate
+    group_id: frontend-service-1
+    metadata:
+      description: Error rate is above threshold for frontend service
+  - id: RequestErrorRate
+    group_id: frontend-proxy-service-1
+    metadata:
+      description: Error rate is above threshold for frontend proxy service
+  - id: RequestErrorRate
+    group_id: checkout-service-1
+    metadata:
+      description: Error rate is above threshold for checkout service
+groups:
+  - id: otel-demo-namespace
+    kind: Namespace
+    name: otel-demo
+    namespace: ""
+    root_cause: true
+  - id: product-catalog-service-1
+    kind: Service
+    filter:
+      - product-catalog-.*
+    namespace: otel-demo
+  - id: product-catalog-deployment-1
+    kind: Deployment
+    filter:
+      - product-catalog\b
+    namespace: otel-demo
+  - id: frontend-service-1
+    kind: Service
+    filter:
+      - frontend\n
+    namespace: otel-demo
+  - id: frontend-proxy-service-1
+    kind: Service
+    filter:
+      - frontend-proxy\n
+    namespace: otel-demo
+  - id: checkout-service-1
+    kind: Service
+    filter:
+      - checkout\b
+    namespace: otel-demo
+aliases:
+  - - product-catalog-deployment-1
+    - product-catalog-service-1
+  - - frontend-service-1
+  - - frontend-proxy-service-1
+propagations:
+  - source: product-catalog-deployment-1
+    target: frontend-service-1
+    condition: product-catalog deployment has 0 pods causing product-catalog service to be unavailable
+    effect: frontend service cannot retrieve product information, causing increased error rates and failed requests
+  - source: product-catalog-deployment-1
+    target: checkout-service-1
+    condition: product-catalog deployment has 0 pods causing product-catalog service to be unavailable
+    effect: checkout service errors
+  - source: checkout-service-1
+    target: frontend-service-1
+    condition: checkout service failures due to product-catalog service unavailability
+    effect: frontend service experiencing increased error rates
+  - source: frontend-service-1
+    target: frontend-proxy-service-1
+    condition: frontend service experiencing increased error rates
+    effect: frontend-proxy service epxeriencing increased error rates
+recommended_actions:
+  - solution:
+      id: increase_memory_resource_limit
+      actions:
+        - increase memory resource limit

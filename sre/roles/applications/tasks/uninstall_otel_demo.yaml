@@ -1,0 +1,43 @@
+---
+- name: Remove Horizontal Pod Autoscalers
+  kubernetes.core.k8s:
+    api_version: autoscaling/v2
+    delete_all: true
+    kind: HorizontalPodAutoscaler
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ helm_release.namespace }}"
+    state: absent
+    wait: true
+
+- name: Remove Alerting Prometheus Rules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ helm_release.namespace }}"
+    state: absent
+    src: files/rules/otel-demo.yaml
+
+- name: Remove Recording Prometheus Rules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ helm_release.namespace }}"
+    state: absent
+    src: files/rules/workload.yaml
+
+- name: Uninstall OpenTelemetry Demo (Astronomy Shop)
+  kubernetes.core.helm:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    release_name: "{{ helm_release.name }}"
+    release_namespace: "{{ helm_release.namespace }}"
+    release_state: absent
+    wait: true
+
+- name: Delete the release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: v1
+      kind: Namespace
+      metadata:
+        name: "{{ helm_release.namespace }}"
+    state: absent
+    wait: true

@@ -1,0 +1,77 @@
+---
+- name: Include Helm Release variables from Observability Tools role
+  ansible.builtin.include_vars:
+    file: ../tools/defaults/main/helm_releases.yaml
+
+- name: Pause Chaos Mesh experiements
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: Schedule
+      metadata:
+        annotations:
+          "experiment.chaos-mesh.org/pause": "true"
+        name: "{{ schedule.name }}"
+        namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+    state: patched
+  loop: "{{ schedules }}"
+  loop_control:
+    label: "{{ schedule.name }}"
+    loop_var: schedule
+
+- name: Wait for experiments to be paused
+  kubernetes.core.k8s_info:
+    api_version: chaos-mesh.org/v1alpha1
+    kind: "{{ schedule.spec.type }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    label_selectors:
+      - managed-by={{ schedule.name }}
+    namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+    wait: true
+    wait_condition:
+      type: Paused
+      status: "True"
+  register: paused_experiments_info
+  loop: "{{ schedules }}"
+  loop_control:
+    label: "{{ schedule.spec.type | lower }}/{{ schedule.name }}"
+    loop_var: schedule
+
+- name: Delete resources allocated by schedule for Chaos Mesh experiment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ experiment.apiVersion }}"
+      kind: "{{ experiment.kind }}"
+      metadata:
+        annotations:
+          "chaos-mesh.chaos-mesh.org/cleanFinalizer": "forced"
+        name: "{{ experiment.metadata.name }}"
+        namespace: "{{ experiment.metadata.namespace }}"
+    state: patched
+  loop: |
+    {{
+      (paused_experiments_info.results | default([])) |
+      community.general.json_query('[*].resources') |
+      flatten
+    }}
+  loop_control:
+    label: "{{ experiment.kind | lower }}/{{ experiment.metadata.name }}"
+    loop_var: experiment
+
+- name: Delete schedule containing Chaos Mesh experiment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: Schedule
+      metadata:
+        name: "{{ schedule.name }}"
+        namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+    state: absent
+    wait: true
+  loop: "{{ schedules }}"
+  loop_control:
+    label: "{{ schedule.name }}"
+    loop_var: schedule
