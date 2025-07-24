@@ -4,28 +4,25 @@ Currently, ITBench comprises of an initial set of 42 SRE scenarios and 2 FinOps 
 
 | ID | Name | Platform | DSL Format | Description | Application | Complexity | Technologies | Golden Signal Cause | Golden Signal Effect |
 |---|---|---|---|---|---|---|---|---|---|
-| [1](#id-1-recommendation-service-cache) | Recommendation Service Cache | kubernetes | groups | Recommendation Service in Astronomy Shop has a cache failure | otel_astronomy_shop | Medium | Python, Node.js | saturation | error |
+| [1](#id-1-user-request-surge) | User request surge | kubernetes | groups | Sudden surge in user requests leading to service degradation | otel_astronomy_shop | Medium | Python, Node.js | saturation | error |
 | [3](#id-3-ad-service-cpu) | Ad Service CPU | kubernetes | groups | Ad Service in Astronomy Shop runs with high CPU load | otel_astronomy_shop | Medium | Java, Node.js | saturation | error |
 | [23](#id-23-checkoutservice-corrupt-image) | Checkoutservice Corrupt Image | kubernetes | groups | checkoutserviceCorruptDeployment: modify the checkoutservice image to unsupported image (arm64) instead of amd64 image | otel_astronomy_shop | Low | Node.js | resource unavailability | error |
 | [26](#id-26-http-request-tamper-fault) | HTTP request tamper fault | kubernetes | groups | Modify HTTP POST requests from checkoutservice to emailservice | otel_astronomy_shop | Medium | Go, Ruby | traffic | error |
 | [27](#id-27-abort-http-request-fault) | Abort HTTP request fault | kubernetes | groups | Aborts HTTP requests to quoteservice using chaos mesh fault | otel_astronomy_shop | High | Go, PHP, Rust, Tonic | traffic | error |
-| [102](#id-102-memory-resource-limit-issue) | Memory quota on namespace | kubernetes | groups | (empty) | deathstarbench_hotel_reservations | Low | Go, Node.js | resource unavailability | error |
+| [102](#id-102-memory-resource-limit-issue) | Memory quota on namespace | kubernetes | groups | (empty) | otel_astronomy_shop | Low | Go, Node.js | resource unavailability | error |
 
 ## Detailed Incident Scenario Information
 
-### [ID 1: Recommendation Service Cache](../roles/incident_1/tasks/main.yaml)
+### [ID 1: User Request Surge](../roles/incident_1/tasks/main.yaml)
 
 **Fault Details:**
-- Frontend service experiencing high HTTP error rate
-- Recommendation service experiencing high HTTP error rate
-- Feature flag `recommendationCacheFailure` set to "on" in flagd configuration
+- Frontend-proxy and frontend services experiencing high HTTP error rate
 
 **Alerts:**
-- Error Rate Above Threshold (frontend-service-1)
+- Error rate above threshold (frontend-service)
 
 **Recommended Actions:**
-1. Disable recommendationCacheFailure feature flag
-2. Increase Memory Allocation
+1. Scale up
 
 ### [ID 3: Ad Service CPU](../roles/incident_3/tasks/main.yaml)
 
@@ -35,7 +32,7 @@ Currently, ITBench comprises of an initial set of 42 SRE scenarios and 2 FinOps 
 - Feature flag `adHighCpu` set to "on" in flagd configuration
 
 **Alerts:**
-- Error Rate Above Threshold (frontend-service-1)
+- Error Rate Above Threshold (frontend-service)
 
 **Recommended Actions:**
 - Disable adHighCpu feature flag
@@ -46,7 +43,7 @@ Currently, ITBench comprises of an initial set of 42 SRE scenarios and 2 FinOps 
 - Checkout pod in ImagePullBackOff state due to incorrect architecture image
 
 **Alerts:**
-- Error Rate Above Threshold (frontend-service-1)
+- Error Rate Above Threshold (frontend-service)
 
 **Recommended Actions:**
 - Change the image of checkout to correct image for amd64 system
@@ -58,8 +55,8 @@ Currently, ITBench comprises of an initial set of 42 SRE scenarios and 2 FinOps 
 - Affects /api/send_order_confirmation endpoint
 
 **Alerts:**
-- Error Rate Above Threshold (checkout-service-1)
-- Error Rate Above Threshold (email-service-1)
+- Error Rate Above Threshold (checkout-service)
+- Error Rate Above Threshold (email-service)
 
 **Recommended Actions:**
 - Delete the resource httpchaos tamper-body-otel-demo-26-emailservice
@@ -71,9 +68,9 @@ Currently, ITBench comprises of an initial set of 42 SRE scenarios and 2 FinOps 
 - Affects all POST requests to /getquote endpoint
 
 **Alerts:**
-- Error Rate Above Threshold (frontend-service-1)
-- Error Rate Above Threshold (checkout-service-1)
-- Error Rate Above Threshold (shipping-service-1)
+- Error Rate Above Threshold (frontend-service)
+- Error Rate Above Threshold (checkout-service)
+- Error Rate Above Threshold (shipping-service)
 
 **Recommended Actions:**
 - Delete the resource httpchaos on quoteservice
@@ -85,7 +82,7 @@ Currently, ITBench comprises of an initial set of 42 SRE scenarios and 2 FinOps 
 - Search service replicaset has 0 pods
 
 **Alerts:**
-- Error Rate Above Threshold (frontend-service-1)
+- Error Rate Above Threshold (frontend-service)
 
 **Recommended Actions:**
 - Increase memory resource limit

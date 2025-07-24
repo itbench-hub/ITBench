@@ -33,7 +33,7 @@ fs.inotify.max_user_instances = 512
 sudo sysctl -p
 ```
 
-6. A pre-requisite for Chaos-Mesh-based fault mechanisms is to ensure ebtable-related modules are loaded. Add/edit the file and add the following lines:
+6. A pre-requisite for Chaos-Mesh-based fault mechanisms is to ensure ebtable-related modules are loaded. Add/edit the file (/etc/modules-load.d/ebtables.conf) and add the following lines:
 ```bash
 ebtable_broute
 ebtable_nat
@@ -67,7 +67,7 @@ cluster:
   kubeconfig: "<path to kubeconfig>"
 ```
 
-4. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-the-incident-scenarios) to deploy the incidents.
+4. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.
 
 # Troubleshooting
 ### 1. For other Kind-related issues you may want to take a look [here](https://kind.sigs.k8s.io/docs/user/known-issues/).

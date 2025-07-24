@@ -40,7 +40,7 @@ sudo dnf install jq
 
 1. Install Python dependencies. (Working directory is `remote_cluster`.)
 ```bash
-python3.12 -m pip install -r requirements-dev.txt
+python -m pip install -r requirements-dev.txt
 ```
 
 2. Create the group variables for the development host. The `kops_cluster.yaml` file contains the configuration needed to customize the kops deployment.
@@ -123,6 +123,8 @@ kubeconfig: "/absolute/path/to/kubeconfig.yaml"
 ```yaml
 kubeconfig: "/tmp/development-m5-xlarge-aws.k8s.local.yaml"
 ```
+
+### 5. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.
 
 ### Delete the Cluster
 To delete the cluster, run the following command:

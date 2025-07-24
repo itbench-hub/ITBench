@@ -57,4 +57,4 @@ cluster:
   kubeconfig: "<path to kubeconfig>"
 ```
 
-7. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-the-incident-scenarios) to deploy the incidents.
+7. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.
