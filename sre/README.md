@@ -15,11 +15,10 @@ The playbook run is configured using variables defined in `group\_vars`.
 
 | Directory                   | Purpose                                                                                                      |
 |-----------------------------|--------------------------------------------------------------------------------------------------------------|
-| `roles/observability_tools` | Handles  the deployment and removal of observability tools                                                   |
-| `roles/sample_applications` | Handles the deployment and removal of sample applications                                                    |
-| `roles/fault_injection`     | Provides reusable fault injection mechanisms                                                                 |
-| `roles/fault_removal`       | Provides mechanisms to remove (injected) faults from the environment                                         |
-| `roles/incident_`           | Contains scenarios that leverage the fault injection and removal mechanisms defined in the directories above |
+| `roles/tools`               | Handles the deployment and removal of observability/monitoring tools, chaos engineering tools, etc.          |
+| `roles/applications`        | Handles the deployment and removal of sample applications                                                    |
+| `roles/faults`              | Provides reusable fault injection and removal mechanisms                                                     |
+| `roles/incidents`           | Contains scenarios that leverage the fault injection and removal mechanisms defined in the directories above |
 
 ## Recommended Software
 
@@ -72,7 +71,7 @@ python -m pip install -r requirements.txt
 
 3. Install Ansible collections.
 ```bash
-ansible-galaxy install -r requirements.yaml
+ansible-galaxy install -r requirements.yaml --force
 ```
 
 4. Create the relevant environment variable files by running
@@ -96,72 +95,60 @@ For instruction on how to create an cloud provider based Kubernetes cluster, ple
 
 Currently, only AWS is supported. AWS clusters are provisioned using [kOps](https://kops.sigs.k8s.io/).
 
-### Running the Incident Scenarios
+### Running Incident Scenarios - Quick Start
 
-Now that our cluster is up and running, let's proceed with the deployment of the observability. monitoring, and chaos engineering tools and application stack, injecting the fault, and monitoring of alerts in the Prometheus dashboard.
-
-1. Deploy tools for observability, monitoring, cost management, and chaos engineering.
+#### 1. Start the Incident Scenario
+Run the following command to deploy observability tools, monitoring stack, chaos engineering tools, application stack, and inject the fault for scenario 1:
 
 ```bash
-make deploy_tools
+INCIDENT_NUMBER=1 make start_incident
 ```
-Deploys Prometheus for metrics, ClickHouse for analytics, OpenSearch for logging and Kubernetes events, Jaeger for traces, Chaos Mesh for chaos engineering, Opencost, and Kubernetes metrics server.
 
-To deploy tools for FinOps scenarios in addition to the default tools, prior to running `make deploy_tools` update the configuration in `group_vars/environment/tools.yaml`:
-```yaml
-tools:
-  kubernetes_metrics_server: true
-  opencost: true
-```
-For additional details on the observability tools deployed please head [here](./docs/tools.md).
+#### 2. Set Up Port Forwarding
+Enable access to the Prometheus and Jaeger dashboards:
 
-2. Deploy one of the sample applications i.e. Astronomy Shop by default.
-```bash
-make deploy_applications
-```
-For additional details on the sample application please head [here](./docs/sample_applications.md).
-
-3. Once all pods are running, inject the fault for an incident.
-```bash
-INCIDENT_NUMBER=1 make inject_incident_fault
-```
-Currently the incident scenarios open-sourced are incidents 1, 3, 23, 26, 27, and 102. One can leverage any one of these incidents at this point in time in their own environemnts. Additional details on the incident scenarios themselves and the fault mechanisms can be found [here].
-
-4. After fault injection, to view alerts in the Prometheus dashboard, let's use port forwarding.
 ```bash
 kubectl port-forward svc/ingress-nginx-controller -n ingress-nginx 8080:80 &
 ```
 
-5. Now head over to the following URL:
+#### 3. Access Dashboards
+Navigate to the following URLs in your browser:
+
 ```bash
+# View alerts and metrics
 http://localhost:8080/prometheus/alerts
+
+# View traces
+http://localhost:8080/jaeger
 ```
 
-6. Alerts are defined:
-- To track status of deployments across the different namespaces
-- To track `latency` across the different services
-- To track `error` across the different services
-- To track Kafka connection status across the Kafka-related components
-An Alert's default `State` is `Inactive`. After few minutes, the fault `State` changes to `Firing`, indicating fault manifestation. The alert definitions are located [here](roles/observability_tools/templates/prometheus-alerting-rules.j2) and have been curated using this [guide](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/).
+#### 4. Monitor Alert States
+The system includes alerts that monitor:
+- Deployment status across namespaces
+- Service latency metrics
+- Error rates across services
+- Kafka connection status for messaging components
 
-7. (Optional) You only need to do this if you plan to leverage our [SRE-Agent](https://github.com/IBM/itbench-sre-agent). Leverage the values below for the `.env.tmpl`
-```
+**Alert Behavior:**
+- Default state: `Inactive`
+- After a few minutes: `Firing` (indicating fault manifestation)
+
+#### 5. SRE Agent Configuration (Optional)
+If using the [SRE-Agent](https://github.com/itbench-hub/itbench-sre-agent), configure your `.env.tmpl` file:
+
+```env
 OBSERVABILITY_STACK_URL=http://localhost:8080
 TOPOLOGY_URL=http://localhost:8080/topology
 ```
 
-8. To remove the injected fault, run the following `make` command:
+#### 6. Cleanup
+When finished, undeploy by running:
 
 ```bash
-INCIDENT_NUMBER=1 make remove_incident_fault
+INCIDENT_NUMBER=1 make stop_incident
 ```
-After executing the command, the alert's `State` should change back to `Inactive` from `Firing`, indicating that the fault has been removed.
 
-9. Once done you can undeploy the application(s), followed by the tools by running:
-```bash
-make undeploy_applications
-make undeploy_tools
-```
+See the [Developer Guide](./DEVELOPER_GUIDE.md) for a step-by-step breakdown of the `make start_incident` process.
 
 _Note_: For a full list of `make` commands, run the following command:
 
