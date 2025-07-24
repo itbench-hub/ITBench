@@ -80,7 +80,7 @@ ITBench incorporates a collection of problems that we call **scenarios**. Each s
 ### Examples of Scenarios
 - **SRE**: Resolve "High error rate on service checkout" in a Kubernetes environment
 - **CISO**: Assess compliance posture for "new control rule detected for RHEL 9"
-- **FinOps**: Assess compliance posture for "new control rule detected for RHEL 9"
+- **FinOps**: Identify and resolve cost overruns and anomalies
 
 **Find all scenarios**: [Scenarios repository](https://github.com/IBM/ITBench-Scenarios)
 
