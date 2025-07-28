@@ -11,14 +11,15 @@
           it-bench/monitoring: "true"
     state: present
 
-- name: Get Clickhouse credentials from secret
-  kubernetes.core.k8s_info:
-    kind: Secret
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ helm_releases.clickhouse.name }}-credentials"
-    namespace: "{{ helm_releases.clickhouse.namespace }}"
-    wait: true
-  register: tools_clickhouse_secrets_info
+- name: Import variable setting task
+  ansible.builtin.import_tasks:
+    file: set_clickhouse_credentials.yaml
+  when:
+    - tools_enabled.opentelemetry
+
+- name: Import variable setting task
+  ansible.builtin.import_tasks:
+    file: set_clickhouse_endpoint.yaml
   when:
     - tools_enabled.opentelemetry
 
@@ -59,9 +60,9 @@
       config:
         exporters:
           clickhouse:
-            username: "{{ tools_clickhouse_secrets_info.resources[0].data.user | b64decode }}"
-            password: "{{ tools_clickhouse_secrets_info.resources[0].data.password | b64decode }}"
-            endpoint: http://{{ helm_releases.clickhouse.name }}-clickhouse.{{ helm_releases.clickhouse.namespace }}.svc.cluster.local:8123
+            username: "{{ tools_clickhouse_username }}"
+            password: "{{ tools_clickhouse_password }}"
+            endpoint: "{{ tools_clickhouse_endpoint }}"
             logs_table_name: kubernetes_events
         service:
           pipelines:
@@ -204,7 +205,7 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: jaeger
+        name: "{{ instances.jaeger.name }}"
         namespace: "{{ helm_releases.collectors.namespace }}"
       spec:
         image: jaegertracing/jaeger:2.8.0
@@ -260,7 +261,7 @@
     api_version: opentelemetry.io/v1beta1
     kind: OpenTelemetryCollector
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: jaeger
+    name: "{{ instances.jaeger.name }}"
     namespace: "{{ helm_releases.collectors.namespace }}"
     wait: true
   register: tools_jaeger_collector_info

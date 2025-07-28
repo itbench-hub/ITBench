@@ -1,24 +1,28 @@
 ---
+- name: Retrieve Clickhouse Installation
+  kubernetes.core.k8s_info:
+    api_version: clickhouse.altinity.com/v1
+    kind: ClickHouseInstallation
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ instance.name }}"
+    namespace: "{{ instance.namespace }}"
+    wait: true
+  register: tools_clickhouse_installation_info
+
 - name: List all tables in the default database
   kubernetes.core.k8s_exec:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    namespace: "{{ helm_releases.instance.namespace }}"
-    pod: chi-clickhouse-clickhouse-0-0-0
+    namespace: "{{ instance.namespace }}"
+    pod: "{{ tools_clickhouse_installation_info.resources[0].status.pods | first }}"
     command: clickhouse-client --query="SHOW TABLES FROM default FORMAT TSV"
   register: tools_clickhouse_default_tables_result
-
-- name: Display all tables in the default database
-  ansible.builtin.debug:
-    msg: "{{ tools_clickhouse_default_tables_result.stdout_lines }}"
 
 - name: Empty-drain-truncate ClickHouse tables
   kubernetes.core.k8s_exec:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    namespace: "{{ helm_releases.instance.namespace }}"
-    pod: chi-clickhouse-clickhouse-0-0-0
-    command: |
-      clickhouse-client --query="
-      TRUNCATE TABLE default.{{ item }};
-      "
+    namespace: "{{ instance.namespace }}"
+    pod: "{{ tools_clickhouse_installation_info.resources[0].status.pods | first }}"
+    command: clickhouse-client --query="TRUNCATE TABLE default.{{ item }};"
   loop: "{{ tools_clickhouse_default_tables_result.stdout_lines }}"
-  when: tools_clickhouse_default_tables_result | length > 0
+  when:
+    - tools_clickhouse_default_tables_result | length > 0

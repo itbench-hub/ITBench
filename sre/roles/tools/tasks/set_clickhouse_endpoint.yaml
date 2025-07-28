@@ -1,0 +1,16 @@
+---
+- name: Retrieve Clickhouse Installation
+  kubernetes.core.k8s_info:
+    api_version: clickhouse.altinity.com/v1
+    kind: ClickHouseInstallation
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_instances.clickhouse.name }}"
+    namespace: "{{ tools_instances.clickhouse.namespace }}"
+    wait: true
+  register: tools_clickhouse_installation_info
+
+- name: Extract endpoint for Clickhouse cluster
+  ansible.builtin.set_fact:
+    tools_clickhouse_endpoint: http://{{ tools_clickhouse_installation_info.resources[0].status.endpoint }}:8123
+  when:
+    - tools_clickhouse_installation_info.resources | length > 0

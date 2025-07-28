@@ -34,22 +34,21 @@
           it-bench/monitoring: "true"
     state: present
 
-- name: Get Clickhouse credentials from secret
-  kubernetes.core.k8s_info:
-    kind: Secret
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    name: "{{ helm_releases.clickhouse.name }}-credentials"
-    namespace: "{{ helm_releases.clickhouse.namespace }}"
-    wait: true
-  register: clickhouse_secrets_info
+- name: Import tools role for variable setting tasks
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_clickhouse_credentials
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ applications_cluster.kubeconfig }}"
 
-# TODO: To-be made optional when support for APMs is enabled
-- name: Validate existence of Clickhouse credentials
-  ansible.builtin.assert:
-    that:
-      - clickhouse_secrets_info.resources | length > 0
-    fail_msg: "Clickhouse credentials secret not found"
-    success_msg: "Clickhouse credentials secret found"
+- name: Import tools role for variable setting tasks
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_clickhouse_endpoint
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ applications_cluster.kubeconfig }}"
 
 - name: Retrieve Prometheus route
   kubernetes.core.k8s_info:
@@ -288,10 +287,11 @@
                   default: "{{ helm_releases.otel_demo.namespace }}"
           exporters:
             clickhouse:
-              username: "{{ clickhouse_secrets_info.resources[0].data.user | b64decode }}"
-              password: "{{ clickhouse_secrets_info.resources[0].data.password | b64decode }}"
-              endpoint: http://{{ helm_releases.clickhouse.name }}-clickhouse.{{ helm_releases.clickhouse.namespace }}.svc.cluster.local:8123
+              username: "{{ tools_clickhouse_username }}"
+              password: "{{ tools_clickhouse_password }}"
+              endpoint: "{{ tools_clickhouse_endpoint }}"
               logs_table_name: otel_demo_logs
+              traces_table_name: otel_demo_traces
             opensearch:
               http:
                 endpoint: http://{{ helm_releases.opensearch.name }}-master.{{ helm_releases.opensearch.namespace }}.svc.cluster.local:9200
@@ -311,6 +311,12 @@
                 exporters:
                   - debug
                   - prometheus
+              traces:
+                exporters:
+                  - clickhouse
+                  - debug
+                  - otlp
+                  - spanmetrics
         serviceMonitor:
           enabled: true
           metricsEndpoints:

@@ -20,10 +20,10 @@
     file: reinit_opentelemetry.yaml
   vars:
     helm_releases:
-      clickhouse: "{{ tools_helm_releases.clickhouse }}"
       collectors: "{{ tools_helm_releases.opentelemetry_collectors }}"
       operator: "{{ tools_helm_releases.opentelemetry_operator }}"
-      opensearch: "{{ tools_helm_releases.opensearch }}"
+    instances:
+      jaeger: "{{ tools_instances.jaeger }}"
   when:
     - tools_enabled.opentelemetry or tools_enabled.jaeger
 
@@ -56,9 +56,7 @@
   ansible.builtin.import_tasks:
     file: reinit_clickhouse.yaml
   vars:
-    helm_releases:
-      instance: "{{ tools_helm_releases.clickhouse }}"
-      operator: "{{ tools_helm_releases.clickhouse_operator }}"
+    instance: "{{ tools_instances.clickhouse }}"
   when:
     - tools_enabled.clickhouse or tools_enabled.opentelemetry
 

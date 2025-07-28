@@ -54,9 +54,8 @@
   ansible.builtin.import_tasks:
     file: install_clickhouse.yaml
   vars:
-    helm_releases:
-      instance: "{{ tools_helm_releases.clickhouse }}"
-      operator: "{{ tools_helm_releases.clickhouse_operator }}"
+    helm_release: "{{ tools_helm_releases.clickhouse_operator }}"
+    instance: "{{ tools_instances.clickhouse }}"
   when:
     - tools_enabled.clickhouse or tools_enabled.opentelemetry
 
@@ -77,6 +76,8 @@
       collectors: "{{ tools_helm_releases.opentelemetry_collectors }}"
       operator: "{{ tools_helm_releases.opentelemetry_operator }}"
       opensearch: "{{ tools_helm_releases.opensearch }}"
+    instances:
+      jaeger: "{{ tools_instances.jaeger }}"
   when:
     - tools_enabled.opentelemetry or tools_enabled.jaeger
 

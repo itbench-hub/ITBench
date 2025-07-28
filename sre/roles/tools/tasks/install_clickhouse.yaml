@@ -6,7 +6,7 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ helm_releases.operator.namespace }}"
+        name: "{{ helm_release.namespace }}"
         labels:
           it-bench/monitoring: "true"
     state: present
@@ -17,8 +17,8 @@
     chart_repo_url: https://docs.altinity.com/clickhouse-operator/
     chart_version: 0.25.1
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ helm_releases.operator.name }}"
-    release_namespace: "{{ helm_releases.operator.namespace }}"
+    release_name: "{{ helm_release.name }}"
+    release_namespace: "{{ helm_release.namespace }}"
     release_state: present
     timeout: 10m0s
     values:
@@ -27,7 +27,7 @@
           config.yaml:
             watch:
               namespaces:
-                - "{{ helm_releases.instance.namespace }}"
+                - "{{ instance.namespace }}"
       podAnnotations:
         openshift.io/required-scc: restricted-v2
       serviceMonitor:
@@ -41,7 +41,7 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ helm_releases.instance.namespace }}"
+        name: "{{ instance.namespace }}"
         annotations:
           openshift.io/sa.scc.mcs: s0:c30,c10
           openshift.io/sa.scc.uid-range: 100/100
@@ -50,45 +50,24 @@
           it-bench/monitoring: "true"
     state: present
 
-- name: Install Clickhouse
-  kubernetes.core.helm:
-    chart_ref: clickhouse
-    chart_repo_url: https://helm.altinity.com
-    chart_version: 0.2.5
+- name: Create Clickhouse Kubernetes objects
+  kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ helm_releases.instance.name }}"
-    release_namespace: "{{ helm_releases.instance.namespace }}"
-    release_state: present
-    timeout: 10m0s
-    values:
-      clickhouse:
-        defaultUser:
-          allowExternalAccess: true
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-        podSecurityContext:
-          fsGroup: 101
-          runAsGroup: 101
-          runAsNonRoot: true
-          runAsUser: 101
-          seccompProfile:
-            type: "RuntimeDefault"
-      podAnnotations:
-        openshift.io/required-scc: restricted-v2
-      operator:
-        enabled: false
-    wait: true
+    namespace: "{{ instance.namespace }}"
+    state: present
+    src: files/clickhouse/{{ item }}
+  loop:
+    - secret.yaml
+    - templates.yaml
+    - installation.yaml
 
 - name: Wait for Clickhouse install to complete
   kubernetes.core.k8s_info:
     api_version: clickhouse.altinity.com/v1
     kind: ClickHouseInstallation
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ helm_releases.instance.name }}"
-    namespace: "{{ helm_releases.instance.namespace }}"
+    name: "{{ instance.name }}"
+    namespace: "{{ instance.namespace }}"
     wait: true
   register: tools_clickhouse_installation_info
   until:
