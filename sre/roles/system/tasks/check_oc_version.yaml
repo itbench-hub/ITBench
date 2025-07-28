@@ -1,0 +1,11 @@
+---
+- name: Check for OpenShift CLI
+  ansible.builtin.command:
+    cmd: which oc
+  register: system_oc_path
+  changed_when: false
+  failed_when: false
+
+- name: Set status based on existence of CLI
+  ansible.builtin.set_fact:
+    system_oc_exists: "{{ system_oc_path.rc == 0 }}"

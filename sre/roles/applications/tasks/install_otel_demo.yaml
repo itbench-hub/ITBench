@@ -50,49 +50,6 @@
     tools_cluster:
       kubeconfig: "{{ applications_cluster.kubeconfig }}"
 
-- name: Retrieve Prometheus route
-  kubernetes.core.k8s_info:
-    api_version: route.openshift.io/v1
-    kind: Route
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    name: prometheus-k8s
-    namespace: openshift-monitoring
-  register: prometheus_k8s_route_info
-  when:
-    - applications_cluster.platform == "openshift"
-
-- name: Parse Prometheus hostname
-  ansible.builtin.set_fact:
-    prometheus_url: https://{{ prometheus_k8s_route_info.resources[0].spec.host }}
-  when:
-    - applications_cluster.platform == "openshift"
-
-- name: Verify Prometheus service exists
-  kubernetes.core.k8s_info:
-    api_version: v1
-    kind: Service
-    name: "{{ helm_releases.prometheus.name }}-kube-prometheus-prometheus"
-    namespace: "{{ helm_releases.prometheus.namespace }}"
-  register: prometheus_service
-  when:
-    - applications_cluster.platform == "kubernetes"
-
-# TODO: To-be made optional when support for APMs is enabled
-- name: Validate relevant Prometheus service exists
-  ansible.builtin.assert:
-    that:
-      - prometheus_service.resources | length > 0
-    fail_msg: "Prometheus service not found in namespace {{ helm_releases.prometheus.namespace }}"
-    success_msg: "Prometheus service {{ helm_releases.prometheus.name }}-kube-prometheus-prometheus found in namespace {{ helm_releases.prometheus.namespace }}"
-  when:
-    - applications_cluster.platform == "kubernetes"
-
-- name: Set Prometheus internal service url
-  ansible.builtin.set_fact:
-    prometheus_url: http://{{ helm_releases.prometheus.name }}-kube-prometheus-prometheus.{{ helm_releases.prometheus.namespace }}.svc.cluster.local:9090
-  when:
-    - applications_cluster.platform == "kubernetes"
-
 - name: Install OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
     chart_ref: opentelemetry-demo
@@ -298,7 +255,7 @@
             otlp:
               endpoint: http://jaeger-collector.{{ helm_releases.collectors.namespace }}.svc.cluster.local:4317
             otlphttp/prometheus:
-              endpoint: "{{ prometheus_url }}/api/v1/otlp"
+              endpoint: http://{{ helm_releases.prometheus.name }}-kube-prometheus-prometheus.{{ helm_releases.prometheus.namespace }}.svc.cluster.local:9090
             prometheus:
               endpoint: 0.0.0.0:8889
           service:

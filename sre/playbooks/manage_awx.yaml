@@ -2,22 +2,25 @@
   hosts:
     - runner
   pre_tasks:
-    - name: Import common role for Helm version check
+    - name: Import system role
       ansible.builtin.import_role:
-        name: common
-        tasks_from: check_helm_version
-      tags:
-        - always
-
-    - name: Import common role for provider configuration
-      ansible.builtin.import_role:
-        name: common
-        tasks_from: set_cluster_provider
+        name: system
       tags:
         - always
       vars:
-        common_cluster:
+        system_cluster:
           kubeconfig: "{{ stack.awx.kubeconfig }}"
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: "{{ system_oc_exists }}"
   tasks:
     - name: Import awx role
       ansible.builtin.import_role:

@@ -15,12 +15,12 @@
 - name: Get helm version
   ansible.builtin.command:
     cmd: "{{ system_helm_path.stdout }} version --short"
-  register: raw_helm_version_out
+  register: system_raw_helm_version
   changed_when: false
 
 - name: Parse helm version
   ansible.builtin.set_fact:
-    system_helm_version: "{{ raw_helm_version_out.stdout_lines[0] | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+).*', '\\1') | first }}"
+    system_helm_version: "{{ system_raw_helm_version.stdout_lines[0] | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+).*', '\\1') | first }}"
 
 - name: Validate helm version
   ansible.builtin.assert:
