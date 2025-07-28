@@ -1,7 +1,7 @@
 ---
 - name: Create workflow launch list
   ansible.builtin.set_fact:
-    workflows: |
+    awx_experiment_workflows: |
       {{
         awx_experiments.incidents |
         product(range(1, ((awx_experiments.trials | int) + 1)))
@@ -41,7 +41,7 @@
       s3_endpoint_url: "{{ awx_experiments.storage.s3.endpoint_url | default('') }}"
       sre_bench_runner: "{{ sre_bench_runner | default(true) }}"
     wait: false
-  loop: "{{ workflows }}"
+  loop: "{{ awx_experiment_workflows }}"
   tags:
     - launch_start_workflow
 
@@ -60,6 +60,6 @@
       s3_endpoint_url: "{{ awx_experiments.storage.s3.endpoint_url | default('') }}"
       sre_bench_runner: "{{ sre_bench_runner | default(true) }}"
     wait: false
-  loop: "{{ workflows }}"
+  loop: "{{ awx_experiment_workflows }}"
   tags:
     - launch_stop_workflow
