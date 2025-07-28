@@ -1,0 +1,87 @@
+---
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallationTemplate
+metadata:
+  name: clickhouse-pod
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 24.8.14.10459
+spec:
+  templates:
+    podTemplates:
+      - name: clickhouse-pod
+        metadata:
+          annotations:
+            openshift.io/required-scc: restricted-v2
+          labels:
+            app.kubernetes.io/name: clickhouse
+            app.kubernetes.io/version: 24.8.14.10459
+        spec:
+          securityContext:
+            fsGroup: 101
+            runAsGroup: 101
+            runAsNonRoot: true
+            runAsUser: 101
+            seccompProfile:
+              type: "RuntimeDefault"
+          containers:
+            - name: clickhouse
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              image: docker.io/altinity/clickhouse-server:24.8.14.10459.altinitystable
+              imagePullPolicy: IfNotPresent
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 2Gi
+                limits:
+                  memory: 3Gi
+---
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallationTemplate
+metadata:
+  name: clickhouse-data
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 24.8.14.10459
+spec:
+  templates:
+    volumeClaimTemplates:
+      - name: clickhouse-data
+        reclaimPolicy: Retain
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 15Gi
+---
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallationTemplate
+metadata:
+  name: clickhouse-service
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 24.8.14.10459
+spec:
+  templates:
+    serviceTemplates:
+      - name: clickhouse-service
+        metadata:
+          labels:
+            app.kubernetes.io/name: clickhouse
+            app.kubernetes.io/version: 24.8.14.10459
+        spec:
+          type: ClusterIP
+          ports:
+            - name: http
+              port: 8123
+              targetPort: 8123
+            - name: tcp
+              port: 9000
+              targetPort: 9000
+          selector:
+            app.kubernetes.io/name: clickhouse

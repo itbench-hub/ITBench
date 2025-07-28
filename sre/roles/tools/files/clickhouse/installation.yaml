@@ -1,0 +1,35 @@
+---
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
+metadata:
+  name: clickhouse
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 24.8.14.10459
+spec:
+  defaults:
+    templates:
+      dataVolumeClaimTemplate: clickhouse-data
+      podTemplate: clickhouse-pod
+      serviceTemplate: clickhouse-service
+  useTemplates:
+    - name: clickhouse-data
+    - name: clickhouse-pod
+    - name: clickhouse-service
+  configuration:
+    users:
+      default/networks/ip: 0.0.0.0/0
+      default/access_management: 1
+      default/named_collection_control: 1
+      default/show_named_collections: 1
+      default/show_named_collections_secrets: 1
+      default/password:
+        valueFrom:
+          secretKeyRef:
+            name: user-default-credentials
+            key: password
+    clusters:
+      - name: main
+        layout:
+          shardsCount: 1
+          replicasCount: 1

@@ -92,74 +92,6 @@ start_incident: create_environment inject_incident_fault ## Starts an incident b
 .PHONY: stop_incident
 stop_incident: remove_incident_fault destroy_environment ## Stops an incident by undeploying a stack, application, and fault for an incident
 
-.PHONY: deploy_observability_stack
-deploy_observability_stack: ## Deploys the observability tools to cluster
-	@echo "WARNING: 'make deploy_observability_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make deploy_tools'..."
-	@echo ""
-	$(MAKE) deploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
-
-.PHONY: undeploy_observability_stack
-undeploy_observability_stack: ## Undeploys observability tools to cluster
-	@echo "WARNING: 'make undeploy_observability_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make undeploy_environment_tools'..."
-	@echo ""
-	$(MAKE) undeploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
-
-.PHONY: deploy_finops_stack
-deploy_finops_stack: ## Deploys the finops tools to cluster
-	@echo "WARNING: 'make deploy_finops_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make deploy_environment_tools'..."
-	@echo ""
-	$(MAKE) deploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
-
-.PHONY: undeploy_finops_stack
-undeploy_finops_stack: ## Undeploys finops tools to cluster
-	@echo "WARNING: 'make undeploy_finops_stack' is deprecated. Please use 'make undeploy_environment_tools' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make undeploy_environment_tools'..."
-	@echo ""
-	$(MAKE) undeploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
-
-.PHONY: deploy_astronomy_shop
-deploy_astronomy_shop: ## Deploys the Astronomy Shop application
-	@echo "WARNING: 'make deploy_astronomy_shop' is deprecated. Please use 'make deploy_applications' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make deploy_applications'..."
-	@echo ""
-	$(MAKE) deploy_applications $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
-
-.PHONY: undeploy_astronomy_shop
-undeploy_astronomy_shop: ## Undeploys the Astronomy Shop application
-	@echo "WARNING: 'make undeploy_astronomy_shop' is deprecated. Please use 'make undeploy_applications' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make undeploy_applications'..."
-	@echo ""
-	$(MAKE) undeploy_applications $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
-
-.PHONY: deploy_hotel_reservation
-deploy_hotel_reservation: ## Deploys the Hotel Reservation application
-	@echo "WARNING: Hotel Reservation has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
-	@echo "This command will be removed in a future version."
-
-.PHONY: undeploy_hotel_reservation
-undeploy_hotel_reservation: ## Undeploys the Hotel Reservation application
-	@echo "WARNING: Hotel Reservation has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
-	@echo "This command will be removed in a future version."
-
-.PHONY: deploy_elasticsearch
-deploy_elasticsearch: ## Deploys the Elasticsearch cluster
-	@echo "WARNING: Elasticsearch has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
-	@echo "This command will be removed in a future version."
-
-.PHONY: undeploy_elasticsearch
-undeploy_elasticsearch: ## Undeploys the Elasticsearch cluster
-	@echo "WARNING: Elasticsearch has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
-	@echo "This command will be removed in a future version."
-
 .PHONY: deploy_awx_stack
 deploy_awx_stack: ## Deploys AWX to a cluster
 	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "install_tools"
@@ -174,22 +106,6 @@ launch_start_workflow: ## Launches the AWX workflow's equivalent of make start_i
 
 launch_stop_workflow: ## Launches the AWX workflow's equivalent of make stop_incident
 	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_stop_workflow"
-
-.PHONY: awx_configure_init
-awx_configure_init:
-	@echo "WARNING: 'make awx_configure_init' is deprecated. Please use 'make deploy_awx_stack' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make deploy_awx_stack'..."
-	@echo ""
-	$(MAKE) deploy_awx_stack
-
-.PHONY: awx_configure_deinit
-awx_configure_deinit:
-	@echo "WARNING: 'make awx_configure_deinit' is deprecated. Please use 'make undeploy_awx_stack' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make undeploy_awx_stack'..."
-	@echo ""
-	$(MAKE) undeploy_awx_stack
 
 # TODO: See why the OBJC_DISABLE_INITIALIZE_FORK_SAFETY is needed
 
@@ -230,22 +146,6 @@ fetch_alerts:
 		--extra-vars "sample_application=$(SAMPLE_APPLICATION)" \
 		> /tmp/fetch.out 2>&1 &
 
-.PHONY: e2e_awx_init_stage_one
-e2e_awx_init_stage_one: ## DEPRECATED: Given an incident number, run_uuid intitialize the scenario run leveraging an AWX node
-	@echo "WARNING: 'make e2e_awx_init_stage_one' is deprecated. Please use 'make launch_start_workflow' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make launch_start_workflow'..."
-	@echo ""
-	$(MAKE) launch_start_workflow
-
-.PHONY: e2e_awx_stage_three
-e2e_awx_stage_three: ## DEPRECATED: Given an incident number, run_uuid end the scenario run leveraging an AWX node
-	@echo "WARNING: 'make e2e_awx_stage_three' is deprecated. Please use 'make launch_stop_workflow' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make launch_stop_workflow'..."
-	@echo ""
-	$(MAKE) launch_stop_workflow
-
 .PHONY: evaluation
 .SILENT: evaluation
 evaluation:
@@ -273,3 +173,103 @@ bundle_status:
 .SILENT: bundle_info
 bundle_info:
 	ANSIBLE_STDOUT_CALLBACK=json ansible-playbook base.yaml --tags "get_bundle_info" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} run_number=1 s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true kubeconfig=/tmp/${CLUSTER_ASSIGNED_NAME}.yaml s3_endpoint_url='https://s3.us-east-2.amazonaws.com'" | jq '.plays[].tasks[] | select(.task.name == "bundle_info : Return grafana url").hosts.localhost.msg'
+
+.PHONY: deploy_observability_stack
+deploy_observability_stack: ## DEPRECATED: Deploys the observability tools to cluster
+	@echo "WARNING: 'make deploy_observability_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make deploy_tools'..."
+	@echo ""
+	$(MAKE) deploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: undeploy_observability_stack
+undeploy_observability_stack: ## DEPRECATED: Undeploys observability tools to cluster
+	@echo "WARNING: 'make undeploy_observability_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make undeploy_environment_tools'..."
+	@echo ""
+	$(MAKE) undeploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: deploy_finops_stack
+deploy_finops_stack: ## DEPRECATED: Deploys the finops tools to cluster
+	@echo "WARNING: 'make deploy_finops_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make deploy_environment_tools'..."
+	@echo ""
+	$(MAKE) deploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: undeploy_finops_stack
+undeploy_finops_stack: ## DEPRECATED: Undeploys finops tools to cluster
+	@echo "WARNING: 'make undeploy_finops_stack' is deprecated. Please use 'make undeploy_environment_tools' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make undeploy_environment_tools'..."
+	@echo ""
+	$(MAKE) undeploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: deploy_astronomy_shop
+deploy_astronomy_shop: ## DEPRECATED: Deploys the Astronomy Shop application
+	@echo "WARNING: 'make deploy_astronomy_shop' is deprecated. Please use 'make deploy_applications' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make deploy_applications'..."
+	@echo ""
+	$(MAKE) deploy_applications $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: undeploy_astronomy_shop
+undeploy_astronomy_shop: ## DEPRECATED: Undeploys the Astronomy Shop application
+	@echo "WARNING: 'make undeploy_astronomy_shop' is deprecated. Please use 'make undeploy_applications' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make undeploy_applications'..."
+	@echo ""
+	$(MAKE) undeploy_applications $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: deploy_hotel_reservation
+deploy_hotel_reservation: ## DEPRECATED: Deploys the Hotel Reservation application
+	@echo "WARNING: Hotel Reservation has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
+	@echo "This command will be removed in a future version."
+
+.PHONY: undeploy_hotel_reservation
+undeploy_hotel_reservation: ## DEPRECATED: Undeploys the Hotel Reservation application
+	@echo "WARNING: Hotel Reservation has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
+	@echo "This command will be removed in a future version."
+
+.PHONY: deploy_elasticsearch
+deploy_elasticsearch: ## DEPRECATED: Deploys the Elasticsearch cluster
+	@echo "WARNING: Elasticsearch has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
+	@echo "This command will be removed in a future version."
+
+.PHONY: undeploy_elasticsearch
+undeploy_elasticsearch: ## DEPRECATED: Undeploys the Elasticsearch cluster
+	@echo "WARNING: Elasticsearch has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
+	@echo "This command will be removed in a future version."
+
+.PHONY: awx_configure_init
+awx_configure_init:
+	@echo "WARNING: 'make awx_configure_init' is deprecated. Please use 'make deploy_awx_stack' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make deploy_awx_stack'..."
+	@echo ""
+	$(MAKE) deploy_awx_stack
+
+.PHONY: awx_configure_deinit
+awx_configure_deinit:
+	@echo "WARNING: 'make awx_configure_deinit' is deprecated. Please use 'make undeploy_awx_stack' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make undeploy_awx_stack'..."
+	@echo ""
+	$(MAKE) undeploy_awx_stack
+
+.PHONY: e2e_awx_init_stage_one
+e2e_awx_init_stage_one: ## DEPRECATED: Given an incident number, run_uuid intitialize the scenario run leveraging an AWX node
+	@echo "WARNING: 'make e2e_awx_init_stage_one' is deprecated. Please use 'make launch_start_workflow' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make launch_start_workflow'..."
+	@echo ""
+	$(MAKE) launch_start_workflow
+
+.PHONY: e2e_awx_stage_three
+e2e_awx_stage_three: ## DEPRECATED: Given an incident number, run_uuid end the scenario run leveraging an AWX node
+	@echo "WARNING: 'make e2e_awx_stage_three' is deprecated. Please use 'make launch_stop_workflow' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make launch_stop_workflow'..."
+	@echo ""
+	$(MAKE) launch_stop_workflow
