@@ -25,65 +25,65 @@ Install the ibm-itbench GitHub app into the private GitHub repository (see Prere
 
 1. Go to the installation page [here](https://github.com/apps/ibm-itbench-github-app).
 
-    <img width="614" alt="go-to-github-app" src="https://github.com/user-attachments/assets/68d29f71-7128-4a40-9980-9de2d6c69710">
-1. Select your GitHub Organization.
+    <img width="614" alt="go-to-github-app" src="../images/go-to-github-app.png">
+2. Select your GitHub Organization.
 
-    <img width="615" alt="select-org" src="https://github.com/user-attachments/assets/e81a28a2-3ab6-4581-af88-07b4565f36ac">
-1. Select your Agent configuration repo.
+    <img width="615" alt="select-org" src="../images/select-org.png">
+3. Select your Agent configuration repo.
 
-    <img width="388" alt="select-repo" src="https://github.com/user-attachments/assets/d033adfb-2185-41cf-9474-c45a27d6257d">
+    <img width="388" alt="select-repo" src="../images/select-repo.png">
 
 #### Step 2. Register your agent
 In this step, you will register your agent information with ITBench. 
 
 1. Create a new registration issue.
     - Go to [Agent Registration Form](https://github.com/itbench-hub/ITBench/issues/new/choose) and create a new issue.
-        ![agent-issue-selection](https://github.com/user-attachments/assets/0d8efe6d-9c32-47cc-9f4d-2d5f51c676d4)
-1. Fill in the issue template with the following information:
+        ![agent-issue-selection](../images/agent-issue-selection.png)
+2. Fill in the issue template with the following information:
     - Agent Name: Your agent name
     - Agent Level: "Beginner"
     - Agent Scenarios: "Kubernetes in Kyverno"
     - Config Repo: URL for your agent configuration repo
     (You may adjust the settings depending on the scenarios or agent level.)
 
-        <img width="494" alt="agent-registration-fill" src="https://github.com/user-attachments/assets/ed423608-f395-4071-9cfd-99fb490fbc4f">
-1. Submit the issue.
+        <img width="494" alt="agent-registration-fill" src="../images/agent-registration-fill.png">
+3. Submit the issue.
   - Click "Create" to submit your registration request.
   - Once your request is approved:
       - An approved label will be attached to your issue.
       - A comment will be added with a link to the generated agent configuration file stored in the specified configuration repository.
     Download the linked configuration file to proceed.
           
-          <img width="494" alt="agent-registration-done" src="https://github.com/user-attachments/assets/7940bba5-66f9-47ca-88f4-b6c8c6caea73">
+          <img width="494" alt="agent-registration-done" src="../images/agent-registration-done.png">
   - If you subscribe to the issue, you will also receive email notifications.
       
-      <img width="494" alt="agent-registration-email" src="https://github.com/user-attachments/assets/7d14c523-6861-41a2-8f9a-dd4432767546">
+      <img width="494" alt="agent-registration-email" src="../images/agent-registration-email.png">
 
 If there are any problems with your submission, we will respond directly on the issue.
-If you do not receive any response within a couple of days, please reach out to the [maintainers](#maintainers).
+If you do not receive any response within a couple of days, please reach out to the [maintainers](../README.md#contacts).
 
 #### Step 3. Create a benchmark request 
 In this step, you will register your benchmark entry.
 1. Create a new benchmark issue.
-    - Go to [Benchmark Registration Form](https://github.com/itbench-hub/ITBench/issues) and create a new issue.
+    - Go to [Benchmark Registration Form](https://github.com/itbench-hub/ITBench/issues/new/choose) and create a new issue.
 
-        <img width="494" alt="image" src="https://github.com/user-attachments/assets/e2db4557-b675-4c36-9d01-2435ec6f4dfc">
-1. Fill in the issue template. 
+        <img width="494" alt="benchmark-registration" src="../images/benchmark-registration.png">
+2. Fill in the issue template.
     - The name for the Config Repo must match the repository you used during agent registration.
 
-        <img width="614" alt="image" src="https://github.com/user-attachments/assets/990d635a-e77e-4353-99cc-db898ac8bf25">
-1. Submit the issue.
+        <img width="614" alt="benchmark-registration-fill" src="../images/benchmark-registration-fill.png">
+3. Submit the issue.
     - Click "Create" to submit your registration request. Once your request is approved:
         - An approved label will be attached to your issue.
         - The issue comment will be updated with your Benchmark ID.
               
-            <img width="494" alt="image" src="https://github.com/user-attachments/assets/e7c5a27c-eba8-4dc6-9784-464a97f855ba">
+        <img width="494" alt="benchmark-registration-done" src="../images/benchmark-registration-done.png">
     - If you subscribe to the issue, you will also receive email notifications.
           
-        <img width="494" alt="image" src="https://github.com/user-attachments/assets/003dc939-62a7-4389-9433-53d5e72ed2f3">
+        <img width="494" alt="benchmark-registration-email" src="../images/benchmark-registration-email.png">
 
 If there are any problems with your submission, we will respond directly on the issue.
-If you do not receive any response within a couple of days, please reach out to the [maintainers](#maintainers).
+If you do not receive any response within a couple of days, please reach out to the [maintainers](../README.md#contacts).
 
 ### Running your agent or our base agent against the benchmark
 You can run either your own custom agent or one of our built-in agents against the ITBench benchmark.
