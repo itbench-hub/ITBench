@@ -65,7 +65,7 @@ If you do not receive any response within a couple of days, please reach out to 
 #### Step 3. Create a benchmark request 
 In this step, you will register your benchmark entry.
 1. Create a new benchmark issue.
-    - Go to [Benchmark Registration Form](https://github.com/itbench-hub/ITBench/issues) and create a new issue.
+    - Go to [Benchmark Registration Form](https://github.com/itbench-hub/ITBench/issues/new/choose) and create a new issue.
 
         <img width="494" alt="benchmark-registration" src="../images/benchmark-registration.png">
 2. Fill in the issue template.
@@ -77,13 +77,13 @@ In this step, you will register your benchmark entry.
         - An approved label will be attached to your issue.
         - The issue comment will be updated with your Benchmark ID.
               
-        <img width="494" alt="benchmark-registration-done" src="../images/benchmark-reigstration-done.png">
+        <img width="494" alt="benchmark-registration-done" src="../images/benchmark-registration-done.png">
     - If you subscribe to the issue, you will also receive email notifications.
           
         <img width="494" alt="benchmark-registration-email" src="../images/benchmark-registration-email.png">
 
 If there are any problems with your submission, we will respond directly on the issue.
-If you do not receive any response within a couple of days, please reach out to the [maintainers](#maintainers).
+If you do not receive any response within a couple of days, please reach out to the [maintainers](../README.md#contacts).
 
 ### Running your agent or our base agent against the benchmark
 You can run either your own custom agent or one of our built-in agents against the ITBench benchmark.
