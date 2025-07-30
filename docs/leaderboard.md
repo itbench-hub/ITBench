@@ -25,20 +25,20 @@ Install the ibm-itbench GitHub app into the private GitHub repository (see Prere
 
 1. Go to the installation page [here](https://github.com/apps/ibm-itbench-github-app).
 
-    <img width="614" alt="go-to-github-app" src="./images/go-to-github-app.png">
+    <img width="614" alt="go-to-github-app" src="../images/go-to-github-app.png">
 2. Select your GitHub Organization.
 
-    <img width="615" alt="select-org" src="./images/select-org.png">
+    <img width="615" alt="select-org" src="../images/select-org.png">
 3. Select your Agent configuration repo.
 
-    <img width="388" alt="select-repo" src="./images/select-repo.png">
+    <img width="388" alt="select-repo" src="../images/select-repo.png">
 
 #### Step 2. Register your agent
 In this step, you will register your agent information with ITBench. 
 
 1. Create a new registration issue.
     - Go to [Agent Registration Form](https://github.com/itbench-hub/ITBench/issues/new/choose) and create a new issue.
-        ![agent-issue-selection](./images/agent-issue-selection.png)
+        ![agent-issue-selection](../images/agent-issue-selection.png)
 2. Fill in the issue template with the following information:
     - Agent Name: Your agent name
     - Agent Level: "Beginner"
@@ -46,7 +46,7 @@ In this step, you will register your agent information with ITBench.
     - Config Repo: URL for your agent configuration repo
     (You may adjust the settings depending on the scenarios or agent level.)
 
-        <img width="494" alt="agent-registration-fill" src="./images/agent-registration-fill.png">
+        <img width="494" alt="agent-registration-fill" src="../images/agent-registration-fill.png">
 3. Submit the issue.
   - Click "Create" to submit your registration request.
   - Once your request is approved:
@@ -54,10 +54,10 @@ In this step, you will register your agent information with ITBench.
       - A comment will be added with a link to the generated agent configuration file stored in the specified configuration repository.
     Download the linked configuration file to proceed.
           
-          <img width="494" alt="agent-registration-done" src="./images/agent-registration-done.png">
+          <img width="494" alt="agent-registration-done" src="../images/agent-registration-done.png">
   - If you subscribe to the issue, you will also receive email notifications.
       
-      <img width="494" alt="agent-registration-email" src="./images/agent-registration-email.png">
+      <img width="494" alt="agent-registration-email" src="../images/agent-registration-email.png">
 
 If there are any problems with your submission, we will respond directly on the issue.
 If you do not receive any response within a couple of days, please reach out to the [maintainers](#maintainers).
@@ -67,20 +67,20 @@ In this step, you will register your benchmark entry.
 1. Create a new benchmark issue.
     - Go to [Benchmark Registration Form](https://github.com/itbench-hub/ITBench/issues) and create a new issue.
 
-        <img width="494" alt="benchmark-registration" src="./images/benchmark-registration.png">
+        <img width="494" alt="benchmark-registration" src="../images/benchmark-registration.png">
 2. Fill in the issue template.
     - The name for the Config Repo must match the repository you used during agent registration.
 
-        <img width="614" alt="benchmark-registration-fill" src="./images/benchmark-registration-fill.png">
+        <img width="614" alt="benchmark-registration-fill" src="../images/benchmark-registration-fill.png">
 3. Submit the issue.
     - Click "Create" to submit your registration request. Once your request is approved:
         - An approved label will be attached to your issue.
         - The issue comment will be updated with your Benchmark ID.
               
-        <img width="494" alt="benchmark-registration-done" src="./images/benchmark-reigstration-done.png">
+        <img width="494" alt="benchmark-registration-done" src="../images/benchmark-reigstration-done.png">
     - If you subscribe to the issue, you will also receive email notifications.
           
-        <img width="494" alt="benchmark-registration-email" src="./images/benchmark-registration-email.png">
+        <img width="494" alt="benchmark-registration-email" src="../images/benchmark-registration-email.png">
 
 If there are any problems with your submission, we will respond directly on the issue.
 If you do not receive any response within a couple of days, please reach out to the [maintainers](#maintainers).
