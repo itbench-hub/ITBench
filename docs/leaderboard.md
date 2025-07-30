@@ -60,7 +60,7 @@ In this step, you will register your agent information with ITBench.
       <img width="494" alt="agent-registration-email" src="../images/agent-registration-email.png">
 
 If there are any problems with your submission, we will respond directly on the issue.
-If you do not receive any response within a couple of days, please reach out to the [maintainers](#maintainers).
+If you do not receive any response within a couple of days, please reach out to the [maintainers](../README.md#contacts).
 
 #### Step 3. Create a benchmark request 
 In this step, you will register your benchmark entry.
