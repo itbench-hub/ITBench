@@ -33,6 +33,8 @@ Install the ibm-itbench GitHub app into the private GitHub repository (see Prere
 
     <img width="388" alt="select-repo" src="../images/select-repo.png">
 
+    > ⚠️ **Note**: If the repository was created by someone else (e.g., a teammate), ensure that the GitHub account submitting the agent registration issue is added as a **collaborator**.
+
 #### Step 2. Register your agent
 In this step, you will register your agent information with ITBench. 
 
@@ -66,6 +68,8 @@ If you do not receive any response within a couple of days, please reach out to 
 In this step, you will register your benchmark entry.
 1. Create a new benchmark issue.
     - Go to [Benchmark Registration Form](https://github.com/itbench-hub/ITBench/issues/new/choose) and create a new issue.
+    - Currently, please use the **same GitHub account** that you used for the agent registration issue.  
+      (This is currently required for the system to correctly associate your benchmark request.)
 
         <img width="494" alt="benchmark-registration" src="../images/benchmark-registration.png">
 2. Fill in the issue template.
