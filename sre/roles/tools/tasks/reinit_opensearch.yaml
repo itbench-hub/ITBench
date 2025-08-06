@@ -1,52 +1,23 @@
 ---
-- name: Create list of OpenSearch job names
-  ansible.builtin.set_fact:
-    tools_opensearch_deletion_jobs:
-      - name: delete-index-jaeger-service
-        index: jaeger-service-*
-      - name: delete-index-jaeger-span
-        index: jaeger-span-*
-      - name: delete-index-top-queries
-        index: top_queries-*
-
 - name: Create jobs to delete OpenSearch indexes
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: batch/v1
-      kind: Job
-      metadata:
-        name: "{{ item.name }}"
-        namespace: "{{ helm_release.namespace }}"
-      spec:
-        template:
-          spec:
-            containers:
-              - name: index-deleter
-                image: registry.access.redhat.com/ubi9/ubi-minimal:9.6-1754356396
-                command:
-                  - curl
-                  - -X
-                  - DELETE
-                  - http://opensearch-cluster-master:9200/{{ item.index }}
-            restartPolicy: Never
-        ttlSecondsAfterFinished: 60
+    namespace: "{{ helm_release.namespace }}"
     state: present
-  loop: "{{ tools_opensearch_deletion_jobs }}"
-  loop_control:
-    label: job/{{ item.name }}
+    src: files/kubernetes/opensearch.yaml
+  register: tools_opensearch_reinit_jobs
 
 - name: Wait for jobs to complete
   kubernetes.core.k8s_info:
     api_version: batch/v1
     kind: Job
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ item.name }}"
-    namespace: "{{ helm_release.namespace }}"
+    name: "{{ item.result.metadata.name }}"
+    namespace: "{{ item.result.metadata.namespace }}"
     wait: true
     wait_condition:
       type: Complete
       status: "True"
-  loop: "{{ tools_opensearch_deletion_jobs }}"
+  loop: "{{ tools_opensearch_reinit_jobs.result.results }}"
   loop_control:
-    label: job/{{ item.name }}
+    label: job/{{ item.result.metadata.name }}
