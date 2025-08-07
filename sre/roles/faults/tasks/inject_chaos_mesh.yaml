@@ -10,25 +10,17 @@
       apiVersion: chaos-mesh.org/v1alpha1
       kind: Schedule
       metadata:
-        name: "{{ schedule.name }}"
+        name: "{{ spec.schedule.name }}"
         namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
-      spec: "{{ schedule.spec }}"
+      spec: "{{ spec.schedule.spec }}"
     state: present
-  loop: "{{ schedules }}"
-  loop_control:
-    label: "{{ schedule.name }}"
-    loop_var: schedule
 
 - name: Wait for Chaos Mesh experiement to start
   kubernetes.core.k8s_info:
     api_version: chaos-mesh.org/v1alpha1
-    kind: "{{ schedule.spec.type }}"
+    kind: "{{ spec.schedule.spec.type }}"
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     label_selectors:
-      - managed-by={{ schedule.name }}
+      - managed-by={{ spec.schedule.name }}
     namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
     wait: true
-  loop: "{{ schedules }}"
-  loop_control:
-    label: "{{ schedule.spec.type | lower }}/{{ schedule.name }}"
-    loop_var: schedule

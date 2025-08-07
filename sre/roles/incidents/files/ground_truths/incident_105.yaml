@@ -1,0 +1,195 @@
+---
+fault:
+  - entity:
+      name: product-catalog-pod-1
+      group_id: product-catalog-pod-1
+      kind: Pod
+    condition: Pod container in CrashLoopBackOff state due to invalid command
+    category: Infrastructure
+    fault_mechanism: command_injection
+alerts:
+  - id: PodCrashLoopBackOff
+    group_id: product-catalog-pod-1
+    metadata:
+      description: Product catalog pod is in CrashLoopBackOff state
+  - id: CheckoutServiceErrors
+    group_id: checkout-service-1
+    metadata:
+      description: Checkout service experiencing connection failures to product-catalog
+  - id: NoRequestsDetected
+    group_id: payment-service-1
+    metadata:
+      description: Payment service receiving no requests - checkout flow blocked
+  - id: NoRequestsDetected
+    group_id: shipping-service-1
+    metadata:
+      description: Shipping service receiving no requests - checkout flow blocked
+  - id: NoRequestsDetected
+    group_id: email-service-1
+    metadata:
+      description: Email service receiving no requests - checkout flow blocked
+  - id: NoRequestsDetected
+    group_id: currency-service-1
+    metadata:
+      description: Currency service receiving no requests - checkout flow blocked
+  - id: NoRequestsDetected
+    group_id: accounting-service-1
+    metadata:
+      description: Accounting service receiving no requests - order processing blocked
+  - id: NoRequestsDetected
+    group_id: fraud-detection-service-1
+    metadata:
+      description: Fraud detection service receiving no requests - order processing blocked
+groups:
+  - id: product-catalog-pod-1
+    kind: Pod
+    filter:
+      - product-catalog-.*
+    namespace: otel-demo
+    root_cause: true
+  - id: product-catalog-service-1
+    kind: Service
+    filter:
+      - product-catalog\b
+    namespace: otel-demo
+  - id: checkout-service-1
+    kind: Service
+    filter:
+      - checkout\b
+    namespace: otel-demo
+  - id: checkout-pod-1
+    kind: Pod
+    filter:
+      - checkout-.*
+    namespace: otel-demo
+  - id: payment-service-1
+    kind: Service
+    filter:
+      - payment\b
+    namespace: otel-demo
+  - id: payment-pod-1
+    kind: Pod
+    filter:
+      - payment-.*
+    namespace: otel-demo
+  - id: shipping-service-1
+    kind: Service
+    filter:
+      - shipping\b
+    namespace: otel-demo
+  - id: shipping-pod-1
+    kind: Pod
+    filter:
+      - shipping-.*
+    namespace: otel-demo
+  - id: email-service-1
+    kind: Service
+    filter:
+      - email\b
+    namespace: otel-demo
+  - id: email-pod-1
+    kind: Pod
+    filter:
+      - email-.*
+    namespace: otel-demo
+  - id: currency-service-1
+    kind: Service
+    filter:
+      - currency\b
+    namespace: otel-demo
+  - id: currency-pod-1
+    kind: Pod
+    filter:
+      - currency-.*
+    namespace: otel-demo
+  - id: accounting-service-1
+    kind: Service
+    filter:
+      - accounting\b
+    namespace: otel-demo
+  - id: accounting-pod-1
+    kind: Pod
+    filter:
+      - accounting-.*
+    namespace: otel-demo
+  - id: fraud-detection-service-1
+    kind: Service
+    filter:
+      - fraud-detection\b
+    namespace: otel-demo
+  - id: fraud-detection-pod-1
+    kind: Pod
+    filter:
+      - fraud-detection-.*
+    namespace: otel-demo
+  - id: quote-service-1
+    kind: Service
+    filter:
+      - quote\b
+    namespace: otel-demo
+  - id: quote-pod-1
+    kind: Pod
+    filter:
+      - quote-.*
+    namespace: otel-demo
+aliases:
+  - - product-catalog-service-1
+    - product-catalog-pod-1
+  - - checkout-service-1
+    - checkout-pod-1
+  - - payment-service-1
+    - payment-pod-1
+  - - shipping-service-1
+    - shipping-pod-1
+  - - email-service-1
+    - email-pod-1
+  - - currency-service-1
+    - currency-pod-1
+  - - accounting-service-1
+    - accounting-pod-1
+  - - fraud-detection-service-1
+    - fraud-detection-pod-1
+  - - quote-service-1
+    - quote-pod-1
+propagations:
+  - source: product-catalog-pod-1
+    target: product-catalog-service-1
+    condition: Pod container fails to start due to invalid command
+    effect: Product catalog service becomes unavailable
+  - source: product-catalog-service-1
+    target: checkout-service-1
+    condition: Checkout service cannot validate products via product-catalog
+    effect: Checkout operations fail early in the process
+  - source: checkout-service-1
+    target: payment-service-1
+    condition: Checkout process never reaches payment stage due to product validation failure
+    effect: Payment service receives zero requests
+  - source: checkout-service-1
+    target: shipping-service-1
+    condition: Checkout process never reaches shipping stage due to product validation failure
+    effect: Shipping service receives zero requests
+  - source: checkout-service-1
+    target: email-service-1
+    condition: Checkout process never completes to send order confirmation emails
+    effect: Email service receives zero requests
+  - source: checkout-service-1
+    target: currency-service-1
+    condition: Checkout process never reaches currency conversion stage
+    effect: Currency service receives zero requests
+  - source: checkout-service-1
+    target: accounting-service-1
+    condition: No completed orders to process via Kafka queue
+    effect: Accounting service receives zero order messages
+  - source: checkout-service-1
+    target: fraud-detection-service-1
+    condition: No completed orders to analyze via Kafka queue
+    effect: Fraud detection service receives zero order messages
+  - source: shipping-service-1
+    target: quote-service-1
+    condition: Shipping service not processing any requests
+    effect: Quote service receives zero shipping quote requests
+recommended_actions:
+  - solution:
+      id: fix_container_command
+      actions:
+        - Identify and correct the invalid command in product-catalog deployment

@@ -1,0 +1,28 @@
+---
+metadata:
+  complexity: Low
+  id: 20
+  name: productcatalogservice Corrupt Image
+  platform: kubernetes
+  technologies:
+    - Go
+    - Node.js
+spec:
+  environment:
+    applications:
+      otel_demo:
+        enabled: true
+    tools:
+      category: sre
+      selected:
+        - kubernetes-topology-monitor
+  faults:
+    - custom:
+        name: invalid-image
+        invalid_image:
+          workload:
+            kind: Deployment
+            name: product-catalog
+            namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+            container:
+              name: product-catalog

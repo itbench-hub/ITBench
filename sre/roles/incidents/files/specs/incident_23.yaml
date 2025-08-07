@@ -5,8 +5,7 @@ metadata:
   name: checkoutservice Corrupt Image
   platform: kubernetes
   technologies:
-    - Python
-    - Node.js
+    - Go
 spec:
   environment:
     applications:
@@ -19,8 +18,10 @@ spec:
   faults:
     - custom:
         name: unsupported-image
-        targets:
-          workload_managers:
-            - kind: Deployment
+        unsupported_image:
+          workload:
+            kind: Deployment
+            name: checkout
+            namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+            container:
               name: checkout
-              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"

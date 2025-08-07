@@ -6,20 +6,20 @@
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     namespace: "{{ helm_release.namespace }}"
     name: flagd-config
-  register: configmap_info
+  register: faults_configmap_info
 
 - name: Retrieve flagd json config from ConfigMap data
   ansible.builtin.set_fact:
-    flagd_config_json: "{{ configmap_info.resources[0].data['demo.flagd.json'] | from_json }}"
+    faults_flagd_config_json: "{{ faults_configmap_info.resources[0].data['demo.flagd.json'] | from_json }}"
 
 - name: Generate partial config with enabled flags
   ansible.builtin.set_fact:
-    enabled_config: |
+    faults_enabled_flags_config: |
       {{
-        (enabled_config | default({})) |
+        (faults_enabled_flags_config | default({})) |
         combine({ flag.name: { 'defaultVariant': flag.state } }, recursive=true)
       }}
-  loop: "{{ flags }}"
+  loop: "{{ spec.flags }}"
   loop_control:
     label: "{{ flag.name }}"
     loop_var: flag
@@ -34,7 +34,7 @@
         name: flagd-config
         namespace: "{{ helm_release.namespace }}"
       data:
-        "demo.flagd.json": "{{ flagd_config_json | combine({'flags': enabled_config}, recursive=true) | to_json }}"
+        "demo.flagd.json": "{{ faults_flagd_config_json | combine({'flags': faults_enabled_flags_config}, recursive=true) | to_json }}"
     state: patched
 
 - name: Restart all deployments to enable changes
@@ -42,5 +42,5 @@
     cmd: kubectl -n {{ helm_release.namespace }} rollout restart deployment
   environment:
     KUBECONFIG: "{{ faults_cluster.kubeconfig | ansible.builtin.expanduser }}"
-  register: rollout_restart_output
-  changed_when: rollout_restart_output.rc == 0
+  register: faults_rollout_restart_output
+  changed_when: faults_rollout_restart_output.rc == 0

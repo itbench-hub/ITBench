@@ -1,0 +1,44 @@
+---
+- name: Retrieve information on workload
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+  register: faults_workload_info
+
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_faults_workload_container_index.yaml
+  vars:
+    faults_workload: "{{ spec.workload }}"
+
+- name: Retrieve container environment variables
+  ansible.builtin.set_fact:
+    faults_container_env: "{{ faults_workload_info.resources[0].spec.template.spec.containers[faults_workload_container_index].env }}"
+  when:
+    - faults_workload_info.resources | length > 0
+
+- name: Apply updated environment variables
+  kubernetes.core.k8s_json_patch:
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    patch:
+      - op: replace
+        path: "/spec/template/spec/containers/{{ faults_workload_container_index }}/env"
+        value: |
+          {{
+            (
+              faults_container_env |
+              rejectattr(
+                'name',
+                'in',
+                (spec.workload.container.env | map(attribute='name'))
+              )
+            ) +
+            spec.workload.container.env
+          }}

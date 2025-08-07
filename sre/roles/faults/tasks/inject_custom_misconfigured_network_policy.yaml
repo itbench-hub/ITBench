@@ -1,0 +1,29 @@
+---
+- name: Retrieve pod labels from workload
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+  register: faults_workload_info
+
+- name: Create NetworkPolicy
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: "{{ spec.workload.name }}-block-all-ports"
+        namespace: "{{ spec.workload.namespace }}"
+      spec:
+        podSelector:
+          matchLabels: "{{ faults_workload_info.resources[0].spec.template.metadata.labels }}"
+        policyTypes:
+          - Ingress
+        ingress:
+          - ports: []
+    state: present
+  when:
+    - faults_workload_info.resources | length > 0
