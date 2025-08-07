@@ -9,13 +9,18 @@
   ansible.builtin.import_tasks:
     file: inject_chaos_mesh.yaml
   vars:
-    schedules: "{{ fault.chaos_mesh.schedules }}"
+    spec: "{{ fault.chaos_mesh }}"
   when:
     - fault.chaos_mesh is defined
-    - fault.chaos_mesh.schedules | length > 0
 
 - name: Import Otel Demo fault injection tasks
   ansible.builtin.import_tasks:
     file: inject_otel_demo.yaml
   when:
     - fault.otel_demo is defined
+
+- name: Import Valkey fault injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_valkey.yaml
+  when:
+    - fault.valkey is defined

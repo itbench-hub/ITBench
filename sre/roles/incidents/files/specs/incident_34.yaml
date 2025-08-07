@@ -1,0 +1,26 @@
+---
+metadata:
+  complexity: Low
+  id: 34
+  name: CartService Incorrect Authentication
+  platform: kubernetes
+  technologies:
+    - Go
+    - Node.js
+spec:
+  environment:
+    applications:
+      otel_demo:
+        enabled: true
+    tools:
+      category: sre
+      selected:
+        - kubernetes-topology-monitor
+  faults:
+    - valkey:
+        name: invalid-password
+        invalid_password:
+          workload:
+            kind: Deployment
+            name: valkey-cart
+            namespace: "{{ applications_helm_releases.otel_demo.namespace }}"

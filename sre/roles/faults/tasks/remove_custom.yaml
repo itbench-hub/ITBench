@@ -1,70 +1,90 @@
 ---
+- name: Import invalid command removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_custom_invalid_command.yaml
+  vars:
+    spec: "{{ fault.custom.invalid_command }}"
+  when:
+    - fault.custom.name == 'invalid-command'
+    - fault.custom.invalid_command is defined
+
+- name: Import invalid image removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_custom_invalid_image.yaml
+  vars:
+    spec: "{{ fault.custom.invalid_image }}"
+  when:
+    - fault.custom.name == 'invalid-image'
+    - fault.custom.invalid_image is defined
+
 - name: Import invalid node selector removal tasks
   ansible.builtin.import_tasks:
     file: remove_custom_invalid_node_selector.yaml
   vars:
-    targets: "{{ fault.custom.targets.workload_managers }}"
+    spec: "{{ fault.custom.invalid_node_selector }}"
   when:
     - fault.custom.name == 'invalid-node-selector'
-    - fault.custom.targets.workload_managers is defined
-    - fault.custom.targets.workload_managers | length > 0
-
-- name: Import misconfigured command removal tasks
-  ansible.builtin.import_tasks:
-    file: remove_custom_misconfigured_command.yaml
-  vars:
-    targets: "{{ fault.custom.targets.workload_managers }}"
-  when:
-    - fault.custom.name == 'misconfigured-command'
-    - fault.custom.targets.workload_managers is defined
-    - fault.custom.targets.workload_managers | length > 0
+    - fault.custom.invalid_node_selector is defined
 
 - name: Import misconfigured horizontal pod autoscaler removal tasks
   ansible.builtin.import_tasks:
     file: remove_custom_misconfigured_horizontal_pod_autoscaler.yaml
   vars:
-    targets: "{{ fault.custom.targets.horizontal_pod_autoscalers }}"
+    spec: "{{ fault.custom.misconfigured_horizontal_pod_autoscaler }}"
   when:
     - fault.custom.name == 'misconfigured-horizontal-pod-autoscaler'
-    - fault.custom.targets.horizontal_pod_autoscalers is defined
-    - fault.custom.targets.horizontal_pod_autoscalers | length > 0
+    - fault.custom.misconfigured_horizontal_pod_autoscaler is defined
 
-- name: Remove misconfigured persistent volume claim removal tasks
+- name: Import misconfigured network policy removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_custom_misconfigured_network_policy.yaml
+  vars:
+    spec: "{{ fault.custom.misconfigured_network_policy }}"
+  when:
+    - fault.custom.name == 'misconfigured-network-policy'
+    - fault.custom.misconfigured_network_policy is defined
+
+- name: Import misconfigured persistent volume claim removal tasks
   ansible.builtin.import_tasks:
     file: remove_custom_misconfigured_persistent_volume_claim.yaml
   vars:
-    targets: "{{ fault.custom.targets.workload_managers }}"
+    spec: "{{ fault.custom.misconfigured_persitent_volume_claim }}"
   when:
     - fault.custom.name == 'misconfigured-persitent-volume-claim'
-    - fault.custom.targets.workload_managers is defined
-    - fault.custom.targets.workload_managers | length > 0
+    - fault.custom.misconfigured_persitent_volume_claim is defined
 
 - name: Import misconfigured resource quota removal tasks
   ansible.builtin.import_tasks:
     file: remove_custom_misconfigured_resource_quota.yaml
   vars:
-    targets: "{{ fault.custom.targets.namespaces }}"
+    spec: "{{ fault.custom.misconfigured_resource_quota }}"
   when:
     - fault.custom.name == 'misconfigured-resource-quota'
-    - fault.custom.targets.namespaces is defined
-    - fault.custom.targets.namespaces | length > 0
+    - fault.custom.misconfigured_resource_quota is defined
 
 - name: Import misconfigured service port removal tasks
   ansible.builtin.import_tasks:
     file: remove_custom_misconfigured_service_port.yaml
   vars:
-    targets: "{{ fault.custom.targets.services }}"
+    spec: "{{ fault.custom.misconfigured_service_port }}"
   when:
     - fault.custom.name == 'misconfigured-service-port'
-    - fault.custom.targets.services is defined
-    - fault.custom.targets.services | length > 0
+    - fault.custom.misconfigured_service_port is defined
+
+- name: Import modify environment variables removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_custom_modify_environment_variables.yaml
+  vars:
+    spec: "{{ fault.custom.modify_environment_variables }}"
+  when:
+    - fault.custom.name == 'modify-environment-variables'
+    - fault.custom.modify_environment_variables is defined
 
 - name: Import unsupported image removal tasks
   ansible.builtin.import_tasks:
     file: remove_custom_unsupported_image.yaml
   vars:
-    targets: "{{ fault.custom.targets.workload_managers }}"
+    spec: "{{ fault.custom.unsupported_image }}"
   when:
     - fault.custom.name == 'unsupported-image'
-    - fault.custom.targets.workload_managers is defined
-    - fault.custom.targets.workload_managers | length > 0
+    - fault.custom.unsupported_image is defined

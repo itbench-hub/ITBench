@@ -3,9 +3,13 @@
   ansible.builtin.include_vars:
     file: ../applications/defaults/main/helm_releases.yaml
 
+- name: Create incident file path variable
+  ansible.builtin.set_fact:
+    incidents_file_path: files/specs/incident_{{ incidents_file.id }}.yaml
+
 - name: Load incident spec from file
   ansible.builtin.set_fact:
-    incident_spec: "{{ lookup('ansible.builtin.template', 'files/specs/incident_{{ incidents_file.id }}.yaml') | from_yaml }}"
+    incident_spec: "{{ lookup('ansible.builtin.template', incidents_file_path) | from_yaml }}"
 
 - name: Extract environment configuration from spec
   ansible.builtin.set_fact:

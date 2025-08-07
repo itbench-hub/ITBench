@@ -1,0 +1,36 @@
+---
+- name: Retrieve workload replica information
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: "{{ faults_workload.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ faults_workload.name }}"
+    namespace: "{{ faults_workload.namespace }}"
+  register: faults_workload_info
+
+- name: Scale down workloads to 0 replicas
+  kubernetes.core.k8s_scale:
+    api_version: "{{ faults_workload_info.resources[0].apiVersion }}"
+    kind: "{{ faults_workload_info.resources[0].kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ faults_workload_info.resources[0].metadata.name }}"
+    namespace: "{{ faults_workload_info.resources[0].metadata.namespace }}"
+    replicas: 0
+    wait: true
+    wait_timeout: 60
+  when:
+    - faults_workload_info is defined
+    - faults_workload_info.resources | length == 1
+
+- name: Scale up workload to original replica count
+  kubernetes.core.k8s_scale:
+    api_version: "{{ faults_workload_info.resources[0].apiVersion }}"
+    kind: "{{ faults_workload_info.resources[0].kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ faults_workload_info.resources[0].metadata.name }}"
+    namespace: "{{ faults_workload_info.resources[0].metadata.namespace }}"
+    replicas: "{{ faults_workload_info.resources[0].spec.replicas }}"
+    wait: false
+  when:
+    - faults_workload_info is defined
+    - faults_workload_info.resources | length == 1

@@ -6,8 +6,8 @@
       apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        name: it-bench-invalid
-        namespace: "{{ namespace }}"
+        name: "{{ spec.workload.name }}-invalid"
+        namespace: "{{ spec.workload.namespace }}"
       spec:
         accessModes:
           - ReadWriteOnce
@@ -16,22 +16,21 @@
             storage: 25Mi
         storageClassName: invalid-class-name
     state: present
-  loop: "{{ (targets | default([])) | community.general.json_query('[*].namespace') | unique }}"
-  loop_control:
-    loop_var: namespace
+
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_faults_workload_container_index.yaml
+  vars:
+    faults_workload: "{{ spec.workload }}"
 
 - name: Inject fault (misconfigured persistent volume claim)
   kubernetes.core.k8s_json_patch:
     api_version: apps/v1
-    kind: "{{ manager.kind }}"
+    kind: "{{ spec.workload.kind }}"
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    name: "{{ manager.name }}"
-    namespace: "{{ manager.namespace }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
     patch:
       - op: add
-        path: /spec/containers/0/volumes
-        value: "{'persistentVolumeClaim': {'claimName': 'it-bench-invalid'}, 'name': 'invalid-volume'}"
-  loop: "{{ targets }}"
-  loop_control:
-    label: "{{ manager.kind }}/{{ manager.name }}"
-    loop_var: manager
+        path: /spec/containers/{{ faults_workload_container_index }}/volumes
+        value: { "persistentVolumeClaim": { "claimName": "{{ spec.workload.name }}-invalid" }, "name": "invalid-volume" }

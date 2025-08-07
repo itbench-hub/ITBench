@@ -1,0 +1,117 @@
+---
+fault:
+  - entity:
+      name: valkey-pod-1
+      group_id: valkey-pod-1
+      kind: Pod
+    condition: Password authentication enabled on valkey-cart service without updating cart service configuration
+    category: Configuration
+    fault_mechanism: custom
+alerts:
+  - id: RequestLatency
+    group_id: cart-service-1
+    metadata:
+      description: Latency in service cart in namespace otel-demo is above 1500ms
+  - id: RequestErrorRate
+    group_id: cart-service-1
+    metadata:
+      description: Request error rate in service cart in namespace otel-demo is above 0
+  - id: RequestErrorRate
+    group_id: checkout-service-1
+    metadata:
+      description: Request error rate in service checkout in namespace otel-demo is above 0
+  - id: RequestErrorRate
+    group_id: frontend-service-1
+    metadata:
+      description: Request error rate in service frontend in namespace otel-demo is above 0
+  - id: RequestErrorRate
+    group_id: frontend-proxy-service-1
+    metadata:
+      description: Request error rate in service frontend-proxy in namespace otel-demo is above 0
+groups:
+  - id: valkey-pod-1
+    kind: Pod
+    filter:
+      - valkey-cart-.*
+    namespace: otel-demo
+    root_cause: true
+  - id: valkey-service-1
+    kind: Service
+    filter:
+      - valkey-cart\b
+    namespace: otel-demo
+  - id: cart-service-1
+    kind: Service
+    filter:
+      - cart\b
+    namespace: otel-demo
+  - id: cart-pod-1
+    kind: Pod
+    filter:
+      - cart-.*
+    namespace: otel-demo
+  - id: checkout-service-1
+    kind: Service
+    filter:
+      - checkout\b
+    namespace: otel-demo
+  - id: checkout-pod-1
+    kind: Pod
+    filter:
+      - checkout-.*
+    namespace: otel-demo
+  - id: frontend-service-1
+    kind: Service
+    filter:
+      - frontend\b
+    namespace: otel-demo
+  - id: frontend-pod-1
+    kind: Pod
+    filter:
+      - frontend-.*
+    namespace: otel-demo
+  - id: frontend-proxy-service-1
+    kind: Service
+    filter:
+      - frontend-proxy\b
+    namespace: otel-demo
+  - id: frontend-proxy-pod-1
+    kind: Pod
+    filter:
+      - frontend-proxy-.*
+    namespace: otel-demo
+aliases:
+  - - valkey-service-1
+    - valkey-pod-1
+  - - cart-service-1
+    - cart-pod-1
+  - - checkout-service-1
+    - checkout-pod-1
+  - - frontend-service-1
+    - frontend-pod-1
+  - - frontend-proxy-service-1
+    - frontend-proxy-pod-1
+propagations:
+  - source: valkey-pod-1
+    target: cart-service-1
+    condition: Cart service cannot authenticate to valkey-cart due to password mismatch
+    effect: Cart service experiences high latency and errors when accessing cart data
+  - source: cart-service-1
+    target: checkout-service-1
+    condition: Checkout service receives errors when trying to retrieve cart information
+    effect: Checkout service experiences errors during cart operations
+  - source: checkout-service-1
+    target: frontend-service-1
+    condition: Frontend receives errors from checkout service due to cart failures
+    effect: Frontend service experiences errors during cart and checkout operations
+  - source: frontend-service-1
+    target: frontend-proxy-service-1
+    condition: Frontend-proxy receives errors from frontend service due to cart/checkout failures
+    effect: Frontend-proxy service experiences errors when proxying requests
+recommended_actions:
+  - solution:
+      id: fix_cart_authentication
+      actions:
+        - Update cart service configuration with correct valkey-cart password
+        - Restart cart service pods to apply new authentication settings
+        - Verify cart service can successfully connect to valkey-cart

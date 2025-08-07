@@ -6,13 +6,10 @@
       apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        name: it-bench-invalid
-        namespace: "{{ namespace }}"
+        name: "{{ spec.workload.name }}-invalid"
+        namespace: "{{ spec.workload.namepace }}"
     state: absent
-  loop: "{{ (targets | default([])) | community.general.json_query('[*].namespace') | unique }}"
-  loop_control:
-    loop_var: namespace
 
-- name: Print help message
+- name: Display fault removal instructions
   ansible.builtin.debug:
-    msg: To finish removing this fault, please uninstall and reinstall the application it was injected into.
+    msg: To remove this fault, please uninstall and reinstall the application it was injected into.

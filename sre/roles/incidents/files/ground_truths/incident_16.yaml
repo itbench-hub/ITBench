@@ -1,0 +1,46 @@
+---
+fault:
+  - entity:
+      name: shipping-deployment-1
+      group_id: shipping-deployment-1
+      kind: Deployment
+    condition: QUOTE_ADDR environment variable set to incorrect port 0000
+    category: Change
+    fault_mechanism: custom
+alerts:
+  - id: RequestLatency
+    group_id: shipping-service-1
+    metadata:
+      description: Latency in service shipping in namespace otel-demo is above 1500ms
+groups:
+  - id: shipping-deployment-1
+    kind: Deployment
+    filter:
+      - shipping\b
+    namespace: otel-demo
+    root_cause: true
+  - id: shipping-service-1
+    kind: Service
+    filter:
+      - shipping\b
+    namespace: otel-demo
+  - id: shipping-pod-1
+    kind: Pod
+    filter:
+      - shipping-.*
+    namespace: otel-demo
+aliases:
+  - - shipping-service-1
+    - shipping-pod-1
+    - shipping-deployment-1
+propagations:
+  - source: shipping-deployment-1
+    target: shipping-service-1
+    condition: Shipping service cannot connect to quote service due to incorrect QUOTE_ADDR port configuration
+    effect: Shipping service experiences high latency while attempting to connect to invalid port
+recommended_actions:
+  - solution:
+      id: fix_quote_port_configuration
+      actions:
+        - Identify correct port for quote service
+        - Update QUOTE_ADDR environment variable in shipping deployment

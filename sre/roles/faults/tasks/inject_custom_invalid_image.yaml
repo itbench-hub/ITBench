@@ -1,0 +1,26 @@
+---
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_faults_workload_container_index.yaml
+  vars:
+    faults_workload: "{{ spec.workload }}"
+
+- name: Inject fault (invalid image)
+  kubernetes.core.k8s_json_patch:
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+    patch:
+      - op: replace
+        path: /spec/template/spec/containers/{{ faults_workload_container_index }}/image
+        value: quay.io/it-bench/hello-bench-invalid:1.0.0
+
+- name: Import workload restart tasks
+  ansible.builtin.import_tasks:
+    file: force_workload_restart.yaml
+  when:
+    - (spec.workload.restart_policy | default('force')) == 'force'
+  vars:
+    faults_workload: "{{ spec.workload }}"

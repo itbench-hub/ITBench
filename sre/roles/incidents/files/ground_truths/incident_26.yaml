@@ -3,72 +3,62 @@ fault:
   - entity:
       name: tamper-body-otel-demo-emailservice-1
       group_id: tamper-body-otel-demo-emailservice-1
-      kind: Service
-    condition: "To Be Specified"
-    category: "Change"
+      kind: HttpChaos
+    condition: HTTP Chaos fault tampering POST request body to email service with corrupted JSON payload
+    category: Chaos
     fault_mechanism: chaos
 alerts:
   - id: RequestErrorRate
-    group_id: checkout-service-1
-    metadata:
-      description: Error rate is above threshold for checkout service
-  - id: RequestErrorRate
     group_id: email-service-1
     metadata:
-      description: Error rate is above threshold for email service
+      description: Request error rate in service email in namespace otel-demo is above 0
+  - id: RequestErrorRate
+    group_id: checkout-service-1
+    metadata:
+      description: Request error rate in service checkout in namespace otel-demo is above 0
 groups:
   - id: tamper-body-otel-demo-emailservice-1
     kind: HttpChaos
     filter:
-      - .*emailservice
+      - otel-demo-email-http-chaos-post-body-tamper
     namespace: chaos-mesh
     root_cause: true
-  - id: send_order_confirmation-endpoint-1
-    kind: ServiceOperation
-    filter:
-      - emailservice-.*_send_order_confirmation
-    namespace: otel-demo
   - id: email-service-1
     kind: Service
     filter:
       - email\b
     namespace: otel-demo
-  - id: checkout-pod-1
+  - id: email-pod-1
     kind: Pod
-    namespace: otel-demo
     filter:
-      - checkout-.*
+      - email-.*
+    namespace: otel-demo
   - id: checkout-service-1
     kind: Service
     filter:
       - checkout\b
     namespace: otel-demo
-  - id: email-pod-1
+  - id: checkout-pod-1
     kind: Pod
-    namespace: otel-demo
     filter:
-      - email-.*
+      - checkout-.*
+    namespace: otel-demo
 aliases:
   - - email-service-1
     - email-pod-1
-    - send_order_confirmation-endpoint-1
-  - - checkout-pod-1
-    - checkout-service-1
+  - - checkout-service-1
+    - checkout-pod-1
 propagations:
   - source: tamper-body-otel-demo-emailservice-1
-    target: send_order_confirmation-endpoint-1
-    condition: tamper-body-otel-demo-emailservice httpchaos tamper body of /api/send_order_confirmation emailservice set http-request-failure on emailservice
-    effect: send_order_confirmation endpoint payload of /api/send_order_confirmation POST request is corrupted
-  - source: send_order_confirmation-endpoint-1
     target: email-service-1
-    condition: send_order_confirmation endpoint payload of /api/send_order_confirmation POST request is corrupted
-    effect: email service Error Rate is Above Threshold
+    condition: HTTP Chaos tampers POST request bodies with invalid JSON payload
+    effect: Email service receives corrupted requests and fails to process them
   - source: email-service-1
     target: checkout-service-1
-    condition: send_order_confirmation endpoint payload of /api/send_order_confirmation POST request is corrupted
-    effect: checkoutservice Error Rate is Above Threshold
+    condition: Email service returns errors due to corrupted request payload
+    effect: Checkout service experiences errors when sending order confirmation emails
 recommended_actions:
   - solution:
-      id: Delete_the_resource_httpchaos_tamper-body-otel-demo-26-emailservice
+      id: remove_chaos_experiment
       actions:
-        - Delete the resource httpchaos tamper-body-otel-demo-26-emailservice
+        - Delete the HTTP Chaos resource tampering email service requests

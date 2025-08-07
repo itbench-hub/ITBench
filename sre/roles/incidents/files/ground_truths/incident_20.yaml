@@ -1,0 +1,95 @@
+---
+fault:
+  - entity:
+      name: productcatalog-pod-1
+      group_id: checkout-pod-1
+      kind: Pod
+    condition: "To Be Specified"
+    category: "Change"
+    fault_mechanism: custom
+alerts:
+  - id: RequestErrorRate
+    group_id: frontend-service-1
+    metadata:
+      description: Error Rate is Above Threshold
+  - id: RequestErrorRate
+    group_id: recommendation-service-1
+    metadata:
+      description: Error Rate is Above Threshold
+groups:
+  - id: productcatalog-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - product-catalog-.*
+    root_cause: true
+  - id: checkout-service-1
+    kind: Service
+    filter:
+      - checkout\b
+    namespace: otel-demo
+  - id: recommendation-service-1
+    filter:
+      - recommendation\b
+    kind: Service
+    namespace: otel-demo
+  - id: frontend-service-1
+    kind: Service
+    filter:
+      - frontend\b
+    namespace: otel-demo
+  - id: productcatalog-service-1
+    kind: Service
+    filter:
+      - product-catalog\b
+    namespace: otel-demo
+  - id: frontend-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - frontend-.*
+  - id: checkout-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - checkout-.*
+  - id: recommendation-pod-1
+    kind: Pod
+    filter:
+      - recommendation-.*
+    namespace: otel-demo
+aliases:
+  - - productcatalog-service-1
+    - productcatalog-pod-1
+  - - frontend-service-1
+    - frontend-pod-1
+  - - checkout-service-1
+    - checkout-pod-1
+  - - recommendation-service-1
+    - recommendation-pod-1
+propagations:
+  - source: productcatalog-pod-1
+    target: frontend-service-1
+    condition: productcatalog pod is in ImagePullBackOff error
+    effect: frontend service Error Rate is Above Threshold
+  - source: productcatalog-pod-1
+    target: checkout-service-1
+    condition: productcatalog pod is in ImagePullBackOff error
+    effect: checkout service Error Rate is Above Threshold
+  - source: checkout-service-1
+    target: frontend-service-1
+    condition: checkout service Error Rate is Above Threshold
+    effect: frontend service Error Rate is Above Threshold
+  - source: productcatalog-pod-1
+    target: recommendation-service-1
+    condition: productcatalog pod is in ImagePullBackOff error
+    effect: recommendation service Error Rate is Above Threshold
+  - source: recommendation-service-1
+    target: frontend-service-1
+    condition: recommendation service Error Rate is Above Threshold
+    effect: frontend service Error Rate is Above Threshold
+recommended_actions:
+  - solution:
+      id: change_the_image_field_in_productcatalogueservice_deployment_pointing_to_the_correct_image
+      actions:
+        - change the image field in productcatalogueservice deployment pointing to the correct image
