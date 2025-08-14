@@ -282,10 +282,10 @@ class CommentCommand:
         table = []
 
         table.append(
-            "| Passed | Error | Trials | Diagnosis - NTAM Fault Localization | Diagnosis - NTAM Fault Propagation | Diagnosis - Time to Diagnosis | Diagnosis - Duration agent tried for Diagnosis | Repair - Time to Repair | % Resolved | Date |"
+            "| Passed | Error | Trials | Date |"
         )
         table.append(
-            "|--------|-------|--------|-------------------------------------|-----------------------------------|------------------------------|-----------------------------------------------|------------------------|------------|------|"
+            "|--------|-------|--------|------|"
         )
 
         for result in results:
@@ -303,12 +303,14 @@ class CommentCommand:
 
                 trials = message_data.get("trials", "N/A")
 
+                # Extract diagnosis data (commented out from table but kept for potential future use)
                 diagnosis = message_data.get("diagnosis", {})
                 ntam_fault_localization = diagnosis.get("ntam_fault_localization", {}).get("mean", "N/A")
                 ntam_fault_propagation = diagnosis.get("ntam_fault_propagation", {}).get("mean", "N/A")
                 time_to_diagnosis = diagnosis.get("time_to_diagnosis", {}).get("mean", "N/A")
                 duration_agent_tried = diagnosis.get("duration_agent_tried_for_diagnosis", {}).get("mean", "N/A")
 
+                # Extract repair data (commented out from table but kept for potential future use)
                 repair = message_data.get("repair", {})
                 time_to_repair = repair.get("time_to_repair", {}).get("mean", "N/A")
                 percent_resolved = repair.get("percent_resolved", "N/A")
@@ -324,29 +326,30 @@ class CommentCommand:
                         return str(value)
 
                 trials_str = str(trials) if trials != "N/A" else "N/A"
-                ntam_fault_localization_str = format_value(ntam_fault_localization)
-                ntam_fault_propagation_str = format_value(ntam_fault_propagation)
-                time_to_diagnosis_str = format_value(time_to_diagnosis)
-                duration_agent_tried_str = format_value(duration_agent_tried)
-                time_to_repair_str = format_value(time_to_repair)
-                percent_resolved_str = format_value(percent_resolved)
+                # Format diagnostic and repair values (commented out from table but kept for potential future use)
+                # ntam_fault_localization_str = format_value(ntam_fault_localization)
+                # ntam_fault_propagation_str = format_value(ntam_fault_propagation)
+                # time_to_diagnosis_str = format_value(time_to_diagnosis)
+                # duration_agent_tried_str = format_value(duration_agent_tried)
+                # time_to_repair_str = format_value(time_to_repair)
+                # percent_resolved_str = format_value(percent_resolved)
 
             except (json.JSONDecodeError, KeyError, TypeError) as e:
                 # If JSON parsing fails or data is missing, use N/A for all fields
                 trials_str = "N/A"
-                ntam_fault_localization_str = "N/A"
-                ntam_fault_propagation_str = "N/A"
-                time_to_diagnosis_str = "N/A"
-                duration_agent_tried_str = "N/A"
-                time_to_repair_str = "N/A"
-                percent_resolved_str = "N/A"
+                # Commented out diagnostic and repair fields (kept for potential future use)
+                # ntam_fault_localization_str = "N/A"
+                # ntam_fault_propagation_str = "N/A"
+                # time_to_diagnosis_str = "N/A"
+                # duration_agent_tried_str = "N/A"
+                # time_to_repair_str = "N/A"
+                # percent_resolved_str = "N/A"
 
             table.append(
-                f"| {passed} | {errored} | {trials_str} | {ntam_fault_localization_str} | {ntam_fault_propagation_str} | {time_to_diagnosis_str} | {duration_agent_tried_str} | {time_to_repair_str} | {percent_resolved_str} | {date} |"
+                f"| {passed} | {errored} | {trials_str} | {date} |"
             )
 
         return "\n".join(table)
-
 
 def main():
     parser = argparse.ArgumentParser()
