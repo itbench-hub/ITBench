@@ -276,15 +276,16 @@ class CommentCommand:
 
         return "\n".join(table)
 
+
     def to_table_sre(self, benchmark_status: BenchmarkStatus):
         results = benchmark_status.results
         table = []
 
         table.append(
-            "| Scenario Name | Description | Passed | Error | Trials | Diagnosis - NTAM Fault Localization | Diagnosis - NTAM Fault Propagation | Diagnosis - Time to Diagnosis | Diagnosis - Duration agent tried for Diagnosis | Repair - Time to Repair | % Resolved | Date |"
+            "| Passed | Error | Trials | Diagnosis - NTAM Fault Localization | Diagnosis - NTAM Fault Propagation | Diagnosis - Time to Diagnosis | Diagnosis - Duration agent tried for Diagnosis | Repair - Time to Repair | % Resolved | Date |"
         )
         table.append(
-            "|---------------|-------------|--------|-------|--------|-------------------------------------|-----------------------------------|------------------------------|-----------------------------------------------|------------------------|------------|------|"
+            "|--------|-------|--------|-------------------------------------|-----------------------------------|------------------------------|-----------------------------------------------|------------------------|------------|------|"
         )
 
         for result in results:
@@ -341,7 +342,7 @@ class CommentCommand:
                 percent_resolved_str = "N/A"
 
             table.append(
-                f"| {name} | {description} | {passed} | {errored} | {trials_str} | {ntam_fault_localization_str} | {ntam_fault_propagation_str} | {time_to_diagnosis_str} | {duration_agent_tried_str} | {time_to_repair_str} | {percent_resolved_str} | {date} |"
+                f"| {passed} | {errored} | {trials_str} | {ntam_fault_localization_str} | {ntam_fault_propagation_str} | {time_to_diagnosis_str} | {duration_agent_tried_str} | {time_to_repair_str} | {percent_resolved_str} | {date} |"
             )
 
         return "\n".join(table)
