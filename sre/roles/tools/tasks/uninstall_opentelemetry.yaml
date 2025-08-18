@@ -7,7 +7,7 @@
     release_state: absent
     wait: true
   when:
-    - tools_enabled.opentelemetry
+    - tools_required.opentelemetry
 
 - name: Retrieve all collector instances in the release namespace
   kubernetes.core.k8s_info:
@@ -17,7 +17,7 @@
     namespace: "{{ helm_releases.collectors.namespace }}"
   register: opentelemetry_collector_info
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
 
 - name: Delete all collector instances in the release namespace
   kubernetes.core.k8s:
@@ -29,7 +29,7 @@
     state: absent
     wait: true
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - opentelemetry_collector_info.resources | length > 0
 
 - name: Uninstall OpenTelemetry Operator
@@ -40,7 +40,7 @@
     release_state: absent
     wait: true
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "kubernetes"
 
 - name: Delete the subscription for RH build of OpenTelemetry Operator
@@ -54,7 +54,7 @@
         namespace: openshift-opentelemetry-operator
     state: absent
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Delete the operator group for RH build of OpenTelemetry Operator
@@ -68,7 +68,7 @@
         namespace: openshift-opentelemetry-operator
     state: absent
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Delete the project for RH build of OpenTelemetry Operator
@@ -81,7 +81,7 @@
         name: openshift-opentelemetry-operator
     state: absent
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Delete the release namespaces

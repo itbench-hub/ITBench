@@ -12,21 +12,9 @@
         system_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
 
-    - name: Import cluster role
-      ansible.builtin.import_role:
-        name: cluster
-      tags:
-        - always
-      vars:
-        cluster_files:
-          kubeconfig: "{{ cluster.kubeconfig }}"
-        cluster_tools_enabled:
-          oc: "{{ system_oc_exists }}"
-
     - name: Import variables for incident
       ansible.builtin.import_role:
         name: incidents
-        tasks_from: load
       tags:
         - always
       vars:
@@ -34,24 +22,17 @@
           id: "{{ incident_id }}"
       when:
         - incident_id is defined
-
-    - name: Create applications_enabled dictionary
-      ansible.builtin.set_fact:
-        applications_enabled:
-          otel_demo: "{{ applications.otel_demo | default(false) }}"
-      tags:
-        - always
-      when:
-        - incident_id is undefined
   tasks:
     - name: Import applications role
       ansible.builtin.import_role:
         name: applications
       vars:
         applications_cluster:
-          cloud_provider: "{{ cluster_provider }}"
           kubeconfig: "{{ cluster.kubeconfig }}"
-          platform: "{{ cluster_platform }}"
+        applications_required:
+          otel_demo:
+            configuration: "{{ incidents_applications.otel_demo.configuration | default({}) }}"
+            enabled: "{{ incidents_applications.otel_demo.enabled | default(applications.otel_demo) }}"
 
     # - name: Import e2e role
     #   ansible.builtin.import_role:

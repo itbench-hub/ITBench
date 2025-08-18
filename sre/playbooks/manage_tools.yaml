@@ -26,7 +26,6 @@
     - name: Import variables for incident
       ansible.builtin.import_role:
         name: incidents
-        tasks_from: load
       tags:
         - always
       vars:
@@ -34,24 +33,6 @@
           id: "{{ incident_id }}"
       when:
         - incident_id is defined
-
-    - name: Create tools_enabled dictionary
-      ansible.builtin.set_fact:
-        tools_enabled:
-          chaos_mesh: "{{ tools.chaos_mesh | default(false) }}"
-          clickhouse: "{{ tools.clickhouse | default(false) }}"
-          ingress: "{{ tools.ingress | default(false) }}"
-          jaeger: "{{ tools.jaeger | default(false) }}"
-          kubernetes_metrics_server: "{{ tools.kubernetes_metrics_server | default(false) }}"
-          kubernetes_topology_monitor: "{{ tools.kubernetes_topology_monitor | default(false) }}"
-          opencost: "{{ tools.opencost | default(false) }}"
-          opensearch: "{{ tools.opensearch | default(false) }}"
-          opentelemetry: "{{ tools.opentelemetry | default(false) }}"
-          prometheus: "{{ tools.prometheus | default(false) }}"
-      tags:
-        - always
-      when:
-        - incident_id is undefined
   tasks:
     # - name: Import e2e role
     #   ansible.builtin.import_role:
@@ -67,9 +48,20 @@
         name: tools
       vars:
         tools_cluster:
-          provider: "{{ cluster_provider }}"
           kubeconfig: "{{ cluster.kubeconfig }}"
+          provider: "{{ cluster_provider }}"
           platform: "{{ cluster_platform }}"
+        tools_required:
+          chaos_mesh: "{{ incidents_tools.chaos_mesh | default(tools.chaos_mesh) }}"
+          clickhouse: "{{ incidents_tools.clickhouse | default(tools.clickhouse) }}"
+          ingress: "{{ incidents_tools.ingress | default(tools.ingress) }}"
+          jaeger: "{{ incidents_tools.jaeger | default(tools.jaeger) }}"
+          kubernetes_metrics_server: "{{ incidents_tools.kubernetes_metrics_server | default(tools.kubernetes_metrics_server) }}"
+          kubernetes_topology_monitor: "{{ incidents_tools.kubernetes_topology_monitor | default(tools.kubernetes_topology_monitor) }}"
+          opencost: "{{ incidents_tools.opencost | default(tools.opencost) }}"
+          opensearch: "{{ incidents_tools.opensearch | default(tools.opensearch) }}"
+          opentelemetry: "{{ incidents_tools.opentelemetry | default(tools.opentelemetry) }}"
+          prometheus: "{{ incidents_tools.prometheus | default(tools.prometheus) }}"
 
     # - name: Import e2e role
     #   ansible.builtin.import_role:

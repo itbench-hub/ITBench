@@ -1,8 +1,34 @@
 ---
-- name: Import faults role
-  ansible.builtin.import_role:
-    name: faults
-  vars:
-    faults_cluster:
-      kubeconfig: "{{ incidents_cluster.kubeconfig }}"
-    faults_specs: "{{ incidents_spec.spec.faults }}"
+- name: Include Helm Release variables from applications role
+  ansible.builtin.include_vars:
+    file: ../applications/defaults/main/helm_releases.yaml
+
+- name: Create incident file path variable
+  ansible.builtin.set_fact:
+    incidents_file_path: files/specs/incident_{{ incidents_file.id }}.yaml
+
+- name: Load incident spec from file
+  ansible.builtin.set_fact:
+    incidents_spec: "{{ lookup('ansible.builtin.template', incidents_file_path) | from_yaml }}"
+
+- name: Import validation tasks
+  ansible.builtin.import_tasks:
+    file: verify.yaml
+
+- name: Create variables for Ansible role usage
+  ansible.builtin.set_fact:
+    incidents_applications:
+      otel_demo:
+        configuration: "{{ incidents_spec.spec.environment.applications.otel_demo.configuration | default({}) }}"
+        enabled: "{{ incidents_spec.spec.environment.applications.otel_demo.enabled }}"
+    incidents_tools:
+      chaos_mesh: "{{ 'chaos-mesh' in incidents_spec.spec.environment.tools.selected }}"
+      clickhouse: "{{ 'clickhouse' in incidents_spec.spec.environment.tools.selected or true }}"
+      ingress: "{{ 'ingress' in incidents_spec.spec.environment.tools.selected or true }}"
+      jaeger: "{{ 'jaeger' in incidents_spec.spec.environment.tools.selected or true }}"
+      kubernetes_metrics_server: "{{ 'kubernetes-metrics-server' in incidents_spec.spec.environment.tools.selected }}"
+      kubernetes_topology_monitor: "{{ 'kubernetes-topology-monitor' in incidents_spec.spec.environment.tools.selected }}"
+      opencost: "{{ 'opencost' in incidents_spec.spec.environment.tools.selected or incidents_spec.spec.environment.tools.category == 'finops' }}"
+      opensearch: "{{ 'opensearch' in incidents_spec.spec.environment.tools.selected }}"
+      opentelemetry: "{{ 'opentelemetry' in incidents_spec.spec.environment.tools.selected or true }}"
+      prometheus: "{{ 'prometheus' in incidents_spec.spec.environment.tools.selected or true }}"

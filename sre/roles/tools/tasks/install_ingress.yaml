@@ -38,9 +38,9 @@
         service:
           type: "{{ 'NodePort' if (tools_cluster.provider == 'kind') else 'LoadBalancer' }}"
         metrics:
-          enabled: "{{ tools_enabled.prometheus }}"
+          enabled: "{{ tools_required.prometheus }}"
           serviceMonitor:
-            enabled: "{{ tools_enabled.prometheus }}"
+            enabled: "{{ tools_required.prometheus }}"
     wait: true
   when:
     - tools_cluster.platform == "kubernetes"
@@ -66,7 +66,7 @@
                     service: "{{ item.service }}"
     state: present
   loop:
-    - enabled: "{{ tools_enabled.clickhouse }}"
+    - enabled: "{{ tools_required.clickhouse }}"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /$2
       name: "{{ tools_helm_releases.clickhouse.name }}"
@@ -76,7 +76,7 @@
         name: "{{ tools_helm_releases.clickhouse.name }}-clickhouse"
         port:
           number: 8123
-    - enabled: "{{ tools_enabled.jaeger }}"
+    - enabled: "{{ tools_required.jaeger }}"
       annotations: {}
       name: jaeger
       namespace: "{{ tools_helm_releases.opentelemetry_collectors.namespace }}"
@@ -85,7 +85,7 @@
         name: jaeger-collector
         port:
           number: 16686
-    - enabled: "{{ tools_enabled.opencost }}"
+    - enabled: "{{ tools_required.opencost }}"
       annotations: {}
       name: "{{ tools_helm_releases.opencost.name }}"
       namespace: "{{ tools_helm_releases.opencost.namespace }}"
@@ -94,7 +94,7 @@
         name: opencost
         port:
           number: 9090
-    - enabled: "{{ tools_enabled.prometheus }}"
+    - enabled: "{{ tools_required.prometheus }}"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /$2
       name: "{{ tools_helm_releases.prometheus.name }}"
@@ -130,17 +130,17 @@
           name: "{{ item.service }}"
     state: present
   loop:
-    - enabled: "{{ tools_enabled.clickhouse }}"
+    - enabled: "{{ tools_required.clickhouse }}"
       name: "{{ tools_helm_releases.clickhouse.name }}"
       namespace: "{{ tools_helm_releases.clickhouse.namespace }}"
       port: 8123
       service: "{{ tools_helm_releases.clickhouse.name }}-clickhouse"
-    - enabled: "{{ tools_enabled.jaeger }}"
+    - enabled: "{{ tools_required.jaeger }}"
       name: jaeger
       namespace: "{{ tools_helm_releases.opentelemetry_collectors.namespace }}"
       port: 16686
       service: jaeger-collector
-    - enabled: "{{ tools_enabled.opencost }}"
+    - enabled: "{{ tools_required.opencost }}"
       name: "{{ tools_helm_releases.opencost.name }}"
       namespace: "{{ tools_helm_releases.opencost.namespace }}"
       port: 9090

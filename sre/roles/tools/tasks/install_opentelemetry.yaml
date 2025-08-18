@@ -15,13 +15,13 @@
   ansible.builtin.import_tasks:
     file: set_clickhouse_credentials.yaml
   when:
-    - tools_enabled.opentelemetry
+    - tools_required.opentelemetry
 
 - name: Import variable setting task
   ansible.builtin.import_tasks:
     file: set_clickhouse_endpoint.yaml
   when:
-    - tools_enabled.opentelemetry
+    - tools_required.opentelemetry
 
 - name: Install OpenTelemetry Collector for Kubernetes Events
   kubernetes.core.helm:
@@ -54,9 +54,9 @@
         zipkin:
           enabled: false
         metrics:
-          enabled: "{{ tools_enabled.prometheus }}"
+          enabled: "{{ tools_required.prometheus }}"
       serviceMonitor:
-        enabled: "{{ tools_enabled.prometheus }}"
+        enabled: "{{ tools_required.prometheus }}"
       config:
         exporters:
           clickhouse:
@@ -72,7 +72,7 @@
                 - clickhouse
     wait: true
   when:
-    - tools_enabled.opentelemetry
+    - tools_required.opentelemetry
 
 - name: Create the release namespace for OpenTelemetry Operator
   kubernetes.core.k8s:
@@ -90,7 +90,7 @@
           it-bench/monitoring: "true"
     state: present
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "kubernetes"
 
 - name: Create the project for RH build of OpenTelemetry Operator
@@ -106,7 +106,7 @@
           openshift.io/cluster-monitoring: "true"
     state: present
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Create the operator group for RH build of OpenTelemetry Operator
@@ -122,7 +122,7 @@
         upgradeStrategy: Default
     state: present
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Create the subscription for RH build of OpenTelemetry Operator
@@ -142,7 +142,7 @@
         sourceNamespace: openshift-marketplace
     state: present
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Install OpenTelemetry Operator
@@ -160,7 +160,7 @@
         podAnnotations:
           openshift.io/required-scc: restricted-v2
         serviceMonitor:
-          enabled: "{{ tools_enabled.prometheus }}"
+          enabled: "{{ tools_required.prometheus }}"
       admissionWebhooks:
         certManager:
           enabled: false
@@ -168,7 +168,7 @@
           enabled: true
     wait: true
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "kubernetes"
 
 - name: Wait for RH build of OpenTelemetry Operator
@@ -184,7 +184,7 @@
   retries: 10
   delay: 30
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Wait for OpenTelemetry CRD to be installed
@@ -195,7 +195,7 @@
     name: opentelemetrycollectors.opentelemetry.io
     wait: true
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Install Jaeger
@@ -254,7 +254,7 @@
               trace_storage: traces_store
     state: present
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
 
 - name: Wait for Jaeger deployment to complete
   kubernetes.core.k8s_info:
@@ -271,4 +271,4 @@
   retries: 10
   delay: 30
   when:
-    - tools_enabled.jaeger
+    - tools_required.jaeger
