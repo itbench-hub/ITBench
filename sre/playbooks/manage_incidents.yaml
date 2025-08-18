@@ -34,7 +34,6 @@
     - name: Import variables for incident
       ansible.builtin.import_role:
         name: incidents
-        tasks_from: load
       tags:
         - always
       vars:
@@ -58,14 +57,13 @@
     #   when:
     #     - incident.runner != 'local'
 
-    - name: Import incidents role
+    - name: Import faults role
       ansible.builtin.import_role:
-        name: incidents
+        name: faults
       vars:
-        incidents_cluster:
+        faults_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
-          platform: "{{ cluster_platform }}"
-        incidents_spec: "{{ incident_spec }}"
+        faults_specs: "{{ incidents_spec.spec.faults }}"
 
     # - name: Import e2e role
     #   ansible.builtin.import_role:

@@ -5,7 +5,7 @@
   vars:
     helm_release: "{{ tools_helm_releases.prometheus }}"
   when:
-    - tools_enabled.prometheus or tools_enabled.opencost
+    - tools_required.prometheus or tools_required.opencost
 
 - name: Import OpenSearch reinitialization tasks
   ansible.builtin.import_tasks:
@@ -13,7 +13,7 @@
   vars:
     helm_release: "{{ tools_helm_releases.opensearch }}"
   when:
-    - tools_enabled.opensearch or tools_enabled.jaeger
+    - tools_required.opensearch or tools_required.jaeger
 
 - name: Import OpenTelemetry reinitialization tasks
   ansible.builtin.import_tasks:
@@ -25,7 +25,7 @@
     instances:
       jaeger: "{{ tools_instances.jaeger }}"
   when:
-    - tools_enabled.opentelemetry or tools_enabled.jaeger
+    - tools_required.opentelemetry or tools_required.jaeger
 
 - name: Import Chaos Mesh reinitialization tasks
   ansible.builtin.import_tasks:
@@ -33,7 +33,7 @@
   vars:
     helm_release: "{{ tools_helm_releases.chaos_mesh }}"
   when:
-    - tools_enabled.chaos_mesh
+    - tools_required.chaos_mesh
 
 - name: Import Kubernetes Metrics Server reinitialization tasks
   ansible.builtin.import_tasks:
@@ -41,7 +41,7 @@
   vars:
     helm_release: "{{ tools_helm_releases.kubernetes_metrics_server }}"
   when:
-    - tools_enabled.kubernetes_metrics_server
+    - tools_required.kubernetes_metrics_server
     - tools_cluster.platform == "kubernetes"
 
 - name: Import Kubernetes Topology Monitor reinitialization tasks
@@ -50,7 +50,7 @@
   vars:
     helm_release: "{{ tools_helm_releases.kubernetes_topology_monitor }}"
   when:
-    - tools_enabled.kubernetes_topology_monitor
+    - tools_required.kubernetes_topology_monitor
 
 - name: Import Clickhouse reinitialization tasks
   ansible.builtin.import_tasks:
@@ -58,7 +58,7 @@
   vars:
     instance: "{{ tools_instances.clickhouse }}"
   when:
-    - tools_enabled.clickhouse or tools_enabled.opentelemetry
+    - tools_required.clickhouse or tools_required.opentelemetry
 
 - name: Delete events across namespaces
   ansible.builtin.command:
