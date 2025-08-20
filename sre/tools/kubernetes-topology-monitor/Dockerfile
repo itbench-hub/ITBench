@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6-1754584681
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6-1755695350
 
 ENV DATA_DIRECTORY=/app/topology_data
 
