@@ -1,0 +1,86 @@
+name: Update Agent Manifest
+
+on:
+  workflow_dispatch:
+    inputs:
+      benchmark-issue:
+        type: number
+        required: true
+        description: Please input the benchmark issue number
+
+jobs:
+  update_agent_manifest:
+    runs-on: ubuntu-latest
+    environment: onboarding
+    name: Update Agent Manifest
+    steps:
+      - name: Get Agent Repo
+        id: get-agent-repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          BENCHMARK_ISSUE_NUMBER: ${{ github.event.inputs.benchmark-issue }}
+        run: |
+          config_repo_url="$(gh issue view $BENCHMARK_ISSUE_NUMBER --json body -q .body | grep -A2 '### Config Repo' | tail -n1)"
+          echo "Agent Repo: $config_repo_url"
+          github_username="$(gh issue view $BENCHMARK_ISSUE_NUMBER --json author -q .author.login)"
+          echo "GitHub Username: $github_username"
+          agent_repo_owner="$(echo $config_repo_url | awk -F/ '{print $4}')"
+          agent_repo_name="$(echo $config_repo_url | awk -F/ '{print $5}')"
+          echo "Agent Repo Owner: $agent_repo_owner"
+          echo "Agent Repo Name: $agent_repo_name"
+          echo "agent_repo_owner=$agent_repo_owner" >> "$GITHUB_OUTPUT"
+          echo "agent_repo_name=$agent_repo_name" >> "$GITHUB_OUTPUT"
+          echo "github_username=$github_username" >> "$GITHUB_OUTPUT"
+
+      - name: Generate GitHub token on behalf of repo
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.ITBENCH_APP_ID }}
+          private-key: ${{ secrets.ITBENCH_APP_KEY }}
+          owner: ${{ steps.get-agent-repo.outputs.agent_repo_owner}}
+          repositories: ${{ steps.get-agent-repo.outputs.agent_repo_name}}
+
+      - name: Update agent-manifest.json
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+        run: |
+          cleanup() {
+            echo "Cleaning up agent-manifest.json/agent-manifest.raw.json"
+            rm -f agent-manifest.json agent-manifest.raw.json agent-manifest.new.json
+          }
+          trap cleanup EXIT
+          trap cleanup SIGINT
+          trap cleanup SIGTERM
+
+          repo_full_path="repos/${{ steps.get-agent-repo.outputs.agent_repo_owner}}/${{ steps.get-agent-repo.outputs.agent_repo_name}}"
+          gh api $repo_full_path/contents/agent-manifest.json -q '.content' | base64 -d > agent-manifest.json
+          agent_id=$(jq -r .metadata.id agent-manifest.json)
+
+          status_code=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.ITBENCH_API_TOKEN }}" \
+            -H "Content-type: application/json" \
+            "${{vars.ITBENCH_API}}/gitops/agents/$agent_id?github_username=${{ steps.get-agent-repo.outputs.github_username}}" \
+            --output agent-manifest.raw.json \
+            --write-out "%{http_code}")
+
+          if [ "$status_code" -ne 200 ]; then
+            echo "❌ API request failed with status $status_code"
+            exit 1
+          fi
+
+          new_agent_token=$(jq -r '.spec.agent_manifest.token' agent-manifest.raw.json)
+          if [ -z "$new_agent_token" ] || [ "$new_agent_token" = "null" ]; then
+            echo "❌ Failed to extract agent token from response"
+            exit 1
+          fi
+
+          jq --arg new_agent_token "$new_agent_token" -r '.token=$new_agent_token' agent-manifest.json > agent-manifest.new.json
+          current_sha=$(gh api $repo_full_path/contents/agent-manifest.json -q '.sha' || echo "")
+          gh api -X PUT \
+              -H "Accept: application/vnd.github.v3+json" \
+              $repo_full_path/contents/agent-manifest.json \
+              -f message="Update agent-manifest.json via API" \
+              -f content="$(cat agent-manifest.new.json | base64)" \
+              -f sha="$current_sha"
