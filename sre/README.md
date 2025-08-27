@@ -155,3 +155,35 @@ _Note_: For a full list of `make` commands, run the following command:
 ```bash
 make help
 ```
+
+## Frequently Asked Questions (FAQ)
+
+### Images are not downloading from DockerHub
+
+A few of the tools and applications used by the various software in ITBench requires downloading images from DockerHub. However, DockerHub has [rate limits](https://docs.docker.com/docker-hub/usage/) which will prevent an user from pulling from it after the limit has been exhuasted for that IP address until it resets.
+
+One recommended approach for manuevering around this limit is to creating a Personal Access Token (PAT) and then using it as a secret in Kubernetes.
+Steps are as follows:
+1. **Login/Create a Docker Hub account** at https://www.docker.com/get-started/
+2. **Generate a Personal Access Token (PAT)**:
+   - Log into Docker Hub
+   - Go to Account Settings → Security
+   - Click "New Access Token"
+   - Give it a descriptive name
+   - Select appropriate permissions ("Public Repo Read" as we are pulling public images)
+   - Copy the generated token
+3. **Create a Docker Registry Secret in Kubernetes**
+    ```bash
+    kubectl create secret docker-registry dockerhub-secret \
+      --docker-server=https://index.docker.io/v1/ \
+      --docker-username=your-dockerhub-username \
+      --docker-password=your-access-token \
+      --docker-email=your-email@example.com \
+      --namespace=your-namespace
+    ```
+    You will need to repeat the above for the following namespaces:
+    - clickhouse
+    - clickhouse-operator
+    - opensearch
+    - opensearch-collectors
+    - prometheus
