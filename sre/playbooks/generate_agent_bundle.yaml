@@ -1,0 +1,65 @@
+---
+- name: Manage SRE and FinOps Incident Environment Tool Stack
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Validate that storage is configured
+      ansible.builtin.assert:
+        that: "storage.local is defined or storage.s3 is defined"
+        fail_msg: Storage has not been configured. Please assign either local or s3 bucket storage.
+        success_msg: Storage is configured.
+  tasks:
+    - name: Import tools role for variable setting tasks
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: set_ingress_hostname
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Copy restricted kubeconfig into temporary directory from S3 bucket
+      amazon.aws.s3_object:
+        endpoint_url: "{{ storage.s3.endpoint }}"
+        bucket: "{{ storage.s3.bucket }}"
+        object: "/{{ storage.s3.directory }}/kubeconfig"
+        dest: /tmp/kubeconfig
+        mode: get
+      register: bucket_retrieval_result
+      until:
+        - bucket_retrieval_result.contents != ""
+      retries: 3
+      delay: 60
+      when:
+        - storage.s3 is defined
+
+    - name: Copy restricted kubeconfig into temporary directory from local directory
+      ansible.builtin.copy:
+        dest: /tmp/kubeconfig
+        mode: "0644"
+        src: "{{ storage.local.directory }}/kubeconfig"
+      when:
+        - storage.local is defined
+
+    - name: Print agent bundle
+      ansible.builtin.debug:
+        msg: |
+          {{
+            {
+              "prometheus_url": "http://" + ingress_hostname + "/prometheus",
+              "kubeconfig": lookup("ansible.builtin.file", "/tmp/kubeconfig")
+            }
+          }}
+      vars:
+        restricted_kubeconfig_exists: "{{ '/tmp/kubeconfig' is exists }}"
+      when:
+        - ingress_hostname is defined
+        - restricted_kubeconfig_exists
