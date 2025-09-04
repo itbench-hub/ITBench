@@ -1,0 +1,21 @@
+---
+- name: Get Service object for the Ingress controller
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: "{{ tools_helm_releases.ingress.name }}-controller"
+    namespace: "{{ tools_helm_releases.ingress.namespace }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    wait: true
+  register: service_info
+  until:
+    - service_info.resources[0].status.loadBalancer.ingress is defined
+  delay: 15
+  retries: 12
+
+- name: Extract the Ingress hostname information
+  ansible.builtin.set_fact:
+    ingress_hostname: "{{ service_info.resources[0].status.loadBalancer.ingress[0].hostname }}"
+  when:
+    - service_info.resources[0].status.loadBalancer.ingress | length > 0
+    - service_info.resources[0].status.loadBalancer.ingress[0].hostname is defined
