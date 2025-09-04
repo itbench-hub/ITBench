@@ -17,9 +17,11 @@
 
 - name: Create bearer token
   ansible.builtin.command:
-    cmd: oc whoami -t
-  environment:
-    KUBECONFIG: "{{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}"
+    argv:
+      - oc
+      - whoami
+      - -t
+      - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
   register: tools_prometheus_token
   changed_when: false
   when:
