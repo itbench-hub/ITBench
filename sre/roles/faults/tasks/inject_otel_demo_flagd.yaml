@@ -39,8 +39,13 @@
 
 - name: Restart all deployments to enable changes
   ansible.builtin.command:
-    cmd: kubectl -n {{ helm_release.namespace }} rollout restart deployment
-  environment:
-    KUBECONFIG: "{{ faults_cluster.kubeconfig | ansible.builtin.expanduser }}"
+    argv:
+      - kubectl
+      - -n
+      - "{{ helm_release.namespace }}"
+      - rollout
+      - restart
+      - deployment
+      - --kubeconfig={{ faults_cluster.kubeconfig | ansible.builtin.expanduser }}
   register: faults_rollout_restart_output
   changed_when: faults_rollout_restart_output.rc == 0

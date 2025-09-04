@@ -14,9 +14,12 @@
 
 - name: Get kubectl client version
   ansible.builtin.command:
-    cmd: "{{ system_kubectl_path.stdout }} version -o json"
-  environment:
-    KUBECONFIG: "{{ system_cluster.kubeconfig | ansible.builtin.expanduser }}"
+    argv:
+      - "{{ system_kubectl_path.stdout }}"
+      - version
+      - -o
+      - json
+      - --kubeconfig={{ system_cluster.kubeconfig | ansible.builtin.expanduser }}
   register: system_raw_kubectl_version
   changed_when: false
 

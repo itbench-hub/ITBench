@@ -13,9 +13,12 @@
 
 - name: Approve pending certificates
   ansible.builtin.command:
-    cmd: kubectl certificate approve {{ item.metadata.name }}
-  environment:
-    KUBECONFIG: "{{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}"
+    argv:
+      - kubectl
+      - certificate
+      - approve
+      - "{{ item.metadata.name }}"
+      - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
   register: cert_approve_output
   changed_when: cert_approve_output.rc == 0
   loop: "{{ tools_csr_info.resources }}"

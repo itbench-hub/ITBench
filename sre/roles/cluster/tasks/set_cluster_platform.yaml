@@ -15,9 +15,12 @@
 
 - name: Retrieve cluster version information using OpenShift CLI
   ansible.builtin.command:
-    cmd: oc version -o json
-  environment:
-    KUBECONFIG: "{{ cluster_files.kubeconfig | ansible.builtin.expanduser }}"
+    argv:
+      - oc
+      - version
+      - -o
+      - json
+      - --kubeconfig={{ cluster_files.kubeconfig | ansible.builtin.expanduser }}
   register: cluster_raw_oc_version
   changed_when: false
   when:
