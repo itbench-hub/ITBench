@@ -92,6 +92,14 @@ start_incident: create_environment inject_incident_fault ## Starts an incident b
 .PHONY: stop_incident
 stop_incident: remove_incident_fault destroy_environment ## Stops an incident by undeploying a stack, application, and fault for an incident
 
+.PHONY: enable_agent_access
+enable_agent_access: ## Adds access controls for llm agent
+	ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "grant_access"
+
+.PHONY: disable_agent_access
+disable_agent_access: ## Removes access controls for llm agent
+	ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "revoke_access"
+
 .PHONY: deploy_awx_stack
 deploy_awx_stack: ## Deploys AWX to a cluster
 	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "install_tools"

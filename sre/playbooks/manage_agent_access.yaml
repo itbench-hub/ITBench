@@ -1,0 +1,38 @@
+---
+- name: Manage SRE and FinOps Agent Namespace Access
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+  tasks:
+    - name: Include Helm Release variables from tools role
+      ansible.builtin.include_vars:
+        file: ../roles/tools/defaults/main/helm_releases.yaml
+      tags:
+        - always
+
+    - name: Include Helm Release variables from applications role
+      ansible.builtin.include_vars:
+        file: ../roles/applications/defaults/main/helm_releases.yaml
+      tags:
+        - always
+
+    - name: Import agent role
+      ansible.builtin.import_role:
+        name: agent
+      vars:
+        agent_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        agent_namespaces:
+          - name: "{{ applications_helm_releases.otel_demo.namespace }}"
+            access: read-write
+          - name: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+            access: read-write
+        agent_storage: "{{ storage }}"
