@@ -18,6 +18,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  agent-access:
+    name: Agent Access Smoke Tests
+    needs:
+      - chaos-mesh
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.3
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=26 make -C sre create_environment
+      - name: Test access granting
+        run: |
+          make -C sre enable_agent_access
+      - name: Test access revoking
+        run: |
+          make -C sre disable_agent_access
   chaos-mesh:
     name: Chaos Mesh Smoke Tests
     runs-on: ubuntu-24.04

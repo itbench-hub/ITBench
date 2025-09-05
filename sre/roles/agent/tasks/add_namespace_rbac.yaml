@@ -1,0 +1,45 @@
+---
+- name: Create verbs dictionary
+  ansible.builtin.set_fact:
+    agent_access_verbs:
+      read-only:
+        - "get"
+        - "list"
+      read-write:
+        - "*"
+
+- name: Create namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+    src: files/namespace.yaml
+    state: present
+
+- name: Create service account
+  kubernetes.core.k8s:
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+    src: files/serviceaccount.yaml
+    state: present
+
+- name: Create role in existing namespaces
+  kubernetes.core.k8s:
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+    namespace: "{{ ns.name }}"
+    template: templates/role.j2
+    state: present
+  loop: "{{ agent_existing_namespaces }}"
+  loop_control:
+    label: namespace/{{ ns.name }}
+    loop_var: ns
+  vars:
+    verbs: "{{ agent_access_verbs[ns.access] }}"
+
+- name: Create role binding in existing namespaces
+  kubernetes.core.k8s:
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+    namespace: "{{ ns.name }}"
+    src: files/rolebinding.yaml
+    state: present
+  loop: "{{ agent_existing_namespaces }}"
+  loop_control:
+    label: namespace/{{ ns.name }}
+    loop_var: ns
