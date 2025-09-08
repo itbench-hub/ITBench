@@ -1,0 +1,20 @@
+---
+- name: Create leaderboard status content
+  ansible.builtin.set_fact:
+    leaderboard_initial_status:
+      events: []
+    leaderboard_initial_assertion:
+      status:
+        conditions: []
+
+- name: Create assertion file
+  ansible.builtin.copy:
+    content: "{{ leaderboard_initial_assertion | to_nice_json(indent=2) }}"
+    dest: "/tmp/assertion.json"
+    mode: "0644"
+
+- name: Create status file
+  ansible.builtin.copy:
+    content: "{{ leaderboard_initial_status | to_nice_json }}"
+    dest: "/tmp/status.json"
+    mode: "0644"

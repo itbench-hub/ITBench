@@ -119,6 +119,10 @@ launch_stop_workflow: ## Launches the AWX workflow's equivalent of make stop_inc
 generate_agent_bundle: ## Generates a bundle for an LLM Agent to interface with
 	ANSIBLE_STDOUT_CALLBACK=ansible.posix.json ansible-playbook -i inventory.yaml playbooks/generate_agent_bundle.yaml | jq -r '.plays[].tasks[] | select(.task.name == "Print agent bundle") | .hosts.localhost.msg'
 
+.PHONY: generate_leaderboard_bundle
+generate_leaderboard_bundle: ## Generates a bundle for Leaderboard to interface with
+	ansible-playbook -i inventory.yaml playbooks/generate_leaderboard_bundle.yaml
+
 # TODO: See why the OBJC_DISABLE_INITIALIZE_FORK_SAFETY is needed
 
 .PHONY: incident documentation
@@ -175,12 +179,6 @@ evaluation:
 																	domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'" > /tmp/eval.out ; \
 	cat evaluation/e2e_new/incident_reports/$(INCIDENT_NUMBER).json
 	rm evaluation/e2e_new/incident_reports/$(INCIDENT_NUMBER).json
-
-.SILENT: bundle_status
-bundle_status:
-	ansible-playbook base.yaml --tags "bundle_status" --extra-vars "run_uuid=${RUN_UUID} sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} scenario_number=${INCIDENT_NUMBER} run_number=1 bundle_status_file=roles/bundle_status/status-$$INCIDENT_NUMBER.json s3_bucket_name_for_results='sre-runner-with-awx' sre_bench_runner=true domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'" > /tmp/status.out; \
-	cat roles/bundle_status/status-${INCIDENT_NUMBER}.json
-	rm roles/bundle_status/status-${INCIDENT_NUMBER}.json
 
 .PHONY: deploy_observability_stack
 deploy_observability_stack: ## DEPRECATED: Deploys the observability tools to cluster
@@ -289,3 +287,11 @@ bundle_info:
 	@echo "Executing 'make generate_agent_bundle'..."
 	@echo ""
 	$(MAKE) generate_agent_bundle
+
+.SILENT: bundle_status
+bundle_status:
+	@echo "WARNING: 'make bundle_status is deprecated. Please use 'make generate_leaderboard_bundle' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make generate_leaderboard_bundle'..."
+	@echo ""
+	$(MAKE) generate_leaderboard_bundle

@@ -1,0 +1,153 @@
+---
+- name: Import status file creation tasks
+  ansible.builtin.import_tasks:
+    file: create_status.yaml
+  tags:
+    - install_tools
+
+- name: Load assertion file contents
+  ansible.builtin.set_fact:
+    leaderboard_current_assertion: "{{ lookup('ansible.builtin.file', '/tmp/assertion.json') | from_json }}"
+  tags:
+    - always
+  vars:
+    leaderboard_current_assertion_exists: "{{ '/tmp/assertion.json' is exists }}"
+  when:
+    - leaderboard_current_assertion_exists
+
+- name: Load status file contents
+  ansible.builtin.set_fact:
+    leaderboard_current_status: "{{ lookup('ansible.builtin.file', '/tmp/status.json') | from_json }}"
+  tags:
+    - always
+  vars:
+    leaderboard_current_status_exists: "{{ '/tmp/status.json' is exists }}"
+  when:
+    - leaderboard_current_status_exists
+
+- name: Perform update tasks
+  when:
+    - leaderboard_current_assertion is defined
+    - leaderboard_current_status is defined
+  block:
+    - name: Import status file update tasks
+      ansible.builtin.import_tasks:
+        file: update_status_install_tools.yaml
+      tags:
+        - install_tools
+
+    - name: Import status file update tasks
+      ansible.builtin.import_tasks:
+        file: update_status_install_applications.yaml
+      tags:
+        - install_applications
+
+    - name: Import status file update tasks
+      ansible.builtin.import_tasks:
+        file: update_status_inject_faults.yaml
+      tags:
+        - inject_faults
+
+    - name: Import status file update tasks
+      ansible.builtin.import_tasks:
+        file: update_status_remove_faults.yaml
+      tags:
+        - remove_faults
+
+    - name: Import status file update tasks
+      ansible.builtin.import_tasks:
+        file: update_status_install_recorders.yaml
+      tags:
+        - install_recorders
+
+    - name: Import status file update tasks
+      ansible.builtin.import_tasks:
+        file: update_status_uninstall_recorders.yaml
+      tags:
+        - uninstall_recorders
+
+    - name: Import status file update tasks
+      ansible.builtin.import_tasks:
+        file: update_status_uninstall_applications.yaml
+      tags:
+        - uninstall_applications
+
+    - name: Import status file update tasks
+      ansible.builtin.import_tasks:
+        file: update_status_uninstall_tools.yaml
+      tags:
+        - uninstall_tools
+
+    - name: Update assertion file with new condition
+      ansible.builtin.copy:
+        content: |
+          {{
+            leaderboard_current_assertion |
+            combine({'status': {'conditions': leaderboard_status_conditions}}) |
+            to_nice_json(indent=2)
+          }}
+        dest: "/tmp/assertion.json"
+        mode: "0644"
+      tags:
+        - always
+      when:
+        - leaderboard_status.status != 'progressing'
+        - leaderboard_status_conditions is defined
+
+    - name: Update status file with new event
+      ansible.builtin.copy:
+        content: "{{ leaderboard_current_status | combine({'events': leaderboard_status_events}) | to_nice_json }}"
+        dest: "/tmp/status.json"
+        mode: "0644"
+      tags:
+        - always
+      when:
+        - leaderboard_status_events is defined
+  always:
+    - name: Copy assertion file into local directory
+      ansible.builtin.copy:
+        dest: "{{ leaderboard_storage.local.directory }}/assertion.json"
+        mode: "0644"
+        src: /tmp/assertion.json
+      tags:
+        - always
+      when:
+        - leaderboard_storage.local is defined
+        - leaderboard_status_conditions is defined
+
+    - name: Upload assertion file to S3 bucket
+      amazon.aws.s3_object:
+        endpoint_url: "{{ leaderboard_storage.s3.endpoint }}"
+        bucket: "{{ leaderboard_storage.s3.bucket }}"
+        object: "/{{ leaderboard_storage.s3.directory }}/assertion.json"
+        src: /tmp/assertion.json
+        mode: put
+      tags:
+        - always
+      when:
+        - leaderboard_storage.s3 is defined
+        - leaderboard_status_conditions is defined
+
+    - name: Copy status file into local directory
+      ansible.builtin.copy:
+        dest: "{{ leaderboard_storage.local.directory }}/status.json"
+        mode: "0644"
+        src: /tmp/status.json
+      tags:
+        - always
+      when:
+        - leaderboard_storage.local is defined
+        - leaderboard_status_events is defined
+
+    - name: Upload status file to S3 bucket
+      amazon.aws.s3_object:
+        endpoint_url: "{{ leaderboard_storage.s3.endpoint }}"
+        bucket: "{{ leaderboard_storage.s3.bucket }}"
+        object: "/{{ leaderboard_storage.s3.directory }}/status.json"
+        src: /tmp/status.json
+        mode: put
+      tags:
+        - always
+      when:
+        - leaderboard_storage.s3 is defined
+        - leaderboard_status_events is defined
