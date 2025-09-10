@@ -1,0 +1,95 @@
+---
+- name: Create cluster ({{ cluster_name }})
+  ansible.builtin.command:
+    argv:
+      - kops
+      - create
+      - cluster
+      - "{{ cluster_name }}"
+      - --cloud
+      - aws
+      - --zones
+      - "{{ kops_cluster.aws.zones | join(',') }}"
+      - --ssh-public-key
+      - "{{ kops_cluster.ssh.public_key_path }}"
+      - --control-plane-size
+      - "{{ kops_cluster.nodes.control.instance_type }}"
+      - --control-plane-count
+      - "{{ kops_cluster.nodes.control.count }}"
+      - --node-size
+      - "{{ kops_cluster.nodes.worker.instance_type }}"
+      - --node-count
+      - "{{ kops_cluster.nodes.worker.count }}"
+      - --networking
+      - "{{ kops_cluster.networking.mode }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - --channel
+      - stable
+      - --kubernetes-version
+      - "{{ kops_cluster.kubernetes_version }}"
+  register: kops_create_output
+  changed_when: kops_create_output.rc == 0
+
+- name: Build cluster ({{ cluster_name }})
+  ansible.builtin.command:
+    argv:
+      - kops
+      - update
+      - cluster
+      - --name
+      - "{{ cluster_name }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - --yes
+      - --internal
+  register: kops_update_output
+  changed_when: kops_update_output.rc == 0
+
+- name: Display build logs
+  ansible.builtin.debug:
+    var: kops_update_output.stdout_lines
+
+- name: Export the kubeconfig
+  ansible.builtin.command:
+    argv:
+      - kops
+      - export
+      - --name
+      - "{{ cluster_name }}"
+      - kubecfg
+      - --admin
+      - --state
+      - "{{ kops_state_store }}"
+      - --kubeconfig
+      - /tmp/{{ cluster_name }}.yaml
+  register: kops_export_output
+  changed_when: kops_export_output.rc == 0
+
+- name: Validate cluster ({{ cluster_name }})
+  ansible.builtin.command:
+    argv:
+      - kops
+      - validate
+      - cluster
+      - --config
+      - /tmp/{{ cluster_name }}.yaml
+      - --state
+      - "{{ kops_state_store }}"
+  register: kops_validate_output
+  changed_when: false
+  retries: 60
+  delay: 10
+  until: kops_validate_output.rc == 0
+
+- name: Display validation results
+  ansible.builtin.debug:
+    var: kops_validate_output.stdout_lines
+  when:
+    - kops_validate_output.rc == 0
+
+- name: Display SSH information
+  ansible.builtin.debug:
+    msg: "You can now SSH into any of the nodes of your cluster, (most likely) using {{ kops_cluster.ssh.public_key_path | regex_replace('\\.[^.]*$', '') }}."
+  when:
+    - kops_validate_output.rc == 0

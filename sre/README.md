@@ -69,6 +69,14 @@ source venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
+**Optional**
+
+_Note: The developer requirements are required in order to lint the playbooks, build the AWX execution environment image, or use the provided playbooks for remote cluster setup. If this functionality is not required, then it is not necessary to install these requirements._
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
 3. Install Ansible collections.
 ```bash
 ansible-galaxy install -r requirements.yaml --force

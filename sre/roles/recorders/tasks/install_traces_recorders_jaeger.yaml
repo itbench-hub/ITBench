@@ -1,0 +1,52 @@
+---
+- name: Import tools role for variable setting tasks
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_jaeger_endpoint
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+      platform: "{{ recorders_cluster.platform }}"
+
+- name: Load statefulset information
+  ansible.builtin.set_fact:
+    recorders_jaeger_statefulset: "{{ lookup('ansible.builtin.file', 'files/traces/jaeger/statefulset.yaml') | from_yaml }}"
+
+- name: Create ConfigMap with Python script
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    template: templates/traces/jaeger/configmap.j2
+    state: present
+  vars:
+    python_script_file_contents: "{{ lookup('ansible.builtin.file', 'files/traces/jaeger/scripts/gather.py') }}"
+    requirements_file_contents: "{{ lookup('ansible.builtin.file', 'files/traces/jaeger/scripts/requirements.txt') }}"
+
+- name: Install Jaeger Traces Recorder
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    template: templates/traces/jaeger/statefulset.j2
+    state: present
+  register: recorders_jaeger_workload
+  vars:
+    container_image: "{{ recorders_jaeger_statefulset.spec.template.spec.containers[0].image }}"
+    container_environment_variables:
+      - name: JAEGER_ENDPOINT
+        value: "{{ tools_jaeger_querier_endpoint }}"
+
+- name: Wait for workload to update
+  kubernetes.core.k8s_info:
+    api_version: "{{ recorders_jaeger_workload.result.apiVersion }}"
+    kind: "{{ recorders_jaeger_workload.result.kind }}"
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    name: "{{ recorders_jaeger_workload.result.metadata.name }}"
+    namespace: "{{ recorders_jaeger_workload.result.metadata.namespace }}"
+  register: recorders_jaeger_statefulset_info
+  until:
+    - recorders_jaeger_statefulset_info.resources | length > 0
+    - recorders_jaeger_statefulset_info.resources[0].status is defined
+    - recorders_jaeger_statefulset_info.resources[0].status.readyReplicas is defined
+    - recorders_jaeger_statefulset_info.resources[0].status.readyReplicas == 1
+  retries: 8
+  delay: 15

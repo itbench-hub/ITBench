@@ -1,0 +1,87 @@
+---
+- name: Import tools role for variable setting tasks
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_prometheus_endpoint
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+      platform: "{{ recorders_cluster.platform }}"
+
+- name: Load statefulset information
+  ansible.builtin.set_fact:
+    recorders_prometheus_statefulset: "{{ lookup('ansible.builtin.file', 'files/alerts/prometheus/statefulset.yaml') | from_yaml }}"
+
+- name: Create Prometheus Alert Recorder environment list
+  ansible.builtin.set_fact:
+    recorders_prometheus_env_vars:
+      - name: PROMETHEUS_ENDPOINT
+        value: "{{ tools_prometheus_endpoint }}"
+
+- name: Add Secret to environment list
+  ansible.builtin.set_fact:
+    recorders_prometheus_env_vars: |
+      {{
+        recorders_prometheus_env_vars +
+        [{
+          'name': 'PROMETHEUS_TOKEN',
+          'valueFrom': {
+            'secretKeyRef': {
+              'name': 'alerts-recorder-prometheus-token',
+              'key': 'token'
+            }
+          }
+        }]
+      }}
+  when:
+    - recorders_cluster.platform == "openshift"
+    - tools_prometheus_bearer_token is defined
+
+- name: Create Secret with bearer token
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    template: templates/alerts/prometheus/secret.j2
+    state: present
+  vars:
+    prometheus_bearer_token: "{{ tools_prometheus_bearer_token }}"
+  when:
+    - recorders_cluster.platform == "openshift"
+    - tools_prometheus_bearer_token is defined
+
+- name: Create ConfigMap with Python script
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    template: templates/alerts/prometheus/configmap.j2
+    state: present
+  vars:
+    python_script_file_contents: "{{ lookup('ansible.builtin.file', 'files/alerts/prometheus/scripts/gather.py') }}"
+    requirements_file_contents: "{{ lookup('ansible.builtin.file', 'files/alerts/prometheus/scripts/requirements.txt') }}"
+
+- name: Install Prometheus Alert Recorder
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    template: templates/alerts/prometheus/statefulset.j2
+    state: present
+  register: recorders_prometheus_workload
+  vars:
+    container_image: "{{ recorders_prometheus_statefulset.spec.template.spec.containers[0].image }}"
+    container_environment_variables: "{{ recorders_prometheus_env_vars }}"
+
+- name: Wait for workload to update
+  kubernetes.core.k8s_info:
+    api_version: "{{ recorders_prometheus_workload.result.apiVersion }}"
+    kind: "{{ recorders_prometheus_workload.result.kind }}"
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    name: "{{ recorders_prometheus_workload.result.metadata.name }}"
+    namespace: "{{ recorders_prometheus_workload.result.metadata.namespace }}"
+  register: recorders_prometheus_statefulset_info
+  until:
+    - recorders_prometheus_statefulset_info.resources | length > 0
+    - recorders_prometheus_statefulset_info.resources[0].status is defined
+    - recorders_prometheus_statefulset_info.resources[0].status.readyReplicas is defined
+    - recorders_prometheus_statefulset_info.resources[0].status.readyReplicas == 1
+  retries: 8
+  delay: 15

@@ -58,24 +58,15 @@
             conditions:
               - type: Deployed
                 status: "{{ deployed_condition.status | default(false) | string }}"
-                reason: |
-                  {{
-                    "DeploymentInProgress" if deployed_condition.status is undefined else "DeploymentReady" if deployed_condition.status else "DeploymentFailed"
-                  }}
+                reason: "{{ 'DeploymentInProgress' if deployed_condition.status is undefined else 'DeploymentReady' if deployed_condition.status else 'DeploymentFailed' }}"
                 lastTransitionTime: "{{ deployed_condition.lastTransitionTime | default(ansible_date_time.iso8601) }}"
               - type: FaultInjected
                 status: "{{ fault_injected_condition.status | default(false) | string }}"
-                reason: |
-                  {{
-                    "DeploymentNotReady" if deployed_condition.status is undefined else "DeploymentFailed" if not deployed_condition.status else "FaultInjectionInProgress" if fault_injected_condition.status is undefined else "FaultInjectionReady" if fault_injected_condition.status else "FaultInjectionFailed"
-                  }}
+                reason: "{{ 'DeploymentNotReady' if deployed_condition.status is undefined else 'DeploymentFailed' if not deployed_condition.status else 'FaultInjectionInProgress' if fault_injected_condition.status is undefined else 'FaultInjectionReady' if fault_injected_condition.status else 'FaultInjectionFailed' }}"
                 lastTransitionTime: "{{ fault_injected_condition.lastTransitionTime | default(ansible_date_time.iso8601) }}"
               - type: Destroyed
                 status: "{{ destroyed_condition.status | default(false) | string }}"
-                reason: |
-                  {{
-                    "FaultInjectionNotReady" if fault_injected_condition.status is undefined else "FaultInjectionFailed" if not fault_injected_condition.status else "DestroyInProgress" if destroyed_condition.status is undefined else "DestroyDone" if destroyed_condition.status else "DestroyFailed"
-                  }}
+                reason: "{{ 'FaultInjectionNotReady' if fault_injected_condition.status is undefined else 'FaultInjectionFailed' if not fault_injected_condition.status else 'DestroyInProgress' if destroyed_condition.status is undefined else 'DestroyDone' if destroyed_condition.status else 'DestroyFailed' }}"
                 lastTransitionTime: "{{ destroyed_condition.lastTransitionTime | default(ansible_date_time.iso8601) }}"
 
     - name: Create bundle file

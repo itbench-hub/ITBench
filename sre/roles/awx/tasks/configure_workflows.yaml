@@ -7,73 +7,128 @@
   ansible.builtin.import_tasks:
     file: set_awx_controller_password.yaml
 
-- name: Create workflow for starting incidents
+- name: Create workflow for initializing select or all scenarios end to end
   awx.awx.workflow_job_template:
     ask_variables_on_launch: true
     controller_host: "{{ awx_controller_host }}"
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
-    name: "Start Incident {{ incident }}"
+    inventory: ITBench
+    name: "Scenario-{{ incident }}-Init"
     state: present
     workflow_nodes:
-      - identifier: node-install-observability-stack
+      - identifier: node-deploy-tools
         unified_job_template:
-          name: "Incident {{ incident }}: Deploy Tools"
+          name: "Scenario-{{ incident }}--Deploy-Tools"
           type: job_template
         related:
-          success_nodes:
-            - identifier: node-install-sample-application
-          failure_nodes:
-            - identifier: node-capture-failed-deployment
+          success_nodes: []
+          failure_nodes: []
           always_nodes: []
-      - identifier: node-install-sample-application
+
+- name: Create workflow for running scenarios end to end
+  awx.awx.workflow_job_template:
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    inventory: ITBench
+    name: "Scenario-{{ incident }}"
+    state: present
+    workflow_nodes:
+      - identifier: node-reinit-tools
         unified_job_template:
-          name: "Incident {{ incident }}: Deploy Applications"
+          name: "Scenario-{{ incident }}--Reinit-Tools"
           type: job_template
         related:
           success_nodes:
-            - identifier: node-telemetry-access
-          failure_nodes:
-            - identifier: node-capture-failed-deployment
+            - identifier: node-install-applications
+          failure_nodes: []
           always_nodes: []
-      - identifier: node-telemetry-access
+      - identifier: node-install-applications
         unified_job_template:
-          name: "Scenario-{{ incident }}--Setup-For-Telemetry-Access"
+          name: "Scenario-{{ incident }}--Deploy-Applications"
           type: job_template
         related:
           success_nodes:
-            - identifier: node-trace-gathering
-          failure_nodes:
-            - identifier: node-capture-failed-deployment
-      - identifier: node-trace-gathering
-        unified_job_template:
-          name: "Scenario-{{ incident }}--Trace-Gathering"
-          type: job_template
-        related:
-          success_nodes:
-            - identifier: node-trigger-fault
-          failure_nodes:
-            - identifier: node-capture-failed-deployment
+            - identifier: node-install-recorders
+          failure_nodes: []
           always_nodes: []
-      - identifier: node-trigger-fault
+      - identifier: node-install-recorders
         unified_job_template:
-          name: "Incident {{ incident }}: Inject Faults"
+          name: "Scenario-{{ incident }}--Install-Data-Recorders"
+          type: job_template
+        extra_data:
+          recorders_awx_topology_filename_prefix: "init"
+        related:
+          success_nodes:
+            - identifier: node-pause-at-start
+          failure_nodes: []
+          always_nodes: []
+      - identifier: node-pause-at-start
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Pause"
           type: job_template
         related:
           success_nodes:
-            - identifier: node-post-fault-injection
-          failure_nodes:
-            - identifier: node-capture-failed-deployment
+            - identifier: node-uninstall-topology-recorder-at-start
+          failure_nodes: []
           always_nodes: []
-      - identifier: node-post-fault-injection
+      - identifier: node-uninstall-topology-recorder-at-start
         unified_job_template:
-          name: "Scenario-{{ incident }}--Post-Fault-Injection"
+          name: "Scenario-{{ incident }}--Uninstall-Topology-Data-Recorder"
+          type: job_template
+        related:
+          success_nodes:
+            - identifier: node-grant-access-to-agent
+          failure_nodes: []
+          always_nodes: []
+      - identifier: node-grant-access-to-agent
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Grant-Access-To-Agent"
+          type: job_template
+        related:
+          success_nodes:
+            - identifier: node-inject-fault
+          failure_nodes: []
+          always_nodes: []
+      - identifier: node-inject-fault
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Inject-Faults"
+          type: job_template
+        related:
+          success_nodes:
+            - identifier: node-install-topology-recorder-post-fault-injection
+          failure_nodes: []
+          always_nodes: []
+      - identifier: node-install-topology-recorder-post-fault-injection
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Install-Topology-Data-Recorder"
+          type: job_template
+        extra_data:
+          recorders_awx_topology_filename_prefix: "post_fault_injection"
+        related:
+          success_nodes:
+            - identifier: node-pause-post-fault-injection
+          failure_nodes: []
+          always_nodes: []
+      - identifier: node-pause-post-fault-injection
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Pause"
+          type: job_template
+        related:
+          success_nodes:
+            - identifier: node-uninstall-topology-recorder-post-fault-injection
+          failure_nodes: []
+          always_nodes: []
+      - identifier: node-uninstall-topology-recorder-post-fault-injection
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Uninstall-Topology-Data-Recorder"
           type: job_template
         related:
           success_nodes:
             - identifier: node-check-for-alerts
-          failure_nodes:
-            - identifier: node-capture-failed-deployment
+          failure_nodes: []
           always_nodes: []
       - identifier: node-check-for-alerts
         unified_job_template:
@@ -81,86 +136,106 @@
           type: job_template
         related:
           success_nodes:
-            - identifier: node-alert-recorder-on
-          failure_nodes:
-            - identifier: node-capture-failed-deployment
-          always_nodes: []
-      - identifier: node-alert-recorder-on
-        unified_job_template:
-          name: "Scenario-{{ incident }}--Alert-Recorder-On"
-          type: job_template
-        related:
-          success_nodes:
             - identifier: node-handover-to-agent
           failure_nodes:
-            - identifier: node-capture-failed-deployment
+            - identifier: node-uninstall-recorders
           always_nodes: []
       - identifier: node-handover-to-agent
         unified_job_template:
           name: "Scenario-{{ incident }}--Handover-To-Agent"
           type: job_template
         related:
-          success_nodes: []
-          failure_nodes:
-            - identifier: node-capture-failed-deployment
+          success_nodes:
+            - identifier: node-run-agent
+          failure_nodes: []
           always_nodes: []
-      - identifier: node-capture-failed-deployment
+      - identifier: node-run-agent
         unified_job_template:
-          name: "Scenario-{{ incident }}--Capture-Failed-Deployment"
+          name: "Scenario-{{ incident }}--Run-Agent"
+          type: job_template
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-handback-from-agent
+      - identifier: node-handback-from-agent
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Handback-From-Agent"
+          type: job_template
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-remove-access-from-agent
+      - identifier: node-remove-access-from-agent
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Remove-Access-From-Agent"
+          type: job_template
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-install-topology-recorder-post-agent-execution
+      - identifier: node-install-topology-recorder-post-agent-execution
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Install-Topology-Data-Recorder"
+          type: job_template
+        extra_data:
+          recorders_awx_topology_filename_prefix: "end"
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-pause-post-agent-execution
+      - identifier: node-pause-post-agent-execution
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Pause"
+          type: job_template
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-uninstall-recorders
+      - identifier: node-uninstall-recorders
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Uninstall-Data-Recorders"
+          type: job_template
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-remove-fault
+      - identifier: node-remove-fault
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Remove-Faults"
+          type: job_template
+        related:
+          success_nodes: []
+          failure_nodes: []
+          always_nodes:
+            - identifier: node-undeploy-applications
+      - identifier: node-undeploy-applications
+        unified_job_template:
+          name: "Scenario-{{ incident }}--Undeploy-Applications"
           type: job_template
         related:
           success_nodes: []
           failure_nodes: []
           always_nodes: []
 
-- name: Create workflow for stopping incidents
+- name: Create workflow for de-initializing select or all scenarios end to end
   awx.awx.workflow_job_template:
     ask_variables_on_launch: true
     controller_host: "{{ awx_controller_host }}"
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
-    name: "Stop Incident {{ incident }}"
+    inventory: ITBench
+    name: "Scenario-{{ incident }}-Deinit"
     state: present
     workflow_nodes:
-      - identifier: node-remove-fault
+      - identifier: node-undeploy-tools
         unified_job_template:
-          name: "Incident {{ incident }}: Remove Faults"
-          type: job_template
-        related:
-          success_nodes: []
-          failure_nodes: []
-          always_nodes:
-            - identifier: node-uninstalling-k8s-resources-default-namespace
-      - identifier: node-uninstalling-k8s-resources-default-namespace
-        unified_job_template:
-          name: "Scenario-{{ incident }}--Uninstalling-K8s-Resources-Default-Namespace"
-          type: job_template
-        related:
-          success_nodes: []
-          failure_nodes: []
-          always_nodes:
-            - identifier: node-alert-recorder-off
-      - identifier: node-alert-recorder-off
-        unified_job_template:
-          name: "Scenario-{{ incident }}--Alert-Recorder-Off"
-          type: job_template
-        related:
-          success_nodes: []
-          failure_nodes: []
-          always_nodes:
-            - identifier: node-uninstall-sample-application-end
-      - identifier: node-uninstall-sample-application-end
-        unified_job_template:
-          name: "Incident {{ incident }}: Undeploy Applications"
-          type: job_template
-        related:
-          success_nodes: []
-          failure_nodes: []
-          always_nodes:
-            - identifier: node-uninstall-observability-stack-end
-      - identifier: node-uninstall-observability-stack-end
-        unified_job_template:
-          name: "Incident {{ incident }}: Undeploy Tools"
+          name: "Scenario-{{ incident }}--Undeploy-Tools"
           type: job_template
         related:
           success_nodes: []

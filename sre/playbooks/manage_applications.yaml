@@ -23,16 +23,16 @@
       when:
         - incident_id is defined
   tasks:
-    - name: Import required roles
-      block:
-        - name: Import leaderboard role
-          ansible.builtin.import_role:
-            name: leaderboard
-          vars:
-            leaderboard_status:
-              status: progressing
-            leaderboard_storage: "{{ storage }}"
+    - name: Import leaderboard role
+      ansible.builtin.import_role:
+        name: leaderboard
+      vars:
+        leaderboard_status:
+          status: progressing
+        leaderboard_storage: "{{ storage }}"
 
+    - name: Attempt to perform tasks in application role
+      block:
         - name: Import applications role
           ansible.builtin.import_role:
             name: applications

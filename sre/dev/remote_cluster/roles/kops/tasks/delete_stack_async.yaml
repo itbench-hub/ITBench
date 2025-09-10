@@ -1,0 +1,84 @@
+---
+- name: Asynchronously delete kOps clusters
+  ansible.builtin.command:
+    cmd: kops delete cluster --name {{ item }} --yes --state {{ kops_state_store }}
+  async: 900
+  loop: "{{ stack_cluster_names }}"
+  poll: 0
+  register: kops_async_delete_results
+
+- name: Wait for asynchronous operations to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_async_delete_results.results }}"
+  register: kops_async_delete_poll_results
+  until: kops_async_delete_poll_results.finished
+  delay: 60
+  retries: 15
+
+- name: Clean up ansychronous operations
+  ansible.builtin.async_status:
+    mode: cleanup
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_async_delete_results.results }}"
+
+- name: Find all route tables associated with kOps clusters
+  amazon.aws.ec2_vpc_route_table_info:
+    filters:
+      "tag:Name": "{{ kops_stack.name_prefix }}-public-route-table"
+    region: "{{ kops_cluster.aws.region }}"
+  register: kops_route_tables_info
+
+- name: Find all subnets associated with route tables' VPCs
+  amazon.aws.ec2_vpc_subnet_info:
+    filters:
+      vpc-id: "{{ rt.vpc_id }}"
+    region: "{{ kops_cluster.aws.region }}"
+  loop: "{{ kops_route_tables_info.route_tables }}"
+  loop_control:
+    label: "{{ rt.id }}"
+    loop_var: rt
+  register: kops_subnet_info_list
+
+- name: Delete all associated subnets
+  amazon.aws.ec2_vpc_subnet:
+    state: absent
+    vpc_id: "{{ subnet.vpc_id }}"
+    region: "{{ kops_cluster.aws.region }}"
+    cidr: "{{ subnet.cidr_block }}"
+  loop: "{{ kops_subnet_info_list.results | sum(attribute='subnets', start=[]) }}"
+  loop_control:
+    label: "{{ subnet.id }}"
+    loop_var: subnet
+
+- name: Delete all associated route tables
+  amazon.aws.ec2_vpc_route_table:
+    vpc_id: "{{ rt.vpc_id }}"
+    region: "{{ kops_cluster.aws.region }}"
+    route_table_id: "{{ rt.id }}"
+    lookup: id
+    state: absent
+  loop: "{{ kops_route_tables_info.route_tables }}"
+  loop_control:
+    label: "{{ rt.id }}"
+    loop_var: rt
+
+- name: Delete all Internet Gateway associated with route tables' VPC
+  amazon.aws.ec2_vpc_igw:
+    state: absent
+    vpc_id: "{{ vpc }}"
+    region: "{{ kops_cluster.aws.region }}"
+  loop: "{{ kops_route_tables_info.route_tables | community.general.json_query('[*].vpc_id') }}"
+  loop_control:
+    label: "{{ vpc }}"
+    loop_var: vpc
+
+- name: Delete all VPCs associated with route tables' VPC
+  amazon.aws.ec2_vpc_net:
+    state: absent
+    vpc_id: "{{ vpc }}"
+    region: "{{ kops_cluster.aws.region }}"
+  loop: "{{ kops_route_tables_info.route_tables | community.general.json_query('[*].vpc_id') }}"
+  loop_control:
+    label: "{{ vpc }}"
+    loop_var: vpc

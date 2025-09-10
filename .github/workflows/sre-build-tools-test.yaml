@@ -10,7 +10,20 @@ on:
 
 jobs:
   topology-monitor:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+        platform:
+          - linux/amd64
+          - linux/arm64
+        exclude:
+          - os: ubuntu-24.04
+            platform: linux/arm64
+          - os: ubuntu-24.04-arm
+            platform: linux/amd64
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout codebase
         uses: actions/checkout@v5.0.0
@@ -18,21 +31,67 @@ jobs:
         uses: docker/setup-qemu-action@v3.6.0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.11.1
-      - name: Build and push Kubernetes Topology Monitor
+      - name: Build Kubernetes Topology Monitor
         uses: docker/build-push-action@v6.18.0
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
           context: sre/tools/kubernetes-topology-monitor
           platforms: |
-            linux/amd64
-            linux/arm64
+            ${{ matrix.platform }}
           push: false
           tags: |
             quay.io/it-bench/topology-monitor:0.0.4
             quay.io/it-bench/topology-monitor:latest
+  awx-ee:
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+        platform:
+          - linux/amd64
+          - linux/arm64
+        exclude:
+          - os: ubuntu-24.04
+            platform: linux/arm64
+          - os: ubuntu-24.04-arm
+            platform: linux/amd64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v5.0.0
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.6.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Set up Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.12'
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+        working-directory: sre
+      - name: Create AWX Execution Environment image context
+        run: |
+          ansible-builder create --output-filename Dockerfile
+        working-directory: sre/tools/awx-ee
+      - name: Build AWX Execution Environment image
+        uses: docker/build-push-action@v6.18.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: sre/tools/awx-ee/context
+          platforms: |
+            ${{ matrix.platform }}
+          push: false
+          tags: |
+            quay.io/it-bench/awx-ee:1.0.0
+            quay.io/it-bench/awx-ee:latest
   hello-bench:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         architecture:
@@ -45,7 +104,7 @@ jobs:
         uses: docker/setup-qemu-action@v3.6.0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.11.1
-      - name: Build and push Hello Bench image (amd)
+      - name: Build Hello Bench image
         uses: docker/build-push-action@v6.18.0
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false

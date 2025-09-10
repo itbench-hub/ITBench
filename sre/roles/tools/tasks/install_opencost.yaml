@@ -15,34 +15,9 @@
           it-bench/monitoring: "true"
     state: present
 
-- name: Create bearer token
-  ansible.builtin.command:
-    argv:
-      - oc
-      - whoami
-      - -t
-      - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
-  register: tools_prometheus_token
-  changed_when: false
-  when:
-    - tools_cluster.platform == "openshift"
-
-- name: Retrieve Prometheus route
-  kubernetes.core.k8s_info:
-    api_version: route.openshift.io/v1
-    kind: Route
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: prometheus-k8s
-    namespace: openshift-monitoring
-  register: tools_prometheus_k8s_route_info
-  when:
-    - tools_cluster.platform == "openshift"
-
-- name: Parse Prometheus hostname
-  ansible.builtin.set_fact:
-    tools_prometheus_k8s_url: https://{{ tools_prometheus_k8s_route_info.resources[0].spec.host }}
-  when:
-    - tools_cluster.platform == "openshift"
+- name: Import variable setting task
+  ansible.builtin.import_tasks:
+    file: set_prometheus_endpoint.yaml
 
 - name: Install OpenCost
   kubernetes.core.helm:
@@ -82,10 +57,10 @@
           openshift:
             enabled: "{{ tools_cluster.platform == 'openshift' }}"
         prometheus:
-          bearer_token: "{{ tools_prometheus_token.stdout if tools_cluster.platform == 'openshift' else omit }}"
+          bearer_token: "{{ tools_prometheus_bearer_token | default(omit) }}"
           external:
             enabled: "{{ tools_cluster.platform == 'openshift' }}"
-            url: "{{ tools_prometheus_k8s_url | default(omit) }}"
+            url: "{{ tools_prometheus_endpoint | default(omit) }}"
           internal:
             enabled: "{{ tools_cluster.platform == 'kubernetes' }}"
             serviceName: "{{ tools_helm_releases.prometheus.name }}-kube-prometheus-prometheus"

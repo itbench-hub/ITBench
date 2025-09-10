@@ -3,13 +3,21 @@
   hosts:
     - development
   pre_tasks:
-    - name: Import AWX role validation tasks
+    - name: Import kOps role validation tasks
       ansible.builtin.import_role:
-        name: awx
-        tasks_from: validate
+        name: kops
+        tasks_from: validate_stack
       vars:
-        awx_cluster: "{{ cluster }}"
-        awx_stack: "{{ stack }}"
+        kops_stack: "{{ stack }}"
+      tags:
+        - always
+
+    - name: Import kOps role validation tasks
+      ansible.builtin.import_role:
+        name: kops
+        tasks_from: validate_cluster
+      vars:
+        kops_cluster: "{{ cluster }}"
       tags:
         - always
 
@@ -20,20 +28,21 @@
       vars:
         kops_cluster: "{{ cluster }}"
       tags:
-        - create
+        - create_stack
 
-    - name: Import kOps role pre tasks for delete tasks
+    - name: Import kOps role pre tasks for export and delete tasks
       ansible.builtin.import_role:
         name: kops
         tasks_from: pre_tasks_general
       vars:
         kops_cluster: "{{ cluster }}"
       tags:
-        - delete
+        - export_stack
+        - delete_stack
   tasks:
-    - name: Import AWX role
+    - name: Import kOps role
       ansible.builtin.import_role:
-        name: awx
+        name: kops
       vars:
-        awx_cluster: "{{ cluster }}"
-        awx_stack: "{{ stack }}"
+        kops_cluster: "{{ cluster }}"
+        kops_stack: "{{ stack }}"

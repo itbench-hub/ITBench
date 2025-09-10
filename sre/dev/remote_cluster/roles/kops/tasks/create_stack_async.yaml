@@ -1,0 +1,186 @@
+---
+- name: Create VPC for kOps clusters
+  amazon.aws.ec2_vpc_net:
+    name: "{{ kops_stack.name_prefix }}-vpc"
+    cidr_block: "{{ kops_stack.runners.aws.vpc.cidr }}"
+    region: "{{ kops_cluster.aws.region }}"
+    state: present
+  register: kops_vpc_info
+
+- name: Create an Internet Gateway associated with VPC
+  amazon.aws.ec2_vpc_igw:
+    vpc_id: "{{ kops_vpc_info.vpc.id }}"
+    region: "{{ kops_cluster.aws.region }}"
+    state: present
+  register: kops_igw_info
+
+- name: Create a subnet for each cluster
+  amazon.aws.ec2_vpc_subnet:
+    vpc_id: "{{ kops_vpc_info.vpc.id }}"
+    cidr: "{{ kops_stack.runners.aws.subnet.public_base }}.{{ item * 2 }}.0/23"
+    az: "{{ kops_cluster.aws.zones[0] }}"
+    region: "{{ kops_cluster.aws.region }}"
+    map_public: true
+    state: present
+    tags:
+      Name: "{{ kops_stack.name_prefix }}-public-subnet-{{ item | string }}"
+      Environment: k8s
+      ManagedBy: ansible
+  loop: "{{ range(1, (stack_cluster_names | length) + 1) | list }}"
+  register: kops_public_subnets
+
+- name: Parse subnet ids
+  ansible.builtin.set_fact:
+    kops_subnet_ids: "{{ kops_public_subnets.results | community.general.json_query('[*].subnet.id') }}"
+
+- name: Create a route table for public subnets
+  amazon.aws.ec2_vpc_route_table:
+    vpc_id: "{{ kops_vpc_info.vpc.id }}"
+    region: "{{ kops_cluster.aws.region }}"
+    subnets: "{{ kops_subnet_ids }}"
+    routes:
+      - dest: "0.0.0.0/0"
+        gateway_id: "{{ kops_igw_info.gateway_id }}"
+    tags:
+      Name: "{{ kops_stack.name_prefix }}-public-route-table"
+      Creator: "ansible"
+    state: present
+
+- name: Asynchronously create kOps clusters
+  ansible.builtin.command:
+    argv:
+      - kops
+      - create
+      - cluster
+      - "{{ item }}"
+      - --cloud
+      - aws
+      - --topology
+      - public
+      - --network-id
+      - "{{ kops_vpc_info.vpc.id }}"
+      - --subnets
+      - "{{ kops_subnet_ids[name_index] }}"
+      - --zones
+      - "{{ kops_cluster.aws.zones | join(',') }}"
+      - --ssh-public-key
+      - "{{ kops_cluster.ssh.public_key_path }}"
+      - --control-plane-size
+      - "{{ kops_cluster.nodes.control.instance_type }}"
+      - --control-plane-count
+      - "{{ kops_cluster.nodes.control.count }}"
+      - --node-size
+      - "{{ kops_cluster.nodes.worker.instance_type }}"
+      - --node-count
+      - "{{ kops_cluster.nodes.worker.count }}"
+      - --networking
+      - "{{ kops_cluster.networking.mode }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - --channel
+      - stable
+      - --kubernetes-version
+      - "{{ kops_cluster.kubernetes_version }}"
+  async: 600
+  loop: "{{ stack_cluster_names }}"
+  loop_control:
+    index_var: name_index
+  poll: 0
+  register: kops_async_create_results
+
+- name: Wait for asynchronous operations to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_async_create_results.results }}"
+  register: kops_async_create_poll_results
+  until: kops_async_create_poll_results.finished
+  delay: 60
+  retries: 10
+
+- name: Clean up ansychronous operations
+  ansible.builtin.async_status:
+    mode: cleanup
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_async_create_results.results }}"
+
+- name: Asynchronously build kOps clusters
+  ansible.builtin.command:
+    argv:
+      - kops
+      - update
+      - cluster
+      - --name
+      - "{{ item }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - --yes
+      - --internal
+      - --create-kube-config=false
+  async: 600
+  loop: "{{ stack_cluster_names }}"
+  poll: 0
+  register: kops_async_update_results
+
+- name: Wait for asynchronous operations to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_async_update_results.results }}"
+  register: kops_async_update_poll_results
+  until: kops_async_update_poll_results.finished
+  delay: 60
+  retries: 10
+
+- name: Clean up ansychronous operations
+  ansible.builtin.async_status:
+    mode: cleanup
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_async_update_results.results }}"
+
+- name: Export the kubeconfigs for the clusters
+  ansible.builtin.command:
+    argv:
+      - kops
+      - export
+      - --name
+      - "{{ item }}"
+      - kubecfg
+      - --admin
+      - --state
+      - "{{ kops_state_store }}"
+      - --kubeconfig
+      - /tmp/{{ item }}.yaml
+  loop: "{{ stack_cluster_names }}"
+  register: kops_kops_export_output
+  changed_when: kops_kops_export_output.rc == 0
+
+- name: Asynchronously validate kOps cluster
+  ansible.builtin.command:
+    argv:
+      - kops
+      - validate
+      - cluster
+      - --config
+      - /tmp/{{ item }}.yaml
+      - --state
+      - "{{ kops_state_store }}"
+      - --wait
+      - 20m
+  async: 1800
+  loop: "{{ stack_cluster_names }}"
+  poll: 0
+  register: kops_async_validate_results
+
+- name: Wait for asynchronous operations to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_async_validate_results.results }}"
+  register: kops_async_validate_poll_results
+  until: kops_async_validate_poll_results.finished
+  delay: 60
+  retries: 30
+
+- name: Clean up ansychronous operations
+  ansible.builtin.async_status:
+    mode: cleanup
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_async_validate_results.results }}"
