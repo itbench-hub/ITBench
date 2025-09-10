@@ -1,0 +1,54 @@
+---
+- name: Retrieve bearer token from OpenShift CLI
+  ansible.builtin.command:
+    argv:
+      - oc
+      - whoami
+      - -t
+      - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
+  register: tools_oc_user_token
+  changed_when: false
+  when:
+    - tools_cluster.platform == "openshift"
+
+- name: Retrieve OpenShift Prometheus Route
+  kubernetes.core.k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: prometheus-k8s
+    namespace: openshift-monitoring
+  register: tools_prometheus_k8s_route_info
+  when:
+    - tools_cluster.platform == "openshift"
+
+- name: Extract Prometheus hostname and bearer token
+  ansible.builtin.set_fact:
+    tools_prometheus_bearer_token: "{{ tools_oc_user_token.stdout }}"
+    tools_prometheus_endpoint: https://{{ tools_prometheus_k8s_route_info.resources[0].spec.host }}
+  when:
+    - tools_cluster.platform == "openshift"
+    - tools_oc_user_token is defined
+    - tools_oc_user_token.rc == 0
+    - tools_prometheus_k8s_route_info is defined
+    - tools_prometheus_k8s_route_info.resources | length == 1
+
+- name: Retrieve Prometheus service info
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_helm_releases.prometheus.name }}-kube-prometheus-prometheus"
+    namespace: "{{ tools_helm_releases.prometheus.namespace }}"
+  register: tools_prometheus_service_info
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Construct Prometheus in-cluster endpoint
+  ansible.builtin.set_fact:
+    tools_prometheus_endpoint: http://{{ tools_prometheus_service_info.resources[0].metadata.name }}.{{
+      tools_prometheus_service_info.resources[0].metadata.namespace }}.svc.cluster.local:9090
+  when:
+    - tools_cluster.platform == "kubernetes"
+    - tools_prometheus_service_info is defined
+    - tools_prometheus_service_info.resources | length == 1

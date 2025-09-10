@@ -15,7 +15,7 @@
     kind: OpenTelemetryCollector
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     namespace: "{{ helm_releases.collectors.namespace }}"
-  register: opentelemetry_collector_info
+  register: tools_opentelemetry_collector_info
   when:
     - tools_required.jaeger
 
@@ -30,7 +30,7 @@
     wait: true
   when:
     - tools_required.jaeger
-    - opentelemetry_collector_info.resources | length > 0
+    - tools_opentelemetry_collector_info.resources | length > 0
 
 - name: Uninstall OpenTelemetry Operator
   kubernetes.core.helm:

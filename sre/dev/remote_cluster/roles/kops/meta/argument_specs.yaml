@@ -12,15 +12,15 @@ argument_specs:
         description: The configuration of the cluster
         required: true
         type: dict
-      kops_kubeconfig_path:
-        description: The absolute path of the kubeconfig
+      kops_stack:
+        description: The configuration of the AWX stack
         required: false
-        type: str
+        type: dict
       kops_full_cluster_name_override:
         description: The full name of the cluster to use
         required: false
         type: str
-  validate:
+  validate_cluster:
     short_description: Entry point for kOps configuration validation tasks
     description:
       - This is a collection of validation tasks needed to run the various other tasks.
@@ -94,3 +94,45 @@ argument_specs:
               bucket_name:
                 required: true
                 type: str
+  validate_stack:
+    short_description: Entry point for kops configuration validation tasks
+    description:
+      - This is a collection of validation tasks needed to run the various other tasks.
+      - These tasks include verfying the existence of the kOps cli and the S3 bucket where the kOps cluster states will be stored and validating the
+        configuration used in the other tasks for managing the various clusters.
+      - These tasks should be run as a pre-task in playbooks which invoke this role.
+    author:
+      - Gerard Vanloo
+    options:
+      kops_stack:
+        required: true
+        type: dict
+        options:
+          name_prefix:
+            required: true
+            type: str
+          runners:
+            required: true
+            type: dict
+            options:
+              aws:
+                required: true
+                type: dict
+                options:
+                  subnet:
+                    required: true
+                    type: dict
+                    options:
+                      public_base:
+                        required: true
+                        type: str
+                  vpc:
+                    required: true
+                    type: dict
+                    options:
+                      cidr:
+                        required: true
+                        type: str
+              count:
+                required: true
+                type: int

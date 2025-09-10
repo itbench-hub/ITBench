@@ -40,33 +40,16 @@
         incidents_file:
           id: "{{ incident_id }}"
   tasks:
-    - name: Import required roles
+    - name: Import leaderboard role
+      ansible.builtin.import_role:
+        name: leaderboard
+      vars:
+        leaderboard_status:
+          status: progressing
+        leaderboard_storage: "{{ storage }}"
+
+    - name: Attempt to perform faults role tasks
       block:
-        - name: Import leaderboard role
-          ansible.builtin.import_role:
-            name: leaderboard
-          vars:
-            leaderboard_status:
-              status: progressing
-            leaderboard_storage: "{{ storage }}"
-
-        # - name: Pause for 600 seconds pre-fault removal for alert recording
-        #   ansible.builtin.pause:
-        #     seconds: 600
-        #   tags:
-        #     - pre_fault_removal
-        #   when:
-        #     - incident.runner != 'local'
-
-        # - name: Import e2e role
-        #   ansible.builtin.import_role:
-        #     name: e2e
-        #     tasks_from: record_topology_information
-        #   tags:
-        #     - pre_fault_removal
-        #   when:
-        #     - incident.runner != 'local'
-
         - name: Import faults role
           ansible.builtin.import_role:
             name: faults
@@ -74,24 +57,6 @@
             faults_cluster:
               kubeconfig: "{{ cluster.kubeconfig }}"
             faults_specs: "{{ incidents_spec.spec.faults }}"
-
-        # - name: Import e2e role
-        #   ansible.builtin.import_role:
-        #     name: e2e
-        #     tasks_from: record_topology_information
-        #   tags:
-        #     - post_fault_injection
-        #   when:
-        #     - incident.runner != 'local'
-
-        # - name: Import e2e role
-        #   ansible.builtin.import_role:
-        #     name: e2e
-        #     tasks_from: register_fault_injection_time
-        #   tags:
-        #     - inject_faults
-        #   when:
-        #     - incident.runner != 'local'
 
         - name: Import leaderboard role
           ansible.builtin.import_role:

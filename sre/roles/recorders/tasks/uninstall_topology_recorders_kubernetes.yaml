@@ -1,0 +1,118 @@
+---
+- name: Wait for any ongoing jobs to be removed
+  kubernetes.core.k8s_info:
+    api_version: batch/v1
+    kind: Job
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    label_selectors:
+      - app.kubernetes.io/name = kubernetes-topology-recorder
+      - app.kubernetes.io/part-of = it-bench
+    namespace: "{{ recorders_namespace.name }}"
+  register: recorders_kubernetes_job_info
+  until:
+    - recorders_kubernetes_job_info.resources | length == 0
+  retries: 8
+  delay: 15
+
+- name: Create Deployment to retrieve records
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    src: files/topology/kubernetes/deployment.yaml
+    state: present
+    wait: true
+
+- name: Retrieve the retriever pod name
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    label_selectors:
+      - app.kubernetes.io/name = kubernetes-topology-record-retriever
+      - app.kubernetes.io/part-of = it-bench
+  register: recorders_kubernetes_pods_info
+
+- name: Copy records directory from pod
+  kubernetes.core.k8s_cp:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    local_path: /tmp/topology
+    namespace: "{{ recorders_kubernetes_pods_info.resources[0].metadata.namespace }}"
+    pod: "{{ recorders_kubernetes_pods_info.resources[0].metadata.name }}"
+    remote_path: /opt/app-root/src/records
+    state: from_pod
+  when:
+    - recorders_kubernetes_pods_info is defined
+    - recorders_kubernetes_pods_info.resources | length == 1
+
+- name: Uninstall the Deployment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    src: files/topology/kubernetes/deployment.yaml
+    state: absent
+    wait: true
+
+- name: Delete ConfigMap with Python script
+  kubernetes.core.k8s:
+    api_version: v1
+    delete_all: true
+    kind: ConfigMap
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    label_selectors:
+      - app.kubernetes.io/name = kubernetes-topology-recorder
+      - app.kubernetes.io/part-of = it-bench
+    state: absent
+    wait: true
+
+- name: Delete PersistentVolumeClaim
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    src: files/topology/kubernetes/persistentvolumeclaim.yaml
+    state: absent
+    wait: true
+
+- name: Find all exported JSON files
+  ansible.builtin.find:
+    path: /tmp/topology
+    patterns:
+      - "*.json"
+  register: recorders_kubernetes_files
+
+- name: Ensure topology_information directory exists on local
+  ansible.builtin.file:
+    path: "{{ recorders_storage.local.directory }}/topology_information"
+    state: directory
+    mode: "0755"
+  when:
+    - recorders_storage.local is defined
+
+- name: Copy exported data into local directory
+  ansible.builtin.copy:
+    dest: "{{ recorders_storage.local.directory }}/topology_information/{{ file.path | basename }}"
+    mode: "0644"
+    src: "{{ file.path }}"
+  loop: "{{ recorders_kubernetes_files.files }}"
+  loop_control:
+    label: file/{{ file.path | basename }}
+    loop_var: file
+  when:
+    - recorders_storage.local is defined
+    - recorders_kubernetes_files is defined
+
+- name: Upload exported data to S3 bucket
+  amazon.aws.s3_object:
+    endpoint_url: "{{ recorders_storage.s3.endpoint }}"
+    bucket: "{{ recorders_storage.s3.bucket }}"
+    object: "/{{ recorders_storage.s3.directory }}/topology_information/{{ file.path | basename }}"
+    src: "{{ file.path }}"
+    mode: put
+  loop: "{{ recorders_kubernetes_files.files }}"
+  loop_control:
+    label: file/{{ file.path | basename }}
+    loop_var: file
+  when:
+    - recorders_storage.s3 is defined
+    - recorders_kubernetes_files is defined

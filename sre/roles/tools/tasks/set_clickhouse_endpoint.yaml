@@ -9,8 +9,9 @@
     wait: true
   register: tools_clickhouse_installation_info
 
-- name: Extract endpoint for Clickhouse cluster
+- name: Extract in-cluster endpoint for Clickhouse cluster
   ansible.builtin.set_fact:
     tools_clickhouse_endpoint: http://{{ tools_clickhouse_installation_info.resources[0].status.endpoint }}:8123
   when:
+    - tools_clickhouse_installation_info is defined
     - tools_clickhouse_installation_info.resources | length > 0

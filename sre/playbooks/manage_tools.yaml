@@ -34,16 +34,16 @@
       when:
         - incident_id is defined
   tasks:
-    - name: Import required roles
-      block:
-        - name: Import leaderboard role
-          ansible.builtin.import_role:
-            name: leaderboard
-          vars:
-            leaderboard_status:
-              status: progressing
-            leaderboard_storage: "{{ storage }}"
+    - name: Import leaderboard role
+      ansible.builtin.import_role:
+        name: leaderboard
+      vars:
+        leaderboard_status:
+          status: progressing
+        leaderboard_storage: "{{ storage }}"
 
+    - name: Attempt to perform tools role tasks
+      block:
         - name: Import tools role
           ansible.builtin.import_role:
             name: tools

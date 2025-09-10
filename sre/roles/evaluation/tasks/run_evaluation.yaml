@@ -1,21 +1,4 @@
 ---
-- name: Record agent run or execution time completion
-  ansible.builtin.copy:
-    content: "{{ now(utc=true,fmt='%Y-%m-%dT%H:%M:%S.%f') }}"
-    dest: /tmp/agent_execution_completed_or_exited_at.txt
-  tags:
-    - evaluation
-
-- name: Upload the agent_execution_completed_or_exited_at text to S3
-  amazon.aws.s3_object:
-    endpoint_url: "{{ s3_endpoint_url }}"
-    bucket: "{{ s3_bucket_name_for_results }}"
-    object: "/{{ sre_agent_name__version_number }}/{{run_uuid}}/{{scenario_number}}/{{run_number}}/agent_execution_completed_or_exited_at.txt"
-    src: "/tmp/agent_execution_completed_or_exited_at.txt"
-    mode: put
-  tags:
-    - evaluation
-
 - name: Pause for 600 (10 minutes) seconds for alert recording
   pause:
     seconds: 600
@@ -54,8 +37,8 @@
 
 - name: Download using AWS CLI
   ansible.builtin.command: >
-   aws s3 sync 
-   s3://{{ s3_bucket_name_for_results | trim }}/{{ sre_agent_name__version_number }}/{{ run_uuid }}/{{incident_number }}/{{run_number}}/ 
+   aws s3 sync
+   s3://{{ s3_bucket_name_for_results | trim }}/{{ sre_agent_name__version_number }}/{{ run_uuid }}/{{incident_number }}/{{run_number}}/
    {{input_dir }}/{{ sre_agent_name__version_number }}/{{ incident_number}}
   tags:
     - evaluation

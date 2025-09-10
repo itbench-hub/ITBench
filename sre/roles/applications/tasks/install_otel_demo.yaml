@@ -50,11 +50,19 @@
     tools_cluster:
       kubeconfig: "{{ applications_cluster.kubeconfig }}"
 
+- name: Import tools role for variable setting tasks
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_jaeger_endpoint
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ applications_cluster.kubeconfig }}"
+
 - name: Install OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
     chart_ref: opentelemetry-demo
     chart_repo_url: https://open-telemetry.github.io/opentelemetry-helm-charts
-    chart_version: 0.37.2
+    chart_version: 0.37.6
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
     release_name: "{{ helm_releases.otel_demo.name }}"
     release_namespace: "{{ helm_releases.otel_demo.namespace }}"
@@ -74,28 +82,33 @@
           replicas: "{{ configuration.accounting.replicas }}"
           resources:
             requests:
-              cpu: 200m
-              memory: 256Mi
+              cpu: 15m
+              memory: 80Mi
             limits:
-              memory: 512Mi
+              cpu: 30m
+              memory: 150Mi
         ad:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.ad.replicas }}"
           resources:
             requests:
-              cpu: 25m
-              memory: 300Mi
+              cpu: 10m
+              memory: 225Mi
             limits:
-              memory: 640Mi
+              cpu: 50m
+              memory: 450Mi
         cart:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.cart.replicas }}"
           resources:
             requests:
-              cpu: 35m
-              memory: 100Mi
+              cpu: 15m
+              memory: 55Mi
+            limits:
+              cpu: 30m
+              memory: 110Mi
         checkout:
           envOverrides:
             - name: SHIPPING_ADDR
@@ -105,47 +118,54 @@
           replicas: "{{ configuration.checkout.replicas }}"
           resources:
             requests:
-              cpu: 10m
-              memory: 20Mi
+              cpu: 7m
+              memory: 17Mi
             limits:
-              memory: 64Mi
+              cpu: 15m
+              memory: 40Mi
         currency:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.currency.replicas }}"
           resources:
             requests:
-              cpu: 25m
-              memory: 15Mi
+              cpu: 4m
+              memory: 4Mi
             limits:
-              memory: 32Mi
+              cpu: 10m
+              memory: 10Mi
         email:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.email.replicas }}"
           resources:
             requests:
+              cpu: 4m
+              memory: 50Mi
+            limits:
               cpu: 10m
-              memory: 75Mi
+              memory: 100Mi
         flagd:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           resources:
             requests:
-              cpu: 15m
-              memory: 75Mi
+              cpu: 2m
+              memory: 30Mi
             limits:
-              memory: 512Mi
+              cpu: 10m
+              memory: 60Mi
         fraud-detection:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.fraud_detection.replicas }}"
           resources:
             requests:
-              cpu: 35m
-              memory: 400Mi
+              cpu: 15m
+              memory: 200Mi
             limits:
-              memory: 1Gi
+              cpu: 50m
+              memory: 400Mi
         frontend:
           envOverrides:
             - name: SHIPPING_ADDR
@@ -155,20 +175,22 @@
           replicas: "{{ configuration.frontend.replicas }}"
           resources:
             requests:
-              cpu: 300m
-              memory: 150Mi
+              cpu: 50m
+              memory: 100Mi
             limits:
-              memory: 256Mi
+              cpu: 100m
+              memory: 200Mi
         frontend-proxy:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.frontend_proxy.replicas }}"
           resources:
             requests:
-              cpu: 75m
-              memory: 40Mi
+              cpu: 15m
+              memory: 25Mi
             limits:
-              memory: 128Mi
+              cpu: 30m
+              memory: 50Mi
         image-provider:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
@@ -178,8 +200,11 @@
             runAsUser: 101
           resources:
             requests:
-              cpu: 10m
-              memory: 25Mi
+              cpu: 1m
+              memory: 5Mi
+            limits:
+              cpu: 5m
+              memory: 15Mi
         kafka:
           imageOverride:
             tag: 2.0.2-kafka
@@ -188,10 +213,11 @@
           replicas: "{{ configuration.kafka.replicas }}"
           resources:
             requests:
-              cpu: 50m
-              memory: 700Mi
+              cpu: 25m
+              memory: 300Mi
             limits:
-              memory: 1.5Gi
+              cpu: 400m
+              memory: 600Mi
         load-generator:
           envOverrides:
             - name: LOCUST_BROWSER_TRAFFIC_ENABLED
@@ -206,60 +232,73 @@
             requests:
               cpu: 100m
               memory: 100Mi
+            limits:
+              cpu: 500m
+              memory: 750Mi
         payment:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.payment.replicas }}"
           resources:
             requests:
-              cpu: 50m
-              memory: 150Mi
+              cpu: 10m
+              memory: 80Mi
             limits:
-              memory: 256Mi
+              cpu: 20m
+              memory: 160Mi
         product-catalog:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.product_catalog.replicas }}"
           resources:
             requests:
-              cpu: 50m
+              cpu: 7m
               memory: 15Mi
             limits:
-              memory: 64Mi
+              cpu: 15m
+              memory: 30Mi
         quote:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.quote.replicas }}"
           resources:
             requests:
-              cpu: 10m
-              memory: 40Mi
+              cpu: 2m
+              memory: 20Mi
             limits:
-              memory: 128Mi
+              cpu: 5m
+              memory: 40Mi
         recommendation:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.recommendation.replicas }}"
           resources:
             requests:
-              cpu: 50m
-              memory: 100Mi
+              cpu: 15m
+              memory: 40Mi
+            limits:
+              cpu: 30m
+              memory: 80Mi
         shipping:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.shipping.replicas }}"
           resources:
             requests:
-              cpu: 10m
-              memory: 15Mi
+              cpu: 1m
+              memory: 5Mi
             limits:
-              memory: 64Mi
+              cpu: 5m
+              memory: 15Mi
         valkey-cart:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.valkey_cart.replicas }}"
           resources:
             requests:
+              cpu: 2m
+              memory: 4Mi
+            limits:
               cpu: 10m
               memory: 10Mi
       grafana:
@@ -286,7 +325,7 @@
               http:
                 endpoint: http://{{ helm_releases.opensearch.name }}-master.{{ helm_releases.opensearch.namespace }}.svc.cluster.local:9200
             otlp:
-              endpoint: http://jaeger-collector.{{ helm_releases.collectors.namespace }}.svc.cluster.local:4317
+              endpoint: "{{ tools_jaeger_collector_otlp_grpc_endpoint }}"
             otlphttp/prometheus:
               endpoint: http://{{ helm_releases.prometheus.name }}-kube-prometheus-prometheus.{{ helm_releases.prometheus.namespace }}.svc.cluster.local:9090
             prometheus:
@@ -322,10 +361,11 @@
             protocol: TCP
         resources:
           requests:
-            cpu: 75m
-            memory: 200Mi
+            cpu: 50m
+            memory: 150Mi
           limits:
-            memory: 768Mi
+            cpu: 100m
+            memory: 300Mi
       prometheus:
         enabled: false
     wait: true

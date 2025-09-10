@@ -1,0 +1,70 @@
+---
+- name: Manage SRE and FinOps Agent Handover Phases
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Validate that storage is configured
+      ansible.builtin.assert:
+        that: "storage.local is defined or storage.s3 is defined"
+        fail_msg: Storage has not been configured. Please assign either local or s3 bucket storage.
+        success_msg: Storage is configured.
+  tasks:
+    - name: Record agent handover timestamp
+      ansible.builtin.copy:
+        content: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%S.%f') }}"
+        dest: /tmp/handing_over_to_agent.txt
+        mode: "0644"
+      tags:
+        - agent_handover
+
+    - name: Copy handover data into local directory
+      ansible.builtin.copy:
+        dest: "{{ storage.local.directory }}/{handing_over_to_agent.txt"
+        mode: "0644"
+        src: /tmp/handing_over_to_agent.txt
+      tags:
+        - agent_handover
+      when:
+        - storage.local is defined
+
+    - name: Upload handover data to S3 bucket
+      amazon.aws.s3_object:
+        endpoint_url: "{{ storage.s3.endpoint }}"
+        bucket: "{{ storage.s3.bucket }}"
+        object: "/{{ storage.s3.directory }}/handing_over_to_agent.txt"
+        src: /tmp/handing_over_to_agent.txt
+        mode: put
+      tags:
+        - agent_handover
+      when:
+        - storage.s3 is defined
+
+    - name: Record agent handback timestamp
+      ansible.builtin.copy:
+        content: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%S.%f') }}"
+        dest: /tmp/agent_execution_completed_or_exited_at.txt
+        mode: "0644"
+      tags:
+        - agent_handback
+
+    - name: Copy handback data into local directory
+      ansible.builtin.copy:
+        dest: "{{ storage.local.directory }}/agent_execution_completed_or_exited_at.txt"
+        mode: "0644"
+        src: /tmp/agent_execution_completed_or_exited_at.txt
+      tags:
+        - agent_handback
+      when:
+        - storage.local is defined
+
+    - name: Upload handback data to S3 bucket
+      amazon.aws.s3_object:
+        endpoint_url: "{{ storage.s3.endpoint }}"
+        bucket: "{{ storage.s3.bucket }}"
+        object: "/{{ storage.s3.directory }}/agent_execution_completed_or_exited_at.txt"
+        src: /tmp/agent_execution_completed_or_exited_at.txt
+        mode: put
+      tags:
+        - agent_handback
+      when:
+        - storage.s3 is defined

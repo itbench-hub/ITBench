@@ -40,7 +40,7 @@ sudo dnf install jq
 
 1. Install Python dependencies. (Working directory is `remote_cluster`.)
 ```bash
-python -m pip install -r requirements-dev.txt
+python -m pip install -r ../../requirements-dev.txt
 ```
 
 2. Create the group variables for the development host. The `kops_cluster.yaml` file contains the configuration needed to customize the kops deployment.

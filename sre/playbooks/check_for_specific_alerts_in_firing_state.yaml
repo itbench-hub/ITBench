@@ -1,0 +1,100 @@
+---
+- name: Check if alerts in firing state are present
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: "{{ system_oc_exists }}"
+  tasks:
+    - name: Import tools role for variable setting tasks
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: set_ingress_hostname
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Attempt to check for firing alerts
+      block:
+        - name: Call the Prometheus Alerts API until specific alerts in firing state are detected
+          ansible.builtin.uri:
+            url: "http://{{ ingress_hostname }}/prometheus/api/v1/alerts"
+            method: GET
+            return_content: true
+            body_format: json
+            headers:
+              Content-Type: "application/json"
+          register: alerts_api_result
+          retries: 30
+          delay: 15
+          until: >
+            alerts_api_result.status == 200 and
+            alerts_api_result.json is defined and
+            alerts_api_result.json.data is defined and
+            alerts_api_result.json.data.alerts is defined and
+            (alerts_api_result.json.data.alerts |
+             selectattr('state', '==', 'firing') |
+             selectattr('labels.alertname', 'in', [
+               'FailedPodsDetected',
+               'PendingPodsDetected',
+               'RequestLatency',
+               'RequestErrorRate',
+               'KafkaConnectionClosureRate',
+               'CPUSpend',
+               'MemorySpend',
+               'CPUEfficiency',
+               'MemoryEfficiency'
+             ]) |
+             list | length > 0)
+
+        - name: Display specific firing alerts found
+          ansible.builtin.debug:
+            msg: >
+              Found {{ alerts_api_result.json.data.alerts |
+                       selectattr('state', '==', 'firing') |
+                       selectattr('labels.alertname', 'in', [
+                         'FailedPodsDetected',
+                         'PendingPodsDetected',
+                         'RequestLatency',
+                         'RequestErrorRate',
+                         'KafkaConnectionClosureRate',
+                         'CPUSpend',
+                         'MemorySpend',
+                         'CPUEfficiency',
+                         'MemoryEfficiency'
+                       ]) |
+                       list | length }} specific alerts in firing state
+          when: alerts_api_result is defined and alerts_api_result.json is defined
+
+      rescue:
+        - name: Import leaderboard role
+          ansible.builtin.import_role:
+            name: leaderboard
+          vars:
+            leaderboard_status:
+              failed_task:
+                name: "{{ ansible_failed_task.name }}"
+                result: "{{ ansible_failed_result }}"
+              status: failed
+            leaderboard_storage: "{{ storage }}"
+
+        - name: Fail playbook
+          ansible.builtin.fail:
+            msg: "Task ({{ ansible_failed_task.name }}) has failed: {{ ansible_failed_result }}"

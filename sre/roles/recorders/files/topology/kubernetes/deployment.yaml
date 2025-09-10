@@ -1,0 +1,45 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: kubernetes-topology-record-retriever
+    app.kubernetes.io/part-of: it-bench
+  name: kubernetes-topology-record-retriever
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kubernetes-topology-record-retriever
+      app.kubernetes.io/part-of: it-bench
+  template:
+    metadata:
+      annotations:
+        openshift.io/required-scc: restricted-v2
+      labels:
+        app.kubernetes.io/name: kubernetes-topology-record-retriever
+        app.kubernetes.io/part-of: it-bench
+    spec:
+      containers:
+        - name: retriever
+          image: registry.access.redhat.com/ubi9/ubi-minimal:9.6-1755695350
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - "sleep 600"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 50Mi
+            limits:
+              memory: 100Mi
+          volumeMounts:
+            - name: records
+              mountPath: /opt/app-root/src/records
+      securityContext:
+        fsGroup: 1001
+      volumes:
+        - name: records
+          persistentVolumeClaim:
+            claimName: kubernetes-topology-records
+  replicas: 1

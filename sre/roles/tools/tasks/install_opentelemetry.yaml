@@ -198,61 +198,23 @@
     - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
+- name: Load OpenTelemetry Collector information
+  ansible.builtin.set_fact:
+    tools_jaeger_collector: "{{ lookup('ansible.builtin.file', 'files/jaeger/collector.yaml') | from_yaml }}"
+  when:
+    - tools_required.jaeger
+
 - name: Install Jaeger
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: opentelemetry.io/v1beta1
-      kind: OpenTelemetryCollector
-      metadata:
-        name: "{{ instances.jaeger.name }}"
-        namespace: "{{ helm_releases.collectors.namespace }}"
-      spec:
-        image: jaegertracing/jaeger:2.9.0
-        mode: deployment
-        observability:
-          metrics:
-            enableMetrics: true
-        podAnnotations:
-          openshift.io/required-scc: restricted-v2
-        ports:
-          - name: jaeger
-            port: 16686
-        config:
-          service:
-            extensions:
-              - jaeger_storage
-              - jaeger_query
-            pipelines:
-              traces:
-                receivers:
-                  - otlp
-                exporters:
-                  - debug
-                  - jaeger_storage_exporter
-          extensions:
-            jaeger_query:
-              base_path: /jaeger
-              storage:
-                traces: traces_store
-            jaeger_storage:
-              backends:
-                traces_store:
-                  opensearch:
-                    server_urls:
-                      - http://{{ helm_releases.opensearch.name }}-cluster-master.{{ helm_releases.opensearch.namespace }}.svc.cluster.local:9200
-          receivers:
-            otlp:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:4317
-                http:
-                  endpoint: 0.0.0.0:4318
-          exporters:
-            debug: {}
-            jaeger_storage_exporter:
-              trace_storage: traces_store
+    name: "{{ instances.jaeger.name }}"
+    namespace: "{{ helm_releases.collectors.namespace }}"
+    template: templates/jaeger/collector.j2
     state: present
+  vars:
+    container_image: "{{ tools_jaeger_collector.spec.image }}"
+    opensearch_urls:
+      - http://opensearch-cluster-master.{{ helm_releases.opensearch.namespace }}.svc.cluster.local:9200
   when:
     - tools_required.jaeger
 

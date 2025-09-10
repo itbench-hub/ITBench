@@ -1,0 +1,86 @@
+---
+- name: Retrieve the traces recorder pod name
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    label_selectors:
+      - app.kubernetes.io/name = jaeger-traces-recorder
+      - app.kubernetes.io/part-of = it-bench
+  register: recorders_jaeger_pods_info
+
+- name: Copy records directory from pod
+  kubernetes.core.k8s_cp:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    local_path: /tmp/traces
+    namespace: "{{ recorders_jaeger_pods_info.resources[0].metadata.namespace }}"
+    pod: "{{ recorders_jaeger_pods_info.resources[0].metadata.name }}"
+    remote_path: /opt/app-root/src/records
+    state: from_pod
+  when:
+    - recorders_jaeger_pods_info.resources | length == 1
+
+- name: Uninstall Jaeger Traces Recorder
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    src: files/traces/jaeger/statefulset.yaml
+    state: absent
+    wait: true
+
+- name: Delete ConfigMap with Python script
+  kubernetes.core.k8s:
+    api_version: v1
+    delete_all: true
+    kind: ConfigMap
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    label_selectors:
+      - app.kubernetes.io/name = jaeger-traces-recorder
+      - app.kubernetes.io/part-of = it-bench
+    state: absent
+    wait: true
+
+- name: Find all exported JSON files
+  ansible.builtin.find:
+    path: /tmp/traces
+    patterns:
+      - "*.json"
+  register: recorders_jaeger_files
+
+- name: Ensure trace_information directory exists on local
+  ansible.builtin.file:
+    path: "{{ recorders_storage.local.directory }}/trace_information"
+    state: directory
+    mode: "0755"
+  when:
+    - recorders_storage.local is defined
+
+- name: Copy exported data into local directory
+  ansible.builtin.copy:
+    dest: "{{ recorders_storage.local.directory }}/trace_information/{{ file.path | basename }}"
+    mode: "0644"
+    src: "{{ file.path }}"
+  loop: "{{ recorders_jaeger_files.files }}"
+  loop_control:
+    label: file/{{ file.path | basename }}
+    loop_var: file
+  when:
+    - recorders_storage.local is defined
+    - recorders_jaeger_files is defined
+
+- name: Upload exported data to S3 bucket
+  amazon.aws.s3_object:
+    endpoint_url: "{{ recorders_storage.s3.endpoint }}"
+    bucket: "{{ recorders_storage.s3.bucket }}"
+    object: "/{{ recorders_storage.s3.directory }}/trace_information/{{ file.path | basename }}"
+    src: "{{ file.path }}"
+    mode: put
+  loop: "{{ recorders_jaeger_files.files }}"
+  loop_control:
+    label: file/{{ file.path | basename }}
+    loop_var: file
+  when:
+    - recorders_storage.s3 is defined
+    - recorders_jaeger_files is defined
