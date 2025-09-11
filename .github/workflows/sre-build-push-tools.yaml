@@ -10,20 +10,7 @@ on:
 
 jobs:
   topology-monitor:
-    strategy:
-      matrix:
-        os:
-          - ubuntu-24.04
-          - ubuntu-24.04-arm
-        platform:
-          - linux/amd64
-          - linux/arm64
-        exclude:
-          - os: ubuntu-24.04
-            platform: linux/arm64
-          - os: ubuntu-24.04-arm
-            platform: linux/amd64
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout codebase
         uses: actions/checkout@v5.0.0
@@ -44,7 +31,8 @@ jobs:
         with:
           context: sre/tools/kubernetes-topology-monitor
           platforms: |
-            ${{ matrix.platform }}
+            linux/amd64
+            linux/arm64
           push: true
           tags: |
             quay.io/it-bench/topology-monitor:0.0.4
