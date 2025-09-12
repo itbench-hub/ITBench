@@ -4,7 +4,7 @@ ITBench-Scenarios accepts contributions through GitHub pull request.
 
 ## Required Software
 
-- [Python3](https://www.python.org/downloads/) (v3.12.z)
+- [Python3](https://www.python.org/downloads/) (v3.13.z)
 
 ## Environment Set Up Guide
 

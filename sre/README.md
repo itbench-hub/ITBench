@@ -28,7 +28,7 @@ The playbook run is configured using variables defined in `group\_vars`.
 
 ## Required Software
 
-- [Python3](https://www.python.org/downloads/) (v3.12.Z)
+- [Python3](https://www.python.org/downloads/) (v3.13.Z)
 - [Helm](https://helm.sh/docs/intro/install/) (v3.16+)
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [OpenShift CLI](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/cli_tools/openshift-cli-oc) (Required Only for OpenShift)
@@ -40,7 +40,7 @@ The playbook run is configured using variables defined in `group\_vars`.
 ```bash
 brew install helm
 brew install kubectl
-brew install python@3.12
+brew install python@3.13
 brew install openshift-cli
 ```
 
@@ -50,7 +50,7 @@ brew install openshift-cli
 2. Set up kubectl by following the instructions [here](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
 3. Set up Python by running:
 ```bash
-sudo dnf install python3.12
+sudo dnf install python3.13
 ```
 4. Install the OpenShift CLI by following the instructions [here](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/cli_tools/openshift-cli-oc#cli-installing-cli_cli-developer-commands)
 
@@ -60,7 +60,7 @@ sudo dnf install python3.12
 
 1. Create a Python virtual environment
 ```bash
-python3.12 -m venv venv
+python3.13 -m venv venv
 source venv/bin/activate
 ```
 
