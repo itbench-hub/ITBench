@@ -78,7 +78,7 @@
       tags:
         - uninstall_tools
 
-    - name: Update assertion file with new condition
+    - name: Update assertion file with new condition ({{ leaderboard_status.status }})
       ansible.builtin.copy:
         content: |
           {{
@@ -91,10 +91,9 @@
       tags:
         - always
       when:
-        - leaderboard_status.status != 'progressing'
         - leaderboard_status_conditions is defined
 
-    - name: Update status file with new event
+    - name: Update status file with new event ({{ leaderboard_status.status }})
       ansible.builtin.copy:
         content: "{{ leaderboard_current_status | combine({'events': leaderboard_status_events}) | to_nice_json }}"
         dest: "/tmp/status.json"
