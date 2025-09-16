@@ -11,7 +11,7 @@ on:
     branches:
       - main
     paths:
-      - sre/tools/** 
+      - sre/tools/**
       - '!sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/**'
 
 concurrency:
@@ -61,7 +61,7 @@ jobs:
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
       - name: Upload digest
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: topology-monitor-digests-${{ env.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/digests/*
@@ -75,7 +75,7 @@ jobs:
       - topology-monitor
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5.0.0
         with:
           path: ${{ runner.temp }}/digests
           pattern: topology-monitor-digests-*
@@ -97,7 +97,7 @@ jobs:
             $(printf 'quay.io/it-bench/topology-monitor@sha256:%s ' *)
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect quay.io/it-bench/topology-monitor:latest
 
   awx-ee:
     strategy:
@@ -159,7 +159,7 @@ jobs:
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
       - name: Upload digest
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: awx-ee-digests-${{ env.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/digests/*
@@ -173,7 +173,7 @@ jobs:
       - awx-ee
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5.0.0
         with:
           path: ${{ runner.temp }}/digests
           pattern: awx-ee-digests-*
