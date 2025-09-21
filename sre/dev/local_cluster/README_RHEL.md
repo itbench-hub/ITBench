@@ -28,12 +28,17 @@ fs.inotify.max_user_watches = 524288
 fs.inotify.max_user_instances = 512
 ```
 
-5. To apply the change made in the previous step, run
+5. To avoid seeing `vm.max_map_count` error in the future, edit the file /etc/sysctl.conf and add the following lines:
+```
+vm.max_map_count = 262144
+```
+
+6. To apply the change made in the previous step, run
 ```bash
 sudo sysctl -p
 ```
 
-6. A pre-requisite for Chaos-Mesh-based fault mechanisms is to ensure ebtable-related modules are loaded. Add/edit the file (/etc/modules-load.d/ebtables.conf) and add the following lines:
+7. A pre-requisite for Chaos-Mesh-based fault mechanisms is to ensure ebtable-related modules are loaded. Add/edit the file (/etc/modules-load.d/ebtables.conf) and add the following lines:
 ```bash
 ebtable_broute
 ebtable_nat

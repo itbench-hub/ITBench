@@ -1,0 +1,17 @@
+---
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_incidents_ids.yaml
+
+- name: Include the incidents role to run the validation on all incidents
+  ansible.builtin.include_role:
+    name: incidents
+    apply:
+      tags:
+        - validate_docs
+      vars:
+        incidents_file:
+          id: "{{ item }}"
+  loop: "{{ documentation_incidents_ids }}"
+  loop_control:
+    label: "incident-{{ item }}"

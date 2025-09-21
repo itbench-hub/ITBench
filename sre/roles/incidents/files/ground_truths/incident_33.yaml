@@ -1,0 +1,79 @@
+---
+fault:
+  - entity:
+      name: ad-pod-1
+      group_id: ad-pod-1
+      kind: Pod
+    condition: Ad deployment pods cannot be scheduled due to invalid node selector
+    category: Configuration
+    fault_mechanism: invalid-node-selector
+alerts:
+  - id: PendingPodsDetected
+    group_id: ad-pod-1
+    metadata:
+      description: Ad pods stuck in Pending state due to invalid node selector
+  - id: RequestErrorRate
+    group_id: frontend-service-1
+    metadata:
+      description: Frontend service experiencing connection failures to ad service
+  - id: RequestErrorRate
+    group_id: frontend-proxy-service-1
+    metadata:
+      description: Frontend proxy experiencing errors when serving pages that require ads functionality
+groups:
+  - id: ad-pod-1
+    kind: Pod
+    filter:
+      - ad-.*
+    namespace: otel-demo
+    root_cause: true
+  - id: ad-service-1
+    kind: Service
+    filter:
+      - ad\b
+    namespace: otel-demo
+  - id: frontend-pod-1
+    kind: Pod
+    filter:
+      - frontend-.*
+    namespace: otel-demo
+  - id: frontend-service-1
+    kind: Service
+    filter:
+      - frontend\b
+    namespace: otel-demo
+  - id: frontend-proxy-pod-1
+    kind: Pod
+    filter:
+      - frontend-proxy-.*
+    namespace: otel-demo
+  - id: frontend-proxy-service-1
+    kind: Service
+    filter:
+      - frontend-proxy\b
+    namespace: otel-demo
+aliases:
+  - - ad-service-1
+    - ad-pod-1
+  - - frontend-service-1
+    - frontend-pod-1
+  - - frontend-proxy-service-1
+    - frontend-proxy-pod-1
+propagations:
+  - source: ad-pod-1
+    target: ad-service-1
+    condition: Ad pods cannot be scheduled, no backend pods available for service
+    effect: Ad service has no healthy endpoints, becomes completely unavailable
+  - source: ad-service-1
+    target: frontend-service-1
+    condition: Frontend service cannot connect to ad service with no available endpoints
+    effect: Frontend fails to retrieve ads and displays pages with missing ad content
+  - source: frontend-service-1
+    target: frontend-proxy-1
+    condition: Frontend service returns degraded responses with missing ads errors
+    effect: Frontend service has slower and incorrect responses
+recommended_actions:
+  - solution:
+      id: fix_node_selectors
+      actions:
+        - Review and correct node selector configuration for ad and cart deployments
