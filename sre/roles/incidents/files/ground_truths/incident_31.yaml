@@ -1,0 +1,54 @@
+---
+fault:
+  - entity:
+      name: frontend-pod-1
+      group_id: frontend-pod-1
+      kind: Pod
+    condition: NetworkPolicy blocks all ingress traffic to frontend pods
+    category: Configuration
+    fault_mechanism: misconfigured-network-policy
+alerts:
+  - id: RequestErrorRate
+    group_id: frontend-proxy-service-1
+    metadata:
+      description: Frontend proxy cannot reach frontend service due to network policy blocking ingress
+groups:
+  - id: frontend-pod-1
+    kind: Pod
+    filter:
+      - frontend-.*
+    namespace: otel-demo
+    root_cause: true
+  - id: frontend-service-1
+    kind: Service
+    filter:
+      - frontend\b
+    namespace: otel-demo
+  - id: frontend-proxy-pod-1
+    kind: Pod
+    filter:
+      - frontend-proxy-.*
+  - id: frontend-proxy-service-1
+    kind: Service
+    filter:
+      - frontend-proxy\b
+    namespace: otel-demo
+aliases:
+  - - frontend-service-1
+    - frontend-pod-1
+  - - frontend-proxy-service-1
+    - frontend-proxy-pod-1
+propagations:
+  - source: frontend-pod-1
+    target: frontend-service-1
+    condition: NetworkPolicy blocks all ingress traffic to frontend pods
+    effect: Frontend service cannot receive traffic, making it completely unavailable
+  - source: frontend-service-1
+    target: frontend-proxy-1
+    condition: Frontend proxy cannot connect to frontend service due to network policy
+    effect: All user requests through proxy fail with connection errors
+recommended_actions:
+  - solution:
+      id: remove_blocking_network_policy
+      actions:
+        - Identify and remove the NetworkPolicy blocking ingress to frontend pods

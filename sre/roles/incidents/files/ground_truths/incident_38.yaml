@@ -1,27 +1,60 @@
 ---
 fault:
   - entity:
-      name: otel-demo-*
+      name: fraud-detection-horizontal-pod-autoscalers-1
       kind: HorizontalPodAutoscaler
-      group_id: otel-demo-horizontal-pod-autoscalers
+      group_id: fraud-detection-horizontal-pod-autoscalers-1
+    condition: Misconfigured HPA
+    category: Other
+    fault_mechanism: custom
+  - entity:
+      name: frontend-horizontal-pod-autoscalers-1
+      kind: HorizontalPodAutoscaler
+      group_id: frontend-horizontal-pod-autoscalers-1
+    condition: Misconfigured HPA
+    category: Other
+    fault_mechanism: custom
+  - entity:
+      name: image-provider-horizontal-pod-autoscalers-1
+      kind: HorizontalPodAutoscaler
+      group_id: image-provider-horizontal-pod-autoscalers-1
     condition: Misconfigured HPA
     category: Other
     fault_mechanism: custom
 alerts:
-  - id: high_cost_variation
-    text: Cost has increased significantly despite having low utilization
+  - id: CPUSpend
     group_id: otel-demo-namespace-1
+    metadata:
+      description: Cost has increased significantly despite having low utilization
 groups:
   - id: otel-demo-namespace-1
     kind: Namespace
     name: otel-demo
-    namespace:
-  - id: otel-demo-horizontal-pod-autoscalers
+    namespace: otel-demo
+  - id: fraud-detection-horizontal-pod-autoscalers-1
     kind: HorizontalPodAutoscaler
     namespace: otel-demo
     filter:
       - "*.*"
     root_cause: true
+  - id: frontend-horizontal-pod-autoscalers-1
+    kind: HorizontalPodAutoscaler
+    namespace: otel-demo
+    filter:
+      - "*.*"
+    root_cause: true
+  - id: image-provider-horizontal-pod-autoscalers-1
+    kind: HorizontalPodAutoscaler
+    namespace: otel-demo
+    filter:
+      - "*.*"
+    root_cause: true
+aliases:
+  - - fraud-detection-horizontal-pod-autoscalers-1
+  - - frontend-horizontal-pod-autoscalers-1
+  - - image-provider-horizontal-pod-autoscalers-1
+  - - otel-demo-namespace-1
+propagations: []
 recommended_actions:
   - solution:
       id: investigate_detect_misconfigured_autoscaler

@@ -1,0 +1,28 @@
+---
+- name: Validate spec content
+  ansible.utils.validate:
+    data: "{{ incidents_spec }}"
+    criteria: "{{ lookup('ansible.builtin.file', 'files/schemas/spec.json') | from_json }}"
+    engine: ansible.utils.jsonschema
+  failed_when: false
+  register: incidents_spec_validation_result
+
+- name: Display validation errors
+  ansible.builtin.debug:
+    var: incidents_spec_validation_result
+  when:
+    - incidents_spec_validation_result.errors is defined
+
+- name: Fail validation due to errors
+  ansible.builtin.fail:
+    msg: Failed to validate the spec file. Please consult the above log to resolve error(s).
+  when:
+    - incidents_spec_validation_result.errors is defined
+
+- name: Verify that tools will be installed into the environment
+  ansible.builtin.assert:
+    that: incidents_spec.spec.environment.tools.category is defined
+    fail_msg: "'spec.environment.tools.category' cannot be undefined if there are no tools selected"
+    success_msg: Tool selection is valid.
+  when:
+    - incidents_spec.spec.environment.tools.selected | default([]) | length == 0

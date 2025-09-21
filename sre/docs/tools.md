@@ -39,8 +39,6 @@ In ITBench, the following tool is used:
 | --- | --- |
 | Chaos Mesh | https://github.com/chaos-mesh/chaos-mesh |
 
-In order to use a Chaos Mesh fault, Chaos Mesh should be specified as part of the tools required and a valid Chaos Mesh schedule needs to be provided. Examples of using a Chaos Mesh fault are provided by [Incident 26](../roles/incidents/files/specs/incident_26.yaml) and [Incident 27](../roles/incidents/files/specs/incident_27.yaml). Examples and guides for making a valid Chaos Mesh schedule spec can be found on their website or their GitHub repository.
-
 ### FinOps Tools
 
 A **finops tool** is a techonology which provides financial insights on the operational costs of running an application.

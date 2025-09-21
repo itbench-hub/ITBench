@@ -1,0 +1,76 @@
+{
+    "type": "object",
+    "required": ["metadata", "spec"],
+    "properties": {
+        "metadata": {
+            "type": "object",
+            "required": ["complexity", "id", "name", "platform"],
+            "properties": {
+                "complexity": {
+                    "type": "string",
+                    "enum": ["Low", "Medium", "High"]
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string",
+                    "enum": ["kubernetes"]
+                }
+            }
+        },
+        "spec": {
+            "type": "object",
+            "required": ["environment", "faults"],
+            "properties": {
+                "environment": {
+                    "type": "object",
+                    "required": ["applications", "tools"],
+                    "properties": {
+                        "applications": {
+                            "type": "object",
+                            "properties": {
+                                "otel_demo": {
+                                    "type": "object",
+                                    "required": ["enabled"],
+                                    "properties": {
+                                        "configuration": {
+                                            "type": "object"
+                                        },
+                                        "enabled": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "tools": {
+                            "type": "object",
+                            "properties": {
+                                "category": {
+                                    "type": "string",
+                                    "enum": ["finops", "sre"]
+                                },
+                                "selected": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "faults": {
+                    "type": "array",
+                    "items": {
+                        "type": "object"
+                    }
+                }
+            }
+        }
+    }
+}

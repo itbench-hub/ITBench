@@ -15,6 +15,14 @@ group_vars: ## Generates the group variables
 	cp group_vars/environment/cluster.yaml.example group_vars/environment/cluster.yaml
 	cp group_vars/environment/tools.yaml.example group_vars/environment/tools.yaml
 
+.PHONY: docs
+docs: ## Generates the documentation for the incidents
+	ansible-playbook -i inventory.yaml playbooks/manage_documentation.yaml --tags "generate_docs"
+
+.PHONY: validate_docs
+validate_docs: ## Validates the documents (ie: specs) used to run an incident
+	ansible-playbook -i inventory.yaml playbooks/manage_documentation.yaml --tags "validate_docs"
+
 .PHONY: deploy_tools
 deploy_tools: ## Deploys the observability and fault tools to cluster
 ifdef INCIDENT_NUMBER
@@ -115,52 +123,17 @@ disable_agent_access: ## Removes access controls for llm agent
 generate_agent_bundle: ## Generates a bundle for an LLM Agent to interface with
 	ANSIBLE_STDOUT_CALLBACK=ansible.posix.json ansible-playbook -i inventory.yaml playbooks/generate_agent_bundle.yaml | jq -r '.plays[].tasks[] | select(.task.name == "Print agent bundle") | .hosts.localhost.msg'
 
+.PHONY: generate_leaderboard_bundle_status
+generate_leaderboard_bundle_status: ## Generates a bundle status for Leaderboard to interface with
+	ansible-playbook -i inventory.yaml playbooks/generate_leaderboard_bundle_status.yaml
+
 .PHONY: generate_leaderboard_bundle
-generate_leaderboard_bundle: ## Generates a bundle for Leaderboard to interface with
+generate_leaderboard_bundle: ## Generates a bundle of scenarios for the Leaderboard to interface
 	ansible-playbook -i inventory.yaml playbooks/generate_leaderboard_bundle.yaml
 
-# TODO: See why the OBJC_DISABLE_INITIALIZE_FORK_SAFETY is needed
-
-.PHONY: incident documentation
-documentation: ## Generates documentation for all incidents
-	export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES; \
-	ansible-playbook base.yaml --tags "documentation"
-
-.PHONY: validate_docs
-validate_docs: ## Validates documention for an incident
-	export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES; \
-	ansible-playbook base.yaml --tags "single_doc_validate,incident_$(INCIDENT_NUMBER)" \
-		--extra-vars "doc_incident_number=$(INCIDENT_NUMBER)"
-
-.PHONY: Fault injection documentation
-injection_docs: ## Generates documentation for all fault injection
-	export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES; \
-	ansible-playbook base.yaml --tags "injection_docs"
-
-.SILENT: fetch_alerts
-fetch_alerts:
-	ansible-playbook -v base.yaml --tags "fetch_alerts" \
-		--extra-vars "incident_number=$(INCIDENT_NUMBER)" \
-		--extra-vars "sample_application=$(SAMPLE_APPLICATION)" \
-		> /tmp/fetch.out 2>&1 &
-
-.PHONY: evaluation
-.SILENT: evaluation
-evaluation:
-	KOPS_STATE_STORE=s3://${S3_BUCKET_NAME} kops export kubecfg ${CLUSTER_ASSIGNED_NAME} --admin --kubeconfig /tmp/${CLUSTER_ASSIGNED_NAME}.yaml > /tmp/eval.out; \
-	ansible-playbook -v base.yaml --tags "evaluation" --extra-vars "incident_number=$(INCIDENT_NUMBER) \
-	                                                                shared_workspace=\"$(SHARED_WORKSPACE)\" \
-																	s3_bucket_name_for_results='sre-runner-with-awx' \
-																	sre_agent_name__version_number=${PARTICIPANT_AGENT_UUID} \
-																	run_uuid=${RUN_UUID} \
-																	scenario_number=$(INCIDENT_NUMBER) \
-																	run_number=1  \
-																	location=${location} \
-																	sre_bench_runner=true \
-																	kubeconfig=/tmp/${CLUSTER_ASSIGNED_NAME}.yaml \
-																	domain=sre s3_endpoint_url='https://s3.us-east-2.amazonaws.com'" > /tmp/eval.out ; \
-	cat evaluation/e2e_new/incident_reports/$(INCIDENT_NUMBER).json
-	rm evaluation/e2e_new/incident_reports/$(INCIDENT_NUMBER).json
+PHONY: fetch_alerts
+fetch_alerts: ## Checks the Prometheus for firing alerts
+	ansible-runner run ./ -p check_for_specific_alerts_in_firing_state.yaml
 
 .PHONY: deploy_observability_stack
 deploy_observability_stack: ## DEPRECATED: Deploys the observability tools to cluster
@@ -240,13 +213,26 @@ bundle_info:
 
 .SILENT: bundle_status
 bundle_status:
-	@echo "WARNING: 'make bundle_status is deprecated. Please use 'make generate_leaderboard_bundle' instead."
+	@echo "WARNING: 'make bundle_status is deprecated. Please use 'make generate_leaderboard_bundle_status' instead."
 	@echo "This command will be removed in a future version."
-	@echo "Executing 'make generate_leaderboard_bundle'..."
+	@echo "Executing 'make generate_leaderboard_bundle_status'..."
 	@echo ""
-	$(MAKE) generate_leaderboard_bundle
+	$(MAKE) generate_leaderboard_bundle_status
 
 .PHONY: check_alerts
 check_alerts:
 	@echo "WARNING: 'make check_alerts' is deprecated. Please use 'make deploy_recorders' instead."
+	@echo "This command will be removed in a future version."
+
+.PHONY: documentation
+documentation: ## DEPRECATED: Generates documentation for all incidents
+	@echo "WARNING: 'make documentation is deprecated. Please use 'make docs' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make docs'..."
+	@echo ""
+	$(MAKE) docs
+
+.PHONY: injection_docs
+injection_docs: ## DEPRECATED: Generates documentation for all fault injection
+	@echo "WARNING: 'make injection_docs' is deprecated."
 	@echo "This command will be removed in a future version."

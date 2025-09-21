@@ -1,0 +1,78 @@
+---
+fault:
+  - entity:
+      name: ad-service-1
+      group_id: ad-service-1
+      kind: Service
+    condition: Ad service port misconfigured to 9999 instead of correct port 8080
+    category: Configuration
+    fault_mechanism: misconfigured-service-port
+alerts:
+  - id: RequestErrorRate
+    group_id: frontend-service-1
+    metadata:
+      description: Frontend service experiencing connection failures to ad service
+  - id: RequestErrorRate
+    group_id: frontend-proxy-service-1
+    metadata:
+      description: Frontend proxy experiencing errors when serving pages that require ads
+groups:
+  - id: ad-service-1
+    kind: Service
+    filter:
+      - ad\b
+    namespace: otel-demo
+    root_cause: true
+  - id: ad-pod-1
+    kind: Pod
+    filter:
+      - ad-.*
+    namespace: otel-demo
+  - id: frontend-service-1
+    kind: Service
+    filter:
+      - frontend\b
+    namespace: otel-demo
+  - id: frontend-pod-1
+    kind: Pod
+    filter:
+      - frontend-.*
+    namespace: otel-demo
+  - id: frontend-proxy-service-1
+    kind: Service
+    filter:
+      - frontend-proxy\b
+    namespace: otel-demo
+  - id: frontend-proxy-pod-1
+    kind: Pod
+    filter:
+      - frontend-proxy-.*
+    namespace: otel-demo
+aliases:
+  - - ad-service-1
+    - ad-pod-1
+  - - frontend-proxy-service-1
+    - frontend-proxy-pod-1
+  - - frontend-proxy-service-1
+    - frontend-proxy-pod-1
+  - - frontend-service-1
+    - frontend-pod-1
+propagations:
+  - source: ad-pod-1
+    target: ad-service-1
+    condition: Ad pod listening on port 8080 but service configured to route to port 9999
+    effect: Service cannot route traffic to the pod, making ad service unavailable
+  - source: ad-service-1
+    target: frontend-service-1
+    condition: Frontend service cannot connect to ad service due to port misconfiguration
+    effect: Frontend service fails to retrieve ads and displays pages with missing ad content
+  - source: frontend-service-1
+    target: frontend-proxy-service-1
+    condition: Frontend service returns degraded responses with missing ads to frontend proxy
+    effect: Users experience incomplete loads in the absence of ads
+recommended_actions:
+  - solution:
+      id: fix_service_port
+      actions:
+        - Update ad service configuration to use correct port 8080 instead of 9999
+        - Restart ad service pods to apply configuration changes

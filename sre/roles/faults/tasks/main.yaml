@@ -5,13 +5,13 @@
     apply:
       tags:
         - inject_faults
+      vars:
+        fault: "{{ fault_spec }}"
   loop: "{{ faults_specs }}"
   loop_control:
     loop_var: fault_spec
   tags:
     - inject_faults
-  vars:
-    fault: "{{ fault_spec }}"
 
 - name: Include removal tasks
   ansible.builtin.include_tasks:
@@ -19,10 +19,10 @@
     apply:
       tags:
         - remove_faults
+      vars:
+        fault: "{{ fault_spec }}"
   loop: "{{ faults_specs | reverse }}"
   loop_control:
     loop_var: fault_spec
   tags:
     - remove_faults
-  vars:
-    fault: "{{ fault_spec }}"

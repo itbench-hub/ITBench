@@ -1,0 +1,94 @@
+---
+- name: Manage SRE and FinOps Leaderboard Bundle Status
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Validate that storage is configured
+      ansible.builtin.assert:
+        that: "storage.local is defined or storage.s3 is defined"
+        fail_msg: Storage has not been configured. Please assign either local or s3 bucket storage.
+        success_msg: Storage is configured.
+  tasks:
+    - name: Copy status file into temporary directory from local directory
+      ansible.builtin.copy:
+        dest: /tmp/assertion.json
+        mode: "0644"
+        src: "{{ storage.local.directory }}/assertion.json"
+      when:
+        - storage.local is defined
+
+    - name: Copy status file into temporary directory from S3 bucket
+      amazon.aws.s3_object:
+        endpoint_url: "{{ storage.s3.endpoint }}"
+        bucket: "{{ storage.s3.bucket }}"
+        object: "/{{ storage.s3.directory }}/assertion.json"
+        dest: /tmp/assertion.json
+        mode: get
+      register: bucket_retrieval_result
+      until:
+        - bucket_retrieval_result.contents != ""
+      retries: 3
+      delay: 60
+      when:
+        - storage.s3 is defined
+
+    - name: Load assertion file contents
+      ansible.builtin.set_fact:
+        deployed_condition: "{{ assertion.status.conditions | selectattr('type', 'equalto', 'Deployed') | list | first | default({}) }}"
+        fault_injected_condition: "{{ assertion.status.conditions | selectattr('type', 'equalto', 'FaultInjected') | list | first | default({}) }}"
+        destroyed_condition: "{{ assertion.status.conditions | selectattr('type', 'equalto', 'Destroyed') | list | first | default({}) }}"
+      tags:
+        - always
+      vars:
+        assertions: "{{ lookup('ansible.builtin.file', '/tmp/assertion.json') | from_json }}"
+
+    - name: Construct bundle
+      ansible.builtin.set_fact:
+        leaderboard_bundle:
+          status:
+            conditions:
+              - type: Deployed
+                status: "{{ deployed_condition.status | default(false) | string }}"
+                reason: "{{ 'DeploymentInProgress' if deployed_condition.status is undefined else 'DeploymentReady' if deployed_condition.status else 'DeploymentFailed' }}"
+                lastTransitionTime: "{{ deployed_condition.lastTransitionTime | default(ansible_date_time.iso8601) }}"
+              - type: FaultInjected
+                status: "{{ fault_injected_condition.status | default(false) | string }}"
+                reason: "{{ 'DeploymentNotReady' if deployed_condition.status is undefined else 'DeploymentFailed' if not deployed_condition.status else 'FaultInjectionInProgress' if fault_injected_condition.status is undefined else 'FaultInjectionReady' if fault_injected_condition.status else 'FaultInjectionFailed' }}"
+                lastTransitionTime: "{{ fault_injected_condition.lastTransitionTime | default(ansible_date_time.iso8601) }}"
+              - type: Destroyed
+                status: "{{ destroyed_condition.status | default(false) | string }}"
+                reason: "{{ 'FaultInjectionNotReady' if fault_injected_condition.status is undefined else 'FaultInjectionFailed' if not fault_injected_condition.status else 'DestroyInProgress' if destroyed_condition.status is undefined else 'DestroyDone' if destroyed_condition.status else 'DestroyFailed' }}"
+                lastTransitionTime: "{{ destroyed_condition.lastTransitionTime | default(ansible_date_time.iso8601) }}"
+
+    - name: Create bundle file
+      ansible.builtin.copy:
+        content: "{{ leaderboard_bundle.status | to_nice_json(indent=2) }}"
+        dest: /tmp/bundle_status.json
+        mode: "0644"
+
+    - name: Copy bundle file into local directory
+      ansible.builtin.copy:
+        dest: "{{ storage.local.directory }}/bundle_status.json"
+        mode: "0644"
+        src: /tmp/bundle_status.json
+      when:
+        - storage.local is defined
+
+    - name: Upload bundle file to S3 bucket
+      amazon.aws.s3_object:
+        endpoint_url: "{{ storage.s3.endpoint }}"
+        bucket: "{{ storage.s3.bucket }}"
+        object: "/{{ storage.s3.directory }}/bundle_status.json"
+        src: /tmp/bundle_status.json
+        mode: put
+      when:
+        - storage.s3 is defined

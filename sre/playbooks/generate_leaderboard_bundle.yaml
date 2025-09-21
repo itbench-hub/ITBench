@@ -2,93 +2,103 @@
 - name: Manage SRE and FinOps Leaderboard Bundle
   hosts:
     - environment
-  pre_tasks:
-    - name: Import system role
-      ansible.builtin.import_role:
-        name: system
-      tags:
-        - always
-      vars:
-        system_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
-
-    - name: Validate that storage is configured
-      ansible.builtin.assert:
-        that: "storage.local is defined or storage.s3 is defined"
-        fail_msg: Storage has not been configured. Please assign either local or s3 bucket storage.
-        success_msg: Storage is configured.
   tasks:
-    - name: Copy status file into temporary directory from local directory
-      ansible.builtin.copy:
-        dest: /tmp/assertion.json
-        mode: "0644"
-        src: "{{ storage.local.directory }}/assertion.json"
-      when:
-        - storage.local is defined
+    - name: Import docs role
+      ansible.builtin.import_role:
+        name: documentation
 
-    - name: Copy status file into temporary directory from S3 bucket
-      amazon.aws.s3_object:
-        endpoint_url: "{{ storage.s3.endpoint }}"
-        bucket: "{{ storage.s3.bucket }}"
-        object: "/{{ storage.s3.directory }}/assertion.json"
-        dest: /tmp/assertion.json
-        mode: get
-      register: bucket_retrieval_result
-      until:
-        - bucket_retrieval_result.contents != ""
-      retries: 3
-      delay: 60
-      when:
-        - storage.s3 is defined
-
-    - name: Load assertion file contents
+    - name: Load spec and truth files
       ansible.builtin.set_fact:
-        deployed_condition: "{{ assertion.status.conditions | selectattr('type', 'equalto', 'Deployed') | list | first | default({}) }}"
-        fault_injected_condition: "{{ assertion.status.conditions | selectattr('type', 'equalto', 'FaultInjected') | list | first | default({}) }}"
-        destroyed_condition: "{{ assertion.status.conditions | selectattr('type', 'equalto', 'Destroyed') | list | first | default({}) }}"
+        incidents: |
+          {{
+            (
+              incidents | default([])
+            ) +
+            [
+              {
+                "spec": (lookup('ansible.builtin.file', spec_path) | from_yaml),
+                "truth": (lookup('ansible.builtin.file', truth_path) | from_yaml)
+              }
+            ]
+          }}
+      loop: "{{ documentation_incidents_ids | sort }}"
+      loop_control:
+        label: "incident-{{ item }}"
       tags:
         - always
       vars:
-        assertions: "{{ lookup('ansible.builtin.file', '/tmp/assertion.json') | from_json }}"
+        spec_path: "{{ playbook_dir }}/../roles/incidents/files/specs/incident_{{ item }}.yaml"
+        truth_path: "{{ playbook_dir }}/../roles/incidents/files/ground_truths/incident_{{ item }}.yaml"
 
-    - name: Construct bundle
+    - name: Initialize bundle contents
       ansible.builtin.set_fact:
-        leaderboard_bundle:
-          status:
-            conditions:
-              - type: Deployed
-                status: "{{ deployed_condition.status | default(false) | string }}"
-                reason: "{{ 'DeploymentInProgress' if deployed_condition.status is undefined else 'DeploymentReady' if deployed_condition.status else 'DeploymentFailed' }}"
-                lastTransitionTime: "{{ deployed_condition.lastTransitionTime | default(ansible_date_time.iso8601) }}"
-              - type: FaultInjected
-                status: "{{ fault_injected_condition.status | default(false) | string }}"
-                reason: "{{ 'DeploymentNotReady' if deployed_condition.status is undefined else 'DeploymentFailed' if not deployed_condition.status else 'FaultInjectionInProgress' if fault_injected_condition.status is undefined else 'FaultInjectionReady' if fault_injected_condition.status else 'FaultInjectionFailed' }}"
-                lastTransitionTime: "{{ fault_injected_condition.lastTransitionTime | default(ansible_date_time.iso8601) }}"
-              - type: Destroyed
-                status: "{{ destroyed_condition.status | default(false) | string }}"
-                reason: "{{ 'FaultInjectionNotReady' if fault_injected_condition.status is undefined else 'FaultInjectionFailed' if not fault_injected_condition.status else 'DestroyInProgress' if destroyed_condition.status is undefined else 'DestroyDone' if destroyed_condition.status else 'DestroyFailed' }}"
-                lastTransitionTime: "{{ destroyed_condition.lastTransitionTime | default(ansible_date_time.iso8601) }}"
+        bundle_contents: []
+      tags:
+        - always
+
+    - name: Create bundle contents
+      ansible.builtin.set_fact:
+        bundle_contents: |
+          {{
+            bundle_contents +
+            [{
+              "bundle": {
+                "name": item.spec.metadata.name,
+                "path": "~/sre",
+                "agent_operation_timeout": 1500,
+                "bundle_ready_timeout": 3000,
+                "params": {
+                  "INCIDENT_NUMBER": item.spec.metadata.id,
+                  "location": "~/sre/roles/incidents"
+                },
+                "scenario_type": "SRE",
+                "make_target_mapping": {
+                  "deploy": {
+                    "file": "Makefile.runner",
+                    "target": "launch_start_workflow"
+                  },
+                  "inject_fault": {
+                    "unused": ""
+                  },
+                  "delete": {
+                    "file": "Makefile.runner",
+                    "target": "launch_stop_workflow"
+                  },
+                  "status": {
+                    "file": "Makefile",
+                    "target": "generate_leaderboard_bundle_status"
+                  },
+                  "get": {
+                    "file": "Makefile",
+                    "target": "generate_agent_bundle"
+                  },
+                  "on_error": {
+                    "file": "Makefile.runner",
+                    "target": "launch_stop_workflow"
+                  }
+                }
+              },
+              "scenario": {
+                "instance_id": item.spec.metadata.id,
+                "name": item.spec.metadata.name,
+                "type": "SRE",
+                "description": item.spec.metadata.name,
+                "category": (item.truth.fault | map(attribute='category') | unique | list | last) | default('Other'),
+                "complexity": item.spec.metadata.complexity,
+                "scenario_class": (item.truth.fault | map(attribute='category') | unique | list | last) | default('Other')
+              }
+            }]
+          }}
+      loop: "{{ incidents }}"
+      loop_control:
+        label: incident-{{ item.spec.metadata.id }}
+      tags:
+        - always
 
     - name: Create bundle file
       ansible.builtin.copy:
-        content: "{{ leaderboard_bundle.status | to_nice_json(indent=2) }}"
-        dest: /tmp/bundle_status.json
+        content: "{{ bundle_contents | to_nice_json }}"
+        dest: "{{ playbook_dir }}/../docs/scenario_bundle.json"
         mode: "0644"
-
-    - name: Copy bundle file into local directory
-      ansible.builtin.copy:
-        dest: "{{ storage.local.directory }}/bundle_status.json"
-        mode: "0644"
-        src: /tmp/bundle_status.json
-      when:
-        - storage.local is defined
-
-    - name: Upload bundle file to S3 bucket
-      amazon.aws.s3_object:
-        endpoint_url: "{{ storage.s3.endpoint }}"
-        bucket: "{{ storage.s3.bucket }}"
-        object: "/{{ storage.s3.directory }}/bundle_status.json"
-        src: /tmp/bundle_status.json
-        mode: put
-      when:
-        - storage.s3 is defined
+      tags:
+        - always

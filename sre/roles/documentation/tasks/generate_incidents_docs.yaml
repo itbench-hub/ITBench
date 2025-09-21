@@ -1,0 +1,31 @@
+---
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_incidents_ids.yaml
+
+- name: Load spec and truth files
+  ansible.builtin.set_fact:
+    documentation_contents: |
+      {{
+        (
+          documentation_contents | default([])
+        ) +
+        [
+          {
+            "spec": (lookup('ansible.builtin.file', spec_path) | from_yaml),
+            "truth": (lookup('ansible.builtin.file', truth_path) | from_yaml)
+          }
+        ]
+      }}
+  loop: "{{ documentation_incidents_ids | sort }}"
+  loop_control:
+    label: "incident-{{ item }}"
+  vars:
+    spec_path: "{{ playbook_dir }}/../roles/incidents/files/specs/incident_{{ item }}.yaml"
+    truth_path: "{{ playbook_dir }}/../roles/incidents/files/ground_truths/incident_{{ item }}.yaml"
+
+- name: Generate Incidents README file
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/incidents-readme.j2') }}"
+    dest: "{{ playbook_dir }}/../docs/incidents.md"
+    mode: "0644"
