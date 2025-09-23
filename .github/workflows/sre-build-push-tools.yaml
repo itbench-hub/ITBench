@@ -1,13 +1,7 @@
-name: Build and push if applicable SRE tool images
+name: Build and push SRE tool images
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - sre/tools/**
-      - '!sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/**'
-  pull_request:
     branches:
       - main
     paths:
@@ -19,89 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  topology-monitor:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-24.04
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - name: Prepare
-        run: |
-          platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-      - name: Checkout codebase
-        uses: actions/checkout@v5.0.0
-      - name: Login to Quay.io
-        uses: docker/login-action@v3.5.0
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.11.1
-      - name: Build Kubernetes Topology Monitor
-        id: build
-        uses: docker/build-push-action@v6.18.0
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: sre/tools/kubernetes-topology-monitor
-          platforms: ${{ matrix.platform }}
-          outputs: type=image,name=quay.io/it-bench/topology-monitor,push-by-digest=true,push=true
-      - name: Export digest
-        if: github.ref == 'refs/heads/main'
-        run: |
-          mkdir -p ${{ runner.temp }}/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${digest#sha256:}"
-      - name: Upload digest
-        if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: topology-monitor-digests-${{ env.PLATFORM_PAIR }}
-          path: ${{ runner.temp }}/digests/*
-          if-no-files-found: error
-          retention-days: 1
-
-  topology-monitor-merge:
-    runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main'
-    needs:
-      - topology-monitor
-    steps:
-      - name: Download digests
-        uses: actions/download-artifact@v5.0.0
-        with:
-          path: ${{ runner.temp }}/digests
-          pattern: topology-monitor-digests-*
-          merge-multiple: true
-      - name: Login to Quay.io
-        uses: docker/login-action@v3.5.0
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3.11.1
-      - name: Create manifest list and push
-        working-directory: ${{ runner.temp }}/digests
-        run: |
-          docker buildx imagetools create \
-            -t quay.io/it-bench/topology-monitor:0.0.4 \
-            -t quay.io/it-bench/topology-monitor:latest \
-            $(printf 'quay.io/it-bench/topology-monitor@sha256:%s ' *)
-      - name: Inspect image
-        run: |
-          docker buildx imagetools inspect quay.io/it-bench/topology-monitor:latest
-
   awx-ee:
     strategy:
-      fail-fast: false
       matrix:
         include:
           - platform: linux/amd64
@@ -158,7 +71,6 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
       - name: Upload digest
-        if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4.6.2
         with:
           name: awx-ee-digests-${{ env.PLATFORM_PAIR }}
@@ -168,7 +80,6 @@ jobs:
 
   awx-ee-merge:
     runs-on: ubuntu-24.04
-    if: github.ref == 'refs/heads/main'
     needs:
       - awx-ee
     steps:
@@ -197,13 +108,8 @@ jobs:
         run: |
           docker buildx imagetools inspect quay.io/it-bench/awx-ee:latest
 
-  hello-bench:
+  hello-bench-amd64:
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        architecture:
-          - amd64
-          - arm64
     steps:
       - name: Checkout codebase
         uses: actions/checkout@v5.0.0
@@ -224,8 +130,112 @@ jobs:
         with:
           context: sre/tools/hello-bench
           platforms: |
-            linux/${{ matrix.architecture }}
-          push: ${{ github.ref == 'refs/heads/main' }}
+            linux/amd64
+          push: true
           tags: |
-            quay.io/it-bench/hello-bench-${{ matrix.architecture }}:1.0.0
-            quay.io/it-bench/hello-bench-${{ matrix.architecture }}:latest
+            quay.io/it-bench/hello-bench-amd64:1.0.0
+            quay.io/it-bench/hello-bench-amd64:latest
+
+  hello-bench-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v5.0.0
+      - name: Login to Quay.io
+        uses: docker/login-action@v3.5.0
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.6.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Build Hello Bench image
+        uses: docker/build-push-action@v6.18.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: sre/tools/hello-bench
+          platforms: |
+            linux/arm64
+          push: true
+          tags: |
+            quay.io/it-bench/hello-bench-arm64:1.0.0
+            quay.io/it-bench/hello-bench-arm64:latest
+
+  topology-monitor:
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Prepare
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+      - name: Checkout codebase
+        uses: actions/checkout@v5.0.0
+      - name: Login to Quay.io
+        uses: docker/login-action@v3.5.0
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Build Kubernetes Topology Monitor
+        id: build
+        uses: docker/build-push-action@v6.18.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: sre/tools/kubernetes-topology-monitor
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=quay.io/it-bench/topology-monitor,push-by-digest=true,push=true
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+      - name: Upload digest
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: topology-monitor-digests-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  topology-monitor-merge:
+    runs-on: ubuntu-24.04
+    needs:
+      - topology-monitor
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v5.0.0
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: topology-monitor-digests-*
+          merge-multiple: true
+      - name: Login to Quay.io
+        uses: docker/login-action@v3.5.0
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            -t quay.io/it-bench/topology-monitor:0.0.4 \
+            -t quay.io/it-bench/topology-monitor:latest \
+            $(printf 'quay.io/it-bench/topology-monitor@sha256:%s ' *)
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect quay.io/it-bench/topology-monitor:latest
