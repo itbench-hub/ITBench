@@ -1,0 +1,134 @@
+name: Perform SRE tool images build tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - sre/tools/**
+      - '!sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/**'
+
+concurrency:
+  group: ci-build-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  awx-ee:
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v5.0.0
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.6.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Set up Python
+        uses: actions/setup-python@v6.0.0
+        with:
+          python-version: '3.13'
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+        working-directory: sre
+      - name: Create AWX Execution Environment image context
+        run: |
+          ansible-builder create --output-filename Dockerfile
+        working-directory: sre/tools/awx-ee
+      - name: Copy requirements to expected location
+        run: |
+          cp _build/requirements.yml requirements.yml
+          cp _build/requirements.txt requirements.txt
+        working-directory: sre/tools/awx-ee/context
+      - name: Build AWX Execution Environment image
+        uses: docker/build-push-action@v6.18.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: sre/tools/awx-ee/context
+          platforms: |
+            ${{ matrix.platform }}
+          push: false
+          tags: |
+            quay.io/it-bench/awx-ee:1.0.0
+            quay.io/it-bench/awx-ee:latest
+
+  hello-bench-amd64:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v5.0.0
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.6.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Build Hello Bench image
+        uses: docker/build-push-action@v6.18.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: sre/tools/hello-bench
+          platforms: |
+            linux/amd64
+          push: false
+          tags: |
+            quay.io/it-bench/hello-bench-amd64:1.0.0
+            quay.io/it-bench/hello-bench-amd64:latest
+
+  hello-bench-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v5.0.0
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.6.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Build Hello Bench image
+        uses: docker/build-push-action@v6.18.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: sre/tools/hello-bench
+          platforms: |
+            linux/arm64
+          push: false
+          tags: |
+            quay.io/it-bench/hello-bench-arm64:1.0.0
+            quay.io/it-bench/hello-bench-arm64:latest
+
+  topology-monitor:
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v5.0.0
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.6.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Build Topology Monitor image
+        uses: docker/build-push-action@v6.18.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: sre/tools/kubernetes-topology-monitor
+          platforms: |
+            ${{ matrix.platform }}
+          push: false
+          tags: |
+            quay.io/it-bench/topology-monitor:0.0.4
+            quay.io/it-bench/topology-monitor:latest
