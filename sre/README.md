@@ -193,5 +193,5 @@ Steps are as follows:
     - clickhouse
     - clickhouse-operator
     - opensearch
-    - opensearch-collectors
+    - opentelemetry-collectors
     - prometheus
