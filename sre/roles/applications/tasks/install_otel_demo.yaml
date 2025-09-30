@@ -62,16 +62,13 @@
   kubernetes.core.helm:
     chart_ref: opentelemetry-demo
     chart_repo_url: https://open-telemetry.github.io/opentelemetry-helm-charts
-    chart_version: 0.37.8
+    chart_version: 0.38.0
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
     release_name: "{{ helm_releases.otel_demo.name }}"
     release_namespace: "{{ helm_releases.otel_demo.namespace }}"
     release_state: present
     timeout: 10m0s
     values:
-      default:
-        image:
-          tag: nightly-17419153244 # New version with compatible image provider not released yet
       components:
         accounting:
           podAnnotations:
@@ -110,9 +107,6 @@
               cpu: 30m
               memory: 110Mi
         checkout:
-          envOverrides:
-            - name: SHIPPING_ADDR
-              value: http://shipping:8080
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.checkout.replicas }}"
@@ -167,9 +161,6 @@
               cpu: 50m
               memory: 400Mi
         frontend:
-          envOverrides:
-            - name: SHIPPING_ADDR
-              value: http://shipping:8080
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.frontend.replicas }}"
@@ -206,8 +197,6 @@
               cpu: 5m
               memory: 15Mi
         kafka:
-          imageOverride:
-            tag: 2.0.2-kafka
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.kafka.replicas }}"
@@ -246,6 +235,17 @@
             limits:
               cpu: 20m
               memory: 160Mi
+        postgresql:
+          podAnnotations:
+            openshift.io/required-scc: restricted-v2
+          replicas: "{{ configuration.postgres.replicas }}"
+          resources:
+            requests:
+              cpu: 25m
+              memory: 50Mi
+            limits:
+              cpu: 50m
+              memory: 100Mi
         product-catalog:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
