@@ -113,7 +113,7 @@ kubectl get pods --all-namespaces
 Update the `kubeconfig` path in your global configuration:
 
 ```bash
-vim ../group_vars/environment/cluster.yaml
+vim ../../group_vars/environment/cluster.yaml
 ```
 
 Set the absolute path where the kubeconfig should be downloaded:
