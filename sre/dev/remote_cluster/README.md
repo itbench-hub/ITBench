@@ -63,7 +63,9 @@ A guide to creating SSH keys can be found [here](https://docs.github.com/en/auth
 aws configure
 ```
 
-## Cluster Management
+To create a single cluster head to the next section [here](#cluster-management---single-cluster). If you are here to create multiple identical clusters to orchestrate a large-scale AWX experiment head [here](#cluster-management---multiple-cluster)
+
+## Cluster Management - Single Cluster
 
 ### 1. Create the Cluster
 Create a new Kubernetes cluster using EC2 resources. Skip this step if you already have a cluster running.
@@ -143,4 +145,39 @@ Then, run the following command with the CLUSTER_NAME argument:
 
 ```bash
 CLUSTER_NAME=<full name of cluster> make destroy_kops_cluster
+```
+
+## Cluster Management - Multiple Clusters
+
+Continuing from the first-time setup (#first-time-setup) section this is primarily intended for AWX-based runs spanning the run of multiple scenarios in parallel.
+
+In addition to the variables set in the first time setup section, thhe following variables are to be set in `group_vars/development/awx_stack.yaml`
+```
+stack:
+  name_prefix: awx-exp-runner # an identifier name for the set of kOps cluster(s) which are to be orchestrated as a part of the experiment
+  runners:
+    aws:
+      vpc:
+        cidr: "10.0.0.0/16"
+      subnet:
+        public_base: "10.0"
+    count: 20 # number of scenarios which are going to be run.
+```
+
+### 1. Create the clusters
+
+Let's say the count value in the above set was set to 20. This creation step leads to the creation of 21 clustes. One Kubernetes cluster referred to as the `head` cluster to which AWX would be installed to and then a cluster per scenario.
+
+```bash
+make create_awx_stack
+```
+
+### 2. Export the Kubeconfigs
+
+Exports the kubeconfig associated with the clusters orchestrated for the AWX run.
+
+### 3. Delete the clusters
+
+```bash
+make destroy_awx_stack
 ```

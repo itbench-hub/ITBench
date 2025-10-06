@@ -1,15 +1,4 @@
 ---
-- name: Create workflow launch list
-  ansible.builtin.set_fact:
-    awx_experiment_workflows: |
-      {{
-        awx_experiments.scenarios |
-        product(range(1, ((awx_experiments.trials | int) + 1)))
-      }}
-  tags:
-    - launch_experiment_workflow
-    - deinit_experiment_workflow
-
 - name: Import variable setting tasks
   ansible.builtin.import_tasks:
     file: set_awx_controller_host.yaml
@@ -32,19 +21,31 @@
   tags:
     - launch_experiment_workflow
 
+- name: Create workflow launch list for initialization
+  ansible.builtin.set_fact:
+    awx_experiment_workflows: "{{ awx_experiments.scenarios }}"
+  tags:
+    - launch_experiment_workflow
+
 - name: Launch the workflow for initializing the run of select or all scenarios end-to-end
   awx.awx.workflow_launch:
     controller_host: "{{ awx_controller_host }}"
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
-    workflow_template: "Scenario-{{ item[0] }}-Init"
-    extra_vars:
+    workflow_template: "Scenario-{{ item }}-Init"
+    extra_vars: "{{ extra_vars_s3 if storage.s3 is defined else extra_vars_local }}"
+    wait: false
+  vars:
+    extra_vars_s3:
       storage:
         s3:
           bucket: "{{ storage.s3.bucket | default('') }}"
           endpoint: "{{ storage.s3.endpoint | default('') }}"
-          directory: "{{ awx_agent.version }}/{{ awx_generated_uuid.stdout }}/{{ item[0] | string }}/{{ item[1] | string }}"
-    wait: false
+          directory: "{{ awx_agent.version }}/{{ awx_generated_uuid.stdout }}/{{ item | string }}"
+    extra_vars_local:
+      storage:
+        local:
+          directory: "{{ storage.local.directory }}/{{ awx_agent.version }}/{{ awx_generated_uuid.stdout }}/{{ item | string }}"
   loop: "{{ awx_experiment_workflows }}"
   register: awx_launched_init_workflows
   tags:
@@ -79,29 +80,51 @@
   tags:
     - launch_experiment_workflow
 
+- name: Create workflow launch list
+  ansible.builtin.set_fact:
+    awx_experiment_workflows: |
+      {{
+        awx_experiments.scenarios |
+        product(range(1, ((awx_experiments.trials | int) + 1)))
+      }}
+  tags:
+    - launch_experiment_workflow
+
 - name: Launch the workflow for running select or all scenarios - the end-to-end experiment
   awx.awx.workflow_launch:
     controller_host: "{{ awx_controller_host }}"
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
     workflow_template: "Scenario-{{ item[0] }}"
-    extra_vars:
+    extra_vars: "{{ extra_vars_s3 if storage.s3 is defined else extra_vars_local }}"
+    wait: false
+  vars:
+    extra_vars_s3:
       storage:
         s3:
           bucket: "{{ storage.s3.bucket | default('') }}"
           endpoint: "{{ storage.s3.endpoint | default('') }}"
           directory: "{{ awx_agent.version }}/{{ awx_generated_uuid.stdout }}/{{ item[0] | string }}/{{ item[1] | string }}"
-    wait: false
+    extra_vars_local:
+      storage:
+        local:
+          directory: "{{ storage.local.directory }}/{{ awx_agent.version }}/{{ awx_generated_uuid.stdout }}/{{ item[0] | string }}/{{ item[1] | string }}"
   loop: "{{ awx_experiment_workflows }}"
   tags:
     - launch_experiment_workflow
+
+- name: Create workflow launch list for de-initialization
+  ansible.builtin.set_fact:
+    awx_experiment_workflows: "{{ awx_experiments.scenarios }}"
+  tags:
+    - deinit_experiment_workflow
 
 - name: Launch the workflow for de-initializing the run of select or all scenarios end-to-end
   awx.awx.workflow_launch:
     controller_host: "{{ awx_controller_host }}"
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
-    workflow_template: "Scenario-{{ item[0] }}-Deinit"
+    workflow_template: "Scenario-{{ item }}-Deinit"
     extra_vars:
       storage:
         s3:

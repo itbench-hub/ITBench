@@ -8,23 +8,50 @@
     wait: true
   register: awx_service_info
   until:
-    - awx_service_info.resources[0].status.loadBalancer.ingress is defined
+    - awx_service_info.resources is defined
+    - awx_service_info.resources | length > 0
+    - >
+      (awx_cluster.cloud_provider == "kind") or
+      (awx_service_info.resources[0].status.loadBalancer.ingress is defined and
+       awx_service_info.resources[0].status.loadBalancer.ingress | length > 0)
   delay: 15
   retries: 12
 
-- name: Extract the service loadbalancer hostname information
-  ansible.builtin.set_fact:
-    awx_controller_host: "http://{{ awx_service_info.resources[0].status.loadBalancer.ingress[0].hostname }}"
-  when:
-    - awx_service_info.resources[0].status.loadBalancer.ingress is defined
-    - awx_service_info.resources[0].status.loadBalancer.ingress | length > 0
-    - awx_service_info.resources[0].status.loadBalancer.ingress[0].hostname is defined
-
-- name: Extract the service loadbalancer ip information
+- name: Set AWX controller host - LoadBalancer with IP address
   ansible.builtin.set_fact:
     awx_controller_host: "http://{{ awx_service_info.resources[0].status.loadBalancer.ingress[0].ip }}"
   when:
+    - not awx_cluster.cloud_provider == "kind"
     - awx_service_info.resources[0].status.loadBalancer.ingress is defined
     - awx_service_info.resources[0].status.loadBalancer.ingress | length > 0
-    - awx_service_info.resources[0].status.loadBalancer.ingress[0].hostname is undefined
     - awx_service_info.resources[0].status.loadBalancer.ingress[0].ip is defined
+
+- name: Set AWX controller host - LoadBalancer with hostname
+  ansible.builtin.set_fact:
+    awx_controller_host: "http://{{ awx_service_info.resources[0].status.loadBalancer.ingress[0].hostname }}"
+  when:
+    - not awx_cluster.cloud_provider == "kind"
+    - awx_service_info.resources[0].status.loadBalancer.ingress is defined
+    - awx_service_info.resources[0].status.loadBalancer.ingress | length > 0
+    - awx_service_info.resources[0].status.loadBalancer.ingress[0].hostname is defined
+    - awx_controller_host is not defined
+
+- name: Set AWX controller host - NodePort with external IP address
+  ansible.builtin.set_fact:
+    awx_controller_host: "http://{{ awx_service_info.resources[0].spec.externalIPs[0] }}:{{ nodeport }}"
+  vars:
+    nodeport: "{{ awx_service_info.resources[0].spec.ports | selectattr('name', 'equalto', 'http') | map(attribute='nodePort') | first }}"
+  when:
+    - awx_cluster.cloud_provider == "kind"
+    - awx_service_info.resources[0].spec.externalIPs is defined
+    - awx_service_info.resources[0].spec.externalIPs | length > 0
+    - awx_controller_host is not defined
+
+- name: Set AWX controller host - NodePort localhost
+  ansible.builtin.set_fact:
+    awx_controller_host: "http://127.0.0.1:{{ nodeport }}"
+  vars:
+    nodeport: "{{ awx_service_info.resources[0].spec.ports | selectattr('name', 'equalto', 'http') | map(attribute='nodePort') | first }}"
+  when:
+    - awx_cluster.cloud_provider == "kind"
+    - awx_controller_host is not defined

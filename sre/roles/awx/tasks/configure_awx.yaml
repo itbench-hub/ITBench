@@ -20,8 +20,18 @@
           label: kubeconfig
           secret: true
           multiline: true
+        - id: platform
+          type: string
+          label: platform
+          secret: false
+        - id: provider
+          type: string
+          label: provider
+          secret: false
       required:
         - kubeconfig
+        - platform
+        - provider
     injectors: "{{ lookup('ansible.builtin.file', 'files/credential_type_kubeconfig_injectors.json') }}"
     kind: cloud
     name: Kubeconfig
@@ -45,6 +55,8 @@
     description: Kubeconfig file for a Kubernetes cluster
     inputs:
       kubeconfig: "{{ lookup('ansible.builtin.file', item) }}"
+      provider: "{{ awx_cluster.cloud_provider }}"
+      platform: "{{ awx_cluster.platform }}"
     name: Cluster-{{ runner_index + 1 }}-Kubeconfig
     organization: ITBench
   loop: "{{ awx_runners.kubeconfigs }}"
@@ -177,9 +189,46 @@
     controller_username: admin
     description: Custom environment for running ITBench scenarios
     image: quay.io/it-bench/awx-ee:1.0.0
-    name: AWX-EE-Custom
+    name: ITBench-Custom-EE
     organization: ITBench
     pull: always
+
+- name: Update existing container group with experiment data mount
+  awx.awx.instance_group:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    name: "default"
+    pod_spec_override: "{{ pod_spec_yaml }}"
+    state: present
+  vars:
+    pod_spec_yaml: |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        namespace: awx
+      spec:
+        serviceAccountName: default
+        automountServiceAccountToken: false
+        containers:
+          - image: quay.io/ansible/awx-ee:24.6.1
+            name: worker
+            args:
+              - ansible-runner
+              - worker
+              - '--private-data-dir=/runner'
+            resources:
+              requests:
+                cpu: 250m
+                memory: 100Mi{%- if awx_cluster.cloud_provider == "kind" %}
+            volumeMounts:
+            - name: experiment-data
+              mountPath: /mnt/experiment-data{%- endif %}
+      {%- if awx_cluster.cloud_provider == "kind" %}
+        volumes:
+        - name: experiment-data
+          persistentVolumeClaim:
+            claimName: experiment-data-pvc{%- endif %}
 
 - name: Include AWX job configuration tasks
   ansible.builtin.include_tasks:
