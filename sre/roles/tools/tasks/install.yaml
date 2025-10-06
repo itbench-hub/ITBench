@@ -1,49 +1,13 @@
 ---
-- name: Retrieve all kubelet-serving certificates
-  kubernetes.core.k8s_info:
-    api_version: certificates.k8s.io/v1
-    kind: CertificateSigningRequest
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    field_selectors:
-      - spec.signerName=kubernetes.io/kubelet-serving
-    wait: true
-  register: tools_csr_info
+- name: Import tasks to approve pending certificate requests
+  ansible.builtin.include_role:
+    name: cluster
+    tasks_from: approve_certificate_requests
+  vars:
+    cluster_files:
+      kubeconfig: "{{ tools_cluster.kubeconfig }}"
   when:
     - tools_cluster.provider == 'kind'
-
-- name: Approve pending certificates
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - certificate
-      - approve
-      - "{{ item.metadata.name }}"
-      - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
-  register: tools_certs_approve_output
-  changed_when: tools_certs_approve_output.rc == 0
-  loop: "{{ tools_csr_info.resources }}"
-  loop_control:
-    label: "csr/{{ item.metadata.name }}"
-  when:
-    - tools_cluster.provider == 'kind'
-    - item.status.conditions is not defined
-
-- name: Wait for approvals to clear
-  kubernetes.core.k8s_info:
-    api_version: certificates.k8s.io/v1
-    kind: CertificateSigningRequest
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ item.metadata.name }}"
-    wait: true
-    wait_condition:
-      type: Approved
-      status: "True"
-  loop: "{{ tools_csr_info.resources }}"
-  loop_control:
-    label: "csr/{{ item.metadata.name }}"
-  when:
-    - tools_cluster.provider == 'kind'
-    - item.status.conditions is not defined
 
 - name: Import Prometheus installation tasks
   ansible.builtin.import_tasks:

@@ -5,6 +5,58 @@
   tags:
     - install_tools
 
+- name: Download assertion file from local directory
+  ansible.builtin.copy:
+    src: "{{ leaderboard_storage.local.directory }}/assertion.json"
+    dest: "/tmp/assertion.json"
+    mode: "0644"
+  ignore_errors: true
+  tags:
+    - always
+  when:
+    - leaderboard_storage.local is defined
+    - leaderboard_storage.local.directory is defined
+
+- name: Download assertion file from S3 bucket
+  amazon.aws.s3_object:
+    endpoint_url: "{{ leaderboard_storage.s3.endpoint }}"
+    bucket: "{{ leaderboard_storage.s3.bucket }}"
+    object: "/{{ leaderboard_storage.s3.directory }}/assertion.json"
+    dest: /tmp/assertion.json
+    mode: get
+  ignore_errors: true
+  tags:
+    - always
+  when:
+    - leaderboard_storage.s3 is defined
+    - leaderboard_storage.local is not defined
+
+- name: Download status file from local directory
+  ansible.builtin.copy:
+    src: "{{ leaderboard_storage.local.directory }}/status.json"
+    dest: "/tmp/status.json"
+    mode: "0644"
+  ignore_errors: true
+  tags:
+    - always
+  when:
+    - leaderboard_storage.local is defined
+    - leaderboard_storage.local.directory is defined
+
+- name: Download status file from S3 bucket
+  amazon.aws.s3_object:
+    endpoint_url: "{{ leaderboard_storage.s3.endpoint }}"
+    bucket: "{{ leaderboard_storage.s3.bucket }}"
+    object: "/{{ leaderboard_storage.s3.directory }}/status.json"
+    dest: /tmp/status.json
+    mode: get
+  ignore_errors: true
+  tags:
+    - always
+  when:
+    - leaderboard_storage.s3 is defined
+    - leaderboard_storage.local is not defined
+
 - name: Load assertion file contents
   ansible.builtin.set_fact:
     leaderboard_current_assertion: "{{ lookup('ansible.builtin.file', '/tmp/assertion.json') | from_json }}"
@@ -35,6 +87,12 @@
         file: update_status_install_tools.yaml
       tags:
         - install_tools
+
+    - name: Import status file update tasks
+      ansible.builtin.import_tasks:
+        file: update_status_reinit_tools.yaml
+      tags:
+        - reinit_tools
 
     - name: Import status file update tasks
       ansible.builtin.import_tasks:
@@ -103,6 +161,18 @@
       when:
         - leaderboard_status_events is defined
   always:
+    - name: Ensure local directory exists
+      ansible.builtin.file:
+        path: "{{ leaderboard_storage.local.directory }}"
+        state: directory
+        mode: "0755"
+        recurse: true
+      tags:
+        - always
+      when:
+        - leaderboard_storage.local is defined
+        - leaderboard_status_conditions is defined
+
     - name: Copy assertion file into local directory
       ansible.builtin.copy:
         dest: "{{ leaderboard_storage.local.directory }}/assertion.json"
