@@ -1,0 +1,51 @@
+name: Perform AWX smoke tests for SRE incidents
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - sre/dev/local_cluster/go.*
+      - sre/roles/awx/**
+      - sre/playbooks/manage_awx.yaml
+
+concurrency:
+  group: ci-awx-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  awx:
+    name: AWX Smoke Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.0.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.19.0
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_single_node_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          make -C sre -f Makefile.runner group_vars
+      - name: Run installation tests
+        run: |
+          make -C sre -f Makefile.runner deploy_awx_stack
+      - name: Run configuration tests
+        run: |
+          make -C sre -f Makefile.runner configure_awx_pipeline
+      - name: Run uninstallation tests
+        run: |
+          make -C sre -f Makefile.runner undeploy_awx_stack
