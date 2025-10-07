@@ -195,7 +195,7 @@ stack:
     kubeconfig: ~/.kube/config       # Path to your local Kind clusters kubeconfig
   runners:
     kubeconfigs:
-      - ~/.kube/config-aws           # Path to your local Kind cluster kubeconfig with the appropriate host name
+      - ~/.kube/config           # Path to your local Kind cluster kubeconfig with the appropriate host name
 ```
 
 ## For AWS based runs

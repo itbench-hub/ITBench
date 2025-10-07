@@ -53,9 +53,9 @@ sudo modprobe ebtable_nat
 
 1. Create a kind cluster. A barebone kind configuration file has been provided [here](./kind-config.yaml).
 ```shell
-make create_cluster
+make create_single_node_cluster
 ```
-_Note: To delete the cluster, run this command: `make delete_cluster`_
+_Note: To delete the cluster, run this command: `make destory_cluster`_
 
 2. Once the cluster is running, we need to run the `cloud-provider-kind` in a *second* terminal and keep it running.
 ```shell
