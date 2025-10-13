@@ -161,6 +161,7 @@
 
 - name: Add job template for installing data recorders
   awx.awx.job_template:
+    ask_variables_on_launch: true
     controller_host: "{{ awx_controller_host }}"
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
@@ -195,26 +196,7 @@
     project: GitHub-ITBench
     state: present
 
-- name: Add job template for installing data recorders
-  awx.awx.job_template:
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    credentials: "{{ awx_job_credentials }}"
-    execution_environment: "ITBench-Custom-EE"
-    extra_vars:
-      incident_id: "{{ incident }}"
-    inventory: ITBench
-    job_tags: install_recorders
-    job_type: run
-    name: "Scenario-{{ incident }}--Install-Data-Recorders"
-    organization: ITBench
-    playbook: sre/playbooks/manage_recorders.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for installing topology data recorder
+- name: Add job template for running topology data recorder
   awx.awx.job_template:
     ask_variables_on_launch: true
     controller_host: "{{ awx_controller_host }}"
@@ -231,29 +213,7 @@
     inventory: ITBench
     job_tags: install_recorders
     job_type: run
-    name: "Scenario-{{ incident }}--Install-Topology-Data-Recorder"
-    organization: ITBench
-    playbook: sre/playbooks/manage_recorders.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for uninstalling topology data recorder
-  awx.awx.job_template:
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    credentials: "{{ awx_job_credentials }}"
-    execution_environment: "ITBench-Custom-EE"
-    extra_vars:
-      incident_id: "{{ incident }}"
-      tools:
-        prometheus: false
-        jaeger: false
-        kubernetes_topology_monitor: true
-    inventory: ITBench
-    job_tags: uninstall_recorders
-    job_type: run
-    name: "Scenario-{{ incident }}--Uninstall-Topology-Data-Recorder"
+    name: "Scenario-{{ incident }}--Run-Topology-Data-Recorder"
     organization: ITBench
     playbook: sre/playbooks/manage_recorders.yaml
     project: GitHub-ITBench
