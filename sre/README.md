@@ -11,7 +11,7 @@ While this repository focuses on scenarios, an open-source Language Model (LM)-b
 ### Structure
 
 This project uses Ansible to automate the deployment and undeployment of technologies to a Kubernetes cluster and the injection and removal of faults.
-The playbook run is configured using variables defined in `group\_vars`.
+The playbook run is configured using variables defined in `group_vars`.
 
 | Directory                   | Purpose                                                                                                      |
 |-----------------------------|--------------------------------------------------------------------------------------------------------------|
@@ -168,9 +168,9 @@ make help
 
 ### Images are not downloading from DockerHub
 
-A few of the tools and applications used by the various software in ITBench requires downloading images from DockerHub. However, DockerHub has [rate limits](https://docs.docker.com/docker-hub/usage/) which will prevent an user from pulling from it after the limit has been exhuasted for that IP address until it resets.
+A few of the tools and applications used by the various software in ITBench requires downloading images from DockerHub. However, DockerHub has [rate limits](https://docs.docker.com/docker-hub/usage/) which will prevent an user from pulling from it after the limit has been exhausted for that IP address until it resets.
 
-One recommended approach for manuevering around this limit is to creating a Personal Access Token (PAT) and then using it as a secret in Kubernetes.
+One recommended approach for maneuvering around this limit is to creating a Personal Access Token (PAT) and then using it as a secret in Kubernetes.
 Steps are as follows:
 1. **Login/Create a Docker Hub account** at https://www.docker.com/get-started/
 2. **Generate a Personal Access Token (PAT)**:
