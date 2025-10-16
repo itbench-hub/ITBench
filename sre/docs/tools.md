@@ -41,7 +41,7 @@ In ITBench, the following tool is used:
 
 ### FinOps Tools
 
-A **finops tool** is a techonology which provides financial insights on the operational costs of running an application.
+A **finops tool** is a technology which provides financial insights on the operational costs of running an application.
 
 In ITBench, the following tool is used:
 
@@ -60,9 +60,9 @@ ITBench deploys additional Kubernetes tools to enable additional features in a K
 | Kubernetes Metric Server | https://github.com/kubernetes-sigs/metrics-server | Autoscaling |
 | Kubernetes NGINX Controller | https://github.com/kubernetes/ingress-nginx | Networking |
 
-**Note:** Kubernetes NGINX Controller provides Ingress support which allows a user to externally access an observability tool's UI. This is useful for debugging, but explicitely needed. However, it is still always deployed as part of the tool stack unless deactivated.
+**Note:** Kubernetes NGINX Controller provides Ingress support which allows a user to externally access an observability tool's UI. This is useful for debugging, but explicitly needed. However, it is still always deployed as part of the tool stack unless deactivated.
 
-**Note:** Due to increasing load being a frequent need in FinOps incidents (to "raise" cost), the Kubernetes Metrics Server is always deployed as part of the tool stack for FinOps scenarios unless deactivated. To install it as part of an SRE scenario, it needs to be explicitely added to the incident spec.
+**Note:** Due to increasing load being a frequent need in FinOps incidents (to "raise" cost), the Kubernetes Metrics Server is always deployed as part of the tool stack for FinOps scenarios unless deactivated. To install it as part of an SRE scenario, it needs to be explicitly added to the incident spec.
 
 ## Additional Notes
 
