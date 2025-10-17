@@ -172,7 +172,7 @@ If you are submitting your own custom agent, follow these steps:
             chmod 600 ${tmpdir}/user_key
             ```
     
-        4. Updating ansible.ini with User Key for RHEL scneario cases.
+        4. Updating ansible.ini with User Key for RHEL scenario cases.
             ```
             sed -i.bak -E "s|(ansible_ssh_private_key_file=\")[^\"]*|\1${tmpdir}/user_key|" ${tmpdir}/ansible.ini
             ```
@@ -189,7 +189,7 @@ If you are submitting your own custom agent, follow these steps:
             ```
             - Enable python virtual env
             - Runs main.py with the goal extracted from goal.txt.
-            - Enforces a timeout of 200 seconds to avoid infinte running.
+            - Enforces a timeout of 200 seconds to avoid infinite running.
             - Saves the result as agent-result.json in `${tmpdir}` directory.
         7. Archiving the Execution Data by the agent
             The CISO CAA Agent generates compliance policy programs and stores them in the designated working directory. The script ensures that all relevant execution data is archived for further analysis.

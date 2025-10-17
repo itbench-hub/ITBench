@@ -3,13 +3,13 @@ This leaderboard shows the performance of agents on SRE-related IT automation sc
 
 **Column Descriptions:**
 - *Diagnosis - NTAM Fault Localization*: Normalized Topology Aware Metric (NTAM) Average Fault Propagation Chain
-- *Diagnosis - NTAM Fault Propagation*: NTAM Average Fault Localisation
+- *Diagnosis - NTAM Fault Propagation*: NTAM Average Fault Localization
 - *% Resolved*: Percentage of incidents repaired (mitigation efficiency)
 
 Updated on: 02/05/2025 18:06:54
 
 ### Single Trial
-For details on how to participate or interpret results, see the [README](../main/README.md).
+For details on how to participate or interpret results, see the [README](/README.md).
 
 ---
 
