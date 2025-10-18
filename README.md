@@ -9,7 +9,7 @@
 ### Latest Updates
 - **[June 13, 2025]** Identified 25+ additional scenarios to be developed over the summer.
 - **[May 2, 2025]** 🚀 ITBench now provides **fully-managed scenario environments** for everyone! Our platform handles the complete workflow—from scenario deployment to agent evaluation and leaderboard updates. Visit our GitHub repository [here](https://github.com/ibm/ITBench-Leaderboard) for guidelines and get started today.
-- **[February 28, 2025]** 🏆 **Limited Access Beta**: Invite-only access to the ITBench hosted scenario environments. ITBench handles scenario deployment, agent evaluation, and leaderboard updates. To request access, e-mail us [here](agent-bench-automation@ibm.com).
+- **[February 28, 2025]** 🏆 **Limited Access Beta**: Invite-only access to the ITBench hosted scenario environments. ITBench handles scenario deployment, agent evaluation, and leaderboard updates. To request access, e-mail us [here](mailto:agent-bench-automation@ibm.com).
 - **[February 7, 2025]** 🎉 **Initial release!** Includes research paper, self-hosted environment setup tooling, sample scenarios, and baseline agents.
 
 ---
@@ -40,7 +40,7 @@ ITBench enables researchers and developers to replicate real-world incidents in 
 **We provide:**
 1. **Push-button deployment tooling** for environment setup *(open-source)*
 2. **Framework for recreating realistic IT scenarios using the deployment tooling:**
-   - **6 SRE scenarios** and **21 mechanisms* *(open-source)*
+   - **6 SRE scenarios** and **21 mechanisms** *(open-source)*
    - **4 categories of CISO scenarios** *(open-source)*
    - **1 FinOps scenario** *(open-source)*
 3. **Two reference AI agents:**
