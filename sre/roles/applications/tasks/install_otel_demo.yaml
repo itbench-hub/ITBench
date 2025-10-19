@@ -10,14 +10,6 @@
 #       the exporters is still correctly set, but not used for forwarding the data.
 #       Requires backport: https://github.com/helm/helm/issues/30587
 
-# Note: The `latest` images from otel-demo are currently used as there has not been
-#       a new release of the image-provider. Until a new verion (>=2.0.3) is cut, latest
-#       needs to be used in order to use this application with OpenShift's restricted-v2 SCC.
-
-# TODO: Remove the image override on Kafka after the new images are cut for otel-demo
-#       (>=2.0.3). This is a temporary fix to keep kafka working without making too many
-#       additional edits that need to be reverted in the configuration.
-
 - name: Create the release namespace
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
@@ -62,7 +54,7 @@
   kubernetes.core.helm:
     chart_ref: opentelemetry-demo
     chart_repo_url: https://open-telemetry.github.io/opentelemetry-helm-charts
-    chart_version: 0.38.0
+    chart_version: 0.38.1
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
     release_name: "{{ helm_releases.otel_demo.name }}"
     release_namespace: "{{ helm_releases.otel_demo.namespace }}"
