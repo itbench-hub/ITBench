@@ -55,7 +55,7 @@ INCIDENT_NUMBER=1 make inject_incident_fault
 
 **Open-sourced incident scenarios:** 1, 3, 23, 26, 27, 102
 
-**Additional details:** [Incident scenarios and fault mechanisms](./docs/incident_scenarios.md)
+**Additional details:** [Incident scenarios and fault mechanisms](./docs/incidents.md)
 
 ### Step 4. Set Up Port Forwarding
 Enable access to the Prometheus and Jaeger dashboards:
