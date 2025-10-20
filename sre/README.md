@@ -1,6 +1,6 @@
 # ITBench for Site Reliability Engineering (SRE) and Financial Operations (FinOps)
 
-**[Paper](https://github.com/IBM/ITBench/blob/main/it_bench_arxiv.pdf) | [Incident Scenarios](./docs/incident_scenarios.md) | [Tools](./docs/tools.md)**
+**[Paper](https://github.com/IBM/ITBench/blob/main/it_bench_arxiv.pdf) | [Incident Scenarios](./docs/incidents.md) | [Tools](./docs/tools.md)**
 
 ## Overview
 ITBench uses open source technologies to create completely repeatable and reproducible scenarios on a Kubernetes platform. A SRE scenario involves deploying a set of observability tools, a sample application, and triggering an incident (referred to as task) in the environment.
