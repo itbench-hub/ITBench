@@ -9,7 +9,6 @@ _Note: The following setup guide presumes that the required software listed [her
 1. [Podman](https://podman.io/)
 2. [Golang - v1.24 and above](https://go.dev/)
 2. [Kind](https://kind.sigs.k8s.io/)
-3. [Cloud Provider Kind](https://github.com/kubernetes-sigs/cloud-provider-kind)
 
 ### Installing Recommended Software via Homebrew (MacOS)
 
@@ -42,12 +41,7 @@ make create_single_node_cluster
 
 _Note: To delete the cluster, run this command: `make destory_cluster`_
 
-5. Once the cluster is running, we need to run the `cloud-provider-kind` in a *second* terminal and keep it running.
-```shell
-make start_provider
-```
-
-6. Update the value of the `kubeconfig` key in the `../../group_vars/environment/cluster.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config`).
+5. Update the value of the `kubeconfig` key in the `../../group_vars/environment/cluster.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config`).
 ```shell
 vim ../../group_vars/environment/cluster.yaml
 ```
@@ -57,4 +51,4 @@ cluster:
   kubeconfig: "<path to kubeconfig>"
 ```
 
-7. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.
+6. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.

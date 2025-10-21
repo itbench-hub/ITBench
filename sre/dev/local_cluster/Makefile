@@ -31,10 +31,6 @@ create_single_node_cluster: create_data_directory ## Creates a Kind cluster with
 destroy_cluster: ## Deletes a Kind cluster
 	$(GO) tool kind delete cluster --name kind-cluster
 
-.PHONY: start_provider
-start_provider: ## Starts the Cloud Provider service for Kind
-	sudo $(GO) tool cloud-provider-kind -enable-lb-port-mapping
-
 .PHONY: create_cluster
 create_cluster: ## DEPRECATED: Creates a Kind cluster
 	@echo "WARNING: 'make create_single_node_cluster is deprecated. Please use 'make create_single_node_cluster' instead."
