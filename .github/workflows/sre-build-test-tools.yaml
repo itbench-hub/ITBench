@@ -104,6 +104,35 @@ jobs:
             quay.io/it-bench/hello-bench-arm64:1.0.0
             quay.io/it-bench/hello-bench-arm64:latest
 
+  opentelemetry-collector:
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v5.0.0
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3.6.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3.11.1
+      - name: Build OpenTelemetry Collector image
+        uses: docker/build-push-action@v6.18.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: sre/tools/opentelemetry-collector
+          platforms: |
+            ${{ matrix.platform }}
+          push: false
+          tags: |
+            quay.io/it-bench/opentelemetry-collector:1.0.0
+            quay.io/it-bench/opentelemetry-collector:latest
+
   topology-monitor:
     strategy:
       matrix:

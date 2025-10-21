@@ -1,13 +1,11 @@
-FROM registry.access.redhat.com/ubi10-minimal:10.0-1758699349
+FROM registry.access.redhat.com/ubi10/python-312-minimal:10.0-1758744656
 
 ENV DATA_DIRECTORY=/app/topology_data
 
 WORKDIR /app
 
-RUN microdnf update -y && \
-    microdnf install -y python3.12 python3.12-pip
-
 COPY requirements.txt requirements.txt
+
 RUN python3.12 -m pip install --no-cache-dir -r requirements.txt
 
 COPY __init__.py __init__.py
