@@ -13,7 +13,6 @@ _Note: The following setup guide presumes that the required software listed [her
 3. [Golang - v1.24 and above] -- Ensure you have `go` installed or install it by following the instructions [here](https://go.dev/doc/install)
 4. [Docker](https://www.docker.com/) -- See the next sub-section for installation details
 5. [Kind](https://kind.sigs.k8s.io/) -- See the next sub-section for installation details
-6. [Cloud-Provider-Kind](https://github.com/kubernetes-sigs/cloud-provider-kind) -- See the next sub-section for installation details
 
 ### Setting up the Recommended Software
 1. To set up Docker, please follow the instructions [here](https://docs.docker.com/engine/install/rhel/).
@@ -57,12 +56,7 @@ make create_single_node_cluster
 ```
 _Note: To delete the cluster, run this command: `make destory_cluster`_
 
-2. Once the cluster is running, we need to run the `cloud-provider-kind` in a *second* terminal and keep it running.
-```shell
-make start_provider
-```
-
-3. Update the `kubeconfig` value in the `../../group_vars/environment/cluster.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config` e.g. /home/rhel/.kube/config).
+2. Update the `kubeconfig` value in the `../../group_vars/environment/cluster.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config` e.g. /home/rhel/.kube/config).
 ```shell
 vim ../../group_vars/environment/cluster.yaml
 ```
@@ -72,7 +66,7 @@ cluster:
   kubeconfig: "<path to kubeconfig>"
 ```
 
-4. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.
+3. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.
 
 # Troubleshooting
 ### 1. For other Kind-related issues you may want to take a look [here](https://kind.sigs.k8s.io/docs/user/known-issues/).
