@@ -50,6 +50,8 @@ cz commit -- --signoff
 
 ### Add a new tool
 
+**Note:** Before submitting a PR, please first submit an feature reuqest.
+
 **Note:** It is recommended that a tool installed to a Kubernetes cluster use Helm as the deployment mechanism. This helps to simplify the deployment process and keeps the general uniformity of ITBench's deployment.
 
 1. Create tasks files in the tools role which handle the installation and uninstallation of the tool. These files should be titled `install_<tool name>` and `uninstall_<tool name>` respectively.
@@ -59,6 +61,8 @@ cz commit -- --signoff
 4. Create a PR titled: `feat: new tool [<tool name>]`
 
 ### Add a new application
+
+**Note:** Before submitting a PR, please first submit an feature reuqest.
 
 **Note:** It is recommended that an application installed to a Kubernetes cluster use Helm as the deployment mechanism. This helps to simplify the deployment process and keeps the general uniformity of ITBench's deployment.
 
@@ -71,6 +75,8 @@ cz commit -- --signoff
 4. Create a PR titled: `feat: new application [<application name>]`
 
 ### Add a new fault injection (and removal)
+
+**Note:** Before submitting a PR, please first submit an feature reuqest.
 
 **Note:** When creating tasks, please use the given Ansible modules whenever possible. This reduces the overhead in reviewing the fault and keeps the uniformity of the ITBench codebase. For example, when making a task that creates a Kubernetes object, use the `kubernetes.core.k8s` collection instead of using `ansible.builtin.command` and invoking the kubectl CLI. The collections used in this project can be found [here](./sre/requirements.yaml) and documentation for them can be found [here](https://docs.ansible.com/ansible/latest/collections/index.html).
 
