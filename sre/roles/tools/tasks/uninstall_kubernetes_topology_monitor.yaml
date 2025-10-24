@@ -6,3 +6,30 @@
     release_name: "{{ helm_release.name }}"
     release_namespace: "{{ helm_release.namespace }}"
     wait: true
+
+- name: Find all persistent volume claims used by the monitor
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ item }}"
+    namespace: "{{ helm_release.namespace }}"
+  loop:
+    - data-topology-monitor-0
+    - import-topology-monitor-0
+    - logs-topology-monitor-0
+    - metrics-topology-monitor-0
+  register: tools_topology_monitor_pvc_info
+
+- name: Delete all persistent volume claims discovered
+  kubernetes.core.k8s:
+    api_version: "{{ item.resources[0].apiVersion }}"
+    kind: "{{ item.resources[0].kind }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ item.resources[0].metadata.name }}"
+    namespace: "{{ item.resources[0].metadata.namespace }}"
+    state: absent
+    wait: true
+  loop: "{{ tools_topology_monitor_pvc_info.results }}"
+  when:
+    - item.resources | length == 1

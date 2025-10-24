@@ -19,7 +19,7 @@
         - always
       vars:
         cluster_files:
-          kubeconfig: "{{ cluster.kubeconfig }}"
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
         cluster_tools_enabled:
           oc: "{{ system_oc_exists }}"
   tasks:
@@ -28,11 +28,11 @@
         name: awx
       vars:
         awx_cluster:
-          cloud_provider: "{{ cluster_provider }}"
-          platform: "{{ cluster_platform }}"
           kubeconfig: "{{ stack.awx.kubeconfig }}"
+          provider: "{{ cluster_provider }}"
         awx_credentials: "{{ credentials }}"
         awx_experiments:
+          phase: "{{ run_phase | default(omit) }}"
           scenarios: "{{ experiments.scenarios }}"
           storage: "{{ storage }}"
           trials: "{{ experiments.trials }}"

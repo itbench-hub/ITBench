@@ -11,7 +11,7 @@
     - awx_service_info.resources is defined
     - awx_service_info.resources | length > 0
     - >
-      (awx_cluster.cloud_provider == "kind") or
+      (awx_cluster.provider == "kind") or
       (awx_service_info.resources[0].status.loadBalancer.ingress is defined and
        awx_service_info.resources[0].status.loadBalancer.ingress | length > 0)
   delay: 15
@@ -21,7 +21,7 @@
   ansible.builtin.set_fact:
     awx_controller_host: "http://{{ awx_service_info.resources[0].status.loadBalancer.ingress[0].ip }}"
   when:
-    - not awx_cluster.cloud_provider == "kind"
+    - not awx_cluster.provider == "kind"
     - awx_service_info.resources[0].status.loadBalancer.ingress is defined
     - awx_service_info.resources[0].status.loadBalancer.ingress | length > 0
     - awx_service_info.resources[0].status.loadBalancer.ingress[0].ip is defined
@@ -30,7 +30,7 @@
   ansible.builtin.set_fact:
     awx_controller_host: "http://{{ awx_service_info.resources[0].status.loadBalancer.ingress[0].hostname }}"
   when:
-    - not awx_cluster.cloud_provider == "kind"
+    - not awx_cluster.provider == "kind"
     - awx_service_info.resources[0].status.loadBalancer.ingress is defined
     - awx_service_info.resources[0].status.loadBalancer.ingress | length > 0
     - awx_service_info.resources[0].status.loadBalancer.ingress[0].hostname is defined
@@ -42,7 +42,7 @@
   vars:
     nodeport: "{{ awx_service_info.resources[0].spec.ports | selectattr('name', 'equalto', 'http') | map(attribute='nodePort') | first }}"
   when:
-    - awx_cluster.cloud_provider == "kind"
+    - awx_cluster.provider == "kind"
     - awx_service_info.resources[0].spec.externalIPs is defined
     - awx_service_info.resources[0].spec.externalIPs | length > 0
     - awx_controller_host is not defined
@@ -53,5 +53,5 @@
   vars:
     nodeport: "{{ awx_service_info.resources[0].spec.ports | selectattr('name', 'equalto', 'http') | map(attribute='nodePort') | first }}"
   when:
-    - awx_cluster.cloud_provider == "kind"
+    - awx_cluster.provider == "kind"
     - awx_controller_host is not defined

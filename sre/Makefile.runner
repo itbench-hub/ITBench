@@ -26,21 +26,34 @@ configure_awx_pipeline: ## Add job and workflow templates to AWX pipeline
 undeploy_awx_stack: ## Undeploys AWX to a cluster
 	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "uninstall_tools"
 
+.PHONY: launch_sync_workflow
+launch_sync_workflow: ## Launches the scenario sync workflow
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "sync_scenarios"
+
 .PHONY: launch_start_workflow
-launch_start_workflow: ## Launches the AWX workflow's equivalent of make start_incident
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_start_workflow"
+launch_start_workflow: ## Launches the workflow equivalent of start_incident on AWX
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
+		--extra-vars "run_phase=init"
 
 .PHONY: launch_stop_workflow
-launch_stop_workflow: ## Launches the AWX workflow's equivalent of make stop_incident
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_stop_workflow"
+launch_stop_workflow: ## Launches the workflow equivalent of stop_incident on AWX
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
+		--extra-vars "run_phase=stop"
 
-.PHONY: launch_experiment_workflow
-launch_experiment_workflow: ## Launches the AWX workflow's for running select or all scenarios end to end on AWX with an agent
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_experiment_workflow"
+.PHONY: launch_init_workflow
+launch_init_workflow: ## Launches the scenario initialization workflow
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
+		--extra-vars "run_phase=init"
 
-.PHONY: deinit_experiment_workflow
-deinit_experiment_workflow: ## Post-experiment house-keeping on running select or all scenarios end to end on AWX with an agent
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "deinit_experiment_workflow"
+.PHONY: launch_full_workflow
+launch_full_workflow: ## Launches the scenario full execution workflow
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
+		--extra-vars "run_phase=full"
+
+.PHONY: launch_deinit_workflow
+launch_deinit_workflow: ## Launches the scenario deinitialization workflow
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
+		--extra-vars "run_phase=deinit"
 
 .PHONY: awx_configure_init
 awx_configure_init:

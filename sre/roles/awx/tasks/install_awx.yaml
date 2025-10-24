@@ -1,4 +1,14 @@
 ---
+- name: Include tasks to approve pending certificate requests
+  ansible.builtin.include_role:
+    name: cluster
+    tasks_from: approve_certificate_requests
+  vars:
+    cluster_files:
+      kubeconfig: "{{ awx_cluster.kubeconfig }}"
+  when:
+    - awx_cluster.provider == "kind"
+
 - name: Install AWX operator
   kubernetes.core.helm:
     chart_ref: awx-operator
@@ -31,7 +41,7 @@
         persistentVolumeReclaimPolicy: Retain
     state: present
   when:
-    - awx_cluster.cloud_provider == "kind"
+    - awx_cluster.provider == "kind"
 
 - name: Create experiment data PersistentVolumeClaim
   kubernetes.core.k8s:
@@ -52,62 +62,19 @@
         storageClassName: ""
     state: present
   when:
-    - awx_cluster.cloud_provider == "kind"
+    - awx_cluster.provider == "kind"
 
 - name: Install AWX
   kubernetes.core.k8s:
     kubeconfig: "{{ awx_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: awx.ansible.com/v1beta1
-      kind: AWX
-      metadata:
-        name: awx-deployment
-        namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
-      spec: "{{ lookup('file', spec_file) | from_yaml }}"
+    namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+    src: files/awx_spec/{{ spec_file_name }}.yaml
     state: present
-    wait: "{{ awx_cluster.cloud_provider != 'kind' }}"
+    wait: true
     wait_condition:
       reason: Successful
       status: "True"
       type: Successful
     wait_timeout: 900
   vars:
-    spec_file: "{{ role_path }}/files/{{ 'awx_spec_kind.yaml' if awx_cluster.cloud_provider == 'kind' | default(false) else 'awx_spec_base.yaml' }}"
-
-- name: Handle certificate signing requests on Kind
-  when:
-    - awx_cluster.cloud_provider == 'kind'
-  block:
-    - name: Wait for AWX pods to be created
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Pod
-        kubeconfig: "{{ awx_cluster.kubeconfig }}"
-        namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
-        label_selectors:
-          - "app.kubernetes.io/managed-by=awx-operator"
-      register: awx_pods
-      until: awx_pods.resources | length > 0
-      retries: 30
-      delay: 10
-
-    - name: Include tasks to approve pending certificate requests
-      ansible.builtin.include_role:
-        name: cluster
-        tasks_from: approve_certificate_requests
-      vars:
-        cluster_files:
-          kubeconfig: "{{ awx_cluster.kubeconfig }}"
-
-    - name: Wait for AWX to be ready
-      kubernetes.core.k8s_info:
-        api_version: awx.ansible.com/v1beta1
-        kind: AWX
-        kubeconfig: "{{ awx_cluster.kubeconfig }}"
-        name: awx-deployment
-        namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
-        wait: true
-        wait_condition:
-          type: Successful
-          status: "True"
-        wait_timeout: 900
+    spec_file_name: "{{ 'kind' if awx_cluster.provider == 'kind' else 'base' }}"

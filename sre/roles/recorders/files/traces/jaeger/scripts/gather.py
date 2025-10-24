@@ -114,8 +114,8 @@ def main():
                 traces.extend(t)
 
         if len(traces) > 0:
-            utc_seconds = (datetime.now(timezone.utc) - datetime(1970, 1, 1, tzinfo=timezone.utc)).total_seconds()
-            file_path = os.path.join(os.path.expanduser("~"), "records", "{0}-traces.json".format(round(utc_seconds)))
+            timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')
+            file_path = os.path.join(os.path.expanduser("~"), "records", "traces_at_{0}.json".format(timestamp))
 
             with open(file_path, "w") as f:
                 json.dump(traces, f, indent=4)

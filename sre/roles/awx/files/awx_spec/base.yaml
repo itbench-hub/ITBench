@@ -1,0 +1,14 @@
+---
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: awx-deployment
+spec:
+  service_type: loadbalancer
+  postgres_data_volume_init: true
+  postgres_init_container_commands: |
+    chown 26:0 /var/lib/pgsql/data
+    chmod 700 /var/lib/pgsql/data
+  postgres_storage_requirements:
+    requests:
+      storage: 32Gi
