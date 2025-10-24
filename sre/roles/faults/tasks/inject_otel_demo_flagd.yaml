@@ -37,7 +37,35 @@
         "demo.flagd.json": "{{ faults_flagd_config_json | combine({'flags': faults_enabled_flags_config}, recursive=true) | to_json }}"
     state: patched
 
-- name: Restart all deployments to enable changes
+- name: Create a dictionary of Flagd-based flags and their corresponding deployment mappings
+  ansible.builtin.set_fact:
+    flagd_failure_flag_deployment_mapping:
+      "adFailure": "ad"
+      "adHighCpu": "ad"
+      "adManualGc": "ad"
+      "cartFailure": "cart"
+      "emailMemoryLeak": "email"
+      "imageSlowLoad": "image-provider"
+      "kafkaQueueProblems": "kafka"
+      "loadGeneratorFloodHomepage": "load-generator"
+      "paymentFailure": "payment"
+      "paymentUnreachable": "payment"
+      "productCatalogFailure": "product"
+      "recommendationCacheFailure": "recommendation"
+
+- name: Determine which deployments need to be restarted based on flags
+  ansible.builtin.set_fact:
+    deployments_to_restart: |
+      {{
+        spec.flags |
+        map(attribute='name') |
+        map('extract', flagd_failure_flag_deployment_mapping) |
+        select('defined') |
+        unique |
+        list
+      }}
+
+- name: Restart only the deployments associated with the modified flags
   ansible.builtin.command:
     argv:
       - kubectl
@@ -46,6 +74,9 @@
       - rollout
       - restart
       - deployment
+      - "{{ item }}"
       - --kubeconfig={{ faults_cluster.kubeconfig | ansible.builtin.expanduser }}
+  loop: "{{ deployments_to_restart }}"
   register: faults_rollout_restart_output
   changed_when: faults_rollout_restart_output.rc == 0
+  when: deployments_to_restart | length > 0

@@ -1,0 +1,30 @@
+---
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: awx-deployment
+spec:
+  service_type: nodeport
+  nodeport_port: 30950
+  postgres_data_volume_init: true
+  postgres_init_container_commands: |
+    chown 26:0 /var/lib/pgsql/data
+    chmod 700 /var/lib/pgsql/data
+  postgres_storage_requirements:
+    requests:
+      storage: 4Gi
+  extra_volumes: |
+    - name: experiment-data
+      persistentVolumeClaim:
+        claimName: experiment-data-pvc
+  ee_extra_volume_mounts: |
+    - name: experiment-data
+      mountPath: /mnt/experiment-data
+  task_extra_volume_mounts: |
+    - name: experiment-data
+      mountPath: /mnt/experiment-data
+  init_container_extra_volume_mounts: |
+    - name: experiment-data
+      mountPath: /mnt/experiment-data
+  init_container_extra_commands: |
+    mkdir -p /mnt/experiment-data

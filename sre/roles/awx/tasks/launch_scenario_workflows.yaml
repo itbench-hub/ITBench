@@ -1,0 +1,155 @@
+---
+- name: Validate trails configuration
+  ansible.builtin.assert:
+    that: awx_experiments.trials > 0
+    fail_msg: Invalid number of trials configured. Please set the number of trials to greater or equal to 1.
+    success_msg: Trials is configured.
+
+- name: Validate phase configuration
+  ansible.builtin.assert:
+    that: awx_experiments.phase is defined
+    fail_msg: No workflow phase configured. Please set a valid phase.
+    success_msg: Workflow phase is configured.
+
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_awx_controller_host.yaml
+
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_awx_controller_password.yaml
+
+- name: Generate scenario and trial runner groupings
+  ansible.builtin.set_fact:
+    awx_scenario_trial_groups: |
+      {{
+        awx_experiments.scenarios |
+        product(range(1, ((awx_experiments.trials | int) + 1)))
+      }}
+
+- name: Generate run identifier (UUID4)
+  ansible.builtin.command:
+    cmd: uuidgen
+  changed_when: false
+  register: awx_run_uuid
+
+- name: Launch the scenario start execution workflow
+  awx.awx.workflow_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    extra_vars:
+      storage: "{{ lookup('ansible.builtin.template', 'templates/workflow_vars/storage.j2') | from_yaml }}"
+    workflow_template: Scenario-{{ item[0] }}-Partial-Execution-Start
+    wait: false
+  loop: "{{ awx_scenario_trial_groups }}"
+  loop_control:
+    label: Scenario-{{ item[0] }}/Trial-{{ item[1] }}
+  vars:
+    run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item[0] }}/{{ item[1] }}"
+  when:
+    - awx_experiments.phase == "start"
+
+- name: Launch the scenario stop execution workflow
+  awx.awx.workflow_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    extra_vars:
+      storage: "{{ lookup('ansible.builtin.template', 'templates/workflow_vars/storage.j2') | from_yaml }}"
+    workflow_template: Scenario-{{ item[0] }}-Partial-Execution-Stop
+    wait: false
+  loop: "{{ awx_scenario_trial_groups }}"
+  loop_control:
+    label: Scenario-{{ item[0] }}/Trial-{{ item[1] }}
+  vars:
+    run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item[0] }}/{{ item[1] }}"
+  when:
+    - awx_experiments.phase == "stop"
+
+- name: Launch the scenario initialization workflow
+  awx.awx.workflow_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    extra_vars:
+      storage: "{{ lookup('ansible.builtin.template', 'templates/workflow_vars/storage.j2') | from_yaml }}"
+    workflow_template: Scenario-{{ item }}-Init
+    wait: false
+  loop: "{{ awx_experiments.scenarios }}"
+  loop_control:
+    label: Scenario-{{ item }}
+  register: awx_scenario_init_workflows
+  vars:
+    run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item | string }}/1"
+  when:
+    - awx_experiments.phase == "init"
+
+- name: Wait for initialization workflows to complete
+  awx.awx.workflow_node_wait:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    interval: 20
+    name: Deploy-Tools
+    request_timeout: 30
+    timeout: 600
+    workflow_job_id: "{{ item.id }}"
+  loop: "{{ awx_scenario_init_workflows.results if awx_experiments.phase == 'init' else [] }}"
+  loop_control:
+    label: Workflow-{{ item.id }}
+  when:
+    - awx_experiments.phase == "init"
+    - awx_scenario_init_workflows is defined
+
+- name: Launch the scenario full execution workflow
+  awx.awx.workflow_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    extra_vars:
+      storage: "{{ lookup('ansible.builtin.template', 'templates/workflow_vars/storage.j2') | from_yaml }}"
+    workflow_template: Scenario-{{ item[0] }}-Full-Execution
+    wait: false
+  loop: "{{ awx_scenario_trial_groups }}"
+  loop_control:
+    label: Scenario-{{ item[0] }}/Trial-{{ item[1] }}
+  vars:
+    run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item[0] }}/{{ item[1] }}"
+  when:
+    - awx_experiments.phase == "full"
+
+- name: Launch the scenario deinitialization workflow
+  awx.awx.workflow_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    extra_vars:
+      storage: "{{ lookup('ansible.builtin.template', 'templates/workflow_vars/storage.j2') | from_yaml }}"
+    workflow_template: Scenario-{{ item }}-Deinit
+    wait: false
+  loop: "{{ awx_experiments.scenarios }}"
+  loop_control:
+    label: Scenario-{{ item }}
+  register: awx_scenario_deinit_workflows
+  vars:
+    run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item }}/1"
+  when:
+    - awx_experiments.phase == "deinit"
+
+- name: Wait for de-initialization workflows to complete
+  awx.awx.workflow_node_wait:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    interval: 20
+    name: Undeploy-Tools
+    request_timeout: 30
+    timeout: 600
+    workflow_job_id: "{{ item.id }}"
+  loop: "{{ awx_scenario_deinit_workflows.results if awx_experiments.phase == 'deinit' else [] }}"
+  loop_control:
+    label: Workflow-{{ item.id }}
+  when:
+    - awx_experiments.phase == "deinit"
+    - awx_scenario_deinit_workflows is defined

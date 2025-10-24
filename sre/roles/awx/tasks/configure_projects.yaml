@@ -1,0 +1,213 @@
+---
+- name: Create ITBench organization
+  awx.awx.organization:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    description: Organization for ITBench
+    name: ITBench
+    state: present
+
+- name: Create kubeconfig credential type
+  awx.awx.credential_type:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    description: Credentials type for Kubeconfig
+    inputs:
+      fields:
+        - id: kubeconfig
+          type: string
+          label: kubeconfig
+          secret: true
+          multiline: true
+      required:
+        - kubeconfig
+    injectors: "{{ lookup('ansible.builtin.file', 'files/credential_type/kubeconfig_injectors.json') }}"
+    kind: cloud
+    name: Kubeconfig
+    state: present
+
+- name: Create kubeconfig credentials for each runner
+  awx.awx.credential:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credential_type: Kubeconfig
+    description: Kubeconfig file for a Kubernetes cluster
+    inputs:
+      kubeconfig: "{{ lookup('ansible.builtin.file', item) }}"
+    name: Cluster-{{ runner_index + 1 }}-Kubeconfig
+    organization: ITBench
+  loop: "{{ awx_runners.kubeconfigs }}"
+  loop_control:
+    index_var: runner_index
+
+- name: Create credentials for ITBench Repository
+  awx.awx.credential:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credential_type: Source Control
+    description: SSH Credentials for ITBench GitHub repository
+    inputs:
+      ssh_key_data: "{{ lookup('ansible.builtin.file', awx_github.it_bench.ssh.private_key_path) }}"
+      ssh_key_unlock: "{{ awx_github.it_bench.ssh.private_key_passphrase }}"
+    name: GitHub-ITBench
+    organization: ITBench
+    state: present
+  when:
+    - awx_github.it_bench.ssh is defined
+    - awx_github.it_bench.ssh.private_key_path is file
+
+- name: Create credentials for LLM Agent
+  awx.awx.credential:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credential_type: Source Control
+    description: SSH Credentials for LLM agent repository
+    inputs:
+      ssh_key_data: "{{ lookup('ansible.builtin.file', awx_github.llm_agent.ssh.private_key_path) }}"
+      ssh_key_unlock: "{{ awx_github.llm_agent.ssh.private_key_passphrase }}"
+    name: GitHub-LLM-Agent
+    organization: ITBench
+    state: present
+  when:
+    - awx_github.llm_agent.ssh is defined
+    - awx_github.llm_agent.ssh.private_key_path is file
+
+- name: Create credentials for AWS
+  awx.awx.credential:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credential_type: Amazon Web Services
+    description: Credentials for AWS
+    inputs:
+      username: "{{ awx_credentials.aws.access_key_id }}"
+      password: "{{ awx_credentials.aws.secret_access_key }}" # pragma: allowlist secret
+    name: AWS
+    organization: ITBench
+    state: present
+  when:
+    - awx_credentials.aws is defined
+
+- name: Create project for ITBench Repository
+  awx.awx.project:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credential: "{{ 'GitHub-ITBench' if awx_github.it_bench.ssh is defined else omit }}"
+    description: ITBench GitHub repository
+    name: GitHub-ITBench
+    organization: ITBench
+    scm_allow_override: true
+    scm_branch: "{{ awx_github.it_bench.branch | default('main') }}"
+    scm_clean: true
+    scm_delete_on_update: true
+    scm_track_submodules: true
+    scm_type: git
+    scm_url: "{{ awx_github.it_bench.url }}"
+    state: present
+
+- name: Create project for LLM Agent Repository
+  awx.awx.project:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credential: "{{ 'GitHub-LLM-Agent' if awx_github.llm_agent.ssh is defined else omit }}"
+    description: LLM Agent GitHub repository
+    name: GitHub-LLM-Agent
+    organization: ITBench
+    scm_allow_override: true
+    scm_branch: "{{ awx_github.llm_agent.branch | default('main') }}"
+    scm_clean: true
+    scm_delete_on_update: true
+    scm_track_submodules: false
+    scm_type: git
+    scm_url: "{{ awx_github.llm_agent.url }}"
+    state: present
+
+- name: Create ITBench inventory
+  awx.awx.inventory:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    description: Inventory for ITBench
+    name: ITBench
+    organization: ITBench
+    state: present
+
+- name: Create localhost host
+  awx.awx.host:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    name: localhost
+    inventory: ITBench
+    variables:
+      ansible_connection: local
+    state: present
+
+- name: Add localhost to environment and runner groups
+  awx.awx.group:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    name: "{{ item }}"
+    inventory: ITBench
+    hosts:
+      - localhost
+    state: present
+  loop:
+    - environment
+    - runner
+
+# ToDo: Revert back to this instead of static allocation once upstream AWX issue on syncing inventories is resolved
+# - name: Create ITBench inventory source
+#   awx.awx.inventory_source:
+#     controller_host: "{{ awx_controller_host }}"
+#     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+#     controller_username: admin
+#     inventory: ITBench
+#     name: SRE
+#     organization: ITBench
+#     description: Inventory for ITBench
+#     source: scm
+#     source_path: sre/inventory.yaml
+#     source_project: GitHub-ITBench
+
+# - name: Sync ITBench inventory source to populate hosts
+#   awx.awx.inventory_source_update:
+#     controller_host: "{{ awx_controller_host }}"
+#     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+#     controller_username: admin
+#     inventory_source: SRE
+#     inventory: ITBench
+#     wait: true
+#     timeout: 300
+
+- name: Custom environment for running ITBench scenarios
+  awx.awx.execution_environment:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    description: Custom environment for running ITBench scenarios
+    image: quay.io/it-bench/awx-ee:1.0.0
+    name: ITBench-Custom-EE
+    organization: ITBench
+    pull: always
+
+- name: Update existing container group with experiment data mount
+  awx.awx.instance_group:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    name: "default"
+    pod_spec_override: "{{ lookup('ansible.builtin.template', 'templates/instance_group/pod_spec_override.j2') | from_yaml }}"
+    state: present
+  vars:
+    awx_namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+    pod_spec: "{{ lookup('ansible.builtin.file', 'files/instance_group/pod_spec_override.yaml') | from_yaml }}"
+    requires_storage: "{{ awx_cluster.provider == 'kind' }}"

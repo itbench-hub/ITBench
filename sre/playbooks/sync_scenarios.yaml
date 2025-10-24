@@ -1,0 +1,17 @@
+---
+- name: Sync scenarios across repositories
+  hosts:
+    - environment
+  tasks:
+    - name: Setup repository with submodules and content
+      ansible.builtin.shell: |
+        if [ -f "scripts/copy-scenarios-to-submodule.sh" ]; then
+            chmod +x scripts/copy-scenarios-to-submodule.sh
+            ./scripts/copy-scenarios-to-submodule.sh
+            echo "Scenarios synced"
+        else
+            echo "Copy script not found, skipping content copy"
+        fi
+      args:
+        chdir: "{{ playbook_dir }}/../../../"
+      changed_when: true

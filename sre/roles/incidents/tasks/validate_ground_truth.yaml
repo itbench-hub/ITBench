@@ -52,6 +52,8 @@
   vars:
     aliases: "{{ incidents_ground_truth.aliases | flatten | unique }}"
     group_ids: "{{ incidents_ground_truth.groups | community.general.json_query('[*].id') }}"
+  when:
+    - incidents_ground_truth.aliases | default([]) | length > 0
 
 - name: Validate propagation sources
   ansible.builtin.assert:

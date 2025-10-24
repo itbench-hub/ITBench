@@ -35,6 +35,14 @@
   when:
     - tools_required.chaos_mesh
 
+- name: Import Clickhouse reinitialization tasks
+  ansible.builtin.import_tasks:
+    file: reinit_clickhouse.yaml
+  vars:
+    instance: "{{ tools_instances.clickhouse }}"
+  when:
+    - tools_required.clickhouse or tools_required.opentelemetry
+
 - name: Import Kubernetes Metrics Server reinitialization tasks
   ansible.builtin.import_tasks:
     file: reinit_kubernetes_metrics_server.yaml
@@ -43,22 +51,6 @@
   when:
     - tools_required.kubernetes_metrics_server
     - tools_cluster.platform == "kubernetes"
-
-- name: Import Kubernetes Topology Monitor reinitialization tasks
-  ansible.builtin.import_tasks:
-    file: reinit_kubernetes_topology_monitor.yaml
-  vars:
-    helm_release: "{{ tools_helm_releases.kubernetes_topology_monitor }}"
-  when:
-    - tools_required.kubernetes_topology_monitor
-
-- name: Import Clickhouse reinitialization tasks
-  ansible.builtin.import_tasks:
-    file: reinit_clickhouse.yaml
-  vars:
-    instance: "{{ tools_instances.clickhouse }}"
-  when:
-    - tools_required.clickhouse or tools_required.opentelemetry
 
 - name: Delete events across namespaces
   ansible.builtin.command:
@@ -75,3 +67,19 @@
   failed_when: tools_delete_events_result.rc not in [0, 1]
   when:
     - tools_cluster.platform == "kubernetes"
+
+- name: Import Kubernetes Topology Monitor uninstallation task
+  ansible.builtin.import_tasks:
+    file: uninstall_kubernetes_topology_monitor.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.kubernetes_topology_monitor }}"
+  when:
+    - tools_required.kubernetes_topology_monitor
+
+- name: Import Kubernetes Topology Monitor installation task
+  ansible.builtin.import_tasks:
+    file: install_kubernetes_topology_monitor.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.kubernetes_topology_monitor }}"
+  when:
+    - tools_required.kubernetes_topology_monitor

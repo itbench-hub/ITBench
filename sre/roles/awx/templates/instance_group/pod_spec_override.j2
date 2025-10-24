@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: "{{ awx_namespace }}"
+spec:
+  serviceAccountName: default
+  automountServiceAccountToken: false
+  containers:
+    - image: "{{ pod_spec.spec.containers[0].image }}"
+      name: worker
+      args:
+        - ansible-runner
+        - worker
+        - '--private-data-dir=/runner'
+      resources:
+        requests:
+          cpu: 250m
+          memory: 100Mi
+{% if requires_storage %}
+      volumeMounts:
+      - name: experiment-data
+        mountPath: /mnt/experiment-data
+{% endif %}
+{% if requires_storage %}
+  volumes:
+  - name: experiment-data
+    persistentVolumeClaim:
+      claimName: experiment-data-pvc
+{% endif %}
