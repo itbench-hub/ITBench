@@ -17,9 +17,7 @@ FROM gcr.io/distroless/static-debian12:nonroot
 
 COPY --from=certs /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/ssl/certs/ca-certificates.crt
 
-WORKDIR /
-
-COPY --from=builder /workspace/out/it-bench-otelcollector it-bench-otelcollector
+COPY --from=builder /workspace/out/it-bench-otelcollector /it-bench-otelcollector
 
 ENTRYPOINT ["/it-bench-otelcollector"]
 
