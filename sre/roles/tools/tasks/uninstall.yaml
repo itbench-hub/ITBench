@@ -16,6 +16,14 @@
     - tools_required.kubernetes_metrics_server
     - tools_cluster.platform == "kubernetes"
 
+- name: Import Istio uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_istio.yaml
+  vars:
+    helm_release: "{{ tools_helm_releases.istio.components }}"
+  when:
+    - tools_required.istio
+
 - name: Import Chaos Mesh uninstallation tasks
   ansible.builtin.import_tasks:
     file: uninstall_chaos_mesh.yaml
