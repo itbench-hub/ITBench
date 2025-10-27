@@ -1,0 +1,64 @@
+---
+- name: Create release namespaces
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    state: present
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ istio_namespace }}"
+        labels:
+          it-bench/monitoring: "true"
+  loop:
+    - "{{ tools_helm_releases.istio_base.namespace }}"
+    - "{{ tools_helm_releases.istio_control_plane.namespace }}"
+    - "{{ tools_helm_releases.istio_gateway.namespace }}"
+  loop_control:
+    label: namespace/{{ istio_namespace }}
+    loop_var: istio_namespace
+
+- name: Install Istio Base (CRDs)
+  kubernetes.core.helm:
+    chart_ref: base
+    chart_repo_url: https://istio-release.storage.googleapis.com/charts
+    chart_version: 1.27.3
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.istio_base.name }}"
+    release_namespace: "{{ tools_helm_releases.istio_base.namespace }}"
+    release_state: present
+    values:
+      global:
+        istioNamespace: "{{ tools_helm_releases.istio_control_plane.namespace }}"
+    wait: true
+
+- name: Install Istio Control Plane
+  kubernetes.core.helm:
+    chart_ref: istiod
+    chart_repo_url: https://istio-release.storage.googleapis.com/charts
+    chart_version: 1.27.3
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.istio_control_plane.name }}"
+    release_namespace: "{{ tools_helm_releases.istio_control_plane.namespace }}"
+    release_state: present
+    values:
+      global:
+        istioNamespace: "{{ tools_helm_releases.istio_control_plane.namespace }}"
+    wait: true
+
+- name: Install Istio ingress gateway
+  kubernetes.core.helm:
+    chart_ref: gateway
+    chart_repo_url: https://istio-release.storage.googleapis.com/charts
+    chart_version: 1.27.3
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.istio_gateway.name }}"
+    release_namespace: "{{ tools_helm_releases.istio_gateway.namespace }}"
+    release_state: present
+    values:
+      global:
+        istioNamespace: "{{ tools_helm_releases.istio_control_plane.namespace }}"
+      service:
+        type: "{{ 'NodePort' if tools_cluster.provider == 'kind' else 'LoadBalancer' }}"
+        nodePorts: "{{ {'http': 30080, 'https': 30443} if tools_cluster.provider == 'kind' else omit }}"
+    wait: true

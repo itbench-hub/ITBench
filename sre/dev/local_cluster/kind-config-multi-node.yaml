@@ -4,44 +4,46 @@ name: kind-cluster
 nodes:
   - role: control-plane
     extraPortMappings:
-    - containerPort: 30950
-      hostPort: 30950
-      protocol: TCP
+      - containerPort: 30950
+        hostPort: 30950
+        protocol: TCP
     extraMounts:
-    - hostPath: ./experiment-data
-      containerPath: /mnt/experiment-data
+      - hostPath: ./experiment-data
+        containerPath: /mnt/experiment-data
     kubeadmConfigPatches:
-    - |
-      apiVersion: kubelet.config.k8s.io/v1beta1
-      kind: KubeletConfiguration
-      serverTLSBootstrap: true
-    - |
-      kind: ClusterConfiguration
-      controllerManager:
-        extraArgs:
-          bind-address: "0.0.0.0"
-          authorization-always-allow-paths: "/metrics"
-    - |
-      kind: ClusterConfiguration
-      scheduler:
-        extraArgs:
-          bind-address: "0.0.0.0"
-          authorization-always-allow-paths: "/metrics"
-    - |
-      kind: ClusterConfiguration
-      etcd:
-        local:
+      - |
+        apiVersion: kubelet.config.k8s.io/v1beta1
+        kind: KubeletConfiguration
+        serverTLSBootstrap: true
+      - |
+        kind: ClusterConfiguration
+        controllerManager:
           extraArgs:
-            listen-metrics-urls: "http://0.0.0.0:2381"
-    - |
-      apiVersion: kubeproxy.config.k8s.io/v1alpha1
-      kind: KubeProxyConfiguration
-      metricsBindAddress: "0.0.0.0:10249"
+            bind-address: "0.0.0.0"
+            authorization-always-allow-paths: "/metrics"
+      - |
+        kind: ClusterConfiguration
+        scheduler:
+          extraArgs:
+            bind-address: "0.0.0.0"
+            authorization-always-allow-paths: "/metrics"
+      - |
+        kind: ClusterConfiguration
+        etcd:
+          local:
+            extraArgs:
+              listen-metrics-urls: "http://0.0.0.0:2381"
+      - |
+        apiVersion: kubeproxy.config.k8s.io/v1alpha1
+        kind: KubeProxyConfiguration
+        metricsBindAddress: "0.0.0.0:10249"
+
   - role: worker
     extraMounts:
-    - hostPath: ./experiment-data
-      containerPath: /mnt/experiment-data
+      - hostPath: ./experiment-data
+        containerPath: /mnt/experiment-data
+
   - role: worker
     extraMounts:
-    - hostPath: ./experiment-data
-      containerPath: /mnt/experiment-data
+      - hostPath: ./experiment-data
+        containerPath: /mnt/experiment-data

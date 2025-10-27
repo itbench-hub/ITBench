@@ -39,6 +39,16 @@ In ITBench, the following tool is used:
 | --- | --- |
 | Chaos Mesh | https://github.com/chaos-mesh/chaos-mesh |
 
+### Service Mesh Tools
+
+A service mesh tool is a technology which manages communication between pods in a Kubernetes environment. This allows developers to control traffic behavior, enforce security policies, and observe interactions between microservices.
+
+| Tool | Repository |
+| --- | --- |
+| Istio | https://github.com/istio/istio |
+
+**Note:** Istio also supports an ambient mesh architecture, which is not included in the current installation. This setup uses the default configuration with only the ingress gateway enabled. To enable the ambient mesh, the installation must be extended to include additional Istio components such as ztunnel and istio-cni.
+
 ### FinOps Tools
 
 A **finops tool** is a technology which provides financial insights on the operational costs of running an application.

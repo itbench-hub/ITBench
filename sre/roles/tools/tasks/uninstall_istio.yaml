@@ -1,0 +1,39 @@
+---
+- name: Uninstall Istio Gateway
+  kubernetes.core.helm:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.istio_gateway.name }}"
+    release_namespace: "{{ tools_helm_releases.istio_gateway.namespace }}"
+    release_state: absent
+    wait: true
+
+- name: Uninstall Istio Control Plane
+  kubernetes.core.helm:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.istio_control_plane.name }}"
+    release_namespace: "{{ tools_helm_releases.istio_control_plane.namespace }}"
+    release_state: absent
+    wait: true
+
+- name: Uninstall Istio Base (CRDs)
+  kubernetes.core.helm:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.istio_base.name }}"
+    release_namespace: "{{ tools_helm_releases.istio_base.namespace }}"
+    release_state: absent
+    wait: true
+
+- name: Delete the release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    kind: Namespace
+    name: "{{ istio_namespace }}"
+    state: absent
+    wait: true
+  loop:
+    - "{{ tools_helm_releases.istio_base.namespace }}"
+    - "{{ tools_helm_releases.istio_control_plane.namespace }}"
+    - "{{ tools_helm_releases.istio_gateway.namespace }}"
+  loop_control:
+    label: namespace/{{ istio_namespace }}
+    loop_var: istio_namespace
