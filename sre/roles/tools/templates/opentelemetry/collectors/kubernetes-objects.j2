@@ -1,0 +1,78 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubernetes-events-otel-collector
+  namespace: {{ tools_instances.opentelemetry_collectors.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: kubernetes-events-otel-collector
+    app.kubernetes.io/component: observability
+    app.kubernetes.io/part-of: it-bench
+  name: kubernetes-events-otel-collector
+rules:
+  - apiGroups:
+      - events.k8s.io
+    resources:
+      - events
+    verbs:
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: kubernetes-events-otel-collector
+    app.kubernetes.io/component: observability
+    app.kubernetes.io/part-of: it-bench
+  name: kubernetes-events-otel-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubernetes-events-otel-collector
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-events-otel-collector
+    namespace: {{ tools_instances.opentelemetry_collectors.namespace }}
+---
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: {{ tools_instances.opentelemetry_collectors.names.kubernetes_events }}
+  namespace: {{ tools_instances.opentelemetry_collectors.namespace }}
+spec:
+  image: {{ container_image }}
+  mode: deployment
+  observability:
+    metrics:
+      enableMetrics: {{ tools_required.prometheus }}
+  serviceAccount: kubernetes-events-otel-collector
+  podAnnotations:
+    openshift.io/required-scc: restricted-v2
+  config:
+    service:
+      pipelines:
+        logs:
+          exporters:
+            - debug
+            - clickhouse
+          receivers:
+            - otlp
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      clickhouse:
+        username: "{{ tools_clickhouse_username }}"
+        password: "{{ tools_clickhouse_password }}"
+        endpoint: "{{ tools_clickhouse_endpoint }}"
+        logs_table_name: kubernetes_events
+      debug: {}

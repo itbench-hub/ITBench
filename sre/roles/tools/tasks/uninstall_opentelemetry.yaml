@@ -1,46 +1,51 @@
 ---
-- name: Uninstall OpenTelemetry Collector for Kubernetes Events
-  kubernetes.core.helm:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ helm_releases.collectors.names.kubernetes_events }}"
-    release_namespace: "{{ helm_releases.collectors.namespace }}"
-    release_state: absent
-    wait: true
-  when:
-    - tools_required.opentelemetry
-
 - name: Retrieve all collector instances in the release namespace
   kubernetes.core.k8s_info:
     api_version: opentelemetry.io/v1beta1
     kind: OpenTelemetryCollector
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    namespace: "{{ helm_releases.collectors.namespace }}"
-  register: tools_opentelemetry_collector_info
-  when:
-    - tools_required.jaeger
+    namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
+  register: tools_opentelemetry_collectors_info
 
 - name: Delete all collector instances in the release namespace
   kubernetes.core.k8s:
-    api_version: opentelemetry.io/v1beta1
-    delete_all: true
-    kind: OpenTelemetryCollector
+    api_version: "{{ resource.apiVersion }}"
+    kind: "{{ resource.kind }}"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    namespace: "{{ helm_releases.collectors.namespace }}"
+    name: "{{ resource.metadata.name }}"
+    namespace: "{{ resource.metadata.namespace }}"
     state: absent
     wait: true
+  loop: "{{ tools_opentelemetry_collectors_info.resources }}"
+  loop_control:
+    label: opentelemetrycollector/{{ resource.metadata.name }}
+    loop_var: resource
   when:
-    - tools_required.jaeger
-    - tools_opentelemetry_collector_info.resources | length > 0
+    - tools_opentelemetry_collectors_info is defined
+
+- name: Delete all RBAC objects (cluster scoped)
+  kubernetes.core.k8s:
+    api_version: v1
+    delete_all: true
+    kind: "{{ item }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    label_selectors:
+      - app.kubernetes.io/component = observability
+      - app.kubernetes.io/part-of = it-bench
+    state: absent
+    wait: true
+  loop:
+    - ClusterRoleBinding
+    - ClusterRole
 
 - name: Uninstall OpenTelemetry Operator
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ helm_releases.operator.name }}"
-    release_namespace: "{{ helm_releases.operator.namespace }}"
+    release_name: "{{ tools_helm_releases.opentelemetry_operator.name }}"
+    release_namespace: "{{ tools_helm_releases.opentelemetry_operator.namespace }}"
     release_state: absent
     wait: true
   when:
-    - tools_required.jaeger
     - tools_cluster.platform == "kubernetes"
 
 - name: Delete the subscription for RH build of OpenTelemetry Operator
@@ -54,7 +59,6 @@
         namespace: openshift-opentelemetry-operator
     state: absent
   when:
-    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Delete the operator group for RH build of OpenTelemetry Operator
@@ -68,7 +72,6 @@
         namespace: openshift-opentelemetry-operator
     state: absent
   when:
-    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Delete the project for RH build of OpenTelemetry Operator
@@ -81,7 +84,6 @@
         name: openshift-opentelemetry-operator
     state: absent
   when:
-    - tools_required.jaeger
     - tools_cluster.platform == "openshift"
 
 - name: Delete the release namespaces
@@ -95,5 +97,5 @@
     state: absent
     wait: true
   loop:
-    - "{{ helm_releases.collectors.namespace }}"
-    - "{{ helm_releases.operator.namespace }}"
+    - "{{ tools_instances.opentelemetry_collectors.namespace }}"
+    - "{{ tools_helm_releases.opentelemetry_operator.namespace }}"
