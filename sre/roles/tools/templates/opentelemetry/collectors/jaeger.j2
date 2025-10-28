@@ -1,12 +1,15 @@
 ---
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
+metadata:
+  name: {{ tools_instances.opentelemetry_collectors.names.jaeger }}
+  namespace: {{ tools_instances.opentelemetry_collectors.namespace }}
 spec:
   image: {{ container_image }}
   mode: deployment
   observability:
     metrics:
-      enableMetrics: true
+      enableMetrics: {{ tools_required.prometheus | default(true) }}
   podAnnotations:
     openshift.io/required-scc: restricted-v2
   ports:
@@ -33,7 +36,8 @@ spec:
         backends:
           traces_store:
             opensearch:
-              server_urls: {{ opensearch_urls }}
+              server_urls:
+                - http://opensearch-cluster-master.{{ tools_helm_releases.opensearch.namespace }}.svc.cluster.local:9200
     receivers:
       otlp:
         protocols:
