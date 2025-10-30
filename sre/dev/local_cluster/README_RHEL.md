@@ -6,6 +6,8 @@ __Note: The following setup guide has been verified and tested on Red Hat Enterp
 
 _Note: The following setup guide presumes that the required software listed [here](./README.md#required-software) has been installed. If it has not, please go back and do so before following this document._
 
+_Note: Please review the [hardware requirements](../../docs/hardware_specification.md) to ensure that the machine matches or exceeds the specifications._
+
 ## Recommended Software
 
 1. [make] -- Ensure you have `make` installed or install it via `sudo dnf install make`

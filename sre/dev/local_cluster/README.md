@@ -4,6 +4,8 @@ __Note: The following setup guide has been verified and tested on MacOS using th
 
 _Note: The following setup guide presumes that the required software listed [here](./README.md#required-software) has been installed. If it has not, please go back and do so before following this document._
 
+_Note: Please review the [hardware requirements](../../docs/hardware_specification.md) to ensure that the machine matches or exceeds the specifications._
+
 ## Recommended Software
 
 1. [Podman](https://podman.io/)
@@ -24,9 +26,9 @@ brew install go
 podman machine init
 ```
 
-2. Set the machine's resources. The tested configuration uses 12 CPU cores and 16 GB of RAM.
+2. Set the machine's resources.
 ```shell
-podman machine set --cpus 12 -m 16384
+podman machine set --cpus 8 -m 16384
 ```
 
 3. Start the Machine
