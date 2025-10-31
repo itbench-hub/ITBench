@@ -300,6 +300,7 @@
     playbook: deployments/ansible/base.yaml
     project: GitHub-LLM-Agent
     state: present
+    timeout: "{{ awx_agent.configuration['max_runtime_in_seconds'] | int + 900 }}"
     extra_vars:
       prometheus_namespace_project_name: prometheus
       sre_agent_directory: /runner/project
@@ -336,7 +337,7 @@
       agent_analytics_sdk_username: "{{ awx_agent.configuration['agent_analytics_sdk']['git_username'] }}"
       agent_analytics_sdk_token: "{{ awx_agent.configuration['agent_analytics_sdk']['git_token'] }}"
       run_mode: remote
-      sre_agent_max_runtime_in_seconds: 900
+      max_runtime_in_seconds: "{{ awx_agent.configuration['max_runtime_in_seconds'] }}"
 
 - name: Add job template to sync scenarios
   awx.awx.job_template:
