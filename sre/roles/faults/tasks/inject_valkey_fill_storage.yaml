@@ -1,0 +1,36 @@
+---
+- name: Retrieve information on valkey workload
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+  register: faults_workload_info
+
+- name: Build containers list with storage filler
+  ansible.builtin.set_fact:
+    faults_updated_containers: "{{ faults_workload_info.resources[0].spec.template.spec.containers + [storage_filler_container] }}"
+  vars:
+    storage_filler_container:
+      name: storage-filler
+      image: docker.io/library/busybox:latest
+      command:
+        - /bin/sh
+        - -c
+        - "dd if=/dev/zero of=/tmp/filler bs=1M count={{ spec.fill_storage.storage_size_mb | default(500) }} && sleep infinity"
+
+- name: Inject fault (add storage filler sidecar)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: apps/v1
+      kind: "{{ spec.workload.kind }}"
+      metadata:
+        name: "{{ spec.workload.name }}"
+        namespace: "{{ spec.workload.namespace }}"
+      spec:
+        template:
+          spec:
+            containers: "{{ faults_updated_containers }}"
+    state: patched
