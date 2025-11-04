@@ -1,21 +1,34 @@
 ---
-- name: Scale down Kubernetes metrics server
-  kubernetes.core.k8s_scale:
-    api_version: apps/v1
-    kind: Deployment
+- name: Check for Kubernetes Metrics Server namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: metrics-server
-    namespace: "{{ helm_release.namespace }}"
-    replicas: 0
-    wait: true
+    name: "{{ tools_helm_releases.kubernetes_metrics_server.namespace }}"
+  register: tools_k8s_metric_server_namespace_info
 
-- name: Scale up Kubernetes metrics server
-  kubernetes.core.k8s_scale:
-    api_version: apps/v1
-    kind: Deployment
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: metrics-server
-    namespace: "{{ helm_release.namespace }}"
-    replicas: 1
-    wait: true
-    wait_timeout: 60
+- name: Restart (through scaling)
+  when:
+    - tools_k8s_metric_server_namespace_info is defined
+    - tools_k8s_metric_server_namespace_info.resources | length == 1
+  block:
+    - name: Scale down Kubernetes metrics server
+      kubernetes.core.k8s_scale:
+        api_version: apps/v1
+        kind: Deployment
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: "{{ tools_helm_releases.kubernetes_metrics_server.name }}"
+        namespace: "{{ tools_k8s_metric_server_namespace_info.resources[0].metadata.name }}"
+        replicas: 0
+        wait: true
+
+    - name: Scale up Kubernetes metrics server
+      kubernetes.core.k8s_scale:
+        api_version: apps/v1
+        kind: Deployment
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: "{{ tools_helm_releases.kubernetes_metrics_server.name }}"
+        namespace: "{{ tools_k8s_metric_server_namespace_info.resources[0].metadata.name }}"
+        replicas: 1
+        wait: true
+        wait_timeout: 60

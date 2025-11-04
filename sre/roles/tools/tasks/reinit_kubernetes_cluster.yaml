@@ -1,0 +1,25 @@
+---
+- name: Retrieve all events
+  kubernetes.core.k8s_info:
+    api_version: events.k8s.io/v1
+    kind: Event
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+  register: tools_events_info
+
+- name: Delete all events
+  kubernetes.core.k8s:
+    api_version: events.k8s.io/v1
+    delete_all: true
+    kind: Event
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: "{{ event_namespace }}"
+    state: absent
+  loop: |
+    {{
+      tools_events_info.resources |
+      community.general.json_query('[*].metadata.namespace') |
+      unique
+    }}
+  loop_control:
+    label: namespace/{{ event_namespace }}
+    loop_var: event_namespace

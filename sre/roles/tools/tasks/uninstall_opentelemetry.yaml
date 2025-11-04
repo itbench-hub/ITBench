@@ -9,11 +9,13 @@
 
 - name: Delete all collector instances in the release namespace
   kubernetes.core.k8s:
-    api_version: "{{ resource.apiVersion }}"
-    kind: "{{ resource.kind }}"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ resource.metadata.name }}"
-    namespace: "{{ resource.metadata.namespace }}"
+    resource_definition:
+      apiVersion: "{{ resource.apiVersion }}"
+      kind: "{{ resource.kind }}"
+      metadata:
+        name: "{{ resource.metadata.name }}"
+        namespace: "{{ resource.metadata.namespace }}"
     state: absent
     wait: true
   loop: "{{ tools_opentelemetry_collectors_info.resources }}"
