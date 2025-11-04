@@ -1,23 +1,36 @@
 ---
-- name: Create jobs to delete OpenSearch indexes
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    namespace: "{{ helm_release.namespace }}"
-    state: present
-    src: files/opensearch/index-jobs.yaml
-  register: tools_opensearch_reinit_jobs
-
-- name: Wait for jobs to complete
+- name: Check for OpenSearch namespace
   kubernetes.core.k8s_info:
-    api_version: batch/v1
-    kind: Job
+    api_version: v1
+    kind: Namespace
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ item.result.metadata.name }}"
-    namespace: "{{ item.result.metadata.namespace }}"
-    wait: true
-    wait_condition:
-      type: Complete
-      status: "True"
-  loop: "{{ tools_opensearch_reinit_jobs.result.results }}"
-  loop_control:
-    label: job/{{ item.result.metadata.name }}
+    name: "{{ tools_helm_releases.opensearch.namespace }}"
+  register: tools_opensearch_namespace_info
+
+- name: Delete all OpenSearch indexes
+  when:
+    - tools_opensearch_namespace_info is defined
+    - tools_opensearch_namespace_info.resources | length == 1
+  block:
+    - name: Create jobs to delete OpenSearch indexes
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: "{{ tools_opensearch_namespace_info.resources[0].metadata.name }}"
+        state: present
+        src: files/opensearch/index-jobs.yaml
+      register: tools_opensearch_reinit_jobs
+
+    - name: Wait for jobs to complete
+      kubernetes.core.k8s_info:
+        api_version: "{{ item.result.apiVersion }}"
+        kind: "{{ item.result.kind }}"
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: "{{ item.result.metadata.name }}"
+        namespace: "{{ item.result.metadata.namespace }}"
+        wait: true
+        wait_condition:
+          type: Complete
+          status: "True"
+      loop: "{{ tools_opensearch_reinit_jobs.result.results }}"
+      loop_control:
+        label: job/{{ item.result.metadata.name }}
