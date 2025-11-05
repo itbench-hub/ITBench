@@ -1,73 +1,89 @@
 {
     "type": "object",
-    "required": ["metadata", "spec"],
+    "required": ["metadata", "scenario"],
     "properties": {
         "metadata": {
             "type": "object",
-            "required": ["complexity", "id", "name", "platform"],
+            "required": ["version"],
             "properties": {
-                "complexity": {
+                "version": {
                     "type": "string",
-                    "enum": ["Low", "Medium", "High"]
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "platform": {
-                    "type": "string",
-                    "enum": ["kubernetes"]
+                    "enum": ["v1"]
                 }
             }
         },
-        "spec": {
+        "scenario": {
             "type": "object",
-            "required": ["environment", "faults"],
+            "required": ["metadata", "spec"],
             "properties": {
-                "environment": {
+                "metadata": {
                     "type": "object",
-                    "required": ["applications", "tools"],
+                    "required": ["complexity", "id", "name", "platform"],
                     "properties": {
-                        "applications": {
+                        "complexity": {
+                            "type": "string",
+                            "enum": ["Low", "Medium", "High"]
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "platform": {
+                            "type": "string",
+                            "enum": ["kubernetes"]
+                        }
+                    }
+                },
+                "spec": {
+                    "type": "object",
+                    "required": ["environment", "faults"],
+                    "properties": {
+                        "environment": {
                             "type": "object",
+                            "required": ["applications", "tools"],
                             "properties": {
-                                "otel_demo": {
+                                "applications": {
                                     "type": "object",
-                                    "required": ["enabled"],
                                     "properties": {
-                                        "configuration": {
-                                            "type": "object"
+                                        "otel_demo": {
+                                            "type": "object",
+                                            "required": ["enabled"],
+                                            "properties": {
+                                                "configuration": {
+                                                    "type": "object"
+                                                },
+                                                "enabled": {
+                                                    "type": "boolean"
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                "tools": {
+                                    "type": "object",
+                                    "properties": {
+                                        "category": {
+                                            "type": "string",
+                                            "enum": ["finops", "sre"]
                                         },
-                                        "enabled": {
-                                            "type": "boolean"
+                                        "selected": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
                                         }
                                     }
                                 }
                             }
                         },
-                        "tools": {
-                            "type": "object",
-                            "properties": {
-                                "category": {
-                                    "type": "string",
-                                    "enum": ["finops", "sre"]
-                                },
-                                "selected": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "string"
-                                    }
-                                }
+                        "faults": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
                             }
                         }
-                    }
-                },
-                "faults": {
-                    "type": "array",
-                    "items": {
-                        "type": "object"
                     }
                 }
             }
