@@ -1,28 +1,31 @@
 ---
 metadata:
-  complexity: Medium
-  id: 16
-  name: Misconfigured shipping service environment variable
-  platform: kubernetes
-spec:
-  environment:
-    applications:
-      otel_demo:
-        enabled: true
-    tools:
-      category: sre
-      selected:
-        - kubernetes-topology-monitor
-  faults:
-    - custom:
-        name: modify-environment-variables
-        modify_environment_variables:
-          workload:
-            container:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 16
+    name: Misconfigured shipping service environment variable
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+    faults:
+      - custom:
+          name: modify-environment-variables
+          modify_environment_variables:
+            workload:
+              container:
+                name: shipping
+                env:
+                  - name: QUOTE_ADDR
+                    value: "quote:0000"
+              kind: Deployment
               name: shipping
-              env:
-                - name: QUOTE_ADDR
-                  value: "quote:0000"
-            kind: Deployment
-            name: shipping
-            namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"

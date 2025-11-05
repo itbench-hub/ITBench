@@ -1,23 +1,26 @@
 ---
 metadata:
-  complexity: Low
-  id: 31
-  name: Frontend Network Traffic Blocked
-  platform: kubernetes
-spec:
-  environment:
-    applications:
-      otel_demo:
-        enabled: true
-    tools:
-      category: sre
-      selected:
-        - kubernetes-topology-monitor
-  faults:
-    - custom:
-        name: misconfigured-network-policy
-        misconfigured_network_policy:
-          workload:
-            kind: Deployment
-            name: frontend
-            namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Low
+    id: 31
+    name: Frontend Network Traffic Blocked
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+    faults:
+      - custom:
+          name: misconfigured-network-policy
+          misconfigured_network_policy:
+            workload:
+              kind: Deployment
+              name: frontend
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"

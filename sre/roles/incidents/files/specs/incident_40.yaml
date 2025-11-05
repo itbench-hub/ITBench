@@ -1,24 +1,27 @@
 ---
 metadata:
-  complexity: Medium
-  id: 40
-  name: Fill Database Storage
-  platform: kubernetes
-spec:
-  environment:
-    applications:
-      otel_demo:
-        enabled: true
-    tools:
-      category: sre
-      selected:
-        - kubernetes-topology-monitor
-  faults:
-    - valkey:
-        name: fill-storage
-        fill_storage:
-          workload:
-            kind: Deployment
-            name: valkey-cart
-            namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
-          storage_size_mb: 500
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 40
+    name: Fill Database Storage
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+    faults:
+      - valkey:
+          name: fill-storage
+          fill_storage:
+            workload:
+              kind: Deployment
+              name: valkey-cart
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+            storage_size_mb: 500
