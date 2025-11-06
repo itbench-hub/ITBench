@@ -25,9 +25,37 @@
 - name: Find all route tables associated with kOps clusters
   amazon.aws.ec2_vpc_route_table_info:
     filters:
-      "tag:Name": "{{ kops_stack.name_prefix }}-public-route-table"
+      "tag:Name":
+        - "{{ kops_stack.name_prefix }}-public-route-table"
+        - "{{ kops_stack.name_prefix }}-private-route-table"
+        - "{{ kops_stack.name_prefix }}-private-route-table-igw"
+        - "{{ kops_stack.name_prefix }}-private-route-table-nat"
     region: "{{ kops_cluster.aws.region }}"
   register: kops_route_tables_info
+
+- name: Find all NAT gateways in the VPCs
+  amazon.aws.ec2_vpc_nat_gateway_info:
+    filters:
+      vpc-id: "{{ rt.vpc_id }}"
+    region: "{{ kops_cluster.aws.region }}"
+  loop: "{{ kops_route_tables_info.route_tables }}"
+  loop_control:
+    label: "{{ rt.id }}"
+    loop_var: rt
+  register: kops_nat_gateway_info_list
+
+- name: Delete all NAT Gateways
+  amazon.aws.ec2_vpc_nat_gateway:
+    state: absent
+    nat_gateway_id: "{{ nat_gw.nat_gateway_id }}"
+    region: "{{ kops_cluster.aws.region }}"
+    wait: true
+    wait_timeout: 300
+  loop: "{{ kops_nat_gateway_info_list.results | map(attribute='result') | flatten | default([]) }}"
+  loop_control:
+    label: "{{ nat_gw.nat_gateway_id }}"
+    loop_var: nat_gw
+  when: nat_gw.state != "deleted"
 
 - name: Find all subnets associated with route tables' VPCs
   amazon.aws.ec2_vpc_subnet_info:
