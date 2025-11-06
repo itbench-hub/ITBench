@@ -161,6 +161,8 @@ stack:
         cidr: "10.0.0.0/16"
       subnet:
         public_base: "10.0"
+        private_base: "10.0"
+      elastic_ip_allocation_id: "" # (Optional; allocation ID associated with an AWS ElasticIP; can be used when a static IP for external connections is needed)
     count: 20 # number of scenarios which are going to be run.
 ```
 
