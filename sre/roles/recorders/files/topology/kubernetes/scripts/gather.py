@@ -46,7 +46,7 @@ def main():
 
             logger.info("retrieved {0} data".format(item))
 
-            timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')
+            timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H-%M-%S.%f')
             file_path = os.path.join(os.path.expanduser("~"), "records", "{0}{1}__{2}.json".format(filename_annotation, item, timestamp))
 
             with open(file_path, "w") as f:
