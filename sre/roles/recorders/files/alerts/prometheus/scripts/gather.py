@@ -52,7 +52,7 @@ def main():
             logger.info("retrieved {0} alerts from prometheus server".format(len(alerts)))
             logger.info("retrieved {0} alerts are in firing state".format(len(firing_alerts)))
 
-            timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f')
+            timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H-%M-%S.%f')
             file_path = os.path.join(os.path.expanduser("~"), "records", "alerts_at_{0}.json".format(timestamp))
 
             with open(file_path, "w") as f:

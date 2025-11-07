@@ -1,10 +1,10 @@
 ---
-- name: Take a 2 minute pause during execution
+- name: Pause pipeline execution
   hosts:
     - environment
   tasks:
-    - name: Pausing for 120 seconds
+    - name: Pausing for atleast two minutes
       ansible.builtin.pause:
-        seconds: 120
+        seconds: "{{ (duration_in_minutes | default(2)) | int * 60 }}"
       tags:
         - pause
