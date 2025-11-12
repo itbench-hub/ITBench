@@ -1,0 +1,37 @@
+---
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: {{ tools_instances.opentelemetry_collectors.names.istio }}
+  namespace: {{ tools_instances.opentelemetry_collectors.namespace }}
+spec:
+  image: {{ item.container_image }}
+  mode: deployment
+  observability:
+    metrics:
+      enableMetrics: {{ tools_required.prometheus }}
+  podAnnotations:
+    openshift.io/required-scc: restricted-v2
+  config:
+    service:
+      pipelines:
+        logs:
+          exporters:
+            - debug
+            - clickhouse
+          receivers:
+            - otlp
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      clickhouse:
+        username: "{{ tools_clickhouse_username }}"
+        password: "{{ tools_clickhouse_password }}"
+        endpoint: "{{ tools_clickhouse_endpoint }}"
+        logs_table_name: istio_access
+      debug: {}

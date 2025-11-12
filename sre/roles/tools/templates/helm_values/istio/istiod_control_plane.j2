@@ -1,0 +1,20 @@
+---
+{% if tools_cluster.platform == "openshift" %}
+global:
+  platform: openshift
+{% endif %}
+meshConfig:
+  enablePrometheusMerge: false
+  enableTracing: {{ tools_required.jaeger }}
+  extensionProviders:
+{% if tools_required.jaeger %}
+    - name: jaeger
+      opentelemetry:
+        port: 4317
+        service: {{ tools_instances.opentelemetry_collectors.names.jaeger }}-collector.{{ tools_instances.opentelemetry_collectors.namespace }}.svc.cluster.local
+{% endif %}
+    - name: opentelemetry
+      envoyOtelAls:
+        port: 4317
+        service: {{ tools_instances.opentelemetry_collectors.names.istio }}-collector.{{ tools_instances.opentelemetry_collectors.namespace }}.svc.cluster.local
+profile: ambient

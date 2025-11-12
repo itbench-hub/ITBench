@@ -1,0 +1,42 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ tools_helm_releases.istio.components.istiod_control_plane }}
+  namespace: {{ tools_helm_releases.istio.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ tools_helm_releases.istio.components.istiod_control_plane }}
+      app.kubernetes.io/part-of: istio
+  endpoints:
+    - interval: 30s
+      port: http-monitoring
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ tools_helm_releases.istio.components.ztunnel }}
+  namespace: {{ tools_helm_releases.istio.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ tools_helm_releases.istio.components.ztunnel }}
+      app.kubernetes.io/part-of: istio
+  podMetricsEndpoints:
+    - interval: 30s
+      port: ztunnel-stats
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ tools_helm_releases.istio.components.cni_node_agent }}
+  namespace: {{ tools_helm_releases.istio.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ tools_helm_releases.istio.components.cni_node_agent }}
+      app.kubernetes.io/part-of: istio
+  podMetricsEndpoints:
+    - interval: 30s
+      port: metrics

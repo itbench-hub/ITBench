@@ -1,0 +1,21 @@
+---
+apiVersion: telemetry.istio.io/v1
+kind: Telemetry
+metadata:
+  name: istio-telemetry
+  namespace: {{ tools_helm_releases.istio.namespace }}
+spec:
+  accessLogging:
+    - providers:
+        - name: opentelemetry
+{% if tools_required.jaeger %}
+  tracing:
+    - providers:
+        - name: jaeger
+      randomSamplingPercentage: 0
+{% endif %}
+{% if tools_required.prometheus %}
+  metrics:
+    - providers:
+        - name: prometheus
+{% endif %}
