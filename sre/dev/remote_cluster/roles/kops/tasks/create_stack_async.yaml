@@ -170,6 +170,38 @@
     jid: "{{ item.ansible_job_id }}"
   loop: "{{ kops_async_create_results.results }}"
 
+- name: Apply Cilium changes to configuration
+  ansible.builtin.command:
+    argv:
+      - kops
+      - edit
+      - cluster
+      - --name
+      - "{{ item }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - --set
+      - spec.networking.cilium.cniExclusive=false
+  async: 600
+  loop: "{{ stack_cluster_names }}"
+  poll: 0
+  register: kops_async_edit_results
+
+- name: Wait for asynchronous operations to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_async_edit_results.results }}"
+  register: kops_async_edit_poll_results
+  until: kops_async_edit_poll_results.finished
+  delay: 60
+  retries: 10
+
+- name: Clean up ansychronous operations
+  ansible.builtin.async_status:
+    mode: cleanup
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_async_edit_poll_results.results }}"
+
 - name: Asynchronously build kOps clusters
   ansible.builtin.command:
     argv:

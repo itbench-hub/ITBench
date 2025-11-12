@@ -1,5 +1,5 @@
 ---
-- name: Create cluster ({{ cluster_name }})
+- name: Create cluster configuration ({{ cluster_name }})
   ansible.builtin.command:
     argv:
       - kops
@@ -30,6 +30,21 @@
       - "{{ kops_cluster.kubernetes_version }}"
   register: kops_create_output
   changed_when: kops_create_output.rc == 0
+
+- name: Apply Cilium changes to configuration
+  ansible.builtin.command:
+    argv:
+      - kops
+      - edit
+      - cluster
+      - --name
+      - "{{ cluster_name }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - --set
+      - spec.networking.cilium.cniExclusive=false
+  register: kops_edit_output
+  changed_when: kops_edit_output.rc == 0
 
 - name: Build cluster ({{ cluster_name }})
   ansible.builtin.command:

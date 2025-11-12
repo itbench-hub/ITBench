@@ -1,5 +1,5 @@
 ---
-- name: Create release namespaces
+- name: Create release namespace for Istio
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     state: present
@@ -7,58 +7,110 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ istio_namespace }}"
+        name: "{{ tools_helm_releases.istio.namespace }}"
         labels:
           it-bench/monitoring: "true"
-  loop:
-    - "{{ tools_helm_releases.istio_base.namespace }}"
-    - "{{ tools_helm_releases.istio_control_plane.namespace }}"
-    - "{{ tools_helm_releases.istio_gateway.namespace }}"
-  loop_control:
-    label: namespace/{{ istio_namespace }}
-    loop_var: istio_namespace
 
 - name: Install Istio Base (CRDs)
   kubernetes.core.helm:
     chart_ref: base
     chart_repo_url: https://istio-release.storage.googleapis.com/charts
-    chart_version: 1.27.3
+    chart_version: 1.28.0
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio_base.name }}"
-    release_namespace: "{{ tools_helm_releases.istio_base.namespace }}"
+    release_name: "{{ tools_helm_releases.istio.components.base }}"
+    release_namespace: "{{ tools_helm_releases.istio.namespace }}"
     release_state: present
-    values:
-      global:
-        istioNamespace: "{{ tools_helm_releases.istio_control_plane.namespace }}"
+    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/istio/base.j2') | from_yaml }}"
     wait: true
 
-- name: Install Istio Control Plane
+- name: Install Istiod Control Plane
   kubernetes.core.helm:
     chart_ref: istiod
     chart_repo_url: https://istio-release.storage.googleapis.com/charts
-    chart_version: 1.27.3
+    chart_version: 1.28.0
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio_control_plane.name }}"
-    release_namespace: "{{ tools_helm_releases.istio_control_plane.namespace }}"
+    release_name: "{{ tools_helm_releases.istio.components.istiod_control_plane }}"
+    release_namespace: "{{ tools_helm_releases.istio.namespace }}"
     release_state: present
-    values:
-      global:
-        istioNamespace: "{{ tools_helm_releases.istio_control_plane.namespace }}"
+    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/istio/istiod_control_plane.j2') | from_yaml }}"
     wait: true
 
-- name: Install Istio ingress gateway
+- name: Install Istio CNI Node Agent
+  kubernetes.core.helm:
+    chart_ref: cni
+    chart_repo_url: https://istio-release.storage.googleapis.com/charts
+    chart_version: 1.28.0
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.istio.components.cni_node_agent }}"
+    release_namespace: "{{ 'kube-system' if tools_cluster.platform == 'openshift' else tools_helm_releases.istio.namespace }}"
+    release_state: present
+    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/istio/cni_node_agent.j2') | from_yaml }}"
+    wait: true
+
+- name: Install Istio ZTunnel
+  kubernetes.core.helm:
+    chart_ref: ztunnel
+    chart_repo_url: https://istio-release.storage.googleapis.com/charts
+    chart_version: 1.28.0
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.istio.components.ztunnel }}"
+    release_namespace: "{{ 'kube-system' if tools_cluster.platform == 'openshift' else tools_helm_releases.istio.namespace }}"
+    release_state: present
+    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/istio/ztunnel.j2') | from_yaml }}"
+    wait: true
+
+- name: Deploy Istio Telemetry
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    template: templates/istio/telemetry.j2
+    state: present
+
+- name: Deploy Prometheus Monitors
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    template: templates/istio/monitoring.j2
+    state: present
+  when:
+    - tools_required.prometheus
+
+- name: Create release namespace for Istio Gateway
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    state: present
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ tools_helm_releases.istio_gateway.namespace }}"
+        labels:
+          it-bench/monitoring: "true"
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Install Istio Ingress Gateway
   kubernetes.core.helm:
     chart_ref: gateway
     chart_repo_url: https://istio-release.storage.googleapis.com/charts
-    chart_version: 1.27.3
+    chart_version: 1.28.0
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_helm_releases.istio_gateway.name }}"
     release_namespace: "{{ tools_helm_releases.istio_gateway.namespace }}"
     release_state: present
-    values:
-      global:
-        istioNamespace: "{{ tools_helm_releases.istio_control_plane.namespace }}"
-      service:
-        type: "{{ 'NodePort' if tools_cluster.provider == 'kind' else 'LoadBalancer' }}"
-        nodePorts: "{{ {'http': 30080, 'https': 30443} if tools_cluster.provider == 'kind' else omit }}"
+    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/istio_gateway.j2') | from_yaml }}"
     wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Enable Routing via Host feature
+  kubernetes.core.k8s_json_patch:
+    api_version: operator.openshift.io/v1
+    kind: Network
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: cluster
+    namespace: default # TODO: Need to validate this namespace
+    patch:
+      - op: replace
+        path: /spec/defaultNetwork/ovnKubernetesConfig/gatewayConfig/routingViaHost
+        value: true
+  when:
+    - tools_cluster.platform == "openshift"

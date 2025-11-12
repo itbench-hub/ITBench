@@ -130,74 +130,74 @@
   ansible.builtin.import_tasks:
     file: set_clickhouse_credentials.yaml
   when:
-    - tools_required.opentelemetry
+    - tools_required.opentelemetry or tools_required.istio
 
 - name: Import variable setting task
   ansible.builtin.import_tasks:
     file: set_clickhouse_endpoint.yaml
   when:
-    - tools_required.opentelemetry
+    - tools_required.opentelemetry or tools_required.istio
 
-- name: Install Kubernetes object collector
+- name: Install OpenTelemetry Collector(s)
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    template: templates/opentelemetry/collectors/kubernetes-objects.j2
+    template: "{{ item.template_path }}"
     state: present
-  vars:
-    container_image: |
-      {{
-        lookup('ansible.builtin.file', 'files/opentelemetry/collectors/kubernetes-objects.yaml') |
-        from_yaml |
-        community.general.json_query('spec.image')
-      }}
+  loop:
+    - enabled: "{{ tools_required.jaeger }}"
+      template_path: templates/opentelemetry/collectors/jaeger.j2
+      container_image: |
+        {{
+          lookup('ansible.builtin.file', 'files/opentelemetry/collectors/jaeger.yaml') |
+          from_yaml |
+          community.general.json_query('spec.image')
+        }}
+    - enabled: "{{ tools_required.opentelemetry }}"
+      template_path: templates/opentelemetry/collectors/kubernetes-objects.j2
+      container_image: |
+        {{
+          lookup('ansible.builtin.file', 'files/opentelemetry/collectors/kubernetes-objects.yaml') |
+          from_yaml |
+          community.general.json_query('spec.image')
+        }}
+    - enabled: "{{ tools_required.istio }}"
+      template_path: templates/opentelemetry/collectors/istio.j2
+      container_image: |
+        {{
+          lookup('ansible.builtin.file', 'files/opentelemetry/collectors/istio.yaml') |
+          from_yaml |
+          community.general.json_query('spec.image')
+        }}
+  loop_control:
+    label: template/{{ item.template_path | basename }}
   when:
-    - tools_required.opentelemetry
+    - item.enabled
 
-- name: Wait for Kubernetes object collector deployment to complete
+- name: Fetch all OpenTelemetry Collectors
   kubernetes.core.k8s_info:
     api_version: opentelemetry.io/v1beta1
     kind: OpenTelemetryCollector
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ tools_instances.opentelemetry_collectors.names.kubernetes_events }}"
     namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
-    wait: true
-  register: tools_kubernetes_objects_collector_info
-  until:
-    - tools_kubernetes_objects_collector_info.resources[0].status.scale is defined
-    - tools_kubernetes_objects_collector_info.resources[0].status.scale.statusReplicas | split('/') | unique | length == 1
-  retries: 10
-  delay: 30
-  when:
-    - tools_required.opentelemetry
+  register: tools_opentelemetry_collectors_info
 
-- name: Install Jaeger
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    template: templates/opentelemetry/collectors/jaeger.j2
-    state: present
-  vars:
-    container_image: |
-      {{
-        lookup('ansible.builtin.file', 'files/opentelemetry/collectors/jaeger.yaml') |
-        from_yaml |
-        community.general.json_query('spec.image')
-      }}
-  when:
-    - tools_required.jaeger
-
-- name: Wait for Jaeger collector to complete
+- name: Wait for all OpenTelemetry Collectors to reach ready state
   kubernetes.core.k8s_info:
-    api_version: opentelemetry.io/v1beta1
-    kind: OpenTelemetryCollector
+    api_version: "{{ resource.apiVersion }}"
+    kind: "{{ resource.kind }}"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ tools_instances.opentelemetry_collectors.names.jaeger }}"
-    namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
+    name: "{{ resource.metadata.name }}"
+    namespace: "{{ resource.metadata.namespace }}"
     wait: true
-  register: tools_jaeger_collector_info
+  loop: "{{ tools_opentelemetry_collectors_info.resources }}"
+  loop_control:
+    label: opentelemetrycollector/{{ resource.metadata.name }}
+    loop_var: resource
+  register: tools_opentelemetry_collector_info
   until:
-    - tools_jaeger_collector_info.resources[0].status.scale is defined
-    - tools_jaeger_collector_info.resources[0].status.scale.statusReplicas | split('/') | unique | length == 1
+    - tools_opentelemetry_collector_info.resources[0].status.scale is defined
+    - tools_opentelemetry_collector_info.resources[0].status.scale.statusReplicas | split('/') | unique | length == 1
   retries: 10
   delay: 30
   when:
-    - tools_required.jaeger
+    - tools_opentelemetry_collectors_info is defined

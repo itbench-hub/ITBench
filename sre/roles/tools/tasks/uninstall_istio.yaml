@@ -1,39 +1,119 @@
 ---
-- name: Uninstall Istio Gateway
+- name: Disable Routing via Host feature
+  kubernetes.core.k8s_json_patch:
+    api_version: operator.openshift.io/v1
+    kind: Network
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: cluster
+    namespace: default # TODO: Need to validate this namespace
+    patch:
+      - op: replace
+        path: /spec/defaultNetwork/ovnKubernetesConfig/gatewayConfig/routingViaHost
+        value: false
+  when:
+    - tools_cluster.platform == "openshift"
+
+- name: Uninstall Istio Ingress Gateway
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_helm_releases.istio_gateway.name }}"
     release_namespace: "{{ tools_helm_releases.istio_gateway.namespace }}"
     release_state: absent
     wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"
 
-- name: Uninstall Istio Control Plane
+- name: Delete the release namespaces
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: v1
+      kind: Namespace
+      metadata:
+        name: "{{ tools_helm_releases.istio_gateway.namespace }}"
+    state: absent
+    wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Retrieve all CRDs
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+  register: tools_crd_info
+
+- name: Undeploy Prometheus Monitors
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    template: templates/istio/monitoring.j2
+    state: present
+  when:
+    - tools_required.prometheus
+
+- name: Remove Istio Telemetry
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    template: templates/istio/telemetry.j2
+    state: absent
+  when:
+    - tools_crd_info.resources | selectattr('metadata.name', '==', 'telemetries.telemetry.istio.io') | length == 1
+
+- name: Uninstall Istio ZTunnel
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio_control_plane.name }}"
-    release_namespace: "{{ tools_helm_releases.istio_control_plane.namespace }}"
+    release_name: "{{ tools_helm_releases.istio.components.ztunnel }}"
+    release_namespace: "{{ 'kube-system' if tools_cluster.platform == 'openshift' else tools_helm_releases.istio.namespace }}"
+    release_state: absent
+    wait: true
+
+- name: Uninstall Istio CNI Node Agent
+  kubernetes.core.helm:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.istio.components.cni_node_agent }}"
+    release_namespace: "{{ 'kube-system' if tools_cluster.platform == 'openshift' else tools_helm_releases.istio.namespace }}"
+    release_state: absent
+    wait: true
+
+- name: Uninstall Istiod Control Plane
+  kubernetes.core.helm:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.istio.components.istiod_control_plane }}"
+    release_namespace: "{{ tools_helm_releases.istio.namespace }}"
     release_state: absent
     wait: true
 
 - name: Uninstall Istio Base (CRDs)
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio_base.name }}"
-    release_namespace: "{{ tools_helm_releases.istio_base.namespace }}"
+    release_name: "{{ tools_helm_releases.istio.components.base }}"
+    release_namespace: "{{ tools_helm_releases.istio.namespace }}"
     release_state: absent
     wait: true
 
-- name: Delete the release namespace
+- name: Remove the Istio related CRDs from the cluster
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    kind: Namespace
-    name: "{{ istio_namespace }}"
+    resource_definition:
+      api_version: apiextensions.k8s.io/v1
+      kind: CustomResourceDefinition
+      metadata:
+        name: "{{ item }}"
     state: absent
     wait: true
-  loop:
-    - "{{ tools_helm_releases.istio_base.namespace }}"
-    - "{{ tools_helm_releases.istio_control_plane.namespace }}"
-    - "{{ tools_helm_releases.istio_gateway.namespace }}"
-  loop_control:
-    label: namespace/{{ istio_namespace }}
-    loop_var: istio_namespace
+  loop: |
+    {{
+      tools_crd_info.resources |
+      community.general.json_query("[?ends_with(spec.group, 'istio.io')].metadata.name")
+    }}
+
+- name: Delete the release namespaces
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: v1
+      kind: Namespace
+      metadata:
+        name: "{{ tools_helm_releases.istio.namespace }}"
+    state: absent
+    wait: true
