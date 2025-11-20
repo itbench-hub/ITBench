@@ -41,15 +41,17 @@ The playbook run is configured using variables defined in `group_vars`.
 1. Install [Homebrew](https://brew.sh/)
 2. Install required software
 ```bash
-brew install helm
+brew install helm@3
 brew install kubectl
 brew install python@3.13
 brew install openshift-cli
 ```
 
+**Note (11/19/2025):** When installing from Brew, it symlinks to most recent version automatically. In the case of Helm, please follow the instructions provided to ensure that the right version responds to the `helm` command. Helm 4 is [currently not supported by the `kubernetes.core` Ansible module](https://github.com/ansible-collections/kubernetes.core/issues/1038) and thus cannot be used by ITBench until a newer version with compatability with it is provided.
+
 ### Installing Required Software (for Red Hat Enterprise Linux -- RHEL)
 
-1. Install Helm by following the instructions [here](https://helm.sh/docs/intro/install/#from-script)
+1. Install Helm 3 by following the instructions [here](https://helm.sh/docs/v3/intro/install#from-script)
 2. Set up kubectl by following the instructions [here](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
 3. Set up Python by running:
 ```bash
