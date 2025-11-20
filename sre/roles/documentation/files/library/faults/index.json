@@ -1,0 +1,1060 @@
+[
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects a network policy which blocks traffic on all ingress ports of a given workload.",
+        "expectation": "Other workloads will be unable to communicate with the faulted pod(s) on the correct port. This usually results in increased latency and errors in applications.",
+        "id": "ingress-port-blocking-network-policy",
+        "name": "Ingress Port Blocking Network Policy",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/services-networking/network-policies/",
+            "https://kubernetes.io/docs/tasks/administer-cluster/quota-api-object/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/network-policy-v1/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} get networkpolicy`",
+                            "text": "Retrieve and review the configuration of the network policy(s) in the affected namespace."
+                        },
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy << name of policy >>`",
+                            "text": "Manually edit the manifest(s) and allow access to workload's ports of the network policy(s)."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} get networkpolicy`",
+                            "text": "Retrieve and review the configuration of the network policy(s) in the affected namespace."
+                        },
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy << name of policy >>`",
+                            "text": "Delete the offending network policy(s) if it is no longer required."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Networking"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects a resource quota with hard resource requirements that are underprovisioned for the namespace.",
+        "expectation": "The new pod(s) for the workload in the faulted namespace will enter the `Pending` state.",
+        "id": "insufficent-kubernetes-resource-quota",
+        "name": "Insufficent Kubernetes Resource Quota",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/concepts/policy/resource-quotas/",
+            "https://kubernetes.io/docs/tasks/administer-cluster/quota-api-object/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/resource-quota-v1/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} get resourcequota`",
+                            "text": "Retrieve and review the configuration of the resource quota(s) in the affected namespace."
+                        },
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit resourcequota << name of quota >>`",
+                            "text": "Manually edit the manifest(s) and increase the values of the resource quota(s)."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} get resourcequota`",
+                            "text": "Retrieve and review the configuration of the resource quota(s) in the affected namespace."
+                        },
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete resourcequota << name of quota >>`",
+                            "text": "Delete the offending resource quota(s) if it is no longer required."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "container": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "container"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects an invalid command into a designated Kubernetes workload's container.",
+        "expectation": "The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function.",
+        "id": "invalid-kubernetes-workload-container-command",
+        "name": "Invalid Kubernetes Workload Container Command",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/containers/images/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Manually edit the manifest and replace the invalid command with the correct value."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault changes the password of a Valkey workload.",
+        "expectation": "Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.",
+        "id": "invalid-valkey-password",
+        "name": "Invalid Valkey Password",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://valkey.io/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} exec {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }} -- valkey-cli CONFIG SET requirepass << password >>`",
+                            "text": "Change the password back to the original by access the pod directly."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Authentication"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects a configuration into a horizontal pod autoscaler that causes it to react to low resource usage",
+        "expectation": "The faulted autoscaler will take scale up or down actions more aggressively (often more than required).",
+        "id": "misconfigured-kubernetes-horizontal-pod-autoscaler",
+        "name": "Misconfigured Kubernetes Horizontal Pod Autoscaler",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/workloads/autoscaling/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit horizontalpodautoscaler {{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Manually edit the manifest and replace the utilization values with the correct values."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "container": {
+                        "properties": {
+                            "env": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "value"
+                                ],
+                                "type": "object"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "env",
+                            "name"
+                        ],
+                        "type": "object"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "container"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault overwrites an environment variable value with one provided in the argument.",
+        "expectation": "Varies based on the effect/purpose of the environment variable.",
+        "id": "modified-kubernetes-workload-container-environment-variable",
+        "name": "Modified Kubernetes Workload Container Environment Variable",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Manually edit the manifest and replace the environment variable ({{ args.container.env.name }}) value with the correct value."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Service"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    },
+                    "targetPort": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "targetPort"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault overwrites the designated target port with a different number.",
+        "expectation": "Other workloads will be unable to communicate with the faulted pod(s) on the correct port. This usually results in increased latency and errors in applications.",
+        "id": "modified-target-port-kubernetes-service",
+        "name": "Modified Target Port Kubernetes Service",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/services-networking/service/",
+            "https://kubernetes.io/docs/tasks/access-application-cluster/connecting-frontend-backend/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Manually edit the manifest and replace the target port ({{ args.targetPort }}) with the correct value."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Networking"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "container": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "container"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects an nonexistent image into a designated Kubernetes workload's container.",
+        "expectation": "The faulted pod(s) will enter the `Pending` state due to an `ImagePullBackOff` error. The workload will become unable to function.",
+        "id": "nonexistent-kubernetes-workload-container-image",
+        "name": "Nonexistent Kubernetes Workload Container Image",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/containers/images/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Manually edit the manifest and replace the invalid image with the correct value."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects a node selector for an nonexistent node into a designated Kubernetes workload.",
+        "expectation": "The faulted pod(s) will enter the `Pending` state. The workload will become unable to function.",
+        "id": "nonexistent-kubernetes-workload-node",
+        "name": "Nonexistent Kubernetes Workload Node",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/architecture/nodes/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/",
+            "https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Manually edit the manifest and replace the node selector with the correct value."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "flag": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "state": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "state"
+                        ],
+                        "type": "object"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "ConfigMap"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "enum": [
+                                            "flagd-config"
+                                        ],
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "flag"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault activates an implemented fault in the OpenTelemetry Demo.",
+        "expectation": "The effects of the faults are listed [here](https://opentelemetry.io/docs/demo/feature-flags/#implemented-feature-flags).",
+        "id": "opentelemetry-demo-feature-flag",
+        "name": "OpenTelemetry Demo Feature Flag",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://opentelemetry.io/docs/demo/",
+            "https://opentelemetry.io/docs/demo/feature-flags/",
+            "https://opentelemetry.io/docs/demo/services/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit configmap {{ args.kubernetesObject.metadata.name }}",
+                            "text": "Disable the feature flag ({{ args.flag.name }}) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout restart deployment`",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "schedule": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "spec": {
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "spec"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "schedule"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects a Chaos Mesh experiment into the environment. The experiment is [scheduled](https://chaos-mesh.org/docs/define-scheduling-rules/) to repeated fire so that the behavior persists.",
+        "expectation": "Varies based on the Chaos Mesh experiment used.",
+        "id": "scheduled-chaos-mesh-experiment",
+        "name": "Scheduled Chaos Mesh Experiment",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://chaos-mesh.org/docs/run-a-chaos-experiment/",
+            "https://chaos-mesh.org/docs/developer-guide-overview/"
+        ],
+        "solutions": {
+            "templates": []
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "container": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "container"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects an image with an unsupported architecture into a designated Kubernetes workload's container and assigns it to a node.",
+        "expectation": "The faulted pod(s) will enter the `Pending` state due to an `ImagePullBackOff` error. The workload will become unable to function.",
+        "id": "unsupported-architecture-kubernetes-workload-container-image",
+        "name": "Unsupported Architecture Kubernetes Workload Container Image",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/containers/images/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Manually edit the manifest and replace the invalid image with the correct value."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Manually edit the manifest and replace the node selector to allow Kubernetes to schedule the workload on a supported node (if exists)."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    }
+]
