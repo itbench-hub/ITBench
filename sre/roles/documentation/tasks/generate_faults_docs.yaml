@@ -1,0 +1,33 @@
+---
+- name: Create identifiers for faults
+  ansible.builtin.set_fact:
+    documentation_faults_library: |
+      {{
+        (
+          documentation_faults_library | default([])
+        ) +
+        [
+          (
+            fault |
+            combine({"id": fault.name | lower | replace(" ", "-")})
+          )
+        ]
+      }}
+  loop: "{{ lookup('ansible.builtin.file', 'files/library/faults/index.json') | from_json }}"
+  loop_control:
+    label: fault/{{ fault.name }}
+    loop_var: fault
+
+- name: Generate faults library index
+  ansible.builtin.copy:
+    content: "{{ documentation_faults_library | sort(attribute='name') | to_nice_json }}"
+    dest: "{{ playbook_dir }}/../roles/documentation/files/library/faults/index.json"
+    mode: "0644"
+
+- name: Generate Faults README
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/faults-readme.j2') }}"
+    dest: "{{ playbook_dir }}/../docs/faults.md"
+    mode: "0644"
+  vars:
+    documentation_contents: "{{ lookup('ansible.builtin.file', 'files/library/faults/index.json') | from_json }}"

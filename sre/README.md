@@ -1,6 +1,6 @@
 # ITBench for Site Reliability Engineering (SRE) and Financial Operations (FinOps)
 
-**[Paper](https://github.com/IBM/ITBench/blob/main/it_bench_arxiv.pdf) | [Incident Scenarios](./docs/incidents.md) | [Tools](./docs/tools.md)**
+**[Paper](https://github.com/IBM/ITBench/blob/main/it_bench_arxiv.pdf) | [Incident Scenarios](./docs/incidents.md) | [Faults](./docs/faults.md) | [Tools](./docs/tools.md)**
 
 ## Overview
 ITBench uses open source technologies to create completely repeatable and reproducible scenarios on a Kubernetes platform. A SRE scenario involves deploying a set of observability tools, a sample application, and triggering an incident (referred to as task) in the environment.
@@ -168,6 +168,26 @@ _Note_: For a full list of `make` commands, run the following command:
 ```bash
 make help
 ```
+
+## Exploring the Fault Library
+
+The [fault library](./roles/documentation/files/library/faults/index.json) contains information on all supported faults within ITBench. The [documentation](./docs/faults.md) provides a better reading experience for understanding how they operate. However, the libary can also be searched by any JSON parser, such as jq.
+
+### Examples
+
+#### List all names and ids of faults:
+
+```shell
+jq '.[] | {name: .name, id: .id}' roles/documentation/files/library/faults/index.json
+```
+
+#### See information on a single fault:
+
+```shell
+jq '.[] | select(.id == "invalid-valkey-password") | del(.arguments)' roles/documentation/files/library/faults/index.json
+```
+
+###
 
 ## Frequently Asked Questions (FAQ)
 
