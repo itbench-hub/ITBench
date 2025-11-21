@@ -6,7 +6,7 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ helm_release.namespace }}"
+        name: "{{ tools_helm_releases.clickhouse_operator.namespace }}"
         labels:
           it-bench/monitoring: "true"
     state: present
@@ -17,8 +17,8 @@
     chart_repo_url: https://docs.altinity.com/clickhouse-operator/
     chart_version: 0.25.5
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ helm_release.name }}"
-    release_namespace: "{{ helm_release.namespace }}"
+    release_name: "{{ tools_helm_releases.clickhouse_operator.name }}"
+    release_namespace: "{{ tools_helm_releases.clickhouse_operator.namespace }}"
     release_state: present
     timeout: 10m0s
     values:
@@ -27,7 +27,7 @@
           config.yaml:
             watch:
               namespaces:
-                - "{{ instance.namespace }}"
+                - "{{ tools_instances.clickhouse.namespace }}"
       podAnnotations:
         openshift.io/required-scc: restricted-v2
       serviceMonitor:
@@ -41,7 +41,7 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ instance.namespace }}"
+        name: "{{ tools_instances.clickhouse.namespace }}"
         annotations:
           openshift.io/sa.scc.mcs: s0:c30,c10
           openshift.io/sa.scc.uid-range: 100/100
@@ -50,30 +50,35 @@
           it-bench/monitoring: "true"
     state: present
 
-- name: Create Clickhouse Kubernetes objects
+- name: Create Clickhouse Installation(s)
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    namespace: "{{ instance.namespace }}"
+    template: templates/clickhouse/installations/main.j2
     state: present
-    src: files/clickhouse/{{ item }}
-  loop:
-    - secret.yaml
-    - templates.yaml
-    - installation.yaml
 
-- name: Wait for Clickhouse install to complete
+- name: Retrieve all Clickhouse Installations
   kubernetes.core.k8s_info:
     api_version: clickhouse.altinity.com/v1
     kind: ClickHouseInstallation
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ instance.name }}"
-    namespace: "{{ instance.namespace }}"
-    wait: true
-  register: tools_clickhouse_installation_info
+    namespace: "{{ tools_instances.clickhouse.namespace }}"
+  register: tools_clickhouse_installations
+
+- name: Wait for all Clickhouse Installations to complete
+  kubernetes.core.k8s_info:
+    api_version: "{{ resource.apiVersion }}"
+    kind: "{{ resource.kind }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ resource.metadata.name }}"
+    namespace: "{{ resource.metadata.namespace }}"
+  loop: "{{ tools_clickhouse_installations.resources }}"
+  loop_control:
+    label: clickhouseinstallation/{{ resource.metadata.name }}
+    loop_var: resource
+  register: tools_chi
   until:
-    - tools_clickhouse_installation_info.resources | length > 0
-    - tools_clickhouse_installation_info.resources[0].status is defined
-    - tools_clickhouse_installation_info.resources[0].status.status is defined
-    - tools_clickhouse_installation_info.resources[0].status.status == 'Completed'
+    - tools_chi.resources[0].status is defined
+    - tools_chi.resources[0].status.status is defined
+    - tools_chi.resources[0].status.status == 'Completed'
   retries: 10
   delay: 30

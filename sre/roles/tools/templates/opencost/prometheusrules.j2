@@ -2,10 +2,11 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: opencost-recording-rules
+  name: opencost
+  namespace: {{ tools_helm_releases.opencost.namespace }}
 spec:
   groups:
-    - name: opencost.rules
+    - name: opencost.rules.workload_cpu_cost_per_request
       rules:
         - record: container_namespace_node:container_cpu_allocation_cost_per_node:avg5m
           expr: |
@@ -20,6 +21,8 @@ spec:
                 node_cpu_hourly_cost[5m]
               )
             ) by (node)
+    - name: opencost.rules.workload_memory_cost_per_request
+      rules:
         - record: container_namespace_node:container_memory_allocation_gigabytes_cost_per_node:avg5m
           expr: |
             sum (

@@ -6,7 +6,7 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ helm_release.namespace }}"
+        name: "{{ tools_helm_releases.kubernetes_metrics_server.namespace }}"
         labels:
           it-bench/monitoring: "true"
     state: present
@@ -17,8 +17,8 @@
     chart_repo_url: https://kubernetes-sigs.github.io/metrics-server/
     chart_version: 3.13.0
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ helm_release.name }}"
-    release_namespace: "{{ helm_release.namespace }}"
+    release_name: "{{ tools_helm_releases.kubernetes_metrics_server.name }}"
+    release_namespace: "{{ tools_helm_releases.kubernetes_metrics_server.namespace }}"
     release_state: present
     timeout: 10m0s
     values:
@@ -28,43 +28,4 @@
         type: helm
       serviceMonitor:
         enabled: "{{ tools_required.prometheus }}"
-    wait: "{{ tools_cluster.provider != 'kind' }}"
-
-- name: Handle certificate signing requests on Kind
-  when:
-    - tools_cluster.provider == 'kind'
-  block:
-    - name: Wait for Kubernetes metrics server pods to be created
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Pod
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        namespace: "{{ helm_release.namespace }}"
-        label_selectors:
-          - "app.kubernetes.io/name=metrics-server"
-      register: tools_kubernetes_metrics_server_pods
-      until: tools_kubernetes_metrics_server_pods.resources | length > 0
-      retries: 30
-      delay: 10
-
-    - name: Include tasks to approve pending certificate requests
-      ansible.builtin.include_role:
-        name: cluster
-        tasks_from: approve_certificate_requests
-      vars:
-        cluster_files:
-          kubeconfig: "{{ tools_cluster.kubeconfig }}"
-
-    - name: Wait for Kubernetes metrics server pods to be ready
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Pod
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        namespace: "{{ helm_release.namespace }}"
-        label_selectors:
-          - "app.kubernetes.io/name=metrics-server"
-        wait: true
-        wait_condition:
-          type: Ready
-          status: "True"
-        wait_timeout: 600
+    wait: true

@@ -1,81 +1,80 @@
 ---
-- name: Create the release namespace
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ helm_release.namespace }}"
-        labels:
-          it-bench/monitoring: "true"
-    state: present
+- name: Install Prometheus and Prometheus Operator on Kubernetes
   when:
     - tools_cluster.platform == "kubernetes"
-
-- name: Install Prometheus Operator and Prometheus
-  kubernetes.core.helm:
-    chart_ref: kube-prometheus-stack
-    chart_repo_url: https://prometheus-community.github.io/helm-charts
-    chart_version: 79.4.1
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ helm_release.name }}"
-    release_namespace: "{{ helm_release.namespace }}"
-    release_state: present
-    timeout: 10m0s
-    values:
-      alertmanager:
-        enabled: false
-      grafana:
-        enabled: false
-      prometheus:
-        prometheusSpec:
-          podMonitorNamespaceSelector:
-            matchLabels:
+  block:
+    - name: Create the release namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ tools_helm_releases.prometheus.namespace }}"
+            labels:
               it-bench/monitoring: "true"
-          podMonitorSelectorNilUsesHelmValues: false
-          ruleNamespaceSelector:
-            matchLabels:
-              it-bench/monitoring: "true"
-          ruleSelectorNilUsesHelmValues: false
-          serviceMonitorNamespaceSelector:
-            matchLabels:
-              it-bench/monitoring: "true"
-          serviceMonitorSelectorNilUsesHelmValues: false
-          additionalArgs:
-            - name: web.enable-otlp-receiver
-              value: ""
-      defaultRules:
-        rules:
-          alertmanager: false
-      kubeEtcd:
-        enabled: "{{ tools_cluster.provider == 'kind' }}"
-      kubeProxy:
-        enabled: "{{ tools_cluster.provider == 'kind' }}"
-    wait: true
-  when:
-    - tools_cluster.platform == "kubernetes"
+        state: present
 
-- name: Enable OpenShift user workload monitoring
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    state: present
-    src: files/openshift/user-workload-monitoring-config.yaml
-  when:
-    - tools_cluster.platform == "openshift"
+    - name: Install Prometheus Operator and Prometheus
+      kubernetes.core.helm:
+        chart_ref: oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack
+        chart_version: 79.4.1
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_helm_releases.prometheus.name }}"
+        release_namespace: "{{ tools_helm_releases.prometheus.namespace }}"
+        release_state: present
+        timeout: 10m0s
+        values:
+          alertmanager:
+            enabled: false
+          grafana:
+            enabled: false
+          prometheus:
+            prometheusSpec:
+              podMonitorNamespaceSelector:
+                matchLabels:
+                  it-bench/monitoring: "true"
+              podMonitorSelectorNilUsesHelmValues: false
+              ruleNamespaceSelector:
+                matchLabels:
+                  it-bench/monitoring: "true"
+              ruleSelectorNilUsesHelmValues: false
+              serviceMonitorNamespaceSelector:
+                matchLabels:
+                  it-bench/monitoring: "true"
+              serviceMonitorSelectorNilUsesHelmValues: false
+              additionalArgs:
+                - name: web.enable-otlp-receiver
+                  value: ""
+          defaultRules:
+            rules:
+              alertmanager: false
+          kubeEtcd:
+            enabled: "{{ tools_cluster.provider == 'kind' }}"
+          kubeProxy:
+            enabled: "{{ tools_cluster.provider == 'kind' }}"
+        wait: true
 
-- name: Wait for Prometheus workload pods to start
-  kubernetes.core.k8s_info:
-    kind: Pod
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    label_selectors:
-      - app.kubernetes.io/component = prometheus
-      - app.kubernetes.io/instance = user-workload
-    namespace: openshift-user-workload-monitoring
-    wait: true
-    wait_condition:
-      type: Ready
-      status: "True"
-    wait_timeout: 300
+- name: Enabled OpenShift User Worklord Monitoring (Prometheus)
   when:
     - tools_cluster.platform == "openshift"
+  block:
+    - name: Enable OpenShift user workload monitoring
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        state: present
+        src: files/openshift/user-workload-monitoring-config.yaml
+
+    - name: Wait for Prometheus workload pods to start
+      kubernetes.core.k8s_info:
+        kind: Pod
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        label_selectors:
+          - app.kubernetes.io/component = prometheus
+          - app.kubernetes.io/instance = user-workload
+        namespace: openshift-user-workload-monitoring
+        wait: true
+        wait_condition:
+          type: Ready
+          status: "True"
+        wait_timeout: 300

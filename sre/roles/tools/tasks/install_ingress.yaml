@@ -6,7 +6,7 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ helm_release.namespace }}"
+        name: "{{ tools_helm_releases.ingress.namespace }}"
         labels:
           it-bench/monitoring: "true"
     state: present
@@ -19,8 +19,8 @@
     chart_repo_url: https://kubernetes.github.io/ingress-nginx
     chart_version: 4.14.0
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ helm_release.name }}"
-    release_namespace: "{{ helm_release.namespace }}"
+    release_name: "{{ tools_helm_releases.ingress.name }}"
+    release_namespace: "{{ tools_helm_releases.ingress.namespace }}"
     release_state: present
     timeout: 10m0s
     values:
@@ -69,11 +69,11 @@
     - enabled: "{{ tools_required.clickhouse }}"
       annotations:
         nginx.ingress.kubernetes.io/rewrite-target: /$2
-      name: "{{ tools_helm_releases.clickhouse.name }}"
-      namespace: "{{ tools_helm_releases.clickhouse.namespace }}"
+      name: "{{ tools_instances.clickhouse.names.main }}"
+      namespace: "{{ tools_instances.clickhouse.namespace }}"
       path: /clickhouse(/|$)(.*)
       service:
-        name: "{{ tools_helm_releases.clickhouse.name }}-clickhouse"
+        name: "clickhouse-{{ tools_instances.clickhouse.names.main }}"
         port:
           number: 8123
     - enabled: "{{ tools_required.jaeger }}"
@@ -132,9 +132,9 @@
   loop:
     - enabled: "{{ tools_required.clickhouse }}"
       name: "{{ tools_helm_releases.clickhouse.name }}"
-      namespace: "{{ tools_helm_releases.clickhouse.namespace }}"
+      namespace: "{{ tools_instances.clickhouse.namespace }}"
       port: 8123
-      service: "{{ tools_helm_releases.clickhouse.name }}-clickhouse"
+      service: "clickhouse-{{ tools_instances.clickhouse.names.main }}"
     - enabled: "{{ tools_required.jaeger }}"
       name: jaeger
       namespace: "{{ tools_helm_releases.opentelemetry_collectors.namespace }}"
