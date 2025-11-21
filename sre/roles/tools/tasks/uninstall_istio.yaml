@@ -43,22 +43,6 @@
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
   register: tools_crd_info
 
-- name: Undeploy Prometheus Monitors
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    template: templates/istio/monitoring.j2
-    state: present
-  when:
-    - tools_required.prometheus
-
-- name: Remove Istio Telemetry
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    template: templates/istio/telemetry.j2
-    state: absent
-  when:
-    - tools_crd_info.resources | selectattr('metadata.name', '==', 'telemetries.telemetry.istio.io') | length == 1
-
 - name: Uninstall Istio ZTunnel
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
@@ -91,22 +75,6 @@
     release_state: absent
     wait: true
 
-- name: Remove the Istio related CRDs from the cluster
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      api_version: apiextensions.k8s.io/v1
-      kind: CustomResourceDefinition
-      metadata:
-        name: "{{ item }}"
-    state: absent
-    wait: true
-  loop: |
-    {{
-      tools_crd_info.resources |
-      community.general.json_query("[?ends_with(spec.group, 'istio.io')].metadata.name")
-    }}
-
 - name: Delete the release namespaces
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
@@ -117,3 +85,13 @@
         name: "{{ tools_helm_releases.istio.namespace }}"
     state: absent
     wait: true
+
+- name: Append Istio related CRDs to list
+  ansible.builtin.set_fact:
+    tools_custom_resource_definitions: "{{ tools_custom_resource_definitions + crds }}"
+  vars:
+    crds: |
+      {{
+        tools_crds.resources |
+        community.general.json_query("[?ends_with(spec.group, 'istio.io')]")
+      }}

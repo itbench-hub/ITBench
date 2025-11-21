@@ -6,7 +6,7 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ helm_release.namespace }}"
+        name: "{{ tools_helm_releases.opencost.namespace }}"
         annotations:
           openshift.io/sa.scc.mcs: s0:c36,c15
           openshift.io/sa.scc.supplemental-groups: 1001/1000
@@ -25,8 +25,8 @@
     chart_repo_url: https://opencost.github.io/opencost-helm-chart
     chart_version: 2.4.0
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ helm_release.name }}"
-    release_namespace: "{{ helm_release.namespace }}"
+    release_name: "{{ tools_helm_releases.opencost.name }}"
+    release_namespace: "{{ tools_helm_releases.opencost.namespace }}"
     release_state: present
     timeout: 10m0s
     values:
@@ -70,9 +70,8 @@
         openshift.io/required-scc: "restricted-v2"
     wait: true
 
-- name: Create Prometheus rules for OpenCost
+- name: Create PrometheusRules
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    namespace: "{{ helm_release.namespace }}"
+    template: templates/opencost/prometheusrules.j2
     state: present
-    src: files/rules/opencost.yaml

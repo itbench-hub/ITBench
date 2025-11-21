@@ -1,29 +1,31 @@
 ---
-- name: Retrieve all collector instances in the release namespace
-  kubernetes.core.k8s_info:
-    api_version: opentelemetry.io/v1beta1
-    kind: OpenTelemetryCollector
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
-  register: tools_opentelemetry_collectors_info
-
-- name: Delete all collector instances in the release namespace
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: "{{ resource.apiVersion }}"
-      kind: "{{ resource.kind }}"
-      metadata:
-        name: "{{ resource.metadata.name }}"
-        namespace: "{{ resource.metadata.namespace }}"
-    state: absent
-    wait: true
-  loop: "{{ tools_opentelemetry_collectors_info.resources }}"
-  loop_control:
-    label: opentelemetrycollector/{{ resource.metadata.name }}
-    loop_var: resource
+- name: Delete all OpenTelemetry Collectors in instance namespace
   when:
-    - tools_opentelemetry_collectors_info is defined
+    - tools_crds.resources | selectattr('metadata.name', '==', 'opentelemetrycollectors.opentelemetry.io') | length == 1
+  block:
+    - name: Retrieve all collector instances in the release namespace
+      kubernetes.core.k8s_info:
+        api_version: opentelemetry.io/v1beta1
+        kind: OpenTelemetryCollector
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
+      register: tools_opentelemetry_collectors
+
+    - name: Delete all collector instances in the release namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: "{{ resource.apiVersion }}"
+          kind: "{{ resource.kind }}"
+          metadata:
+            name: "{{ resource.metadata.name }}"
+            namespace: "{{ resource.metadata.namespace }}"
+        state: absent
+        wait: true
+      loop: "{{ tools_opentelemetry_collectors.resources }}"
+      loop_control:
+        label: opentelemetrycollector/{{ resource.metadata.name }}
+        loop_var: resource
 
 - name: Delete all RBAC objects (cluster scoped)
   kubernetes.core.k8s:
@@ -40,64 +42,78 @@
     - ClusterRoleBinding
     - ClusterRole
 
-- name: Uninstall OpenTelemetry Operator
-  kubernetes.core.helm:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.opentelemetry_operator.name }}"
-    release_namespace: "{{ tools_helm_releases.opentelemetry_operator.namespace }}"
-    release_state: absent
-    wait: true
-  when:
-    - tools_cluster.platform == "kubernetes"
-
-- name: Delete the subscription for RH build of OpenTelemetry Operator
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: operators.coreos.com/v1alpha1
-      kind: Subscription
-      metadata:
-        name: opentelemetry-product
-        namespace: openshift-opentelemetry-operator
-    state: absent
-  when:
-    - tools_cluster.platform == "openshift"
-
-- name: Delete the operator group for RH build of OpenTelemetry Operator
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: operators.coreos.com/v1
-      kind: OperatorGroup
-      metadata:
-        name: openshift-opentelemetry-operator
-        namespace: openshift-opentelemetry-operator
-    state: absent
-  when:
-    - tools_cluster.platform == "openshift"
-
-- name: Delete the project for RH build of OpenTelemetry Operator
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: project.openshift.io/v1
-      kind: Project
-      metadata:
-        name: openshift-opentelemetry-operator
-    state: absent
-  when:
-    - tools_cluster.platform == "openshift"
-
-- name: Delete the release namespaces
+- name: Delete the instance namespaces
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       api_version: v1
       kind: Namespace
       metadata:
-        name: "{{ item }}"
+        name: "{{ tools_instances.opentelemetry_collectors.namespace }}"
     state: absent
     wait: true
-  loop:
-    - "{{ tools_instances.opentelemetry_collectors.namespace }}"
-    - "{{ tools_helm_releases.opentelemetry_operator.namespace }}"
+
+- name: Uninstall OpenTelemetry Operator on Kubernetes
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Uninstall OpenTelemetry Operator
+      kubernetes.core.helm:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_helm_releases.opentelemetry_operator.name }}"
+        release_namespace: "{{ tools_helm_releases.opentelemetry_operator.namespace }}"
+        release_state: absent
+        wait: true
+
+    - name: Delete the release namespaces
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          api_version: v1
+          kind: Namespace
+          metadata:
+            name: "{{ tools_helm_releases.opentelemetry_operator.namespace }}"
+        state: absent
+        wait: true
+
+    - name: Append OpenTelemetry Operator related CRDs to list
+      ansible.builtin.set_fact:
+        tools_custom_resource_definitions: "{{ tools_custom_resource_definitions + crds }}"
+      vars:
+        crds: "{{ tools_crds.resources | selectattr('spec.group', '==', 'opentelemetry.io') }}"
+
+- name: Uninstall RH build of OpenTelemetry Operator on Openshift
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Delete the subscription for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: opentelemetry-product
+            namespace: openshift-opentelemetry-operator
+        state: absent
+
+    - name: Delete the operator group for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: openshift-opentelemetry-operator
+            namespace: openshift-opentelemetry-operator
+        state: absent
+
+    - name: Delete the project for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: project.openshift.io/v1
+          kind: Project
+          metadata:
+            name: openshift-opentelemetry-operator
+        state: absent

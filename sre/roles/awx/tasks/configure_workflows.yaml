@@ -51,25 +51,6 @@
     cluster_index: "{{ scenario_index % (awx_runners.kubeconfigs | length) }}"
     requires_aws_credentials: "{{ awx_credentials.aws is defined }}"
 
-- name: Create workflow template for scenario initialization
-  awx.awx.workflow_job_template:
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    inventory: ITBench
-    name: Scenario-{{ scenario_id }}-Init
-    state: present
-    workflow_nodes: "{{ lookup('ansible.builtin.template', 'templates/workflow_nodes/scenario_init.j2') | from_yaml }}"
-  loop: "{{ awx_experiments.scenarios }}"
-  loop_control:
-    index_var: scenario_index
-    label: Scenario-{{ scenario_id }}
-    loop_var: scenario_id
-  vars:
-    cluster_index: "{{ scenario_index % (awx_runners.kubeconfigs | length) }}"
-    requires_aws_credentials: "{{ awx_credentials.aws is defined }}"
-
 - name: Create workflow template for full scenario execution (with agent)
   awx.awx.workflow_job_template:
     ask_variables_on_launch: true
@@ -80,25 +61,6 @@
     name: Scenario-{{ scenario_id }}-Full-Execution
     state: present
     workflow_nodes: "{{ lookup('ansible.builtin.template', 'templates/workflow_nodes/scenario_exec_full.j2') | from_yaml }}"
-  loop: "{{ awx_experiments.scenarios }}"
-  loop_control:
-    index_var: scenario_index
-    label: Scenario-{{ scenario_id }}
-    loop_var: scenario_id
-  vars:
-    cluster_index: "{{ scenario_index % (awx_runners.kubeconfigs | length) }}"
-    requires_aws_credentials: "{{ awx_credentials.aws is defined }}"
-
-- name: Create workflow template for scenario deinitialization
-  awx.awx.workflow_job_template:
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    inventory: ITBench
-    name: Scenario-{{ scenario_id }}-Deinit
-    state: present
-    workflow_nodes: "{{ lookup('ansible.builtin.template', 'templates/workflow_nodes/scenario_deinit.j2') | from_yaml }}"
   loop: "{{ awx_experiments.scenarios }}"
   loop_control:
     index_var: scenario_index

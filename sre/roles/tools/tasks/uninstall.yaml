@@ -1,80 +1,74 @@
 ---
+- name: Create Custom Resourse Definition deletion list
+  ansible.builtin.set_fact:
+    tools_custom_resource_definitions: []
+
+- name: Retrieve all Custom Resource Definitions
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+  register: tools_crds
+  when:
+    - tools_cluster.platform == "kubernetes"
+
 - name: Import Kubernetes Topology Monitor uninstallation tasks
   ansible.builtin.import_tasks:
     file: uninstall_kubernetes_topology_monitor.yaml
-  vars:
-    helm_release: "{{ tools_helm_releases.kubernetes_topology_monitor }}"
-  when:
-    - tools_required.kubernetes_topology_monitor
-
-- name: Import Kubernetes Metrics Server uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_kubernetes_metrics_server.yaml
-  vars:
-    helm_release: "{{ tools_helm_releases.kubernetes_metrics_server }}"
-  when:
-    - tools_required.kubernetes_metrics_server
-    - tools_cluster.platform == "kubernetes"
-
-- name: Import Istio uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_istio.yaml
-  vars:
-    helm_release: "{{ tools_helm_releases.istio.components }}"
-  when:
-    - tools_required.istio
 
 - name: Import Chaos Mesh uninstallation tasks
   ansible.builtin.import_tasks:
     file: uninstall_chaos_mesh.yaml
-  vars:
-    helm_release: "{{ tools_helm_releases.chaos_mesh }}"
-  when:
-    - tools_required.chaos_mesh
 
 - name: Import OpenCost uninstallation tasks
   ansible.builtin.import_tasks:
     file: uninstall_opencost.yaml
-  vars:
-    helm_release: "{{ tools_helm_releases.opencost }}"
-  when:
-    - tools_required.opencost
 
 - name: Import OpenTelemetry uninstallation tasks
   ansible.builtin.import_tasks:
     file: uninstall_opentelemetry.yaml
-  when:
-    - tools_required.jaeger or tools_required.opentelemetry or tools_required.istio
 
 - name: Import Clickhouse installation tasks
   ansible.builtin.import_tasks:
     file: uninstall_clickhouse.yaml
-  vars:
-    helm_release: "{{ tools_helm_releases.clickhouse_operator }}"
-    instance: "{{ tools_instances.clickhouse }}"
-  when:
-    - tools_required.clickhouse or tools_required.opentelemetry
 
 - name: Import OpenSearch uninstallation tasks
   ansible.builtin.import_tasks:
     file: uninstall_opensearch.yaml
-  vars:
-    helm_release: "{{ tools_helm_releases.opensearch }}"
-  when:
-    - tools_required.opensearch or tools_required.jaeger
 
 - name: Import Prometheus uninstallation tasks
   ansible.builtin.import_tasks:
     file: uninstall_prometheus.yaml
-  vars:
-    helm_release: "{{ tools_helm_releases.prometheus }}"
-  when:
-    - tools_required.prometheus or tools_required.opencost
+
+- name: Import Istio uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_istio.yaml
 
 - name: Import Ingress uninstallation tasks
   ansible.builtin.import_tasks:
     file: uninstall_ingress.yaml
-  vars:
-    helm_release: "{{ tools_helm_releases.ingress }}"
   when:
-    - tools_required.ingress
+    - tools_cluster.platform == "kubernetes"
+
+- name: Import Kubernetes Metrics Server uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_kubernetes_metrics_server.yaml
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Remove installed Custom Resource Definitions
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: "{{ crd.apiVersion }}"
+      kind: "{{ crd.kind }}"
+      metadata:
+        name: "{{ crd.metadata.name }}"
+    state: absent
+    wait: true
+  loop: "{{ tools_custom_resource_definitions }}"
+  loop_control:
+    label: customresourcedefinition/{{ crd.metadata.name }}
+    loop_var: crd
+  when:
+    - tools_deployment_phase == "full_undeploy"
