@@ -1,59 +1,55 @@
 ---
-- name: Delete Clickhouse Installations
+- name: Fetch all Clickhouse Installations
+  kubernetes.core.k8s_info:
+    api_version: clickhouse.altinity.com/v1
+    kind: ClickHouseInstallation
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: "{{ tools_instances.clickhouse.namespace }}"
+  register: tools_clickhouse_installations
   when:
     - tools_crds.resources | selectattr('metadata.name', '==', 'clickhouseinstallations.clickhouse.altinity.com') | length == 1
-  block:
-    - name: Fetch all Clickhouse Installations
-      kubernetes.core.k8s_info:
-        api_version: clickhouse.altinity.com/v1
-        kind: ClickHouseInstallation
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        namespace: "{{ tools_instances.clickhouse.namespace }}"
-      register: tools_clickhouse_installations
 
-    - name: Delete Clickhouse Installations
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          api_version: "{{ resource.apiVersion }}"
-          kind: "{{ resource.kind }}"
-          metadata:
-            name: "{{ resource.metadata.name }}"
-            namespace: "{{ resource.metadata.namespace }}"
-        state: absent
-        wait: true
-      loop: "{{ tools_clickhouse_installations.resources }}"
-      loop_control:
-        label: clickhouseinstallation/{{ resource.metadata.name }}
-        loop_var: resource
+- name: Delete Clickhouse Installations
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: "{{ resource.apiVersion }}"
+      kind: "{{ resource.kind }}"
+      metadata:
+        name: "{{ resource.metadata.name }}"
+        namespace: "{{ resource.metadata.namespace }}"
+    state: absent
+    wait: true
+  loop: "{{ tools_clickhouse_installations.resources | default([]) }}"
+  loop_control:
+    label: clickhouseinstallation/{{ resource.metadata.name }}
+    loop_var: resource
 
-- name: Delete Clickhouse Installation Templates
+- name: Fetch all Clickhouse Installation Templates
+  kubernetes.core.k8s_info:
+    api_version: clickhouse.altinity.com/v1
+    kind: ClickHouseInstallationTemplate
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: "{{ tools_instances.clickhouse.namespace }}"
+  register: tools_clickhouse_installation_templates
   when:
     - tools_crds.resources | selectattr('metadata.name', '==', 'clickhouseinstallationtemplates.clickhouse.altinity.com') | length == 1
-  block:
-    - name: Fetch all Clickhouse Installation Templates
-      kubernetes.core.k8s_info:
-        api_version: clickhouse.altinity.com/v1
-        kind: ClickHouseInstallationTemplate
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        namespace: "{{ tools_instances.clickhouse.namespace }}"
-      register: tools_clickhouse_installation_templates
 
-    - name: Delete Clickhouse Installations
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          api_version: "{{ resource.apiVersion }}"
-          kind: "{{ resource.kind }}"
-          metadata:
-            name: "{{ resource.metadata.name }}"
-            namespace: "{{ resource.metadata.namespace }}"
-        state: absent
-        wait: true
-      loop: "{{ tools_clickhouse_installation_templates.resources }}"
-      loop_control:
-        label: clickhouseinstallationtemplate/{{ resource.metadata.name }}
-        loop_var: resource
+- name: Delete Clickhouse Installation Templates
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: "{{ resource.apiVersion }}"
+      kind: "{{ resource.kind }}"
+      metadata:
+        name: "{{ resource.metadata.name }}"
+        namespace: "{{ resource.metadata.namespace }}"
+    state: absent
+    wait: true
+  loop: "{{ tools_clickhouse_installation_templates.resources | default([]) }}"
+  loop_control:
+    label: clickhouseinstallationtemplate/{{ resource.metadata.name }}
+    loop_var: resource
 
 - name: Delete the instance namespace
   kubernetes.core.k8s:

@@ -13,6 +13,7 @@
           openshift.io/sa.scc.uid-range: 1000/10000
         labels:
           it-bench/monitoring: "true"
+          it-bench/shared-gateway-access: "true"
     state: present
 
 - name: Import variable setting task
@@ -29,45 +30,7 @@
     release_namespace: "{{ tools_helm_releases.opencost.namespace }}"
     release_state: present
     timeout: 10m0s
-    values:
-      opencost:
-        customPricing:
-          enabled: true
-          createConfigmap: true
-          provider: custom
-          costModel:
-            description: Modified pricing configuration.
-            CPU: 10.00
-            spotCPU: 7.50
-            RAM: 5.00
-            spotRAM: 2.50
-            GPU: 50.00
-            storage: 2.50
-            zoneNetworkEgress: 1.00
-            regionNetworkEgress: 1.00
-            internetNetworkEgress: 1.00
-        exporter:
-          extraEnv:
-            INSECURE_SKIP_VERIFY: "{{ tools_cluster.platform == 'openshift' }}"
-            USE_CUSTOM_PROVIDER: true
-        metrics:
-          serviceMonitor:
-            enabled: true
-        platforms:
-          openshift:
-            enabled: "{{ tools_cluster.platform == 'openshift' }}"
-        prometheus:
-          bearer_token: "{{ tools_prometheus_bearer_token | default(omit) }}"
-          external:
-            enabled: "{{ tools_cluster.platform == 'openshift' }}"
-            url: "{{ tools_prometheus_endpoint | default(omit) }}"
-          internal:
-            enabled: "{{ tools_cluster.platform == 'kubernetes' }}"
-            serviceName: "{{ tools_helm_releases.prometheus.name }}-kube-prometheus-prometheus"
-            namespaceName: "{{ tools_helm_releases.prometheus.namespace }}"
-            port: 9090
-      podAnnotations:
-        openshift.io/required-scc: "restricted-v2"
+    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/opencost.j2') | from_yaml }}"
     wait: true
 
 - name: Create PrometheusRules
@@ -75,3 +38,65 @@
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     template: templates/opencost/prometheusrules.j2
     state: present
+
+- name: Enable external access to OpenCost
+  when:
+    - tools_installation_plan.opencost.external_access
+  block:
+    - name: Enable external access on Kind
+      when:
+        - tools_cluster.provider == "kind"
+        - not (tools_installation_plan.istio.enabled | default(false))
+      block:
+        - name: Create Cloud Provider Kind Kubernetes Gateway
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/kubernetes_gateways/kind.j2
+            state: present
+            wait: true
+            wait_condition:
+              reason: Programmed
+              status: "True"
+              type: Programmed
+          vars:
+            gateway:
+              name: "{{ tools_helm_releases.opencost.name }}"
+
+        - name: Create HTTP Route
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/opencost/http_route.j2
+            state: present
+          vars:
+            gateway:
+              name: "{{ tools_helm_releases.opencost.name }}"
+
+        - name: Import connection test to external endpoint
+          ansible.builtin.import_tasks:
+            file: test_gateway_endpoint.yaml
+          vars:
+            tools_external_paths:
+              - /
+            tools_kubernetes_gateway:
+              name: "{{ tools_helm_releases.opencost.name }}"
+
+    - name: Enable external access on OpenShift
+      when:
+        - tools_cluster.platform == "openshift"
+      block:
+        - name: Create OpenShift Route
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/opencost/route.j2
+            state: present
+          register: tools_opencost_openshift_route
+
+        - name: Import connection test to external endpoint
+          ansible.builtin.import_tasks:
+            file: test_route_endpoint.yaml
+          vars:
+            tools_external_paths:
+              - /
+            tools_route:
+              name: "{{ tools_opencost_openshift_route.result.metadata.name }}"
+              namespace: "{{ tools_opencost_openshift_route.result.metadata.namespace }}"

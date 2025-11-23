@@ -27,6 +27,14 @@ create_multi_node_cluster: create_data_directory ## Creates a Kind cluster with 
 create_single_node_cluster: create_data_directory ## Creates a Kind cluster with a single control-plane node
 	$(GO) tool kind create cluster --config kind-config-single-node.yaml
 
+.PHONY: run_gateway_provider
+run_gateway_provider: ## Runs Cloud Provider Kind for Kubernetes Gateway
+	$(GO) tool cloud-provider-kind --gateway-channel standard
+
+.PHONY: run_service_provider
+run_service_provider: ## Runs Cloud Provider Kind for Load Balancer services
+	$(GO) tool cloud-provider-kind --enable-lb-port-mapping
+
 .PHONY: destroy_cluster
 destroy_cluster: ## Deletes a Kind cluster
 	$(GO) tool kind delete cluster --name kind-cluster

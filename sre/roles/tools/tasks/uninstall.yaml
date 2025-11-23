@@ -44,17 +44,15 @@
   ansible.builtin.import_tasks:
     file: uninstall_istio.yaml
 
-- name: Import Ingress uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_ingress.yaml
-  when:
-    - tools_cluster.platform == "kubernetes"
-
 - name: Import Kubernetes Metrics Server uninstallation tasks
   ansible.builtin.import_tasks:
     file: uninstall_kubernetes_metrics_server.yaml
   when:
     - tools_cluster.platform == "kubernetes"
+
+- name: Import Kubernetes Gateway API uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_kubernetes_gateway_api.yaml
 
 - name: Remove installed Custom Resource Definitions
   kubernetes.core.k8s:
@@ -71,4 +69,4 @@
     label: customresourcedefinition/{{ crd.metadata.name }}
     loop_var: crd
   when:
-    - tools_deployment_phase == "full_undeploy"
+    - tools_uninstallation_plan.remove_crds | default(false)

@@ -12,6 +12,21 @@ spec:
   endpoints:
     - interval: 30s
       port: http-monitoring
+{% if tools_cluster.platform == "kubernetes" %}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: istio-main
+  namespace: "{{ tools_instances.kubernetes_gateways.namespace }}"
+spec:
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: istio-main
+  endpoints:
+    - interval: 30s
+      port: status-port
+{% endif %}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor

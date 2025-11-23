@@ -1,4 +1,103 @@
 ---
+- name: Retrive all instances of Chaos Mesh Schedule
+  kubernetes.core.k8s_info:
+    api_version: chaos-mesh.org/v1alpha1
+    kind: Schedule
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+  register: tools_chaos_mesh_schedules
+  when:
+    - tools_crds.resources | selectattr('metadata.name', '==', 'schedules.chaos-mesh.org') | length == 1
+
+- name: Add pause annotation to schedules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ schedule.apiVersion }}"
+      kind: "{{ schedule.kind }}"
+      metadata:
+        annotations: |
+          {{
+            schedule.metadata.annotations |
+            combine({'experiment.chaos-mesh.org/pause': 'true'})
+          }}
+        name: "{{ schedule.metadata.name }}"
+        namespace: "{{ schedule.metadata.namespace }}"
+    state: patched
+  loop: "{{ tools_chaos_mesh_schedules.resources | default([]) }}"
+  loop_control:
+    label: schedule/{{ schedule.metadata.name }}
+    loop_var: schedule
+
+- name: Wait for scheduled experiement(s) to pause
+  kubernetes.core.k8s_info:
+    api_version: "{{ schedule.apiVersion }}"
+    kind: "{{ schedule.spec.type }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    label_selectors:
+      - managed-by={{ schedule.metadata.name }}
+    wait: true
+    wait_condition:
+      type: Paused
+      status: "True"
+  loop: "{{ tools_chaos_mesh_schedules.resources | default([]) }}"
+  loop_control:
+    label: schedule/{{ schedule.metadata.name }}
+    loop_var: schedule
+
+- name: Get all experiment instances
+  kubernetes.core.k8s_info:
+    api_version: chaos-mesh.org/v1alpha1
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    kind: "{{ crd.spec.names.kind }}"
+  loop: "{{ tools_crds.resources | selectattr('spec.group', '==', 'chaos-mesh.org') }}"
+  loop_control:
+    label: "customresourcedefinition/{{ crd.metadata.name }}"
+    loop_var: crd
+  register: tools_chaos_mesh_experiements
+  when:
+    - crd.metadata.name != "schedules.chaos-mesh.org"
+
+- name: Delete all experiments
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ experiement.apiVersion }}"
+      kind: "{{ experiement.kind }}"
+      metadata:
+        annotations: |
+          {{
+            experiement.metadata.annotations |
+            combine({'chaos-mesh.chaos-mesh.org/cleanFinalizer': 'forced'})
+          }}
+        name: "{{ experiement.metadata.name }}"
+        namespace: "{{ experiement.metadata.namespace }}"
+    state: patched
+  loop: |
+    {{
+      (tools_chaos_mesh_experiements.results | default([])) |
+      community.general.json_query('[*].resources') |
+      flatten
+    }}
+  loop_control:
+    label: "{{ experiement.kind }}/{{ experiment.metadata.name }}"
+    loop_var: experiment
+
+- name: Delete Chaos Mesh schedules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: Schedule
+      metadata:
+        name: "{{ spec.schedule.name }}"
+        namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+    state: absent
+    wait: true
+  loop: "{{ tools_chaos_mesh_schedules.resources | default([]) }}"
+  loop_control:
+    label: schedule/{{ schedule.metadata.name }}
+    loop_var: schedule
+
 - name: Uninstall Chaos Mesh
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"

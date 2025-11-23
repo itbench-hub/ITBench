@@ -58,7 +58,12 @@ make create_single_node_cluster
 ```
 _Note: To delete the cluster, run this command: `make destory_cluster`_
 
-2. Update the `kubeconfig` value in the `../../group_vars/environment/cluster.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config` e.g. /home/rhel/.kube/config).
+2. Start the Gateway provider to allow for external cluster access to the tools:
+```shell
+make start_gateway_provider
+```
+
+3. Update the `kubeconfig` value in the `../../group_vars/environment/cluster.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config` e.g. /home/rhel/.kube/config).
 ```shell
 vim ../../group_vars/environment/cluster.yaml
 ```
@@ -68,7 +73,7 @@ cluster:
   kubeconfig: "<path to kubeconfig>"
 ```
 
-3. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.
+4. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.
 
 # Troubleshooting
 ### 1. For other Kind-related issues you may want to take a look [here](https://kind.sigs.k8s.io/docs/user/known-issues/).

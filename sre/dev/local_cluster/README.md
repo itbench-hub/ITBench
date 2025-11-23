@@ -41,9 +41,14 @@ podman machine start
 make create_single_node_cluster
 ```
 
+5. Start the Gateway provider to allow for external cluster access to the tools:
+```shell
+make start_gateway_provider
+```
+
 _Note: To delete the cluster, run this command: `make destory_cluster`_
 
-5. Update the value of the `kubeconfig` key in the `../../group_vars/environment/cluster.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config`).
+6. Update the value of the `kubeconfig` key in the `../../group_vars/environment/cluster.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config`).
 ```shell
 vim ../../group_vars/environment/cluster.yaml
 ```
@@ -53,4 +58,4 @@ cluster:
   kubeconfig: "<path to kubeconfig>"
 ```
 
-6. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.
+7. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.

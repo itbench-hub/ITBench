@@ -33,18 +33,21 @@ else
 endif
 
 .PHONY: undeploy_tools
-undeploy_tools: ## Undeploys the observability and fault tools to cluster
+undeploy_tools: ## Undeploys the observability and fault tools from cluster
 ifdef INCIDENT_NUMBER
 	ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools" \
 		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
-		--extra-vars "tools_deployment_phase='full_undeploy'"
 else
-	ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools" \
-		--extra-vars "tools_deployment_phase='full_undeploy'"
+	ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools"
 endif
 
 .PHONY: reinit_tools
-reinit_tools: undeploy_tools deploy_tools ## Re-initialize observability and fault tools to cluster
+reinit_tools: undeploy_tools deploy_tools ## Re-initialize observability and fault tools on the cluster
+
+.PHONY: remove_tools_crds
+remove_tools_crds: ## Removes all the observability and fault tools custom resource definitions from cluster
+	ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools" \
+		--extra-vars "remove_crds=true"
 
 .PHONY: deploy_applications
 deploy_applications: ## Deploys the applications to cluster

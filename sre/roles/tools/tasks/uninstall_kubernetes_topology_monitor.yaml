@@ -7,22 +7,13 @@
     release_namespace: "{{ tools_helm_releases.kubernetes_topology_monitor.namespace }}"
     wait: true
 
-- name: Delete Topology Monitor Persistent Volume Claims
+- name: Delete the release namespace
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       api_version: v1
-      kind: PersistentVolumeClaim
+      kind: Namespace
       metadata:
-        name: "{{ claim.name }}"
-        namespace: "{{ tools_helm_releases.kubernetes_topology_monitor.namespace }}"
+        name: "{{ tools_helm_releases.kubernetes_topology_monitor.namespace }}"
     state: absent
     wait: true
-  loop:
-    - name: data-topology-monitor-0
-    - name: import-topology-monitor-0
-    - name: logs-topology-monitor-0
-    - name: metrics-topology-monitor-0
-  loop_control:
-    label: persistentvolumeclaim/{{ claim.name }}
-    loop_var: claim
