@@ -3,6 +3,13 @@
   ansible.builtin.include_vars:
     file: ../tools/defaults/main/helm_releases.yaml
 
+- name: Import Book Info installation tasks
+  ansible.builtin.import_tasks:
+    file: install_bookinfo.yaml
+  when:
+    - applications_required.bookinfo is defined
+    - applications_required.bookinfo.enabled
+
 - name: Import OpenTelemetry Demo installation tasks
   ansible.builtin.import_tasks:
     file: install_otel_demo.yaml

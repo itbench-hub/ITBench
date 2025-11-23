@@ -26,9 +26,11 @@
 - name: Create variables for Ansible role usage
   ansible.builtin.set_fact:
     incidents_applications:
+      bookinfo:
+        enabled: "{{ incidents_spec.scenario.spec.environment.applications.bookinfo.enabled | default(false) }}"
       otel_demo:
         configuration: "{{ incidents_spec.scenario.spec.environment.applications.otel_demo.configuration | default({}) }}"
-        enabled: "{{ incidents_spec.scenario.spec.environment.applications.otel_demo.enabled }}"
+        enabled: "{{ incidents_spec.scenario.spec.environment.applications.otel_demo.enabled | default(true) }}"
     incidents_tools:
       chaos_mesh: "{{ 'chaos-mesh' in incidents_spec.scenario.spec.environment.tools.selected }}"
       clickhouse: "{{ 'clickhouse' in incidents_spec.scenario.spec.environment.tools.selected or true }}"
