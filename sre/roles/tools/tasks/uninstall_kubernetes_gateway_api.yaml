@@ -1,0 +1,19 @@
+---
+- name: Delete Kubernetes Gateway instance namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ tools_instances.kubernetes_gateways.namespace }}"
+    state: absent
+    wait: true
+
+- name: Append Kubernetes Gateway API related CRDs to list
+  ansible.builtin.set_fact:
+    tools_custom_resource_definitions: "{{ tools_custom_resource_definitions + crds }}"
+  vars:
+    crds: "{{ tools_crds.resources | selectattr('spec.group', '==', 'gateway.networking.k8s.io') }}"
+  when:
+    - tools_cluster.platform == "kubernetes"

@@ -12,6 +12,17 @@
         system_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
 
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: "{{ system_oc_exists }}"
+
     - name: Validate that storage is configured
       ansible.builtin.assert:
         that: "storage.local is defined or storage.s3 is defined"
@@ -21,10 +32,14 @@
     - name: Import tools role for variable setting tasks
       ansible.builtin.import_role:
         name: tools
-        tasks_from: set_ingress_hostname
+        tasks_from: set_external_endpoint
       vars:
         tools_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+        tools_external_network_object:
+          name: prometheus
+          namespace: prometheus
 
     - name: Copy restricted kubeconfig into temporary directory from S3 bucket
       amazon.aws.s3_object:
@@ -54,12 +69,12 @@
         msg: |
           {{
             {
-              "prometheus_url": "http://" + tools_ingress_hostname + "/prometheus",
+              "prometheus_url": tools_external_http_endpoint + '/prometheus',
               "kubeconfig": lookup("ansible.builtin.file", "/tmp/kubeconfig")
             }
           }}
       vars:
         restricted_kubeconfig_exists: "{{ '/tmp/kubeconfig' is exists }}"
       when:
-        - tools_ingress_hostname is defined
+        - tools_external_http_endpoint is defined
         - restricted_kubeconfig_exists

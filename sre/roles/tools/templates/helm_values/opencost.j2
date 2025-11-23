@@ -1,0 +1,40 @@
+---
+opencost:
+  customPricing:
+    enabled: true
+    createConfigmap: true
+    provider: custom
+    costModel:
+      description: Modified pricing configuration.
+      CPU: 10.00
+      spotCPU: 7.50
+      RAM: 5.00
+      spotRAM: 2.50
+      GPU: 50.00
+      storage: 2.50
+      zoneNetworkEgress: 1.00
+      regionNetworkEgress: 1.00
+      internetNetworkEgress: 1.00
+  exporter:
+    extraEnv:
+      INSECURE_SKIP_VERIFY: {{ tools_cluster.platform == 'openshift' }}
+      USE_CUSTOM_PROVIDER: true
+  metrics:
+    serviceMonitor:
+      enabled: true
+  platforms:
+    openshift:
+      enabled: {{ tools_cluster.platform == 'openshift' }}
+  prometheus:
+{% if tools_prometheus_bearer_token is defined %}
+    bearer_token: {{ tools_prometheus_bearer_token }}
+{% endif %}
+    external:
+      enabled: true
+      url: "{{ tools_prometheus_endpoint }}"
+    internal:
+      enabled: false
+{% if tools_cluster.platform == 'openshift' %}
+podAnnotations:
+  openshift.io/required-scc: "restricted-v2"
+{% endif %}

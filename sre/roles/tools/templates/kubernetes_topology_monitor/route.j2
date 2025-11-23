@@ -1,0 +1,15 @@
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ tools_helm_releases.kubernetes_topology_monitor.name }}
+  namespace: {{ tools_helm_releases.kubernetes_topology_monitor.namespace }}
+spec:
+  httpHeaders:
+    actions:
+      response: {{ tools_route_response_headers }}
+  port:
+    targetPort: 8080
+  to:
+    kind: Service
+    name: topology-monitor-svc

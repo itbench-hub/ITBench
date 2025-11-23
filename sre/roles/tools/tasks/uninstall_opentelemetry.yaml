@@ -1,31 +1,29 @@
 ---
-- name: Delete all OpenTelemetry Collectors in instance namespace
+- name: Retrieve all OpenTelemetry Collector instances in the release namespace
+  kubernetes.core.k8s_info:
+    api_version: opentelemetry.io/v1beta1
+    kind: OpenTelemetryCollector
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
+  register: tools_opentelemetry_collectors
   when:
     - tools_crds.resources | selectattr('metadata.name', '==', 'opentelemetrycollectors.opentelemetry.io') | length == 1
-  block:
-    - name: Retrieve all collector instances in the release namespace
-      kubernetes.core.k8s_info:
-        api_version: opentelemetry.io/v1beta1
-        kind: OpenTelemetryCollector
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
-      register: tools_opentelemetry_collectors
 
-    - name: Delete all collector instances in the release namespace
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: "{{ resource.apiVersion }}"
-          kind: "{{ resource.kind }}"
-          metadata:
-            name: "{{ resource.metadata.name }}"
-            namespace: "{{ resource.metadata.namespace }}"
-        state: absent
-        wait: true
-      loop: "{{ tools_opentelemetry_collectors.resources }}"
-      loop_control:
-        label: opentelemetrycollector/{{ resource.metadata.name }}
-        loop_var: resource
+- name: Delete all OpenTelemetry Collectors in the release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ resource.apiVersion }}"
+      kind: "{{ resource.kind }}"
+      metadata:
+        name: "{{ resource.metadata.name }}"
+        namespace: "{{ resource.metadata.namespace }}"
+    state: absent
+    wait: true
+  loop: "{{ tools_opentelemetry_collectors.resources | default([]) }}"
+  loop_control:
+    label: opentelemetrycollector/{{ resource.metadata.name }}
+    loop_var: resource
 
 - name: Delete all RBAC objects (cluster scoped)
   kubernetes.core.k8s:

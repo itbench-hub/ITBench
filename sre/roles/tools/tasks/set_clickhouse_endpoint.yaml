@@ -1,17 +1,21 @@
 ---
-- name: Retrieve Clickhouse Installation
+- name: Retrieve Clickhouse Installation for main Clickhouse cluster.
   kubernetes.core.k8s_info:
     api_version: clickhouse.altinity.com/v1
     kind: ClickHouseInstallation
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     name: "{{ tools_instances.clickhouse.names.main }}"
     namespace: "{{ tools_instances.clickhouse.namespace }}"
-    wait: true
-  register: tools_clickhouse_installation_info
+  register: tools_clickhouse_installation
 
-- name: Extract in-cluster endpoint for Clickhouse cluster
+- name: Verify that object exists
+  ansible.builtin.assert:
+    that:
+      - tools_clickhouse_installation is defined
+      - tools_clickhouse_installation.resources | length == 1
+    fail_msg: Unable to find installation information for main Clickhouse cluster. Please verify that Clickhouse is installed.
+    success_msg: Found installation information for main Clickhouse cluster.
+
+- name: Extract in-cluster endpoint for main Clickhouse cluster
   ansible.builtin.set_fact:
-    tools_clickhouse_endpoint: http://{{ tools_clickhouse_installation_info.resources[0].status.endpoint }}:8123
-  when:
-    - tools_clickhouse_installation_info is defined
-    - tools_clickhouse_installation_info.resources | length > 0
+    tools_clickhouse_endpoint: http://{{ tools_clickhouse_installation.resources[0].status.endpoint }}:8123

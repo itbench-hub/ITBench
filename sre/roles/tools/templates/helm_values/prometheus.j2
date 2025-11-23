@@ -1,0 +1,32 @@
+---
+alertmanager:
+  enabled: false
+grafana:
+  enabled: false
+prometheus:
+  prometheusSpec:
+    podMonitorNamespaceSelector:
+      matchLabels:
+        it-bench/monitoring: "true"
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleNamespaceSelector:
+      matchLabels:
+        it-bench/monitoring: "true"
+    ruleSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector:
+      matchLabels:
+        it-bench/monitoring: "true"
+    serviceMonitorSelectorNilUsesHelmValues: false
+    additionalArgs:
+      - name: web.enable-otlp-receiver
+        value: ""
+{% if tools_installation_plan.istio.enabled | default(false) %}
+    routePrefix: /prometheus
+{% endif %}
+defaultRules:
+  rules:
+    alertmanager: false
+kubeEtcd:
+  enabled: "{{ tools_cluster.provider == 'kind' }}"
+kubeProxy:
+  enabled: "{{ tools_cluster.provider == 'kind' }}"

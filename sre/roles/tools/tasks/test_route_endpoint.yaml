@@ -1,0 +1,36 @@
+---
+- name: Retrieve OpenShift route with assigned host
+  kubernetes.core.k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_route.name }}"
+    namespace: "{{ tools_route.namespace }}"
+  register: tools_openshift_route
+  until:
+    - tools_openshift_route.resources | length == 1
+    - tools_openshift_route.resources[0].status.ingress is defined
+    - tools_openshift_route.resources[0].status.ingress | length > 0
+  delay: 15
+  retries: 20
+
+- name: Extract hostname address information
+  ansible.builtin.set_fact:
+    tools_route_http_endpoint: http://{{ tools_openshift_route.resources[0].status.ingress.host }}
+
+- name: Attempt connection test to additional endpoints
+  ansible.builtin.uri:
+    url: "{{ test_url }}"
+  loop: |
+    {{
+      [
+        tools_route_http_endpoint | default('')
+      ] |
+      product(tools_external_paths) |
+      map('join', "")
+    }}
+  loop_control:
+    label: "{{ test_url }}"
+    loop_var: test_url
+  delay: 15
+  retries: 12

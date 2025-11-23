@@ -1,17 +1,27 @@
 ---
-- name: Retrieve Kubernetes Topology Service service info
+- name: Retrieve Kubernetes Topology Service service
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Service
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     name: topology-monitor-svc
     namespace: "{{ tools_helm_releases.kubernetes_topology_monitor.namespace }}"
-  register: tools_topology_service_info
+  register: tools_kubernetes_topology_monitor_service
+
+- name: Verify that object exists
+  ansible.builtin.assert:
+    that:
+      - tools_kubernetes_topology_monitor_service is defined
+      - tools_kubernetes_topology_monitor_service.resources | length == 1
+    fail_msg: |
+      Unable to find service information for topology monitor.
+      Please verify that the Kubernetes Topology Monitor is installed.
+    success_msg: Found service information for topology monitor.
 
 - name: Construct Kubernetes Topology in-cluster endpoint
   ansible.builtin.set_fact:
-    tools_kubernetes_topology_monitor_endpoint: http://{{ tools_topology_service_info.resources[0].metadata.name }}.{{
-      tools_topology_service_info.resources[0].metadata.namespace }}.svc.cluster.local:8080
-  when:
-    - tools_topology_service_info is defined
-    - tools_topology_service_info.resources | length == 1
+    tools_kubernetes_topology_monitor_endpoint: http://{{ service.name }}.{{ service.namespace }}.svc.cluster.local:8080
+  vars:
+    service:
+      name: "{{ tools_kubernetes_topology_monitor_service.resources[0].metadata.name }}"
+      namespace: "{{ tools_kubernetes_topology_monitor_service.resources[0].metadata.namespace }}"

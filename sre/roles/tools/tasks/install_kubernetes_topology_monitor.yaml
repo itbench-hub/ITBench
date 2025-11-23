@@ -1,4 +1,17 @@
 ---
+- name: Create the release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ tools_helm_releases.kubernetes_topology_monitor.namespace }}"
+        labels:
+          it-bench/shared-gateway-access: "true"
+    state: present
+    wait: true
+
 - name: Install Kubernetes Topology Monitor
   kubernetes.core.helm:
     chart_ref: "{{ playbook_dir }}/../tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor"
@@ -8,3 +21,65 @@
     release_state: present
     timeout: 10m0s
     wait: true
+
+- name: Enable external access to Kubernetes Topology Monitor
+  when:
+    - tools_installation_plan.kubernetes_topology_monitor.external_access
+  block:
+    - name: Enable external access on Kind
+      when:
+        - tools_cluster.provider == "kind"
+        - not (tools_installation_plan.istio.enabled | default(false))
+      block:
+        - name: Create Cloud Provider Kind Kubernetes Gateway
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/kubernetes_gateways/kind.j2
+            state: present
+            wait: true
+            wait_condition:
+              reason: Programmed
+              status: "True"
+              type: Programmed
+          vars:
+            gateway:
+              name: "{{ tools_helm_releases.kubernetes_topology_monitor.name }}"
+
+        - name: Create HTTP Route
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/kubernetes_topology_monitor/http_route.j2
+            state: present
+          vars:
+            gateway:
+              name: "{{ tools_helm_releases.kubernetes_topology_monitor.name }}"
+
+        - name: Import connection test to external endpoint
+          ansible.builtin.import_tasks:
+            file: test_gateway_endpoint.yaml
+          vars:
+            tools_external_paths:
+              - /healthz
+            tools_kubernetes_gateway:
+              name: "{{ tools_helm_releases.kubernetes_topology_monitor.name }}"
+
+    - name: Enable external access on OpenShift
+      when:
+        - tools_cluster.platform == "openshift"
+      block:
+        - name: Create OpenShift Route
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/kubernetes_topology_monitor/route.j2
+            state: present
+          register: tools_kubernetes_topology_monitor_openshift_route
+
+        - name: Import connection test to external endpoint
+          ansible.builtin.import_tasks:
+            file: test_route_endpoint.yaml
+          vars:
+            tools_external_paths:
+              - /healthz
+            tools_route:
+              name: "{{ tools_kubernetes_topology_monitor_openshift_route.result.metadata.name }}"
+              namespace: "{{ tools_kubernetes_topology_monitor_openshift_route.result.metadata.namespace }}"

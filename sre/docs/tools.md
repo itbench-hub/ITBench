@@ -67,10 +67,10 @@ ITBench deploys additional Kubernetes tools to enable additional features in a K
 
 | Tool | Repository | Function |
 | --- | --- | --- |
+| Kubernetes Gateway API | https://github.com/kubernetes-sigs/gateway-api | Networking |
 | Kubernetes Metric Server | https://github.com/kubernetes-sigs/metrics-server | Autoscaling |
-| Kubernetes NGINX Controller | https://github.com/kubernetes/ingress-nginx | Networking |
 
-**Note:** Kubernetes NGINX Controller provides Ingress support which allows a user to externally access an observability tool's UI. This is useful for debugging, but explicitly needed. However, it is still always deployed as part of the tool stack unless deactivated.
+**Note:** The [Kubernetes Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/) is the next generation of networking APIs offered by Kubernetes, succeeding Ingress. However, as an API, it requires a vendor to implement it. For Kind clusters, ITBench uses [Cloud Provider Kind](https://github.com/kubernetes-sigs/cloud-provider-kind) or [Istio](#service-mesh-tools) depending on the configuration. For more information on how to use Cloud Provider Kind in ITBench, please refer to the [local cluster documentation](../dev/local_cluster/README.md).
 
 **Note:** Due to increasing load being a frequent need in FinOps incidents (to "raise" cost), the Kubernetes Metrics Server is always deployed as part of the tool stack for FinOps scenarios unless deactivated. To install it as part of an SRE scenario, it needs to be explicitly added to the incident spec.
 

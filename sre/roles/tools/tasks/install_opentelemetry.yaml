@@ -28,7 +28,7 @@
         values:
           manager:
             serviceMonitor:
-              enabled: "{{ tools_required.prometheus }}"
+              enabled: "{{ tools_installation_plan.prometheus.enabled | default(true) }}"
           admissionWebhooks:
             certManager:
               enabled: false
@@ -91,9 +91,7 @@
         namespace: openshift-opentelemetry-operator
       register: tools_openshift_otel_operator_csv
       until:
-        - tools_openshift_otel_operator_csv.resources |
-          selectattr("status.phase", "==", "Succeeded") |
-          length == 0
+        - tools_openshift_otel_operator_csv.resources | selectattr("status.phase", "==", "Succeeded") | length == 0
       retries: 10
       delay: 30
 
@@ -119,19 +117,16 @@
         name: "{{ tools_instances.opentelemetry_collectors.namespace }}"
         labels:
           it-bench/monitoring: "true"
+          it-bench/shared-gateway-access: "true"
     state: present
 
 - name: Import variable setting task
   ansible.builtin.import_tasks:
     file: set_clickhouse_credentials.yaml
-  when:
-    - tools_required.opentelemetry or tools_required.istio
 
 - name: Import variable setting task
   ansible.builtin.import_tasks:
     file: set_clickhouse_endpoint.yaml
-  when:
-    - tools_required.opentelemetry or tools_required.istio
 
 - name: Install OpenTelemetry Collector(s)
   kubernetes.core.k8s:
@@ -139,7 +134,7 @@
     template: "{{ item.template_path }}"
     state: present
   loop:
-    - enabled: "{{ tools_required.jaeger }}"
+    - enabled: "{{ (tools_installation_plan.jaeger.enabled | default(true)) }}"
       template_path: templates/opentelemetry/collectors/jaeger.j2
       container_image: |
         {{
@@ -147,7 +142,7 @@
           from_yaml |
           community.general.json_query('spec.image')
         }}
-    - enabled: "{{ tools_required.opentelemetry }}"
+    - enabled: "{{ (tools_installation_plan.opentelemetry.enabled | default(true)) }}"
       template_path: templates/opentelemetry/collectors/kubernetes-objects.j2
       container_image: |
         {{
@@ -155,7 +150,7 @@
           from_yaml |
           community.general.json_query('spec.image')
         }}
-    - enabled: "{{ tools_required.istio }}"
+    - enabled: "{{ (tools_installation_plan.istio.enabled | default(false)) }}"
       template_path: templates/opentelemetry/collectors/istio.j2
       container_image: |
         {{
@@ -168,15 +163,19 @@
   when:
     - item.enabled
 
-- name: Fetch all OpenTelemetry Collectors
+- name: Fetch all OpenTelemetry Collector Deployments
   kubernetes.core.k8s_info:
-    api_version: opentelemetry.io/v1beta1
-    kind: OpenTelemetryCollector
+    api_version: apps/v1
+    kind: Deployment
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    label_selectors:
+      - app.kubernetes.io/component = opentelemetry-collector
+      - app.kubernetes.io/managed-by = opentelemetry-operator
+      - app.kubernetes.io/part-of = opentelemetry
     namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
-  register: tools_otel_collectors
+  register: tools_otel_collector_deployments
 
-- name: Wait for all OpenTelemetry Collectors to reach ready state
+- name: Wait for all OpenTelemetry Collectors deployments to stabalize
   kubernetes.core.k8s_info:
     api_version: "{{ resource.apiVersion }}"
     kind: "{{ resource.kind }}"
@@ -184,15 +183,70 @@
     name: "{{ resource.metadata.name }}"
     namespace: "{{ resource.metadata.namespace }}"
     wait: true
-  loop: "{{ tools_otel_collectors.resources }}"
+  loop: "{{ tools_otel_collector_deployments.resources }}"
   loop_control:
-    label: opentelemetrycollector/{{ resource.metadata.name }}
+    label: deployment/{{ resource.metadata.name }}
     loop_var: resource
-  register: tools_opentelemetry_collector_info
-  until:
-    - tools_opentelemetry_collector_info.resources[0].status.scale is defined
-    - tools_opentelemetry_collector_info.resources[0].status.scale.statusReplicas | split('/') | unique | length == 1
-  retries: 10
-  delay: 30
+
+- name: Enable external access to Jaeger
   when:
-    - tools_otel_collectors is defined
+    - tools_installation_plan.jaeger.enabled
+    - tools_installation_plan.jaeger.external_access
+  block:
+    - name: Enable external access on Kind
+      when:
+        - tools_cluster.provider == "kind"
+        - not tools_installation_plan.istio.enabled
+      block:
+        - name: Create Cloud Provider Kind Kubernetes Gateway
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/kubernetes_gateways/kind.j2
+            state: present
+            wait: true
+            wait_condition:
+              reason: Programmed
+              status: "True"
+              type: Programmed
+          vars:
+            gateway:
+              name: "{{ tools_instances.opentelemetry_collectors.names.jaeger }}"
+
+        - name: Create HTTP Route
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/opentelemetry/http_routes/jaeger.j2
+            state: present
+          vars:
+            gateway:
+              name: "{{ tools_instances.opentelemetry_collectors.names.jaeger }}"
+
+        - name: Import connection test to external endpoint
+          ansible.builtin.import_tasks:
+            file: test_gateway_endpoint.yaml
+          vars:
+            tools_external_paths:
+              - /
+            tools_kubernetes_gateway:
+              name: "{{ tools_instances.opentelemetry_collectors.names.jaeger }}"
+
+    - name: Enable external access on OpenShift
+      when:
+        - tools_cluster.platform == "openshift"
+      block:
+        - name: Create OpenShift Route
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/opentelemetry/routes/jaeger.j2
+            state: present
+          register: tools_jaeger_openshift_route
+
+        - name: Import connection test to external endpoint
+          ansible.builtin.import_tasks:
+            file: test_route_endpoint.yaml
+          vars:
+            tools_external_paths:
+              - /
+            tools_route:
+              name: "{{ tools_jaeger_openshift_route.result.metadata.name }}"
+              namespace: "{{ tools_jaeger_openshift_route.result.metadata.namespace }}"
