@@ -1,0 +1,56 @@
+---
+- name: Create temporary directory for Git checkout
+  ansible.builtin.tempfile:
+    prefix: bookinfo
+    state: directory
+  register: applications_temporary_directory
+
+- name: Checkout Istio repository using Git
+  ansible.builtin.git:
+    repo: https://github.com/istio/istio.git
+    dest: "{{ applications_temporary_directory.path }}"
+    version: 1.27.3
+  when:
+    - applications_temporary_directory is defined
+
+- name: Create the release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ applications_instances.bookinfo.namespace }}"
+        labels:
+          istio.io/dataplane-mode: ambient
+          it-bench/monitoring: "true"
+    state: present
+
+- name: Create BookInfo Kubernetes objects
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ applications_instances.bookinfo.namespace }}"
+    state: present
+    src: "{{ applications_temporary_directory.path }}/{{ manifest_file_path }}"
+  loop:
+    - samples/bookinfo/platform/kube/bookinfo.yaml
+    - samples/bookinfo/platform/kube/bookinfo-versions.yaml
+    - samples/bookinfo/gateway-api/bookinfo-gateway.yaml
+  loop_control:
+    label: manifest/{{ manifest_file_path | basename }}
+    loop_var: manifest_file_path
+  when:
+    - applications_temporary_directory is defined
+
+- name: Create Prometheus monitoring objects
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    template: templates/bookinfo/monitoring.j2
+    state: present
+
+- name: Delete the temporary directory
+  ansible.builtin.file:
+    path: "{{ applications_temporary_directory.path }}"
+    state: absent
+  when:
+    - applications_temporary_directory is defined

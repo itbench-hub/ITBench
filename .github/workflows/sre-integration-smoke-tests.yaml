@@ -60,6 +60,47 @@ jobs:
       - name: Test access revoking
         run: |
           make -C sre disable_agent_access
+  bookinfo:
+    name: Istio Book Info Smoke Tests
+    needs:
+      - istio
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.0.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_single_node_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_service_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/istio.yaml sre/group_vars/environment/tools.yaml
+          mv sre/tests/files/bookinfo.yaml sre/group_vars/environment/applications.yaml
+      - name: Install tools
+        run: |
+          make -C sre deploy_tools
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_applications
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_applications
   chaos-mesh:
     name: Chaos Mesh Smoke Tests
     runs-on: ubuntu-24.04
@@ -161,6 +202,9 @@ jobs:
       - name: Create Kind cluster
         run: |
           make -C sre/dev/local_cluster create_single_node_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_service_provider &
       - name: Create group vars
         run: |
           make -C sre group_vars
@@ -411,7 +455,7 @@ jobs:
       - name: Create group vars
         run: |
           make -C sre group_vars
-          mv sre/tests/files/otel-demo.yaml sre/group_vars/environment/tools.yaml
+          mv sre/tests/files/otel-demo.yaml sre/group_vars/environment/applications.yaml
       - name: Install tools
         run: |
           INCIDENT_NUMBER=1 make -C sre deploy_tools
