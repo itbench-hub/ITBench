@@ -1,0 +1,28 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Low
+    id: 46
+    name: Low Resource Limits
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+    faults:
+      - custom:
+          name: misconfigured-resource-limits
+          misconfigured_resource_limits:
+            workload:
+              kind: Deployment
+              name: postgresql
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+              container:
+                name: postgresql

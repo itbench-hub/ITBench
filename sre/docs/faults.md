@@ -9,6 +9,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Hanging Kubernetes Workload Init Container](#Hanging-Kubernetes-Workload-Init-Container) | Kubernetes | Deployment, Performance |
 | [Ingress Port Blocking Network Policy](#Ingress-Port-Blocking-Network-Policy) | Kubernetes | Deployment, Networking |
 | [Insufficent Kubernetes Resource Quota](#Insufficent-Kubernetes-Resource-Quota) | Kubernetes | Deployment, Performance |
+| [Insufficent Kubernetes Workload Container Resources](#Insufficent-Kubernetes-Workload-Container-Resources) | Kubernetes | Deployment, Performance |
 | [Invalid Kubernetes Workload Container Command](#Invalid-Kubernetes-Workload-Container-Command) | Kubernetes | Deployment, Performance |
 | [Invalid Valkey Password](#Invalid-Valkey-Password) | Kubernetes | Authentication, Deployment |
 | [Misconfigured Kubernetes Horizontal Pod Autoscaler](#Misconfigured-Kubernetes-Horizontal-Pod-Autoscaler) | Kubernetes | Deployment, Performance |
@@ -205,6 +206,79 @@ A fault is a solvable issue injected into an environment to create an incident.
     },
     "required": [
         "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
+### Insufficent Kubernetes Workload Container Resources
+
+**Description:** This fault injects a insufficient resource configuration into a designated Kubernetes workload's container.
+
+**Expectation:** The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function for long periods.
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/containers/images/
+- https://kubernetes.io/docs/concepts/workloads/
+- https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+- https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "container": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "type": "object"
+        },
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject",
+        "container"
     ],
     "type": "object"
 }

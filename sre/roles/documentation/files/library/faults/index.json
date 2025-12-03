@@ -342,6 +342,103 @@
                 "type": "object"
             }
         },
+        "description": "This fault injects a insufficient resource configuration into a designated Kubernetes workload's container.",
+        "expectation": "The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function for long periods.",
+        "id": "insufficent-kubernetes-workload-container-resources",
+        "name": "Insufficent Kubernetes Workload Container Resources",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/containers/images/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Manually edit the manifest and replace the invalid container's resource configuration with the correct value(s)."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "container": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "container"
+                ],
+                "type": "object"
+            }
+        },
         "description": "This fault injects an invalid command into a designated Kubernetes workload's container.",
         "expectation": "The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function.",
         "id": "invalid-kubernetes-workload-container-command",

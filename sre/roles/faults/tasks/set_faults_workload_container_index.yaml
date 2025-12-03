@@ -2,10 +2,10 @@
 - name: Retrieve workload information
   kubernetes.core.k8s_info:
     api_version: apps/v1
-    kind: "{{ faults_workload.kind }}"
+    kind: "{{ faults_container_workload.kind }}"
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    name: "{{ faults_workload.name }}"
-    namespace: "{{ faults_workload.namespace }}"
+    name: "{{ faults_container_workload.name }}"
+    namespace: "{{ faults_container_workload.namespace }}"
   register: faults_workload_info
 
 - name: Find the index of the target container
@@ -16,7 +16,7 @@
           'ansible.utils.index_of',
           faults_workload_info.resources[0].spec.template.spec.containers,
           'eq',
-          faults_workload.container.name,
+          faults_container_workload.container.name,
           'name'
         )
       }}
