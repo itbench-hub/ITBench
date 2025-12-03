@@ -1,0 +1,29 @@
+---
+- name: Retrieve all fault related deployments
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    label_selectors:
+      - app.kubernetes.io/component = pod-anti-affinity-fault
+      - app.kubernetes.io/managed-by = ITBench
+  register: faults_deployments
+
+- name: Delete all fault related deployments
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ deployment.apiVersion }}"
+      kind: "{{ deployment.kind }}"
+      metadata:
+        name: "{{ deployment.metadata.name }}"
+        namespace: "{{ deployment.metadata.namespace }}"
+    state: absent
+  loop: "{{ faults_deployments.resources }}"
+  loop_control:
+    label: deployment/{{ deployment.metadata.name }}
+    loop_var: deployment
+
+- name: Display fault removal instructions
+  ansible.builtin.debug:
+    msg: To remove this fault, please uninstall and reinstall the application it was injected into.

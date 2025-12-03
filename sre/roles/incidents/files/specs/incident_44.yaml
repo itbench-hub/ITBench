@@ -1,0 +1,26 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 44
+    name: Pod Anti-Affinity Preventing Rescheduling
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+    faults:
+      - custom:
+          name: pod-anti-affinity-rescheduling
+          pod_anti_affinity_rescheduling:
+            workload:
+              kind: Deployment
+              name: payment
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
