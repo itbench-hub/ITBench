@@ -6,6 +6,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 | Name | Platform | Tags |
 | --- | --- | --- |
+| [Hanging Kubernetes Workload Init Container](#Hanging-Kubernetes-Workload-Init-Container) | Kubernetes | Deployment, Performance |
 | [Ingress Port Blocking Network Policy](#Ingress-Port-Blocking-Network-Policy) | Kubernetes | Deployment, Networking |
 | [Insufficent Kubernetes Resource Quota](#Insufficent-Kubernetes-Resource-Quota) | Kubernetes | Deployment, Performance |
 | [Invalid Kubernetes Workload Container Command](#Invalid-Kubernetes-Workload-Container-Command) | Kubernetes | Deployment, Performance |
@@ -22,6 +23,67 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 ## Detailed Summary of Faults
 
+### Hanging Kubernetes Workload Init Container
+
+**Description:** This fault injects an init container which will hang into a workload.
+
+**Expectation:** The faulted pod will enter the `Pending` state. All containers will be in the `Waiting` state`. The hanging init container will be in the `Running` state.
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+- https://kubernetes.io/docs/concepts/workloads/
+- https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+- https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
 ### Ingress Port Blocking Network Policy
 
 **Description:** This fault injects a network policy which blocks traffic on all ingress ports of a given workload.

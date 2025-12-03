@@ -97,3 +97,12 @@
   when:
     - fault.custom.name == 'pod-anti-affinity-rescheduling'
     - fault.custom.pod_anti_affinity_rescheduling is defined
+
+- name: Import init container hang removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_custom_init_container_hang.yaml
+  vars:
+    spec: "{{ fault.custom.hang_init_container }}"
+  when:
+    - fault.custom.name == 'hang-init-container'
+    - fault.custom.hang_init_container is defined
