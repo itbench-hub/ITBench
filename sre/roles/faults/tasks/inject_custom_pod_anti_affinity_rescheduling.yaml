@@ -1,0 +1,61 @@
+---
+- name: Retrieve worker nodes on the cluster
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: Node
+    label_selectors:
+      - node-role.kubernetes.io/node =
+  register: faults_nodes
+
+- name: Create a deployment on all worker nodes
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    template: templates/deployment/pod_anti_affinity.j2
+    state: present
+  loop: "{{ faults_nodes.resources | default([]) }}"
+  loop_control:
+    index_var: node_index
+    label: node/{{ node.metadata.name }}
+    loop_var: node
+  vars:
+    fault_args: "{{ spec }}"
+    container_image: |-
+        {{
+          lookup('ansible.builtin.file', 'files/deployment/pod_anti_affinity.yaml') |
+          from_yaml |
+          community.general.json_query('spec.template.spec.containers[0].image')
+        }}
+
+- name: Retrieve information on workload
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+  register: faults_workload
+
+- name: Patch deployment with faulty pod anti-affinity rules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            affinity:
+              podAntiAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  - labelSelector:
+                      matchExpressions:
+                        - key: app.kubernetes.io/component
+                          operator: In
+                          values:
+                            - pod-anti-affinity-fault
+                    topologyKey: kubernetes.io/hostname
+    state: patched

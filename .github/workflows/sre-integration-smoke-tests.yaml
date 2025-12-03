@@ -994,6 +994,50 @@ jobs:
       - name: Destroy environment
         run: |
           INCIDENT_NUMBER=40 make -C sre destroy_environment
+  sre-incident-44:
+    name: SRE Incident 44 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5.0.0
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.0.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_single_node_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=44 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=44 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=44 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=44 make -C sre destroy_environment
   sre-incident-102:
     name: SRE Incident 102 Smoke Test
     needs:
