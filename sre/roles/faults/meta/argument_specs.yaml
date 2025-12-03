@@ -53,6 +53,7 @@ argument_specs:
                   - modify-environment-variables
                   - unsupported-image
                   - pod-anti-affinity-rescheduling
+                  - misconfigured-resource-limits
                 required: true
                 type: str
               hang_init_container:
@@ -196,6 +197,34 @@ argument_specs:
                       kind:
                         choices:
                           - Deployment
+                          - StatefulSet
+                        required: true
+                        type: str
+                      name:
+                        required: true
+                        type: str
+                      namespace:
+                        required: true
+                        type: str
+              misconfigured_resource_limits:
+                required: false
+                type: dict
+                options:
+                  workload:
+                    required: true
+                    type: dict
+                    options:
+                      container:
+                        required: true
+                        type: dict
+                        options:
+                          name:
+                            required: false
+                            type: str
+                      kind:
+                        choices:
+                          - Deployment
+                          - ReplicaSet
                           - StatefulSet
                         required: true
                         type: str

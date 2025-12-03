@@ -106,3 +106,12 @@
   when:
     - fault.custom.name == 'hang-init-container'
     - fault.custom.hang_init_container is defined
+
+- name: Import misconfigured resource limits removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_custom_misconfigured_limits.yaml
+  vars:
+    spec: "{{ fault.custom.misconfigured_resource_limits }}"
+  when:
+    - fault.custom.name == 'misconfigured-resource-limits'
+    - fault.custom.misconfigured_resource_limits is defined
