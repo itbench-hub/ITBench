@@ -36,6 +36,14 @@
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
   register: faults_workload
 
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - faults_workload is defined
+      - faults_workload.resources | length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
 - name: Patch deployment with faulty pod anti-affinity rules
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"

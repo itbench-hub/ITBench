@@ -41,6 +41,7 @@ argument_specs:
             options:
               name:
                 choices:
+                  - hang-init-container
                   - invalid-command
                   - invalid-image
                   - invalid-node-selector
@@ -54,6 +55,33 @@ argument_specs:
                   - pod-anti-affinity-rescheduling
                 required: true
                 type: str
+              hang_init_container:
+                required: false
+                type: dict
+                options:
+                  workload:
+                    required: true
+                    type: dict
+                    options:
+                      kind:
+                        choices:
+                          - Deployment
+                          - StatefulSet
+                        required: true
+                        type: str
+                      name:
+                        required: true
+                        type: str
+                      namespace:
+                        required: true
+                        type: str
+                  restart_policy:
+                    choices:
+                      - force
+                      - safe
+                    default: force
+                    required: false
+                    type: str
               invalid_command:
                 required: false
                 type: dict
