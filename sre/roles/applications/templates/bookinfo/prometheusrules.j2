@@ -1,0 +1,56 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: bookinfo-alerting-rules
+  namespace: [[ applications_instances.bookinfo.namespace ]]
+spec:
+  groups:
+    - name: ClusterAlerts
+      interval: 1m
+      rules:
+        - alert: FailedPodsDetected
+          expr: sum by(namespace) (kube_pod_status_phase{namespace="[[ applications_instances.bookinfo.namespace ]]", phase="Failed"}) > 0
+          labels:
+            severity: critical
+          annotations:
+            description: "Pods in failed state in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
+        - alert: PendingPodsDetected
+          expr: sum by(namespace) (kube_pod_status_phase{namespace="[[ applications_instances.bookinfo.namespace ]]", phase="Pending"}) > 0
+          labels:
+            severity: critical
+          annotations:
+            description: "Pods in pending state in namespace {{ $labels.namespace }} above 0 (current: {{ $value }})"
+        - alert: CrashLoopBackOffPodsDetected
+          expr: sum by (namespace) (kube_pod_container_status_waiting_reason{namespace="[[ applications_instances.bookinfo.namespace ]]",reason="CrashLoopBackOff"}) > 0
+          labels:
+            severity: critical
+          annotations:
+            description: "Pods in CrashLoopBackOff state in namespace {{ $labels.namespace }} above 0 (current: {{ $value }})"
+    - name: GoldenSignalAlerts
+      interval: 1m
+      rules:
+        - alert: RequestLatency
+          expr: histogram_quantile(0.95, sum by(le, source_canonical_service, namespace) (rate(istio_request_duration_milliseconds_bucket[2m]))) > 1500
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            description: "Latency in service {{ $labels.source_canonical_service }} in namespace {{ $labels.namespace }} is above 1500ms (current: {{ $value }}s)"
+        - alert: RequestErrorRate
+          expr: sum by (source_canonical_service, namespace) (rate(istio_requests_total{response_code!="200"}[2m])) > 0
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            description: "Request error rate in service {{ $labels.source_canonical_service }} in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
+    - name: GoodputAlerts
+      interval: 1m
+      rules:
+        - alert: NoRequestsDetected
+          expr: sum by (source_canonical_service, namespace) (increase(istio_requests_total[2m])) == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Service {{ $labels.source_canonical_service }} in namespace {{ $labels.namespace }} has 0 requests"

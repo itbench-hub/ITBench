@@ -1,0 +1,29 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 47
+    name: Istio Authorization Policy Deny Incident
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        bookinfo:
+          enabled: true
+        otel_demo:
+          enabled: false
+      tools:
+        category: sre
+        selected:
+          - istio
+    faults:
+      - custom:
+          name: authorization-policy-deny
+          authorization_policy_deny:
+            gateway:
+              name: bookinfo-gateway
+              namespace: "{{ applications_instances.bookinfo.namespace }}"
+            methods:
+              - GET
