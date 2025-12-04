@@ -15,12 +15,31 @@
       spec: "{{ spec.schedule.spec }}"
     state: present
 
-- name: Wait for Chaos Mesh experiement to start
+- name: Retrieve Chaos Mesh Schedule with active experiment
   kubernetes.core.k8s_info:
     api_version: chaos-mesh.org/v1alpha1
-    kind: "{{ spec.schedule.spec.type }}"
+    kind: Schedule
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    label_selectors:
-      - managed-by={{ spec.schedule.name }}
+    name: "{{ spec.schedule.name }}"
     namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+  register: faults_chaos_mesh_schedule
+  until:
+    - faults_chaos_mesh_schedule.resources[0].status.active is defined
+  delay: 10
+  retries: 12
+
+- name: Wait for Chaos Mesh experiement to be injected
+  kubernetes.core.k8s_info:
+    api_version: "{{ experiment.apiVersion }}"
+    kind: "{{ experiment.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ experiment.name }}"
+    namespace: "{{ experiment.namespace }}"
     wait: true
+    wait_condition:
+      status: "True"
+      type: AllInjected
+  loop: "{{ faults_chaos_mesh_schedule.resources[0].status.active | default([]) }}"
+  loop_control:
+    label: "{{ experiment.kind | lower }}/{{ experiment.name }}"
+    loop_var: experiment

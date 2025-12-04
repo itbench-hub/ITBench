@@ -19,9 +19,10 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Nonexistent Kubernetes Workload Node](#Nonexistent-Kubernetes-Workload-Node) | Kubernetes | Deployment, Performance |
 | [OpenTelemetry Demo Feature Flag](#OpenTelemetry-Demo-Feature-Flag) | Kubernetes | Deployment, Performance |
 | [Scheduled Chaos Mesh Experiment](#Scheduled-Chaos-Mesh-Experiment) | Kubernetes | Deployment, Performance |
-| [Traffic Denying Istio Gateway Authorization Policy](#Traffic-Denying-Istio-Gateway-Authorization-Policy) | Kubernetes | Deployment, Networking |
+| [Traffic Denying Istio Gateway Authorization Policy](#Traffic-Denying-Istio-Gateway-Authorization-Policy) | Kubernetes | Deployment, Performance |
+| [Unassigned Kubernetes Workload Container Resource Limits](#Unassigned-Kubernetes-Workload-Container-Resource-Limits) | Kubernetes | Deployment, Performance |
 | [Unschedueable Kuberntes Workload Pod Anti Affinity Rule](#Unschedueable-Kuberntes-Workload-Pod-Anti-Affinity-Rule) | Kubernetes | Deployment, Performance |
-| [Unsupported Architecture Kubernetes Workload Container Image](#Unsupported-Architecture-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
+| [Unsupported Architecture Kubernetes Workload Container Image](#Unsupported-Architecture-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Networking |
 
 ## Detailed Summary of Faults
 
@@ -944,6 +945,67 @@ A fault is a solvable issue injected into an environment to create an incident.
     },
     "required": [
         "httpMethods",
+        "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
+### Unassigned Kubernetes Workload Container Resource Limits
+
+**Description:** This fault removes the resource limits of an indicated workload container.
+
+**Expectation:** The new pod will run normally. However, without resource limits, the pod will consume resources endless. This state can be combined with other faults to produce resource usage scenarios.
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/containers/images/
+- https://kubernetes.io/docs/concepts/workloads/
+- https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+- https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
         "kubernetesObject"
     ],
     "type": "object"
