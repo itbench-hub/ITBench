@@ -41,7 +41,6 @@ argument_specs:
             options:
               name:
                 choices:
-                  - hang-init-container
                   - invalid-command
                   - invalid-image
                   - invalid-node-selector
@@ -52,57 +51,21 @@ argument_specs:
                   - misconfigured-service-port
                   - modify-environment-variables
                   - unsupported-image
-                  - remove-resource-limits
-                  - pod-anti-affinity-rescheduling
-                  - misconfigured-resource-limits
-                  - authorization-policy-deny
+                  - expired-tls-certificates
+                  - disable-ambient-mode
                 required: true
                 type: str
-              authorization_policy_deny:
+              disable_ambient_mode:
                 required: false
                 type: dict
                 options:
-                  gateway:
-                    required: false
+                  namespace:
+                    required: true
                     type: dict
                     options:
                       name:
                         required: true
                         type: str
-                      namespace:
-                        required: true
-                        type: str
-                  methods:
-                    required: true
-                    elements: str
-                    type: list
-              hang_init_container:
-                required: false
-                type: dict
-                options:
-                  workload:
-                    required: true
-                    type: dict
-                    options:
-                      kind:
-                        choices:
-                          - Deployment
-                          - StatefulSet
-                        required: true
-                        type: str
-                      name:
-                        required: true
-                        type: str
-                      namespace:
-                        required: true
-                        type: str
-                  restart_policy:
-                    choices:
-                      - force
-                      - safe
-                    default: force
-                    required: false
-                    type: str
               invalid_command:
                 required: false
                 type: dict
@@ -217,34 +180,6 @@ argument_specs:
                       kind:
                         choices:
                           - Deployment
-                          - StatefulSet
-                        required: true
-                        type: str
-                      name:
-                        required: true
-                        type: str
-                      namespace:
-                        required: true
-                        type: str
-              misconfigured_resource_limits:
-                required: false
-                type: dict
-                options:
-                  workload:
-                    required: true
-                    type: dict
-                    options:
-                      container:
-                        required: true
-                        type: dict
-                        options:
-                          name:
-                            required: false
-                            type: str
-                      kind:
-                        choices:
-                          - Deployment
-                          - ReplicaSet
                           - StatefulSet
                         required: true
                         type: str
@@ -403,46 +338,39 @@ argument_specs:
                     default: force
                     required: false
                     type: str
-              remove_resource_limits:
+              expired_tls_certificates:
                 required: false
                 type: dict
                 options:
-                  workload:
-                    required: true
-                    type: dict
-                    options:
-                      kind:
-                        choices:
-                          - Deployment
-                          - StatefulSet
-                        required: true
-                        type: str
-                      name:
-                        required: true
-                        type: str
-                      namespace:
-                        required: true
-                        type: str
-                      container:
-                        required: true
-                        type: str
-              pod_anti_affinity_rescheduling:
+                  istio_namespace:
+                    default: istio-system
+                    required: false
+                    type: str
+                  cert_ttl:
+                    default: 1m
+                    required: false
+                    type: str
+                  max_cert_ttl:
+                    default: 2m
+                    required: false
+                    type: str
+                  grace_period:
+                    default: 30s
+                    required: false
+                    type: str
+              misconfigured_service_mesh:
                 required: false
                 type: dict
                 options:
-                  workload:
+                  misconfiguration_type:
+                    choices:
+                      - sidecar_injection_off
                     required: true
+                    type: str
+                  sidecar_injection_off:
+                    required: false
                     type: dict
                     options:
-                      kind:
-                        choices:
-                          - Deployment
-                          - StatefulSet
-                        required: true
-                        type: str
-                      name:
-                        required: true
-                        type: str
                       namespace:
                         required: true
                         type: str
