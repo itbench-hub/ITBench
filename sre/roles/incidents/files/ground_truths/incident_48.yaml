@@ -1,0 +1,36 @@
+---
+metadata:
+  version: "v1"
+fault:
+  - entity:
+      name: bookinfo
+      group_id: bookinfo-namespace-1
+      kind: Namespace
+    condition: "Ambient mode is disabled in namespace"
+    category: Change
+    fault_mechanism: misconfigured_service_mesh
+alerts:
+  - id: NoServiceMeshConnectionsOpened
+    group_id: bookinfo-namespace-1
+    metadata:
+      description: "No requests detected for services in bookinfo due to sidecar injection being off"
+groups:
+  - id: bookinfo-namespace-1
+    kind: Namespace
+    filter:
+      - bookinfo
+    namespace: bookinfo
+    root_cause: true
+aliases:
+  - - bookinfo-namespace-1
+propagations:
+  - source: bookinfo-namespace-1
+    target: bookinfo-namespace-1
+    condition: "Sidecar injection is disabled for bookinfo namespace"
+    effect: "Pods in the bookinfo namespace will not be in the service mesh, leading to no traffic."
+recommended_actions:
+  - solution:
+      id: re_enable_sidecar_injection
+      actions:
+        - "Re-enable Istio sidecar injection for the 'otel-demo' namespace."
+        - "Restart affected pods to ensure sidecars are injected."

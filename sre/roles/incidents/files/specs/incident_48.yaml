@@ -1,0 +1,26 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 47
+    name: Istio Disabled Ambient Mode Incident
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        bookinfo:
+          enabled: true
+        otel_demo:
+          enabled: false
+      tools:
+        category: sre
+        selected:
+          - istio
+    faults:
+      - custom:
+          name: disable-ambient-mode
+          disable_ambient_mode:
+            namespace:
+              name: "{{ applications_instances.bookinfo.namespace }}"

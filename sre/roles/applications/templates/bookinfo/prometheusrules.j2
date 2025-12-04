@@ -48,9 +48,16 @@ spec:
       interval: 1m
       rules:
         - alert: NoRequestsDetected
-          expr: sum by (source_canonical_service, namespace) (increase(istio_requests_total[2m])) == 0
+          expr: sum by (source_canonical_service, source_workload_namespace) (increase(istio_requests_total{source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"}[2m])) == 0
           for: 5m
           labels:
             severity: warning
           annotations:
-            description: "Service {{ $labels.source_canonical_service }} in namespace {{ $labels.namespace }} has 0 requests"
+            description: "Service {{ $labels.source_canonical_service }} in namespace {{ $labels.source_workload_namespace }} has 0 requests"
+        - alert: NoServiceMeshConnectionsOpened
+          expr: sum by (source_canonical_service, source_workload_namespace) (increase(istio_tcp_connections_opened_total{source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"}[2m])) == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Service {{ $labels.source_canonical_service }} in namespace {{ $labels.source_workload_namespace }} has 0 requests"

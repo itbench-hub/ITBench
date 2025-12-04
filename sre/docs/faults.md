@@ -6,6 +6,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 | Name | Platform | Tags |
 | --- | --- | --- |
+| [Disabled Istio Ambient Mode Kubernetes Namespace](#Disabled-Istio-Ambient-Mode-Kubernetes-Namespace) | Kubernetes | Deployment, Networking |
 | [Hanging Kubernetes Workload Init Container](#Hanging-Kubernetes-Workload-Init-Container) | Kubernetes | Deployment, Performance |
 | [Ingress Port Blocking Network Policy](#Ingress-Port-Blocking-Network-Policy) | Kubernetes | Deployment, Networking |
 | [Insufficent Kubernetes Resource Quota](#Insufficent-Kubernetes-Resource-Quota) | Kubernetes | Deployment, Performance |
@@ -26,6 +27,72 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 ## Detailed Summary of Faults
 
+### Disabled Istio Ambient Mode Kubernetes Namespace
+
+**Description:** This fault modifies a namespace, disabling it from being included in Istio's Ambient Mode service mesh.
+
+**Expectation:** No traffic will be routed through the service mesh. This would all the requests to not be processed with the various policies configured in Istio.
+
+**Resources:**
+- https://istio.io/latest/docs/ambient/overview/
+- https://istio.io/latest/docs/ambient/usage/add-workloads/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "httpMethods": {
+            "items": {
+                "enum": [
+                    "GET",
+                    "POST",
+                    "DELETE",
+                    "PUT"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Namespace"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
 ### Hanging Kubernetes Workload Init Container
 
 **Description:** This fault injects an init container which will hang into a workload.

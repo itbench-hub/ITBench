@@ -3,6 +3,88 @@
         "arguments": {
             "jsonSchema": {
                 "properties": {
+                    "httpMethods": {
+                        "items": {
+                            "enum": [
+                                "GET",
+                                "POST",
+                                "DELETE",
+                                "PUT"
+                            ],
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Namespace"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault modifies a namespace, disabling it from being included in Istio's Ambient Mode service mesh.",
+        "expectation": "No traffic will be routed through the service mesh. This would all the requests to not be processed with the various policies configured in Istio.",
+        "id": "disabled-istio-ambient-mode-kubernetes-namespace",
+        "name": "Disabled Istio Ambient Mode Kubernetes Namespace",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://istio.io/latest/docs/ambient/overview/",
+            "https://istio.io/latest/docs/ambient/usage/add-workloads/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.name }} edit namespace {{ args.kubernetesObject.metadata.name }}-deny`",
+                            "text": "Manually edit the manifest and replace the invalid label with the correct value."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Networking"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
                     "kubernetesObject": {
                         "properties": {
                             "apiVersion": {
