@@ -89,6 +89,15 @@
     - fault.custom.name == 'unsupported-image'
     - fault.custom.unsupported_image is defined
 
+- name: Inject remove resource limits injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_custom_remove_resource_limits.yaml
+  vars:
+    spec: "{{ fault.custom.remove_resource_limits }}"
+  when:
+    - fault.custom.name == 'remove-resource-limits'
+    - fault.custom.remove_resource_limits is defined
+
 - name: Import pod anti-affinity rescheduling injection tasks
   ansible.builtin.import_tasks:
     file: inject_custom_pod_anti_affinity_rescheduling.yaml

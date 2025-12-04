@@ -1,0 +1,17 @@
+---
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_faults_workload_container_index.yaml
+  vars:
+    faults_container_workload: "{{ spec.workload }}"
+
+- name: Inject fault (misconfigured resource limits)
+  kubernetes.core.k8s_json_patch:
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+    patch:
+      - op: remove
+        path: /spec/template/spec/containers/{{ faults_workload_container_index }}/resources/limits
