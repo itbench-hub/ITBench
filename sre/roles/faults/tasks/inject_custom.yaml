@@ -115,3 +115,12 @@
   when:
     - fault.custom.name == 'misconfigured-resource-limits'
     - fault.custom.misconfigured_resource_limits is defined
+
+- name: Import authorization policy deny injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_custom_authorization_policy_deny.yaml
+  vars:
+    spec: "{{ fault.custom.authorization_policy_deny }}"
+  when:
+    - fault.custom.name == 'authorization-policy-deny'
+    - fault.custom.authorization_policy_deny is defined

@@ -19,6 +19,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Nonexistent Kubernetes Workload Node](#Nonexistent-Kubernetes-Workload-Node) | Kubernetes | Deployment, Performance |
 | [OpenTelemetry Demo Feature Flag](#OpenTelemetry-Demo-Feature-Flag) | Kubernetes | Deployment, Performance |
 | [Scheduled Chaos Mesh Experiment](#Scheduled-Chaos-Mesh-Experiment) | Kubernetes | Deployment, Performance |
+| [Traffic Denying Istio Gateway Authorization Policy](#Traffic-Denying-Istio-Gateway-Authorization-Policy) | Kubernetes | Deployment, Networking |
 | [Unschedueable Kuberntes Workload Pod Anti Affinity Rule](#Unschedueable-Kuberntes-Workload-Pod-Anti-Affinity-Rule) | Kubernetes | Deployment, Performance |
 | [Unsupported Architecture Kubernetes Workload Container Image](#Unsupported-Architecture-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
 
@@ -872,6 +873,78 @@ A fault is a solvable issue injected into an environment to create an incident.
     },
     "required": [
         "schedule"
+    ],
+    "type": "object"
+}
+```
+### Traffic Denying Istio Gateway Authorization Policy
+
+**Description:** This fault injects an authorization policy which denies all HTTP requests to a Kubernetes Gateway.
+
+**Expectation:** All HTTP requests of the specified methods will be blocked, resulting in a 403 status code in the response.
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/services-networking/gateway/
+- https://gateway-api.sigs.k8s.io/
+- https://istio.io/latest/docs/reference/config/security/authorization-policy/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "httpMethods": {
+            "items": {
+                "enum": [
+                    "GET",
+                    "POST",
+                    "DELETE",
+                    "PUT"
+                ],
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "gateway.networking.k8s.io"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Gateway"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "httpMethods",
+        "kubernetesObject"
     ],
     "type": "object"
 }

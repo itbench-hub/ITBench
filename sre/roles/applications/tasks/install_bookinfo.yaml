@@ -10,8 +10,6 @@
     repo: https://github.com/istio/istio.git
     dest: "{{ applications_temporary_directory.path }}"
     version: 1.27.3
-  when:
-    - applications_temporary_directory is defined
 
 - name: Create the release namespace
   kubernetes.core.k8s:
@@ -39,18 +37,76 @@
   loop_control:
     label: manifest/{{ manifest_file_path | basename }}
     loop_var: manifest_file_path
-  when:
-    - applications_temporary_directory is defined
 
-- name: Create Prometheus monitoring objects
+- name: Create Prometheus Pod Monitor
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    template: templates/bookinfo/monitoring.j2
+    template: templates/bookinfo/podmonitor.j2
     state: present
+
+- name: Wait for Kubernetes Gateway to be programmed
+  kubernetes.core.k8s_info:
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    name: bookinfo-gateway
+    namespace: "{{ applications_instances.bookinfo.namespace }}"
+    wait: true
+    wait_condition:
+      reason: Programmed
+      status: "True"
+      type: Programmed
 
 - name: Delete the temporary directory
   ansible.builtin.file:
     path: "{{ applications_temporary_directory.path }}"
     state: absent
+
+- name: Retrieve Kubernetes Gateway address
+  kubernetes.core.k8s_info:
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    name: bookinfo-gateway
+    namespace: "{{ applications_instances.bookinfo.namespace }}"
+  register: applications_gateway
+  until:
+    - applications_gateway.resources | length == 1
+    - applications_gateway.resources[0].status.addresses is defined
+    - applications_gateway.resources[0].status.addresses | length > 0
+  delay: 15
+  retries: 20
+
+- name: Extract ip address information
+  ansible.builtin.set_fact:
+    applications_bookinfo_gateway_endpoint: http://{{ applications_gateway.resources[0].status.addresses[0].value }}:80
   when:
-    - applications_temporary_directory is defined
+    - applications_gateway.resources[0].status.addresses[0].type == "IPAddress"
+
+- name: Extract hostname address information
+  ansible.builtin.set_fact:
+    applications_bookinfo_gateway_endpoint: http://{{ applications_gateway.resources[0].status.addresses[0].value }}
+  when:
+    - applications_gateway.resources[0].status.addresses[0].type == "Hostname"
+
+- name: Create load generators
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    template: templates/bookinfo/loadgenerators.j2
+    state: present
+  vars:
+    container_image: |-
+      {{
+        lookup('ansible.builtin.file', 'files/bookinfo/loadgenerator.yaml') |
+        from_yaml |
+        community.general.json_query('spec.template.spec.containers[0].image')
+      }}
+
+- name: Create Prometheus Rules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    template:
+      path: templates/bookinfo/prometheusrules.j2
+      variable_end_string: "]]"
+      variable_start_string: "[["
+    state: present

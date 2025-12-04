@@ -1146,6 +1146,102 @@
         "arguments": {
             "jsonSchema": {
                 "properties": {
+                    "httpMethods": {
+                        "items": {
+                            "enum": [
+                                "GET",
+                                "POST",
+                                "DELETE",
+                                "PUT"
+                            ],
+                            "type": "string"
+                        },
+                        "type": "array"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "gateway.networking.k8s.io"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Gateway"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "httpMethods",
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects an authorization policy which denies all HTTP requests to a Kubernetes Gateway.",
+        "expectation": "All HTTP requests of the specified methods will be blocked, resulting in a 403 status code in the response.",
+        "id": "traffic-denying-istio-gateway-authorization-policy",
+        "name": "Traffic Denying Istio Gateway Authorization Policy",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/services-networking/gateway/",
+            "https://gateway-api.sigs.k8s.io/",
+            "https://istio.io/latest/docs/reference/config/security/authorization-policy/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny`",
+                            "text": "Manually edit the manifest and replace the invalid rule with the correct value."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny`",
+                            "text": "Delete the faulty authorization policy."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
                     "kubernetesObject": {
                         "properties": {
                             "apiVersion": {
@@ -1329,7 +1425,7 @@
         },
         "tags": [
             "Deployment",
-            "Performance"
+            "Networking"
         ]
     }
 ]
