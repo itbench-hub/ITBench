@@ -142,3 +142,12 @@
   when:
     - fault.custom.name == 'disable-ambient-mode'
     - fault.custom.disable_ambient_mode is defined
+
+- name: Import readiness flapping removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_custom_readiness_flap.yaml
+  vars:
+    spec: "{{ fault.custom.readiness_flap }}"
+  when:
+    - fault.custom.name == 'readiness-flap'
+    - fault.custom.readiness_flap is defined

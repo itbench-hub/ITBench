@@ -1,0 +1,90 @@
+---
+- name: Retrieve information on workload
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+  register: faults_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - faults_workload is defined
+      - faults_workload.resources | length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Generate list of containers
+  ansible.builtin.set_fact:
+    faults_workload_containers: |-
+      {{
+        (
+          faults_workload_containers | default([])
+        ) +
+        [container] if container.name != spec.workload.container.name else []
+      }}
+    faults_workload_injection_container: |-
+      {{
+        (
+          faults_workload_injection_container | default([])
+        ) +
+        [container] if container.name == spec.workload.container.name else []
+      }}
+  loop: "{{ faults_workload.resources[0].spec.template.spec.containers }}"
+  loop_control:
+    label: container/{{ container.name }}
+    loop_var: container
+
+- name: Validate that container exists
+  ansible.builtin.assert:
+    that:
+      - faults_workload_injection_container is defined
+      - faults_workload_injection_container | length == 1
+    fail_msg: Unable to find workload container. Please verify that the workload container exists.
+    success_msg: Found workload container.
+
+- name: Inject fault (faulty readiness probe)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers: |-
+              {{
+                faults_workload_containers +
+                [
+                  faults_workload_injection_container[0] |
+                  combine(
+                    {
+                      "readinessProbe": {
+                        "failureThreshold": 3,
+                        "httpGet": {
+                            "path": "/ready",
+                            "port": 40,
+                            "scheme": "HTTP"
+                        },
+                        "periodSeconds": 5,
+                        "successThreshold": 1,
+                        "timeoutSeconds": 3
+                      }
+                    }
+                  )
+                ]
+              }}
+    state: patched
+
+- name: Import workload restart tasks
+  ansible.builtin.import_tasks:
+    file: force_workload_restart.yaml
+  when:
+    - (spec.workload.restart_policy | default('force')) == 'force'
+  vars:
+    restartable_workload: "{{ spec.workload }}"

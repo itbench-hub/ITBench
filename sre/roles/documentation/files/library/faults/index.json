@@ -712,6 +712,91 @@
         "arguments": {
             "jsonSchema": {
                 "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects a misconfigured readiness probe into a workload container. This probe blocks the pod from starting up.",
+        "expectation": "The faulted pod(s) will enter the `Pending` state due to a `ContainersNotReady` reason for the `Ready` condition.",
+        "id": "misconfigured-kuberntes-workload-container-readiness-probe",
+        "name": "Misconfigured Kuberntes Workload Container Readiness Probe",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "text": "Manually edit the manifest and remove the faulty readiness probe in the container rule."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
                     "container": {
                         "properties": {
                             "env": {

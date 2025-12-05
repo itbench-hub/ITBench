@@ -14,6 +14,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Invalid Kubernetes Workload Container Command](#Invalid-Kubernetes-Workload-Container-Command) | Kubernetes | Deployment, Performance |
 | [Invalid Valkey Password](#Invalid-Valkey-Password) | Kubernetes | Authentication, Deployment |
 | [Misconfigured Kubernetes Horizontal Pod Autoscaler](#Misconfigured-Kubernetes-Horizontal-Pod-Autoscaler) | Kubernetes | Deployment, Performance |
+| [Misconfigured Kuberntes Workload Container Readiness Probe](#Misconfigured-Kuberntes-Workload-Container-Readiness-Probe) | Kubernetes | Deployment, Performance |
 | [Modified Kubernetes Workload Container Environment Variable](#Modified-Kubernetes-Workload-Container-Environment-Variable) | Kubernetes | Deployment, Performance |
 | [Modified Target Port Kubernetes Service](#Modified-Target-Port-Kubernetes-Service) | Kubernetes | Deployment, Networking |
 | [Nonexistent Kubernetes Workload Container Image](#Nonexistent-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
@@ -494,6 +495,67 @@ A fault is a solvable issue injected into an environment to create an incident.
 - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
 - https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/
 - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
+### Misconfigured Kuberntes Workload Container Readiness Probe
+
+**Description:** This fault injects a misconfigured readiness probe into a workload container. This probe blocks the pod from starting up.
+
+**Expectation:** The faulted pod(s) will enter the `Pending` state due to a `ContainersNotReady` reason for the `Ready` condition.
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
+- https://kubernetes.io/docs/concepts/workloads/
+- https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+- https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
 
 **Arguments Schema:**
 ```json
