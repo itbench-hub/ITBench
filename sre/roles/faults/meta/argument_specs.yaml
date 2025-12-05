@@ -50,11 +50,59 @@ argument_specs:
                   - misconfigured-resource-quota
                   - misconfigured-service-port
                   - modify-environment-variables
+                  - readiness-flap
                   - unsupported-image
-                  - expired-tls-certificates
                   - disable-ambient-mode
-                required: true
-                type: str
+                  - remove-resource-limits
+                  - pod-anti-affinity-rescheduling
+                  - misconfigured-resource-limits
+                  - authorization-policy-deny
+                  - hang-init-container
+              authorization_policy_deny:
+                required: false
+                type: dict
+                options:
+                  gateway:
+                    required: false
+                    type: dict
+                    options:
+                      name:
+                        required: true
+                        type: str
+                      namespace:
+                        required: true
+                        type: str
+                  methods:
+                    required: true
+                    elements: str
+                    type: list
+              hang_init_container:
+                required: false
+                type: dict
+                options:
+                  workload:
+                    required: true
+                    type: dict
+                    options:
+                      kind:
+                        choices:
+                          - Deployment
+                          - StatefulSet
+                        required: true
+                        type: str
+                      name:
+                        required: true
+                        type: str
+                      namespace:
+                        required: true
+                        type: str
+                  restart_policy:
+                    choices:
+                      - force
+                      - safe
+                    default: force
+                    required: false
+                    type: str
               disable_ambient_mode:
                 required: false
                 type: dict
@@ -304,6 +352,40 @@ argument_specs:
                     default: force
                     required: false
                     type: str
+              readiness_flap:
+                required: false
+                type: dict
+                options:
+                  workload:
+                    required: true
+                    type: dict
+                    options:
+                      kind:
+                        choices:
+                          - Deployment
+                          - StatefulSet
+                        required: true
+                        type: str
+                      name:
+                        required: true
+                        type: str
+                      namespace:
+                        required: true
+                        type: str
+                      container:
+                        required: false
+                        type: dict
+                        options:
+                          name:
+                            required: false
+                            type: str
+                  restart_policy:
+                    choices:
+                      - force
+                      - safe
+                    default: force
+                    required: false
+                    type: str
               unsupported_image:
                 required: false
                 type: dict
@@ -338,39 +420,74 @@ argument_specs:
                     default: force
                     required: false
                     type: str
-              expired_tls_certificates:
+              pod_anti_affinity_rescheduling:
                 required: false
                 type: dict
                 options:
-                  istio_namespace:
-                    default: istio-system
-                    required: false
-                    type: str
-                  cert_ttl:
-                    default: 1m
-                    required: false
-                    type: str
-                  max_cert_ttl:
-                    default: 2m
-                    required: false
-                    type: str
-                  grace_period:
-                    default: 30s
-                    required: false
-                    type: str
-              misconfigured_service_mesh:
-                required: false
-                type: dict
-                options:
-                  misconfiguration_type:
-                    choices:
-                      - sidecar_injection_off
+                  workload:
                     required: true
-                    type: str
-                  sidecar_injection_off:
-                    required: false
                     type: dict
                     options:
+                      kind:
+                        choices:
+                          - Deployment
+                          - StatefulSet
+                        required: true
+                        type: str
+                      name:
+                        required: true
+                        type: str
+                      namespace:
+                        required: true
+                        type: str
+              remove_resource_limits:
+                required: false
+                type: dict
+                options:
+                  workload:
+                    required: true
+                    type: dict
+                    options:
+                      kind:
+                        choices:
+                          - Deployment
+                          - StatefulSet
+                        required: true
+                        type: str
+                      name:
+                        required: true
+                        type: str
+                      namespace:
+                        required: true
+                        type: str
+                      container:
+                        required: true
+                        type: str
+              misconfigured_resource_limits:
+                required: false
+                type: dict
+                options:
+                  workload:
+                    required: true
+                    type: dict
+                    options:
+                      container:
+                        required: true
+                        type: dict
+                        options:
+                          name:
+                            required: false
+                            type: str
+                      kind:
+                        choices:
+                          - Deployment
+                          - ReplicaSet
+                          - StatefulSet
+                        required: true
+                        type: str
+                      name:
+                        required: true
+                        type: str
                       namespace:
                         required: true
                         type: str
