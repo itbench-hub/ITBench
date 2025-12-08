@@ -23,7 +23,6 @@
           openshift.io/sa.scc.uid-range: 1/2000
           openshift.io/sa.scc.supplemental-groups: 1/1000
         labels:
-          istio.io/dataplane-mode: ambient
           it-bench/monitoring: "true"
     state: present
 
@@ -322,7 +321,7 @@
             otlphttp/prometheus:
               endpoint: http://{{ helm_releases.prometheus.name }}-kube-prometheus-prometheus.{{ helm_releases.prometheus.namespace }}.svc.cluster.local:9090
             prometheus:
-              endpoint: 0.0.0.0:8889
+              endpoint: 0.0.0.0:8888
           service:
             pipelines:
               logs:
@@ -339,19 +338,40 @@
                   - debug
                   - otlp
                   - spanmetrics
+            telemetry:
+              metrics:
+                level: detailed
+                readers:
+                  - pull:
+                      # interval: 10000
+                      # timeout: 5000
+                      exporter:
+                        prometheus:
+                          host: 0.0.0.0
+                          port: 8889
         serviceMonitor:
           enabled: true
           metricsEndpoints:
-            - port: demo-metrics
             - port: metrics
+            - port: telemetry
         podAnnotations:
           openshift.io/required-scc: restricted-v2
         ports:
-          demo-metrics:
+          jaeger-compact:
+            enabled: false
+          jaeger-thrift:
+            enabled: false
+          jaeger-grpc:
+            enabled: false
+          metrics:
+            enabled: true
+          telemetry:
             enabled: true
             containerPort: 8889
             servicePort: 8889
             protocol: TCP
+          zipkin:
+            enabled: false
         resources:
           requests:
             cpu: 75m
