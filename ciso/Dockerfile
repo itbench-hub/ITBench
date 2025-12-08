@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-311:9.7-1764607342
+FROM registry.access.redhat.com/ubi9/python-311:9.7-1765181850
 
 USER 0
 RUN dnf update -y && dnf install -y gnupg2 unzip openssh
