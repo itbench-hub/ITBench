@@ -7,8 +7,9 @@
 
 - name: Checkout Istio repository using Git
   ansible.builtin.git:
-    repo: https://github.com/istio/istio.git
+    depth: 1
     dest: "{{ applications_temporary_directory.path }}"
+    repo: https://github.com/istio/istio.git
     version: 1.27.3
 
 - name: Create the release namespace
@@ -20,7 +21,6 @@
       metadata:
         name: "{{ applications_instances.bookinfo.namespace }}"
         labels:
-          istio.io/dataplane-mode: ambient
           it-bench/monitoring: "true"
     state: present
 
@@ -38,10 +38,10 @@
     label: manifest/{{ manifest_file_path | basename }}
     loop_var: manifest_file_path
 
-- name: Create Prometheus Pod Monitor
+- name: Create Prometheus Pod Monitors
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    template: templates/bookinfo/podmonitor.j2
+    template: templates/bookinfo/podmonitors.j2
     state: present
 
 - name: Wait for Kubernetes Gateway to be programmed
@@ -56,6 +56,33 @@
       reason: Programmed
       status: "True"
       type: Programmed
+
+- name: Retrieve all deployments
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ applications_instances.bookinfo.namespace }}"
+  register: applications_bookinfo_deployments
+
+- name: Label all pods managed by deployments with Istio Ambient Plane label
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ deployment.apiVersion }}"
+      kind: "{{ deployment.kind }}"
+      metadata:
+        name: "{{ deployment.metadata.name }}"
+        namespace: "{{ deployment.metadata.namespace }}"
+      spec:
+        template:
+          metadata:
+            labels: "{{ deployment.spec.template.metadata.labels | combine({'istio.io/dataplane-mode': 'ambient'}) }}"
+    state: patched
+  loop: "{{ applications_bookinfo_deployments.resources }}"
+  loop_control:
+    label: deployment/{{ deployment.metadata.name }}
+    loop_var: deployment
 
 - name: Delete the temporary directory
   ansible.builtin.file:
@@ -79,13 +106,15 @@
 
 - name: Extract ip address information
   ansible.builtin.set_fact:
-    applications_bookinfo_gateway_endpoint: http://{{ applications_gateway.resources[0].status.addresses[0].value }}:80
+    applications_bookinfo_gateway_endpoints:
+      http: http://{{ applications_gateway.resources[0].status.addresses[0].value }}:80
   when:
     - applications_gateway.resources[0].status.addresses[0].type == "IPAddress"
 
 - name: Extract hostname address information
   ansible.builtin.set_fact:
-    applications_bookinfo_gateway_endpoint: http://{{ applications_gateway.resources[0].status.addresses[0].value }}
+    applications_bookinfo_gateway_endpoints:
+      http: http://{{ applications_gateway.resources[0].status.addresses[0].value }}
   when:
     - applications_gateway.resources[0].status.addresses[0].type == "Hostname"
 
