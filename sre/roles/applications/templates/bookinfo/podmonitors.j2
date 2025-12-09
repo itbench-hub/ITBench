@@ -1,0 +1,28 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: productpage-v1
+  namespace: {{ applications_instances.bookinfo.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: productpage
+      version: v1
+  podMetricsEndpoints:
+    - interval: 30s
+      portNumber: 9080
+  fallbackScrapeProtocol: PrometheusText1.0.0
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: bookinfo-gateway
+  namespace: {{ applications_instances.bookinfo.namespace }}
+spec:
+  selector:
+    matchLabels:
+      gateway.networking.k8s.io/gateway-name: bookinfo-gateway
+  podMetricsEndpoints:
+    - interval: 30s
+      port: metrics

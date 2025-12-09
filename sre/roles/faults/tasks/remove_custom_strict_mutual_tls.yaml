@@ -1,0 +1,30 @@
+---
+- name: Retrieve all fault related peer authentications
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: security.istio.io/v1
+    kind: PeerAuthentication
+    label_selectors:
+      - app.kubernetes.io/component = strict-tls-fault
+      - app.kubernetes.io/managed-by = ITBench
+  register: faults_peer_authentications
+
+- name: Delete all fault related peer authentication
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ peerauthentication.apiVersion }}"
+      kind: "{{ peerauthentication.kind }}"
+      metadata:
+        name: "{{ peerauthentication.metadata.name }}"
+        namespace: "{{ peerauthentication.metadata.namespace }}"
+    state: absent
+    wait: true
+  loop: "{{ faults_peer_authentications.resources }}"
+  loop_control:
+    label: peerauthentication/{{ peerauthentication.metadata.name }}
+    loop_var: peerauthentication
+
+- name: Display fault removal instructions
+  ansible.builtin.debug:
+    msg: To remove this fault, please uninstall and reinstall the application it was injected into.

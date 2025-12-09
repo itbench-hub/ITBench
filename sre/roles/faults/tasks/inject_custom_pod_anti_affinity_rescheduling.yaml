@@ -11,7 +11,7 @@
 - name: Create a deployment on all worker nodes
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    template: templates/deployment/pod_anti_affinity.j2
+    template: templates/pod_anti_affinity/deployment.j2
     state: present
   loop: "{{ faults_nodes.resources | default([]) }}"
   loop_control:
@@ -22,7 +22,7 @@
     fault_args: "{{ spec }}"
     container_image: |-
       {{
-        lookup('ansible.builtin.file', 'files/deployment/pod_anti_affinity.yaml') |
+        lookup('ansible.builtin.file', 'files/pod_anti_affinity/deployment.yaml') |
         from_yaml |
         community.general.json_query('spec.template.spec.containers[0].image')
       }}

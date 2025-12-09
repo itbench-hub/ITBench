@@ -27,37 +27,54 @@ spec:
             severity: critical
           annotations:
             description: "Pods in CrashLoopBackOff state in namespace {{ $labels.namespace }} above 0 (current: {{ $value }})"
-    - name: GoldenSignalAlerts
+    - name: bookinfo.productpage.goldensignal
       interval: 1m
       rules:
-        - alert: RequestLatency
-          expr: histogram_quantile(0.95, sum by(le, source_canonical_service, namespace) (rate(istio_request_duration_milliseconds_bucket[2m]))) > 1500
-          for: 1m
+        - alert: HighRequestErrorRate
+          expr: sum by (destination_app, response_code, namespace) (rate(request_result_total{response_code!~"20*", namespace="[[ applications_instances.bookinfo.namespace ]]"}[2m])) > 0
+          for: 2m
           labels:
             severity: warning
           annotations:
-            description: "Latency in service {{ $labels.source_canonical_service }} in namespace {{ $labels.namespace }} is above 1500ms (current: {{ $value }}s)"
-        - alert: RequestErrorRate
-          expr: sum by (source_canonical_service, namespace) (rate(istio_requests_total{response_code!="200"}[2m])) > 0
-          for: 1m
+            description: "Request error rate (code: {{ $labels.response_code }}) between productpage and {{ $labels.destination_app }} in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
+        - alert: NoRequestsReceived
+          expr: sum by (destination_app, namespace) (rate(request_result_total{namespace="[[ applications_instances.bookinfo.namespace ]]"}[2m])) == 0
+          for: 2m
           labels:
-            severity: warning
+            severity: critical
           annotations:
-            description: "Request error rate in service {{ $labels.source_canonical_service }} in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
-    - name: GoodputAlerts
+            description: "{{ $labels.destination_app }} in namespace {{ $labels.namespace }} has received no requests from productpage"
+    - name: bookinfo.gateway.goldensignal
       interval: 1m
       rules:
-        - alert: NoRequestsDetected
-          expr: sum by (source_canonical_service, source_workload_namespace) (increase(istio_requests_total{source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"}[2m])) == 0
-          for: 5m
+        - alert: HighRequestLatency
+          expr: histogram_quantile(0.95, sum by(le, destination_canonical_service, source_canonical_service, namespace) (rate(istio_request_duration_milliseconds_bucket{namespace="[[ applications_instances.bookinfo.namespace ]]"}[2m]))) > 1500
+          for: 2m
           labels:
             severity: warning
           annotations:
-            description: "Service {{ $labels.source_canonical_service }} in namespace {{ $labels.source_workload_namespace }} has 0 requests"
-        - alert: NoServiceMeshConnectionsOpened
-          expr: sum by (source_canonical_service, source_workload_namespace) (increase(istio_tcp_connections_opened_total{source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"}[2m])) == 0
-          for: 5m
+            description: "Connection latency between {{ $labels.source_canonical_service }} and {{ $labels.destination_canonical_service }} in namespace {{ $labels.namespace }} is above 1500ms (current: {{ $value }}s)"
+        - alert: HighRequestErrorRate
+          expr: sum by (destination_canonical_service, source_canonical_service, response_code, namespace) (rate(istio_requests_total{response_code!~"20*", namespace="[[ applications_instances.bookinfo.namespace ]]"}[2m])) > 0
+          for: 2m
           labels:
             severity: warning
           annotations:
-            description: "Service {{ $labels.source_canonical_service }} in namespace {{ $labels.source_workload_namespace }} has 0 requests"
+            description: "Request error rate (code: {{ $labels.response_code }}) between {{ $labels.source_canonical_service }} and {{ $labels.destination_canonical_service }} in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
+        - alert: NoRequestsReceived
+          expr: sum by (destination_canonical_service, source_canonical_service, namespace) (increase(istio_requests_total{namespace="[[ applications_instances.bookinfo.namespace ]]"}[2m])) == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "{{ $labels.destination_canonical_service }} in namespace {{ $labels.namespace }} has received no requests from {{ $labels.source_canonical_service }}"
+    - name: bookinfo.servicemesh.goldensignal
+      interval: 1m
+      rules:
+        - alert: NoRequestsOpened
+          expr: sum by (destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace) (increase(istio_tcp_connections_opened_total{source_canonical_service=~"load-generator*", source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"}[2m])) == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "{{ $labels.destination_canonical_service }} in namespace {{ $labels.destination_workload_namespace }}  has received no requests from {{ $labels.source_canonical_service }} in namespace {{ $labels.source_workload_namespace }}"

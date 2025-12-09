@@ -1,11 +1,11 @@
 ---
-- name: Retrieve workload
+- name: Retrieve information on workload
   kubernetes.core.k8s_info:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     api_version: apps/v1
     kind: "{{ spec.workload.kind }}"
     name: "{{ spec.workload.name }}"
     namespace: "{{ spec.workload.namespace }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
   register: faults_workload
 
 - name: Validate that workload exists
@@ -16,7 +16,15 @@
     fail_msg: Unable to find workload. Please verify that the workload exists.
     success_msg: Found workload.
 
-- name: Inject fault (init container hang)
+- name: Create Peer Authentication object
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    template: templates/peer_authentication_strict_tls/peerauthentication.j2
+    state: present
+  vars:
+    fault_args: "{{ spec }}"
+
+- name: Remove workload from service mesh
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
@@ -27,26 +35,10 @@
         namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
       spec:
         template:
-          spec:
-            initContainers: |-
+          metadata:
+            labels: |-
               {{
-                (
-                  faults_workload.resources[0].spec.template.spec.initContainers | default([])
-                ) +
-                init_containers
+                faults_workload.resources[0].spec.template.metadata.labels |
+                combine({"istio.io/dataplane-mode": "none"})
               }}
     state: patched
-  vars:
-    init_containers: |-
-      {{
-        lookup('ansible.builtin.file', 'files/hanging_init_container/deployment.yaml') |
-        from_yaml |
-        community.general.json_query('spec.template.spec.initContainers')
-      }}
-
-- name: Restart pods if restart_policy is force
-  ansible.builtin.import_tasks:
-    file: force_workload_restart.yaml
-  when: (spec.workload.restart_policy | default('force')) == 'force'
-  vars:
-    restartable_workload: "{{ spec.workload }}"
