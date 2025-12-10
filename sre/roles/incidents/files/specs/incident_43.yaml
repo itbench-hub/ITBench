@@ -1,0 +1,26 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 43
+    name: DNS Misconfiguration
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+    faults:
+      - custom:
+          name: dns-misconfiguration
+          dns_misconfiguration:
+            workload:
+              kind: Deployment
+              name: frontend
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
