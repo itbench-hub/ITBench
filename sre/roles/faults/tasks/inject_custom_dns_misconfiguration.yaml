@@ -1,0 +1,32 @@
+---
+- name: Retrieve information on target workload
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+  register: faults_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - faults_workload is defined
+      - faults_workload.resources | length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Inject DNS misconfiguration fault
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            dnsPolicy: Default
+    state: patched
