@@ -18,6 +18,13 @@
     label: fault/{{ fault.name }}
     loop_var: fault
 
+- name: Validate unique ids for all faults
+  ansible.builtin.assert:
+    that:
+      - (documentation_faults_library | unique(attribute="id") | length) == (documentation_faults_library | length)
+    fail_msg: Duplicate id discovered in library index. Please ensure all faults have a unique name or id value.
+    success_msg: All fault in library index have unique ids.
+
 - name: Generate faults library index
   ansible.builtin.copy:
     content: "{{ documentation_faults_library | sort(attribute='name') | to_nice_json }}"
@@ -26,7 +33,7 @@
 
 - name: Generate Faults README
   ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.template', 'templates/faults-readme.j2') }}"
+    content: "{{ lookup('ansible.builtin.template', 'templates/readmes/faults.j2') }}"
     dest: "{{ playbook_dir }}/../docs/faults.md"
     mode: "0644"
   vars:

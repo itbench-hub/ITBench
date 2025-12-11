@@ -1,5 +1,111 @@
 [
     {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault places a workload on a node and prevents it from scaling by blocking all new scheduling attempts.",
+        "expectation": "The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will not start running.",
+        "id": "cordoned-kubernetes-worker-node",
+        "name": "Cordoned Kubernetes Worker Node",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/architecture/nodes/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                            "text": "Manually edit the manifest and replace the node selector with the correct value."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl get nodes --selector='node-role.kubernetes.io/node='",
+                            "text": "Retrieve all worker node nodes"
+                        },
+                        {
+                            "text": "Uncordon all worker nodes which are cordoned."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": {
+            "application": [
+                "NoRequestsReceived"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -69,7 +175,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.name }} edit namespace {{ args.kubernetesObject.metadata.name }}-deny`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} edit namespace {{ args.kubernetesObject.metadata.name }}-deny",
                             "text": "Manually edit the manifest and replace the invalid label with the correct value."
                         }
                     ]
@@ -82,6 +188,100 @@
         ]
     },
     {
+        "alerts": {
+            "goldenSignal": [
+                "HighRequestErrorRate"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects an DNS policy which results in the workload being unable to resolve the name of outgoing services.",
+        "expectation": "All outgoing requests made by the workload will failed due to being unable to resolve the DNS name.",
+        "id": "failing-name-resolution-kubernetes-workload-dns-policy",
+        "name": "Failing Name Resolution Kubernetes Workload DNS Policy",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny",
+                            "text": "Manually edit the manifest and replace the invalid rule with the correct value."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny",
+                            "text": "Delete the faulty authorization policy."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Networking"
+        ]
+    },
+    {
+        "alerts": {
+            "application": [
+                "KubeContainerWaiting"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -131,7 +331,7 @@
             }
         },
         "description": "This fault injects an init container which will hang into a workload.",
-        "expectation": "The faulted pod will enter the `Pending` state. All containers will be in the `Waiting` state`. The hanging init container will be in the `Running` state.",
+        "expectation": "The faulted pod will enter the `Pending` state. All containers will be in the `Waiting` state. The hanging init container will be in the `Running` state.",
         "id": "hanging-kubernetes-workload-init-container",
         "name": "Hanging Kubernetes Workload Init Container",
         "platform": "Kubernetes",
@@ -146,7 +346,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -154,7 +354,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and replace the command of the hanging init container to one which will complete."
                         }
                     ]
@@ -162,7 +362,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and remove the faulty init container."
                         }
                     ]
@@ -175,6 +375,14 @@
         ]
     },
     {
+        "alerts": {
+            "application": [
+                "NoRequestsReceived"
+            ],
+            "goldenSignal": [
+                "HighRequestErrorRate"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -240,11 +448,11 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} get networkpolicy`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get networkpolicy",
                             "text": "Retrieve and review the configuration of the network policy(s) in the affected namespace."
                         },
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy << name of policy >>`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy {{ args.kubernetesObject.metadata.name }}-deny",
                             "text": "Manually edit the manifest(s) and allow access to workload's ports of the network policy(s)."
                         }
                     ]
@@ -252,11 +460,11 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} get networkpolicy`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get networkpolicy",
                             "text": "Retrieve and review the configuration of the network policy(s) in the affected namespace."
                         },
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy << name of policy >>`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy {{ args.kubernetesObject.metadata.name }}-deny",
                             "text": "Delete the offending network policy(s) if it is no longer required."
                         }
                     ]
@@ -269,6 +477,11 @@
         ]
     },
     {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -335,11 +548,11 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} get resourcequota`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get resourcequota",
                             "text": "Retrieve and review the configuration of the resource quota(s) in the affected namespace."
                         },
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit resourcequota << name of quota >>`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit resourcequota {{ args.kubernetesObject.metadata.namespace }}",
                             "text": "Manually edit the manifest(s) and increase the values of the resource quota(s)."
                         }
                     ]
@@ -347,11 +560,11 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} get resourcequota`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get resourcequota`",
                             "text": "Retrieve and review the configuration of the resource quota(s) in the affected namespace."
                         },
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete resourcequota << name of quota >>`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete resourcequota {{ args.kubernetesObject.metadata.namespace }}",
                             "text": "Delete the offending resource quota(s) if it is no longer required."
                         }
                     ]
@@ -364,6 +577,11 @@
         ]
     },
     {
+        "alerts": {
+            "application": [
+                "KubePodCrashLooping"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -440,7 +658,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -448,7 +666,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and replace the invalid container's resource configuration with the correct value(s)."
                         }
                     ]
@@ -461,6 +679,11 @@
         ]
     },
     {
+        "alerts": {
+            "application": [
+                "KubePodCrashLooping"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -537,7 +760,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -545,7 +768,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and replace the invalid command with the correct value."
                         }
                     ]
@@ -558,6 +781,11 @@
         ]
     },
     {
+        "alerts": {
+            "goldenSignal": [
+                "HighRequestLatency"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -619,7 +847,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} exec {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }} -- valkey-cli CONFIG SET requirepass << password >>`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} exec {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} -- valkey-cli CONFIG SET requirepass ''",
                             "text": "Change the password back to the original by access the pod directly."
                         }
                     ]
@@ -632,6 +860,11 @@
         ]
     },
     {
+        "alerts": {
+            "application": [
+                "KubeHpaMaxedOut"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -696,7 +929,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit horizontalpodautoscaler {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit horizontalpodautoscaler {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and replace the utilization values with the correct values."
                         }
                     ]
@@ -709,6 +942,11 @@
         ]
     },
     {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -773,7 +1011,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -781,7 +1019,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and remove the faulty readiness probe in the container rule."
                         }
                     ]
@@ -800,19 +1038,22 @@
                     "container": {
                         "properties": {
                             "env": {
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
+                                "items": {
+                                    "properties": {
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "value": {
+                                            "type": "string"
+                                        }
                                     },
-                                    "value": {
-                                        "type": "string"
-                                    }
+                                    "required": [
+                                        "name",
+                                        "value"
+                                    ],
+                                    "type": "object"
                                 },
-                                "required": [
-                                    "name",
-                                    "value"
-                                ],
-                                "type": "object"
+                                "type": "array"
                             },
                             "name": {
                                 "type": "string"
@@ -885,7 +1126,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -893,8 +1134,8 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
-                            "text": "Manually edit the manifest and replace the environment variable ({{ args.container.env.name }}) value with the correct value."
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                            "text": "Manually edit the manifest and replace the environment variable(s) value with the correct value(s)."
                         }
                     ]
                 }
@@ -906,6 +1147,11 @@
         ]
     },
     {
+        "alerts": {
+            "goldenSignal": [
+                "HighRequestErrorRate"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -973,7 +1219,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and replace the target port ({{ args.targetPort }}) with the correct value."
                         }
                     ]
@@ -986,6 +1232,11 @@
         ]
     },
     {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -1062,7 +1313,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -1070,7 +1321,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and replace the invalid image with the correct value."
                         }
                     ]
@@ -1083,6 +1334,11 @@
         ]
     },
     {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -1148,7 +1404,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -1156,7 +1412,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and replace the node selector with the correct value."
                         }
                     ]
@@ -1250,12 +1506,114 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit configmap {{ args.kubernetesObject.metadata.name }}",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit configmap {{ args.kubernetesObject.metadata.name }}",
                             "text": "Disable the feature flag ({{ args.flag.name }}) by manually editing the contents of the ConfigMap"
                         },
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout restart deployment`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout restart deployment",
                             "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault causes a workload to be a lower priority than another. This causes the pod to be evicted when the higher priority workload needs more resources.",
+        "expectation": "The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will not start running.",
+        "id": "priority-kubernetes-workload-priority-preemption",
+        "name": "Priority Kubernetes Workload Priority Preemption",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/",
+            "https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                            "text": "Manually edit the manifest and remove the node selector value with the correct value(s)."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "text": "Create a new priority class with a higher value than the workload which caused its preemption."
+                        },
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                            "text": "Manually edit the manifest and change the priority of the workload to the new priority."
                         }
                     ]
                 }
@@ -1270,24 +1628,58 @@
         "arguments": {
             "jsonSchema": {
                 "properties": {
-                    "schedule": {
+                    "kubernetesObject": {
                         "properties": {
-                            "name": {
+                            "apiVersion": {
+                                "enum": [
+                                    "chaos-mesh.org/v1alpha1"
+                                ],
                                 "type": "string"
                             },
-                            "spec": {
+                            "kind": {
+                                "enum": [
+                                    "Schedule"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
                                 "type": "object"
                             }
                         },
                         "required": [
-                            "name",
-                            "spec"
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    },
+                    "scheduleSpec": {
+                        "properties": {
+                            "type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "type"
                         ],
                         "type": "object"
                     }
                 },
                 "required": [
-                    "schedule"
+                    "kubernetesObject",
+                    "scheduleSpec"
                 ],
                 "type": "object"
             }
@@ -1302,7 +1694,27 @@
             "https://chaos-mesh.org/docs/developer-guide-overview/"
         ],
         "solutions": {
-            "templates": []
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} annotate schedule {{ args.kubernetesObject.metadata.name }} experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get {{ args.scheduleSpec.type | lower }} --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete schedule {{ args.kubernetesObject.metadata.name }} experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
         },
         "tags": [
             "Deployment",
@@ -1310,6 +1722,102 @@
         ]
     },
     {
+        "alerts": {
+            "goldenSignal": [
+                "HighRequestErrorRate"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects a policy which causes the affected workload to be unable to communicate with other pods in the service mesh.",
+        "expectation": "The faulted pod will be unable to succesfully make requests to other pods, causing the error rate to increase.",
+        "id": "strict-mutual-tls-istio-service-mesh-enforcement",
+        "name": "Strict Mutual TLS Istio Service Mesh Enforcement",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://istio.io/latest/docs/ambient/usage/add-workloads/",
+            "https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/",
+            "https://istio.io/latest/docs/ambient/usage/verify-mtls-enabled/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                            "text": "Manually edit the manifest and to add the required Istio ambient mode labels to the workload."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl edit namespace {{ args.kubernetesObject.metadata.namespace }}",
+                            "text": "Manually edit the namespace manifest and to add the required Istio ambient mode labels to the workload."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Networking"
+        ]
+    },
+    {
+        "alerts": {
+            "application": [
+                "NoRequestsReceived"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -1385,7 +1893,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny",
                             "text": "Manually edit the manifest and replace the invalid rule with the correct value."
                         }
                     ]
@@ -1393,7 +1901,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny",
                             "text": "Delete the faulty authorization policy."
                         }
                     ]
@@ -1402,7 +1910,7 @@
         },
         "tags": [
             "Deployment",
-            "Performance"
+            "Networking"
         ]
     },
     {
@@ -1470,7 +1978,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -1478,7 +1986,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and replace the invalid container's resource configuration with the correct value(s)."
                         }
                     ]
@@ -1491,6 +1999,11 @@
         ]
     },
     {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -1540,7 +2053,7 @@
             }
         },
         "description": "This fault injects an Inter-Pod Anti-Affinity which causes Kubernetes to be unable to schedule the pod.",
-        "expectation": "The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will start running.",
+        "expectation": "The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will not start running.",
         "id": "unschedueable-kuberntes-workload-pod-anti-affinity-rule",
         "name": "Unschedueable Kuberntes Workload Pod Anti Affinity Rule",
         "platform": "Kubernetes",
@@ -1555,7 +2068,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -1563,7 +2076,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and remove the faulty pod anti-affinity rule with the correct value."
                         }
                     ]
@@ -1576,6 +2089,11 @@
         ]
     },
     {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -1652,7 +2170,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind }}/{{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -1660,7 +2178,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and replace the invalid image with the correct value."
                         }
                     ]
@@ -1668,7 +2186,7 @@
                 {
                     "steps": [
                         {
-                            "command": "`kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind }} {{ args.kubernetesObject.metadata.name }}`",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
                             "text": "Manually edit the manifest and replace the node selector to allow Kubernetes to schedule the workload on a supported node (if exists)."
                         }
                     ]
@@ -1677,7 +2195,121 @@
         },
         "tags": [
             "Deployment",
-            "Networking"
+            "Performance"
+        ]
+    },
+    {
+        "alerts": {
+            "application": [
+                "KubePodCrashLooping"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "container": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "container"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault adds a code change to a Valkey workload. This modifies the container to also contain a process which will consume memory.",
+        "expectation": "The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function.",
+        "id": "valkey-workload-out-of-memory",
+        "name": "Valkey Workload Out of Memory",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://valkey.io/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                            "text": "Manually edit the manifest and remove the code change volumes."
+                        },
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete configmap valkey-storage-script",
+                            "text": "Delete the injected ConfigMap object."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit configmap valkey-storage-script",
+                            "text": "Manually edit the manifest and change the script."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Code"
         ]
     }
 ]

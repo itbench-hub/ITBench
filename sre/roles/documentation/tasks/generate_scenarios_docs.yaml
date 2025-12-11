@@ -1,0 +1,177 @@
+---
+- name: Include applications role variables for templating
+  ansible.builtin.include_vars:
+    file: ../applications/defaults/main/helm_releases.yaml
+
+- name: Include applications role variables for templating
+  ansible.builtin.include_vars:
+    file: ../applications/defaults/main/instances.yaml
+
+- name: Include tools role variables for templating
+  ansible.builtin.include_vars:
+    file: ../tools/defaults/main/helm_releases.yaml
+
+- name: Create temporary directory for scenario templates
+  ansible.builtin.tempfile:
+    prefix: scenarios
+    state: directory
+  register: documentation_temporary_directory
+
+- name: Generate map for faults based on fault id
+  ansible.builtin.set_fact:
+    documentation_faults: "{{ (documentation_faults | default({})) | combine({fault.id: fault}) }}"
+  loop: "{{ lookup('ansible.builtin.file', 'files/library/faults/index.json') | from_json }}"
+  loop_control:
+    label: fault/{{ fault.name }}
+    loop_var: fault
+
+- name: Validate unique ids for all scenarios
+  ansible.builtin.assert:
+    that:
+      - (scenarios | unique(attribute="id") | length) == (scenarios | length)
+    fail_msg: Duplicate scenario id discovered in library index. Please ensure all scenarios have a unique id.
+    success_msg: All scenarios in library index have unique ids.
+  vars:
+    scenarios: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/index.j2') | from_yaml }}"
+
+- name: Generate variables for scenario library index templating
+  ansible.builtin.set_fact:
+    documentation_scenarios: |-
+      {{
+        (
+          documentation_scenarios | default({})
+        ) |
+        combine(
+          {
+            scenario.id: (
+              scenario |
+              ansible.utils.remove_keys(target=["solutionTemplates"]) |
+              combine({"solutions": []})
+            )
+          }
+        )
+      }}
+    documentation_scenario_injections: |-
+      {{
+        (
+          documentation_scenario_injections | default({})
+        ) |
+        combine(
+          {
+            scenario.id: (
+              scenario.disruptions |
+              community.general.json_query("[*].injections") |
+              flatten |
+              items2dict(key_name="id", value_name="args")
+            )
+          }
+        )
+      }}
+    documentation_scenario_solutions: |-
+      {{
+        (
+          documentation_scenario_solutions | default([])
+        ) +
+        (
+          [scenario.id] |
+          product(
+            scenario.solutionTemplates |
+            community.general.json_query('[*].refId')
+          )
+        )
+      }}
+  loop: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/index.j2') | from_yaml }}"
+  loop_control:
+    label: scenario-{{ scenario.id }}
+    loop_var: scenario
+
+- name: Generate scenario solution template file
+  ansible.builtin.copy:
+    content: |-
+      {{
+        documentation_faults[group[1]].solutions.templates |
+        to_nice_yaml |
+        replace("args.", "documentation_scenario_injections[group[0]][group[1]].")
+      }}
+    dest: "{{ documentation_temporary_directory.path }}/scenario-{{ group[0] }}-{{ group[1] }}.j2"
+    mode: "0644"
+  loop: "{{ documentation_scenario_solutions }}"
+  loop_control:
+    label: scenario-{{ group[0] }}/{{ group[1] }}
+    loop_var: group
+
+- name: Template scenario solution files
+  ansible.builtin.template:
+    src: "{{ documentation_temporary_directory.path }}/scenario-{{ group[0] }}-{{ group[1] }}.j2"
+    dest: "{{ documentation_temporary_directory.path }}/scenario-{{ group[0] }}-{{ group[1] }}.yaml"
+    mode: "0644"
+  loop: "{{ documentation_scenario_solutions }}"
+  loop_control:
+    label: scenario-{{ group[0] }}/{{ group[1] }}
+    loop_var: group
+
+- name: Add templated fault solutions to scenarios
+  ansible.builtin.set_fact:
+    documentation_scenarios: |-
+      {{
+        documentation_scenarios |
+        combine(
+          {
+            group[0]: (
+              documentation_scenarios[group[0]] |
+              combine(
+                {
+                  "solutions": (
+                    documentation_scenarios[group[0]].solutions +
+                    [
+                      lookup(
+                        "ansible.builtin.file",
+                        (
+                          [
+                            documentation_temporary_directory.path,
+                            (
+                              ["scenario-", group[0], "-", group[1], ".yaml"] |
+                              join
+                            )
+                          ] |
+                          join("/")
+                        )
+                      ) |
+                      from_yaml
+                    ]
+                  )
+                }
+              )
+            )
+          }
+        )
+      }}
+  loop: "{{ documentation_scenario_solutions }}"
+  loop_control:
+    label: scenario-{{ group[0] }}/{{ group[1] }}
+    loop_var: group
+
+- name: Generate scenarios libary schema
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/schema.j2') | from_yaml | to_nice_json }}"
+    dest: "{{ playbook_dir }}/../roles/documentation/files/library/scenarios/schema.json"
+    mode: "0644"
+
+- name: Generate scenarios libary index
+  ansible.builtin.copy:
+    content: "{{ documentation_scenarios.values() | sort(attribute='id') | to_nice_json }}"
+    dest: "{{ playbook_dir }}/../roles/documentation/files/library/scenarios/index.json"
+    mode: "0644"
+
+- name: Generate Scenarios README
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/readmes/scenarios.j2') }}"
+    dest: "{{ playbook_dir }}/../docs/scenarios.md"
+    mode: "0644"
+  vars:
+    documentation_contents: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/index.json') | from_json }}"
+
+- name: Delete the temporary directory
+  ansible.builtin.file:
+    path: "{{ documentation_temporary_directory.path }}"
+    state: absent
