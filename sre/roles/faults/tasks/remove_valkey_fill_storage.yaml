@@ -1,15 +1,29 @@
 ---
-- name: Delete ConfigMap with script
+- name: Retrieve all fault related configmaps
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    label_selectors:
+      - app.kubernetes.io/component = valkey-fill-storage-fault
+      - app.kubernetes.io/managed-by = ITBench
+  register: faults_configmaps
+
+- name: Delete all fault related configmaps
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
-      apiVersion: v1
-      kind: ConfigMap
+      apiVersion: "{{ configmap.apiVersion }}"
+      kind: "{{ configmap.kind }}"
       metadata:
-        name: valkey-storage-script
-        namespace: "{{ spec.workload.namespace }}"
+        name: "{{ configmap.metadata.name }}"
+        namespace: "{{ configmap.metadata.namespace }}"
     state: absent
     wait: true
+  loop: "{{ faults_configmaps.resources }}"
+  loop_control:
+    label: configmap/{{ configmap.metadata.name }}
+    loop_var: configmap
 
 - name: Display fault removal instructions
   ansible.builtin.debug:

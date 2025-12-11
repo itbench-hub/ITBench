@@ -1,0 +1,42 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: pod-priority-eviction-fault
+    app.kubernetes.io/name: critical-data-collector
+    app.kubernetes.io/part-of: fault-injection
+    app.kubernetes.io/managed-by: ITBench
+  name: critical-data-collector
+  namespace: {{ fault_args.workload.namespace }}
+spec:
+  replicas: {{ replicas + 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: pod-priority-eviction-fault
+      app.kubernetes.io/name: critical-data-collector
+      app.kubernetes.io/part-of: fault-injection
+      app.kubernetes.io/managed-by: ITBench
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: pod-priority-eviction-fault
+        app.kubernetes.io/name: critical-data-collector
+        app.kubernetes.io/part-of: fault-injection
+        app.kubernetes.io/managed-by: ITBench
+    spec:
+      containers:
+        - name: worker
+          image: {{ container_image }}
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - "sleep infinity"
+          resources:
+            requests:
+              cpu: {{ ((((worker_node.status.allocatable.cpu | int) - 1) / replicas) * 1000) }}m
+              memory: 1Mi
+      nodeSelector:
+        "kubernetes.io/hostname": {{ worker_node.metadata.name }}
+      priorityClassName: application-critical
