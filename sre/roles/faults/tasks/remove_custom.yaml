@@ -178,3 +178,12 @@
   when:
     - fault.custom.name == 'pod-priority-eviction'
     - fault.custom.pod_priority_eviction is defined
+
+- name: Import PDB blocking drain removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_custom_pdb_blocking_drain.yaml
+  vars:
+    spec: "{{ fault.custom.pdb_blocking_drain }}"
+  when:
+    - fault.custom.name == 'pdb-blocking-drain'
+    - fault.custom.pdb_blocking_drain is defined
