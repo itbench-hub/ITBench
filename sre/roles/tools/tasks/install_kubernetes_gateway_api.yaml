@@ -1,57 +1,14 @@
 ---
-# kubectl is used in place of thekubernetes.core module because
-# the server side configuration the yaml files are still downloaded
-# and rendered on the client side. Depending on the file, sometimes
-# there are rendering issues.
+# NOTE: When using Cloud Provider Kind, it installs its own copy of the
+#       Kubernetes Gateway API crds. In that case, this step is unnecessary and
+#       can cause errors if the version installed here does not match the
+#       version installed by the tool. Istio requires the crds as well. For
+#       ease of use, the crds are "installed" here regardless.
 
-- name: Create HTTP response headers variable
-  ansible.builtin.set_fact:
-    tools_http_route_response_headers:
-      - name: Content-Security-Policy
-        value: "img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; form-action 'none'; frame-ancestors 'none'"
-      - name: Cross-Origin-Resource-Policy
-        value: same-origin
-      - name: Strict-Transport-Security
-        value: max-age=31536000; includeSubDomains; preload
-      - name: Referrer-Policy
-        value: strict-origin-when-cross-origin
-      - name: X-Content-Type-Options
-        value: nosniff
-      - name: X-Frame-Options
-        value: DENY
-      - name: X-XSS-Protection
-        value: "0"
-    tools_route_response_headers:
-      - name: Content-Security-Policy
-        action:
-          type: Set
-          set:
-            value: "img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; form-action 'none'; frame-ancestors 'none'"
-      - name: Cross-Origin-Resource-Policy
-        action:
-          type: Set
-          set:
-            value: same-origin
-      - name: Referrer-Policy
-        action:
-          type: Set
-          set:
-            value: strict-origin-when-cross-origin
-      - name: X-Content-Type-Options
-        action:
-          type: Set
-          set:
-            value: nosniff
-      - name: X-Frame-Options
-        action:
-          type: Set
-          set:
-            value: DENY
-      - name: X-XSS-Protection
-        action:
-          type: Set
-          set:
-            value: "0"
+# NOTE: `kubectl` is used in place of the `kubernetes.core` module because
+#       the server side configuration the yaml files are still downloaded
+#       and rendered on the client side. Depending on the file, sometimes
+#       there are rendering issues.
 
 - name: Add Kubernetes Gateway API CRDs
   ansible.builtin.command:
@@ -66,7 +23,6 @@
   changed_when: tools_kubernetes_gateway_crds_apply.rc == 0
   when:
     - tools_cluster.platform == "kubernetes"
-    - tools_cluster.provider != "kind" # Cloud Provider Kind installs CRDs
 
 - name: Create Kubernetes Gateway instance namespace
   kubernetes.core.k8s:

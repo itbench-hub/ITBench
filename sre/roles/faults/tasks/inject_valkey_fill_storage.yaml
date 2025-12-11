@@ -1,36 +1,103 @@
 ---
-- name: Retrieve information on valkey workload
+- name: Retrieve information about workload
   kubernetes.core.k8s_info:
     api_version: apps/v1
     kind: "{{ spec.workload.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     name: "{{ spec.workload.name }}"
     namespace: "{{ spec.workload.namespace }}"
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
   register: faults_workload_info
 
-- name: Build containers list with storage filler
-  ansible.builtin.set_fact:
-    faults_updated_containers: "{{ faults_workload_info.resources[0].spec.template.spec.containers + [storage_filler_container] }}"
-  vars:
-    storage_filler_container:
-      name: storage-filler
-      image: docker.io/library/busybox:latest
-      command:
-        - /bin/sh
-        - -c
-        - "dd if=/dev/zero of=/tmp/filler bs=1M count={{ spec.fill_storage.storage_size_mb | default(500) }} && sleep infinity"
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that: faults_workload_info.resources | length == 1
+    fail_msg: Workload not found. Please check configuration.
+    success_msg: Workload found.
 
-- name: Inject fault (add storage filler sidecar)
+- name: Create ConfigMap with script
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    template: templates/valkey_fill_storage/configmap.j2
+    state: present
+  vars:
+    bash_script_contents: "{{ lookup('ansible.builtin.file', 'files/valkey_fill_storage/fill-storage.sh') }}"
+
+- name: Add volume information to container
+  ansible.builtin.set_fact:
+    faults_workload_containers: |
+      {{
+        (
+          faults_workload_containers | default([])
+        ) +
+        [
+          container |
+          combine(
+            {
+              'command': command,
+              'volumeMounts': ((container.volumeMounts | default([])) + [volume_mount])
+            }
+          )
+        ]
+      }}
+  loop: "{{ faults_workload_info.resources[0].spec.template.spec.containers }}"
+  loop_control:
+    label: container/{{ container.name }}
+    loop_var: container
+  vars:
+    command:
+      - /bin/sh
+      - -c
+      - "'/data/scripts/fill-storage.sh'"
+    volume_mount:
+      name: scripts
+      mountPath: /data/scripts
+  when:
+    - container.name == spec.workload.container.name
+
+- name: Inject fault (fill storage)
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
-      apiVersion: apps/v1
-      kind: "{{ spec.workload.kind }}"
+      apiVersion: "{{ workload.apiVersion }}"
+      kind: "{{ workload.kind }}"
       metadata:
-        name: "{{ spec.workload.name }}"
-        namespace: "{{ spec.workload.namespace }}"
+        name: "{{ workload.metadata.name }}"
+        namespace: "{{ workload.metadata.namespace }}"
       spec:
         template:
           spec:
-            containers: "{{ faults_updated_containers }}"
+            containers: |
+              {{
+                (
+                  workload.spec.template.spec.containers |
+                  rejectattr('name', '==', spec.workload.container.name)
+                ) +
+                (
+                  faults_workload_containers |
+                  from_yaml
+                )
+              }}
+            securityContext:
+              fsGroup: 1000
+            volumes: |
+              {{
+                (
+                  workload.spec.template.spec.volumes |
+                  default([]) |
+                  rejectattr('name', '==', volume.name)
+                ) +
+                [
+                  volume
+                ]
+              }}
     state: patched
+  vars:
+    volume:
+      name: scripts
+      configMap:
+        name: valkey-storage-script
+        defaultMode: 0755
+        items:
+          - key: script
+            path: fill-storage.sh
+    workload: "{{ faults_workload_info.resources[0] }}"

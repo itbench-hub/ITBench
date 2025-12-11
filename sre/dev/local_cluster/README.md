@@ -43,10 +43,14 @@ make create_single_node_cluster
 
 5. Start the Gateway provider to allow for external cluster access to the tools:
 ```shell
-make start_gateway_provider
+sudo make run_gateway_provider
 ```
 
-_Note: To delete the cluster, run this command: `make destory_cluster`_
+> **Note:** This process runs in the foreground. Leave this terminal open and running, then open a new terminal window to continue with the remaining steps. In the new terminal, navigate to the project directory and activate your virtual environment:
+> ```shell
+> cd /path/to/sre/directory
+> source venv/bin/activate
+> ```
 
 6. Update the value of the `kubeconfig` key in the `../../group_vars/environment/cluster.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config`).
 ```shell
