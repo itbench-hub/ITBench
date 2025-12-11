@@ -1,0 +1,87 @@
+---
+- name: Retrieve worker nodes on the cluster
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Node
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    label_selectors:
+      - node-role.kubernetes.io/node =
+  register: faults_nodes
+
+- name: Validate that worker nodes exists
+  ansible.builtin.assert:
+    that:
+      - faults_nodes is defined
+      - faults_nodes.resources | length > 0
+    fail_msg: Unable to find worker nodes. Please run this fault on a cluster with worker nodes.
+    success_msg: Found worker nodes.
+
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+  register: faults_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - faults_workload is defined
+      - faults_workload.resources | length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Create Priority Classes
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    template: templates/pod_priority_eviction/priorityclasses.j2
+    state: present
+
+- name: Patch workload with priority class and assign to node
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              "kubernetes.io/hostname": "{{ faults_nodes.resources[0].metadata.name }}"
+            priorityClassName: application-non-critical
+    state: patched
+
+- name: Wait for workload to update
+  kubernetes.core.k8s_info:
+    api_version: "{{ faults_workload.resources[0].apiVersion }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    kind: "{{ faults_workload.resources[0].kind }}"
+    name: "{{ faults_workload.resources[0].metadata.name }}"
+    namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+  register: faults_updated_workload
+  until:
+    - faults_updated_workload.resources | length == 1
+    - faults_updated_workload.resources[0].status.availableReplicas == faults_updated_workload.resources[0].status.replicas
+  delay: 15
+  retries: 20
+
+- name: Create additional workload
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    template: templates/pod_priority_eviction/deployment.j2
+    state: present
+  vars:
+    fault_args: "{{ spec }}"
+    container_image: |-
+      {{
+        lookup('ansible.builtin.file', 'files/pod_priority_eviction/deployment.yaml') |
+        from_yaml |
+        community.general.json_query('spec.template.spec.containers[0].image')
+      }}
+    replicas: 20
+    worker_node: "{{ faults_nodes.resources | first }}"

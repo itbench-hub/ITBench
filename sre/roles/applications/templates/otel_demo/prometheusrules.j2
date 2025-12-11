@@ -6,7 +6,7 @@ metadata:
   namespace: [[ applications_helm_releases.otel_demo.namespace ]]
 spec:
   groups:
-    - name: opentelemetrydemo.goldensignal
+    - name: opentelemetrydemo.frontend.goldensignal
       rules:
         - alert: HighRequestLatency
           expr: |
@@ -15,7 +15,7 @@ spec:
               sum (
                 rate(
                   traces_span_metrics_duration_milliseconds_bucket{
-                    service_name!~"flagd|load-generator",
+                    service_name=~"frontend|frontend-proxy",
                     namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
                   }[5m]
                 )
@@ -32,18 +32,56 @@ spec:
             sum (
               rate(
                 traces_span_metrics_calls_total{
-                  service_name!~"flagd|load-generator",
+                  service_name=~"frontend|frontend-proxy",
                   status_code="STATUS_CODE_ERROR",
                   namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
                 }[5m]
               )
             ) by (service_name, namespace)
-            > 0
+            > 3
           for: 5m
           labels:
             severity: critical
           annotations:
-            description: "Request error rate in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
+            description: "Request error rate in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 3 (current: {{ $value }})"
+    - name: opentelemetrydemo.backend.goldensignal
+      rules:
+        - alert: HighRequestLatency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum (
+                rate(
+                  traces_span_metrics_duration_milliseconds_bucket{
+                    service_name!~"flagd|load-generator|frontend*",
+                    namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                  }[5m]
+                )
+              ) by(le, service_name, namespace)
+            )
+            > 15000
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "Latency in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 15000ms (current: {{ $value }}s)"
+        - alert: HighRequestErrorRate
+          expr: |
+            sum (
+              rate(
+                traces_span_metrics_calls_total{
+                  service_name!~"flagd|load-generator|frontend|frontend-proxy",
+                  status_code="STATUS_CODE_ERROR",
+                  namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                }[5m]
+              )
+            ) by (service_name, namespace)
+            > 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "Request error rate in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 1 (current: {{ $value }})"
     - name: opentelemetrydemo.requests
       rules:
         - alert: NoRequestsReceived

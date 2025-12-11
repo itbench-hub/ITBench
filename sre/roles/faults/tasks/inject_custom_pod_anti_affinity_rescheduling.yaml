@@ -1,19 +1,27 @@
 ---
 - name: Retrieve worker nodes on the cluster
   kubernetes.core.k8s_info:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     api_version: v1
     kind: Node
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     label_selectors:
       - node-role.kubernetes.io/node =
   register: faults_nodes
+
+- name: Validate that worker nodes exists
+  ansible.builtin.assert:
+    that:
+      - faults_nodes is defined
+      - faults_nodes.resources | length > 0
+    fail_msg: Unable to find worker nodes. Please run this fault on a cluster with worker nodes.
+    success_msg: Found worker nodes.
 
 - name: Create a deployment on all worker nodes
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     template: templates/pod_anti_affinity/deployment.j2
     state: present
-  loop: "{{ faults_nodes.resources | default([]) }}"
+  loop: "{{ faults_nodes.resources }}"
   loop_control:
     index_var: node_index
     label: node/{{ node.metadata.name }}

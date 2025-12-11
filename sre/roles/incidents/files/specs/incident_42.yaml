@@ -1,0 +1,26 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 42
+    name: Pod Priority-Based Eviction Cascade
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+    faults:
+      - custom:
+          name: pod-priority-eviction
+          pod_priority_eviction:
+            workload:
+              kind: Deployment
+              name: kafka
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"

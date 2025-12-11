@@ -5,7 +5,7 @@
     kind: Deployment
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     label_selectors:
-      - app.kubernetes.io/component = pod-anti-affinity-fault
+      - app.kubernetes.io/component = pod-priority-eviction-fault
       - app.kubernetes.io/managed-by = ITBench
   register: faults_deployments
 
@@ -24,6 +24,31 @@
   loop_control:
     label: deployment/{{ deployment.metadata.name }}
     loop_var: deployment
+
+- name: Retrieve all fault related priority classes
+  kubernetes.core.k8s_info:
+    api_version: scheduling.k8s.io/v1
+    kind: PriorityClass
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    label_selectors:
+      - app.kubernetes.io/component = pod-priority-eviction-fault
+      - app.kubernetes.io/managed-by = ITBench
+  register: faults_priority_classes
+
+- name: Delete all fault related priority classes
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ priorityclass.apiVersion }}"
+      kind: "{{ priorityclass.kind }}"
+      metadata:
+        name: "{{ priorityclass.metadata.name }}"
+    state: absent
+    wait: true
+  loop: "{{ faults_priority_classes.resources }}"
+  loop_control:
+    label: priorityclass/{{ priorityclass.metadata.name }}
+    loop_var: priorityclass
 
 - name: Display fault removal instructions
   ansible.builtin.debug:
