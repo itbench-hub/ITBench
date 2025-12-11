@@ -1,0 +1,694 @@
+- category: sre
+  complexity: medium
+  description: This scenario simulates the OpenTelemetry Demo's services being flooded with requests.
+  disruptions:
+    - injections:
+      - args:
+          flag:
+            name: loadGeneratorFloodHomepage
+            state: "on"
+          kubernetesObject:
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: flagd-config
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: opentelemetry-demo-feature-flag
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 1
+  platforms: {{ [documentation_faults["opentelemetry-demo-feature-flag"].platform] }}
+  solutionTemplates:
+    - refId: opentelemetry-demo-feature-flag
+  tags: {{ documentation_faults["opentelemetry-demo-feature-flag"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates the OpenTelemetry Demo's `ad` service experiencing high CPU usage.
+  disruptions:
+    - injections:
+      - args:
+          flag:
+            name: adHighCpu
+            state: "on"
+          kubernetesObject:
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: flagd-config
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: opentelemetry-demo-feature-flag
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 3
+  platforms: {{ [documentation_faults["opentelemetry-demo-feature-flag"].platform] }}
+  solutionTemplates:
+    - refId: opentelemetry-demo-feature-flag
+  tags: {{ documentation_faults["opentelemetry-demo-feature-flag"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario changes the environment variables of OpenTelemetry Demo's `shipping` service, causing it to be unable to reach the `quote` service.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            env:
+              - name: QUOTE_ADDR
+                value: quote:0000
+            name: shipping
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: shipping
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: modified-kubernetes-workload-container-environment-variable
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 16
+  platforms: {{ [documentation_faults["modified-kubernetes-workload-container-environment-variable"].platform] }}
+  solutionTemplates:
+    - refId: modified-kubernetes-workload-container-environment-variable
+  tags: {{ documentation_faults["modified-kubernetes-workload-container-environment-variable"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: product-catalog
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: product-catalog
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: nonexistent-kubernetes-workload-container-image
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 20
+  platforms: {{ [documentation_faults["nonexistent-kubernetes-workload-container-image"].platform] }}
+  solutionTemplates:
+    - refId: nonexistent-kubernetes-workload-container-image
+  tags: {{ documentation_faults["nonexistent-kubernetes-workload-container-image"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario changes the environment variables of OpenTelemetry Demo's `shipping` service, causing it to be unable to reach the `quote` service.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: checkout
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: checkout
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: unsupported-architecture-kubernetes-workload-container-image
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 23
+  platforms: {{ [documentation_faults["unsupported-architecture-kubernetes-workload-container-image"].platform] }}
+  solutionTemplates:
+    - refId: unsupported-architecture-kubernetes-workload-container-image
+  tags: {{ documentation_faults["unsupported-architecture-kubernetes-workload-container-image"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates tampered HTTP requests to OpenTelemetry Demo's `email` service.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: chaos-mesh.org/v1alpha1
+            kind: Schedule
+            metadata:
+              name: email-http-chaos-post-body-tamper
+              namespace: {{ tools_helm_releases.chaos_mesh.namespace }}
+          scheduleSpec:
+            schedule: "* * * * *"
+            historyLimit: 1
+            concurrencyPolicy: Forbid
+            type: HTTPChaos
+            httpChaos:
+              mode: all
+              target: Request
+              port: 8080
+              method: POST
+              path: "*"
+              selector:
+                namespaces:
+                  - {{ applications_helm_releases.otel_demo.namespace }}
+                labelSelectors:
+                  "app.kubernetes.io/component": "email"
+              patch:
+                body:
+                  type: JSON
+                  value: {{ {"email": "12345", "order": "error body"} | to_json }}
+              duration: "55s"
+        id: scheduled-chaos-mesh-experiment
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 26
+  platforms: {{ [documentation_faults["scheduled-chaos-mesh-experiment"].platform] }}
+  solutionTemplates:
+    - refId: scheduled-chaos-mesh-experiment
+  tags: {{ documentation_faults["scheduled-chaos-mesh-experiment"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates aborted HTTP requests to OpenTelemetry Demo's `quote` service.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: chaos-mesh.org/v1alpha1
+            kind: Schedule
+            metadata:
+              name: quote-http-chaos-abort
+              namespace: {{ tools_helm_releases.chaos_mesh.namespace }}
+          scheduleSpec:
+            schedule: "* * * * *"
+            historyLimit: 1
+            concurrencyPolicy: Forbid
+            type: HTTPChaos
+            httpChaos:
+              mode: all
+              selector:
+                namespaces:
+                  - {{ applications_helm_releases.otel_demo.namespace }}
+                labelSelectors:
+                  "app.kubernetes.io/component": "quote"
+              target: Request
+              port: 8080
+              method: POST
+              path: "*"
+              abort: true
+              duration: "55s"
+        id: scheduled-chaos-mesh-experiment
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 27
+  platforms: {{ [documentation_faults["scheduled-chaos-mesh-experiment"].platform] }}
+  solutionTemplates:
+    - refId: scheduled-chaos-mesh-experiment
+  tags: {{ documentation_faults["scheduled-chaos-mesh-experiment"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario changes the specified port of OpenTelemetry Demo's `ad` service.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: ad
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+          targetPort: 8080
+        id: modified-target-port-kubernetes-service
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 30
+  platforms: {{ [documentation_faults["modified-target-port-kubernetes-service"].platform] }}
+  solutionTemplates:
+    - refId: modified-target-port-kubernetes-service
+  tags: {{ documentation_faults["modified-target-port-kubernetes-service"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates all ingress traffic being blocked on OpenTelemetry Demo's `frontend` service.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: frontend
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: ingress-port-blocking-network-policy
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 31
+  platforms: {{ [documentation_faults["ingress-port-blocking-network-policy"].platform] }}
+  solutionTemplates:
+    - refId: ingress-port-blocking-network-policy
+  tags: {{ documentation_faults["ingress-port-blocking-network-policy"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates OpenTelemetry Demo's `ad` and `cart` services being deployed on the wrong node.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: ad
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: nonexistent-kubernetes-workload-node
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: cart
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: nonexistent-kubernetes-workload-node
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 33
+  platforms: {{ [documentation_faults["nonexistent-kubernetes-workload-node"].platform] }}
+  solutionTemplates:
+    - refId: nonexistent-kubernetes-workload-node
+  tags: {{ documentation_faults["nonexistent-kubernetes-workload-node"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates the wrong password being set as the user for OpenTelemetry Demo's `valkey-cart` service.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: valkey-cart
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: invalid-valkey-password
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 34
+  platforms: {{ [documentation_faults["invalid-valkey-password"].platform] }}
+  solutionTemplates:
+    - refId: invalid-valkey-password
+  tags: {{ documentation_faults["invalid-valkey-password"].tags }}
+
+# Scenario 37 is an outlier. This scenario is to test if an agent will react to the autoscaled
+# resources. It should not in this case because all autoscaled resources are within the normal
+# parameters.
+
+- category: finops
+  complexity: low
+  description: This scenario simulates OpenTelemetry Demo services running normally with autoscaling.
+  disruptions: []
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 37
+  platforms: {{ [documentation_faults["misconfigured-kubernetes-horizontal-pod-autoscaler"].platform] }}
+  solutionTemplates: []
+  tags: {{ documentation_faults["misconfigured-kubernetes-horizontal-pod-autoscaler"].tags }}
+
+- category: finops
+  complexity: low
+  description: This scenario simulates several OpenTelemetry Demo services being incorrectly autoscaled.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: fraud-detection
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: misconfigured-kubernetes-horizontal-pod-autoscaler
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: frontend
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: misconfigured-kubernetes-horizontal-pod-autoscaler
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: image-provider
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: misconfigured-kubernetes-horizontal-pod-autoscaler
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 38
+  platforms: {{ [documentation_faults["misconfigured-kubernetes-horizontal-pod-autoscaler"].platform] }}
+  solutionTemplates:
+    - refId: misconfigured-kubernetes-horizontal-pod-autoscaler
+  tags: {{ documentation_faults["misconfigured-kubernetes-horizontal-pod-autoscaler"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates OpenTelemetry Demo's `payment` service being unable to schedule a new pod.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: payment
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: cordoned-kubernetes-worker-node
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 39
+  platforms: {{ [documentation_faults["cordoned-kubernetes-worker-node"].platform] }}
+  solutionTemplates:
+    - refId: cordoned-kubernetes-worker-node
+  tags: {{ documentation_faults["cordoned-kubernetes-worker-node"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates OpenTelemetry Demo's `valkey-cart` service experiencing an Out of Memory (OOM) error.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: valkey-cart
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: valkey-cart
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: valkey-workload-out-of-memory
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 40
+  platforms: {{ [documentation_faults["valkey-workload-out-of-memory"].platform] }}
+  solutionTemplates:
+    - refId: valkey-workload-out-of-memory
+  tags: {{ documentation_faults["valkey-workload-out-of-memory"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates the OpenTelemetry Demo's `cart` service consuming most of the node's available memory.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: cart
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: cart
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: unassigned-kubernetes-workload-container-resource-limits
+      - args:
+          kubernetesObject:
+            apiVersion: chaos-mesh.org/v1alpha1
+            kind: Schedule
+            metadata:
+              name: cart-stress-chaos-memory
+              namespace: {{ tools_helm_releases.chaos_mesh.namespace }}
+          scheduleSpec:
+            schedule: "* * * * *"
+            historyLimit: 1
+            concurrencyPolicy: Forbid
+            type: StressChaos
+            stressChaos:
+              mode: all
+              selector:
+                namespaces:
+                  - {{ applications_helm_releases.otel_demo.namespace }}
+                labelSelectors:
+                  "app.kubernetes.io/component": cart
+              stressors:
+                memory:
+                  size: 85%
+                  workers: 10
+              duration: 55s
+        id: scheduled-chaos-mesh-experiment
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 41
+  platforms:
+    {{
+        [
+          documentation_faults["unassigned-kubernetes-workload-container-resource-limits"].platform,
+          documentation_faults["scheduled-chaos-mesh-experiment"].platform
+        ] |
+        unique
+    }}
+  solutionTemplates:
+    - refId: scheduled-chaos-mesh-experiment
+    - refId: unassigned-kubernetes-workload-container-resource-limits
+  tags:
+    {{
+      [
+        documentation_faults["unassigned-kubernetes-workload-container-resource-limits"].tags,
+        documentation_faults["scheduled-chaos-mesh-experiment"].tags
+      ] |
+      flatten |
+      unique
+    }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates the OpenTelemetry Demo's `kafka` service being evicted from the node.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: kafka
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: priority-kubernetes-workload-priority-preemption
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 42
+  platforms: {{ [documentation_faults["priority-kubernetes-workload-priority-preemption"].platform] }}
+  solutionTemplates:
+    - refId: priority-kubernetes-workload-priority-preemption
+  tags: {{ documentation_faults["priority-kubernetes-workload-priority-preemption"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates the OpenTelemetry Demo's `frontend` service being reach other services.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: frontend
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: failing-name-resolution-kubernetes-workload-dns-policy
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 43
+  platforms: {{ [documentation_faults["failing-name-resolution-kubernetes-workload-dns-policy"].platform] }}
+  solutionTemplates:
+    - refId: failing-name-resolution-kubernetes-workload-dns-policy
+  tags: {{ documentation_faults["failing-name-resolution-kubernetes-workload-dns-policy"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates new pods of OpenTelemetry Demo's `payment` service being unscheduleable.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: payment
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: unschedueable-kuberntes-workload-pod-anti-affinity-rule
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 44
+  platforms: {{ [documentation_faults["unschedueable-kuberntes-workload-pod-anti-affinity-rule"].platform] }}
+  solutionTemplates:
+    - refId: unschedueable-kuberntes-workload-pod-anti-affinity-rule
+  tags: {{ documentation_faults["unschedueable-kuberntes-workload-pod-anti-affinity-rule"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates new pods of OpenTelemetry Demo's `email` service being unable to execute.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: email
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: hanging-kubernetes-workload-init-container
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 45
+  platforms: {{ [documentation_faults["hanging-kubernetes-workload-init-container"].platform] }}
+  solutionTemplates:
+    - refId: hanging-kubernetes-workload-init-container
+  tags: {{ documentation_faults["hanging-kubernetes-workload-init-container"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates OpenTelemetry Demo's `postgresql` service not having enough resources.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: postgresql
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: postgresql
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: insufficent-kubernetes-workload-container-resources
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 46
+  platforms: {{ [documentation_faults["insufficent-kubernetes-workload-container-resources"].platform] }}
+  solutionTemplates:
+    - refId: insufficent-kubernetes-workload-container-resources
+  tags: {{ documentation_faults["insufficent-kubernetes-workload-container-resources"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates BookInfo's `gateway` service unable to receive GET HTTP requests.
+  disruptions:
+    - injections:
+      - args:
+          httpMethods:
+            - GET
+          kubernetesObject:
+            apiVersion: gateway.networking.k8s.io
+            kind: Gateway
+            metadata:
+              name: bookinfo-gateway
+              namespace: {{ applications_instances.bookinfo.namespace }}
+        id: traffic-denying-istio-gateway-authorization-policy
+  environment:
+    applications:
+      - id: book-info
+  id: 47
+  platforms: {{ [documentation_faults["traffic-denying-istio-gateway-authorization-policy"].platform] }}
+  solutionTemplates:
+    - refId: traffic-denying-istio-gateway-authorization-policy
+  tags: {{ documentation_faults["traffic-denying-istio-gateway-authorization-policy"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates BookInfo's `gateway` service unable to receive GET HTTP requests.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: {{ applications_instances.bookinfo.namespace }}
+        id: disabled-istio-ambient-mode-kubernetes-namespace
+  environment:
+    applications:
+      - id: book-info
+  id: 48
+  platforms: {{ [documentation_faults["disabled-istio-ambient-mode-kubernetes-namespace"].platform] }}
+  solutionTemplates:
+    - refId: disabled-istio-ambient-mode-kubernetes-namespace
+  tags: {{ documentation_faults["disabled-istio-ambient-mode-kubernetes-namespace"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates OpenTelemetry Demo's `frontend` service having a malformed readiness probe.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: frontend
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: frontend
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: misconfigured-kuberntes-workload-container-readiness-probe
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 49
+  platforms: {{ [documentation_faults["misconfigured-kuberntes-workload-container-readiness-probe"].platform] }}
+  solutionTemplates:
+    - refId: misconfigured-kuberntes-workload-container-readiness-probe
+  tags: {{ documentation_faults["misconfigured-kuberntes-workload-container-readiness-probe"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates BookInfo's `productpage-v1` service being unable to communicate with other services.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: productpage-v1
+              namespace: {{ applications_instances.bookinfo.namespace }}
+        id: strict-mutual-tls-istio-service-mesh-enforcement
+  environment:
+    applications:
+      - id: book-info
+  id: 50
+  platforms: {{ [documentation_faults["strict-mutual-tls-istio-service-mesh-enforcement"].platform] }}
+  solutionTemplates:
+    - refId: strict-mutual-tls-istio-service-mesh-enforcement
+  tags: {{ documentation_faults["strict-mutual-tls-istio-service-mesh-enforcement"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: ad
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: insufficent-kubernetes-resource-quota
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 102
+  platforms: {{ [documentation_faults["insufficent-kubernetes-resource-quota"].platform] }}
+  solutionTemplates:
+    - refId: insufficent-kubernetes-resource-quota
+  tags: {{ documentation_faults["insufficent-kubernetes-resource-quota"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates OpenTelemetry Demo's `product-catalog` service having a malformed command.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: product-catalog
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: product-catalog
+              namespace: {{ applications_helm_releases.otel_demo.namespace }}
+        id: invalid-kubernetes-workload-container-command
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 105
+  platforms: {{ [documentation_faults["invalid-kubernetes-workload-container-command"].platform] }}
+  solutionTemplates:
+    - refId: invalid-kubernetes-workload-container-command
+  tags: {{ documentation_faults["invalid-kubernetes-workload-container-command"].tags }}

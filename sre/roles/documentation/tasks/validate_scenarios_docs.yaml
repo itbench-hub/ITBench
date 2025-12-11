@@ -1,0 +1,45 @@
+---
+- name: Validate scenario library index
+  ansible.utils.validate:
+    data: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/index.json') | from_json }}"
+    criteria: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/schema.json') | from_json }}"
+    engine: ansible.utils.jsonschema
+
+- name: Generate map for faults based on fault id
+  ansible.builtin.set_fact:
+    documentation_faults: "{{ (documentation_faults | default({})) | combine({fault.id: fault}) }}"
+  loop: "{{ lookup('ansible.builtin.file', 'files/library/faults/index.json') | from_json }}"
+  loop_control:
+    label: fault/{{ fault.name }}
+    loop_var: fault
+
+- name: Generate list of injections for all scenarios
+  ansible.builtin.set_fact:
+    documentation_scenario_injections: |-
+      {{
+        (
+          documentation_scenario_injections | default([])
+        ) +
+        (
+          [scenario.id] |
+          product(
+            scenario.disruptions |
+            community.general.json_query("[*].injections") |
+            flatten
+          )
+        )
+      }}
+  loop: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/index.json') | from_json }}"
+  loop_control:
+    label: scenario-{{ scenario.id }}
+    loop_var: scenario
+
+- name: Validate scenario fault injection arguments
+  ansible.utils.validate:
+    data: "{{ group[1].args }}"
+    criteria: "{{ documentation_faults[group[1].id].arguments.jsonSchema }}"
+    engine: ansible.utils.jsonschema
+  loop: "{{ documentation_scenario_injections }}"
+  loop_control:
+    label: scenario-{{ group[0] }}/{{ group[1].id }}
+    loop_var: group

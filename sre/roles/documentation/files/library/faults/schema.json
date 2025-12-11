@@ -13,6 +13,37 @@
             "tags"
         ],
         "properties": {
+            "alerts": {
+                "type": "object",
+                "minProperties": 1,
+                "properties": {
+                    "application": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "KubeContainerWaiting",
+                                "KubeHpaMaxedOut",
+                                "KubePodCrashLooping",
+                                "KubePodNotReady",
+                                "NoRequestsReceived"
+                            ]
+                        },
+                        "uniqueItems": true
+                    },
+                    "goldenSignal": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "HighRequestErrorRate",
+                                "HighRequestLatency"
+                            ]
+                        },
+                        "uniqueItems": true
+                    }
+                }
+            },
             "arguments": {
                 "type": "object",
                 "required": [
@@ -85,11 +116,13 @@
                     "type": "string",
                     "enum": [
                         "Authentication",
+                        "Code",
                         "Deployment",
                         "Networking",
                         "Performance"
                     ]
-                }
+                },
+                "uniqueItems": true
             }
         }
     }

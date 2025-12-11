@@ -1,0 +1,108 @@
+type: array
+items:
+  type: object
+  required:
+    - category
+    - complexity
+    - disruptions
+    - environment
+    - id
+    - platforms
+    - tags
+  properties:
+    category:
+      type: string
+      enum:
+        - finops
+        - sre
+    complexity:
+      type: string
+      enum:
+        - high
+        - low
+        - medium
+    disruptions:
+      type: array
+      items:
+        type: object
+        properties:
+          injections:
+            type: array
+            items:
+              type: object
+              required:
+                - args
+                - id
+              properties:
+                id:
+                  type: string
+                  enum: {{ documentation_faults.keys() }}
+                args:
+                  type: object
+          waitConditions:
+            type: array
+            items:
+              type: object
+              required:
+                - args
+                - id
+              properties:
+                id:
+                  type: string
+                args:
+                  type: object
+    environment:
+      type: object
+      required:
+        - applications
+      properties:
+        applications:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - id
+            properties:
+              id:
+                type: string
+                enum:
+                  - bookinfo
+                  - opentelemetry-demo
+    id:
+      type: integer
+    platforms:
+      type: array
+      items:
+        type: string
+        enum:
+          - Kubernetes
+    solutions:
+      type: array
+      items:
+        type: array
+        items:
+          type: object
+          required:
+            - steps
+          properties:
+            steps:
+              type: array
+              items:
+                type: object
+                required:
+                  - text
+                properties:
+                  command:
+                    type: string
+                  text:
+                    type: string
+    tags:
+      type: array
+      items:
+        type: string
+        enum:
+          - Authentication
+          - Deployment
+          - Networking
+          - Performance
