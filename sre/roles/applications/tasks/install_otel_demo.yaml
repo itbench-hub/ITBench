@@ -382,19 +382,14 @@
         enabled: false
     wait: true
 
-- name: Create Recording Prometheus Rules
+- name: Create Prometheus Rules
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    namespace: "{{ helm_releases.otel_demo.namespace }}"
+    template:
+      path: templates/otel_demo/prometheusrules.j2
+      variable_end_string: "]]"
+      variable_start_string: "[["
     state: present
-    src: files/rules/workload.yaml
-
-- name: Create Alerting Prometheus Rules
-  kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    namespace: "{{ helm_releases.otel_demo.namespace }}"
-    state: present
-    src: files/rules/otel-demo.yaml
 
 - name: Create Horizontal Pod Autoscalers
   kubernetes.core.k8s:

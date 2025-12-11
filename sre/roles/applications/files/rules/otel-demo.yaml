@@ -1,107 +1,45 @@
 ---
+# NOTE: This file is deprecated. Please use the template instead.
+#       This file is not to be removed until the finops alerts are decided upon.
+
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: otel-demo-alerting-rules
 spec:
   groups:
-    - name: ClusterAlerts
-      interval: 1m
-      rules:
-        - alert: FailedPodsDetected
-          expr: sum by(namespace) (kube_pod_status_phase{namespace="otel-demo", phase="Failed"}) > 0
-          labels:
-            severity: critical
-          annotations:
-            description: "Pods in failed state in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
-        - alert: PendingPodsDetected
-          expr: sum by(namespace) (kube_pod_status_phase{namespace="otel-demo", phase="Pending"}) > 0
-          labels:
-            severity: critical
-          annotations:
-            description: "Pods in pending state in namespace {{ $labels.namespace }} above 0 (current: {{ $value }})"
-        - alert: CrashLoopBackOffPodsDetected
-          expr: sum by (namespace) (kube_pod_container_status_waiting_reason{namespace="otel-demo",reason="CrashLoopBackOff"}) > 0
-          labels:
-            severity: critical
-          annotations:
-            description: "Pods in CrashLoopBackOff state in namespace {{ $labels.namespace }} above 0 (current: {{ $value }})"
     # ToDo: Disabled until (1) are made conditional and (2) appropriate threshold values are introduced
-    # - name: CostAlerts
-    #   interval: 1m
-    #   rules:
-    #     - alert: CPUSpend
-    #       expr: sum by (namespace) (container_namespace_node:container_cpu_allocation_cost_per_node:avg5m{container!="load-generator", namespace="otel-demo"}) > 3
-    #       for: 1m
-    #       labels:
-    #         severity: warning
-    #       annotations:
-    #         description: "{{ $labels.namespace }} has exceeded the allocated budget for vCPU for 5m (current: ${{ $value }})"
-    #     - alert: MemorySpend
-    #       expr: sum by (namespace) (container_namespace_node:container_memory_allocation_gigabytes_cost_per_node:avg5m{container!="load-generator", namespace="otel-demo"}) > 9
-    #       for: 1m
-    #       labels:
-    #         severity: warning
-    #       annotations:
-    #         description: "{{ $labels.namespace }} has exceeded the allocated budget for RAM for 5m (current: ${{ $value }})"
-    # - name: EfficiencyAlerts
-    #   interval: 1m
-    #   rules:
-    #     - alert: CPUEfficiency
-    #       expr: round(avg by (container, namespace) (container_namespace:container_cpu_usage_seconds_per_requests:ratio_irate1m{container!="load-generator", namespace="otel-demo"}) * 100) < 65
-    #       for: 2m
-    #       labels:
-    #         severity: info
-    #       annotations:
-    #         description: "{{ $labels.container }} in {{ $labels.namespace }} has a cpu efficiency below 65% for 5m (current: {{ $value }}%)"
-    #     - alert: MemoryEfficiency
-    #       expr: round(avg by (container, namespace) (container_namespace:container_memory_working_set_bytes_per_requests_bytes:ratio_avg1m{container!~"load-generator|flagd-ui", namespace="otel-demo"}) * 100) < 75
-    #       for: 2m
-    #       labels:
-    #         severity: info
-    #       annotations:
-    #         description: "{{ $labels.container }} in {{ $labels.namespace }} has a memory efficiency below 75% for 5m (current: {{ $value }}%)"
-    - name: GoldenSignalAlerts
+    - name: CostAlerts
       interval: 1m
       rules:
-        - alert: RequestLatency
-          expr: histogram_quantile(0.95, sum by(le, service_name, namespace) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name!~"flagd|load-generator|accounting|fraud-detection"}[2m]))) > 1500
+        - alert: CPUSpend
+          expr: sum by (namespace) (container_namespace_node:container_cpu_allocation_cost_per_node:avg5m{container!="load-generator", namespace="otel-demo"}) > 3
           for: 1m
           labels:
             severity: warning
           annotations:
-            description: "Latency in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 1500ms (current: {{ $value }}s)"
-        - alert: RequestLatencyProcessor
-          expr: histogram_quantile(0.95, sum by(le, service_name, namespace) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=~"accounting|fraud-detection"}[2m]))) > 15000
+            description: "{{ $labels.namespace }} has exceeded the allocated budget for vCPU for 5m (current: ${{ $value }})"
+        - alert: MemorySpend
+          expr: sum by (namespace) (container_namespace_node:container_memory_allocation_gigabytes_cost_per_node:avg5m{container!="load-generator", namespace="otel-demo"}) > 9
           for: 1m
           labels:
             severity: warning
           annotations:
-            description: "Latency in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 15000ms (current: {{ $value }}s)"
-        - alert: RequestErrorRate
-          expr: sum by (service_name, namespace) (rate(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR", service_name!~"flagd|load-generator"}[2m])) > 0
-          for: 1m
-          labels:
-            severity: warning
-          annotations:
-            description: "Request error rate in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
-    - name: GoodputAlerts
+            description: "{{ $labels.namespace }} has exceeded the allocated budget for RAM for 5m (current: ${{ $value }})"
+    - name: EfficiencyAlerts
       interval: 1m
       rules:
-        - alert: NoRequestsDetected
-          expr: sum by (service_name, namespace) (increase(traces_span_metrics_calls_total{service_name!~"flagd|load-generator", namespace="otel-demo", status_code=~"STATUS_CODE_UNSET|STATUS_CODE_OK"}[2m])) == 0
-          for: 5m
+        - alert: CPUEfficiency
+          expr: round(avg by (container, namespace) (container_namespace:container_cpu_usage_seconds_per_requests:ratio_irate1m{container!="load-generator", namespace="otel-demo"}) * 100) < 65
+          for: 2m
           labels:
-            severity: warning
+            severity: info
           annotations:
-            description: "Service {{ $labels.service_name }} in namespace {{ $labels.namespace }} has 0 requests"
-    - name: KafkaAlerts
-      interval: 1m
-      rules:
-        - alert: KafkaConnectionClosureRate
-          expr: sum by (job) (kafka_consumer_connection_close_rate) > 0
-          for: 1m
+            description: "{{ $labels.container }} in {{ $labels.namespace }} has a cpu efficiency below 65% for 5m (current: {{ $value }}%)"
+        - alert: MemoryEfficiency
+          expr: round(avg by (container, namespace) (container_namespace:container_memory_working_set_bytes_per_requests_bytes:ratio_avg1m{container!~"load-generator|flagd-ui", namespace="otel-demo"}) * 100) < 75
+          for: 2m
           labels:
-            severity: warning
+            severity: info
           annotations:
-            description: "Job {{ $labels.job }} has a closure rate above 0 (current: {{ $value }})"
+            description: "{{ $labels.container }} in {{ $labels.namespace }} has a memory efficiency below 75% for 5m (current: {{ $value }}%)"

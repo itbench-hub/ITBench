@@ -1,0 +1,65 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: otel-demo-alerting-rules
+  namespace: [[ applications_helm_releases.otel_demo.namespace ]]
+spec:
+  groups:
+    - name: opentelemetrydemo.goldensignal
+      rules:
+        - alert: HighRequestLatency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum (
+                rate(
+                  traces_span_metrics_duration_milliseconds_bucket{
+                    service_name!~"flagd|load-generator",
+                    namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                  }[5m]
+                )
+              ) by(le, service_name, namespace)
+            )
+            > 1500
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "Latency in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 1500ms (current: {{ $value }}s)"
+        - alert: HighRequestErrorRate
+          expr: |
+            sum (
+              rate(
+                traces_span_metrics_calls_total{
+                  service_name!~"flagd|load-generator",
+                  status_code="STATUS_CODE_ERROR",
+                  namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                }[5m]
+              )
+            ) by (service_name, namespace)
+            > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "Request error rate in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
+    - name: opentelemetrydemo.requests
+      rules:
+        - alert: NoRequestsReceived
+          expr: |
+            sum (
+              rate(
+                traces_span_metrics_calls_total{
+                  service_name!~"flagd|load-generator",
+                  status_code=~"STATUS_CODE_UNSET|STATUS_CODE_OK"
+                  namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                }[5m]
+              )
+            ) by (service_name, namespace)
+            == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "Service {{ $labels.service_name }} in namespace {{ $labels.namespace }} has received no requests"

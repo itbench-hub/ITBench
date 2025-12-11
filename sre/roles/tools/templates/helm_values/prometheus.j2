@@ -17,12 +17,18 @@ prometheus:
       matchLabels:
         it-bench/monitoring: "true"
     serviceMonitorSelectorNilUsesHelmValues: false
-    additionalArgs:
-      - name: web.enable-otlp-receiver
-        value: ""
 {% if tools_installation_plan.istio.enabled | default(false) %}
     routePrefix: /prometheus
 {% endif %}
+customRules:
+  KubeContainerWaiting:
+    for: 5m
+  KubeHpaMaxedOut:
+    for: 5m
+  KubePodCrashLooping:
+    for: 5m
+  KubePodNotReady:
+    for: 5m
 defaultRules:
   rules:
     alertmanager: false
