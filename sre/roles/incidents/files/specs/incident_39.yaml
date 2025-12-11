@@ -1,0 +1,26 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 41
+    name: PodDisruptionBudget Blocking Node Drain
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+    faults:
+      - custom:
+          name: pdb-blocking-drain
+          pdb_blocking_drain:
+            workload:
+              kind: Deployment
+              name: payment
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
