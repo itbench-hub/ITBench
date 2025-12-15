@@ -198,16 +198,3 @@
     name: ITBench-Custom-EE
     organization: ITBench
     pull: always
-
-- name: Update existing container group with experiment data mount
-  awx.awx.instance_group:
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    name: "default"
-    pod_spec_override: "{{ lookup('ansible.builtin.template', 'templates/instance_group/pod_spec_override.j2') | from_yaml }}"
-    state: present
-  vars:
-    awx_namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
-    pod_spec: "{{ lookup('ansible.builtin.file', 'files/instance_group/pod_spec_override.yaml') | from_yaml }}"
-    requires_storage: "{{ awx_cluster.provider == 'kind' }}"
