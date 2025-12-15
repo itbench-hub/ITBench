@@ -2,7 +2,8 @@
 apiVersion: awx.ansible.com/v1beta1
 kind: AWX
 metadata:
-  name: awx-deployment
+  name: {{ awx_instances.awx.name }}
+  namespace: {{ awx_instances.awx.namespace }}
 spec:
   service_type: loadbalancer
   postgres_data_volume_init: true
@@ -11,4 +12,8 @@ spec:
     chmod 700 /var/lib/pgsql/data
   postgres_storage_requirements:
     requests:
+{% if awx_cluster.provider == "kind" %}
+      storage: 4Gi
+{% else %}
       storage: 32Gi
+{% endif %}

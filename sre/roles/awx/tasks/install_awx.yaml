@@ -22,53 +22,10 @@
     timeout: 10m0s
     wait: true
 
-- name: Create experiment data PersistentVolume
-  kubernetes.core.k8s:
-    kubeconfig: "{{ awx_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: v1
-      kind: PersistentVolume
-      metadata:
-        name: experiment-data-pv
-      spec:
-        capacity:
-          storage: 1Gi
-        accessModes:
-          - ReadWriteMany
-        hostPath:
-          path: /mnt/experiment-data
-          type: DirectoryOrCreate
-        persistentVolumeReclaimPolicy: Retain
-    state: present
-  when:
-    - awx_cluster.provider == "kind"
-
-- name: Create experiment data PersistentVolumeClaim
-  kubernetes.core.k8s:
-    kubeconfig: "{{ awx_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: experiment-data-pvc
-        namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
-      spec:
-        accessModes:
-          - ReadWriteMany
-        resources:
-          requests:
-            storage: 1Gi
-        volumeName: experiment-data-pv
-        storageClassName: ""
-    state: present
-  when:
-    - awx_cluster.provider == "kind"
-
 - name: Install AWX
   kubernetes.core.k8s:
     kubeconfig: "{{ awx_cluster.kubeconfig }}"
-    namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
-    src: files/awx_spec/{{ spec_file_name }}.yaml
+    template: templates/kubernetes/awx.j2
     state: present
     wait: true
     wait_condition:
@@ -76,5 +33,3 @@
       status: "True"
       type: Successful
     wait_timeout: 900
-  vars:
-    spec_file_name: "{{ 'kind' if awx_cluster.provider == 'kind' else 'base' }}"
