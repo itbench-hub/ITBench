@@ -1,0 +1,111 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-20
+spec:
+  alerts:
+    - group_id: frontend-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Error Rate is Above Threshold
+    - group_id: recommendation-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Error Rate is Above Threshold
+  aliases:
+    - - productcatalog-service-1
+      - productcatalog-pod-1
+    - - productcatalog-pod-1
+      - productcatalog-deployment-1
+    - - frontend-service-1
+      - frontend-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+    - - recommendation-service-1
+      - recommendation-pod-1
+  fault:
+    - category: Change
+      condition: To Be Specified
+      entity:
+        group_id: checkout-pod-1
+        kind: Pod
+        name: productcatalog-pod-1
+      fault_mechanism: custom
+  groups:
+    - filter:
+        - product-catalog-.*
+      id: productcatalog-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - product-catalog-.*
+      id: productcatalog-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - recommendation\b
+      id: recommendation-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - product-catalog\b
+      id: productcatalog-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-.*
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - checkout-.*
+      id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - recommendation-.*
+      id: recommendation-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: productcatalogdeployement updated to point to an invalid image - incorrect image path-location
+      effect: productcatalog pod is in ImagePullBackOff error
+      source: productcatalog-deployment-1
+      target: productcatalog-pod-1
+    - condition: productcatalog pod is in ImagePullBackOff error
+      effect: frontend service Error Rate is Above Threshold
+      source: productcatalog-pod-1
+      target: frontend-service-1
+    - condition: productcatalog pod is in ImagePullBackOff error
+      effect: checkout service Error Rate is Above Threshold
+      source: productcatalog-pod-1
+      target: checkout-service-1
+    - condition: checkout service Error Rate is Above Threshold
+      effect: frontend service Error Rate is Above Threshold
+      source: checkout-service-1
+      target: frontend-service-1
+    - condition: productcatalog pod is in ImagePullBackOff error
+      effect: recommendation service Error Rate is Above Threshold
+      source: productcatalog-pod-1
+      target: recommendation-service-1
+    - condition: recommendation service Error Rate is Above Threshold
+      effect: frontend service Error Rate is Above Threshold
+      source: recommendation-service-1
+      target: frontend-service-1
+  recommended_actions:
+    - solution:
+        actions:
+          - change the image field in productcatalogueservice deployment pointing to the correct image
+        id: change_the_image_field_in_productcatalogueservice_deployment_pointing_to_the_correct_image

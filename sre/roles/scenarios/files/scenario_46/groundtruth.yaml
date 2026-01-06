@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-46
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodCrashLooping
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: postgresql
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/postgresql
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment postgresql
+            text: Manually edit the manifest and replace the invalid container's resource configuration with the correct value(s).

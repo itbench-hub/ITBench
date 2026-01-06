@@ -1,0 +1,50 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-38
+spec:
+  alerts:
+    - labels: {}
+      name: KubeHpaMaxedOut
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: fraud-detection
+        namespace: otel-demo
+    - apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: fraud-detection
+        namespace: otel-demo
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: frontend
+        namespace: otel-demo
+    - apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: frontend
+        namespace: otel-demo
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: image-provider
+        namespace: otel-demo
+    - apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: image-provider
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo edit horizontalpodautoscaler fraud-detection
+            text: Manually edit the manifest and replace the utilization values with the correct values.
+    - - steps:
+          - command: kubectl -n otel-demo edit horizontalpodautoscaler frontend
+            text: Manually edit the manifest and replace the utilization values with the correct values.
+    - - steps:
+          - command: kubectl -n otel-demo edit horizontalpodautoscaler image-provider
+            text: Manually edit the manifest and replace the utilization values with the correct values.

@@ -1,0 +1,33 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-31
+spec:
+  alerts:
+    - labels: {}
+      name: NoRequestsReceived
+    - labels: {}
+      name: HighRequestErrorRate
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: frontend
+        namespace: otel-demo
+    - apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: frontend-block-all-ports
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo get networkpolicy
+            text: Retrieve and review the configuration of the network policy(s) in the affected namespace.
+          - command: kubectl -n otel-demo edit networkpolicy frontend-deny
+            text: Manually edit the manifest(s) and allow access to workload's ports of the network policy(s).
+      - steps:
+          - command: kubectl -n otel-demo get networkpolicy
+            text: Retrieve and review the configuration of the network policy(s) in the affected namespace.
+          - command: kubectl -n otel-demo edit networkpolicy frontend-deny
+            text: Delete the offending network policy(s) if it is no longer required.

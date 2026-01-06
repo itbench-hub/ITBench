@@ -1,0 +1,123 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-102
+spec:
+  alerts:
+    - group_id: ad-service-1
+      id: NoRequestsDetected
+      metadata:
+        description: Service ad in namespace otel-demo has 0 requests
+    - group_id: frontend-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Request error rate in service frontend in namespace otel-demo is above 0
+    - group_id: frontend-proxy-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Request error rate in service frontend-proxy in namespace otel-demo is above 0
+  aliases:
+    - - ad-service-1
+      - ad-pod-1
+      - ad-deployment-1
+      - ad-replicaset-1
+    - - frontend-service-1
+      - frontend-pod-1
+    - - frontend-proxy-service-1
+      - frontend-proxy-pod-1
+  fault:
+    - category: custom
+      condition: Memory quota imposed on namespace preventing pod scheduling
+      entity:
+        group_id: otel-demo-namespace-1
+        kind: Namespace
+        name: otel-demo-namespace-1
+      fault_mechanism: resource_quota_enforcement
+  groups:
+    - filter:
+        - otel-demo
+      id: otel-demo-namespace-1
+      kind: Namespace
+      root_cause: true
+    - filter:
+        - ad-.*
+      id: ad-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - ad\b
+      id: ad-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - ad\b
+      id: ad-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+    - filter:
+        - ad-.*
+      id: ad-replicaset-1
+      kind: ReplicaSet
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-.*
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy-.*
+      id: frontend-proxy-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - flagd\b
+      id: flagd-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - flagd-.*
+      id: flagd-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: Memory quota prevents new pod scheduling when deployment tries to scale up
+      effect: Ad deployment unable to create new pods despite scale-up command
+      source: otel-demo-namespace-1
+      target: ad-deployment-1
+    - condition: Deployment cannot create new ReplicaSet due to namespace memory constraints
+      effect: Ad ReplicaSet shows 0/1 replicas created with FailedCreate condition
+      source: ad-deployment-1
+      target: ad-replicaset-1
+    - condition: ReplicaSet cannot schedule pods due to memory quota enforcement
+      effect: Ad pods cannot be created, resulting in MinimumReplicasUnavailable
+      source: ad-replicaset-1
+      target: ad-pod-1
+    - condition: No healthy pods available to serve requests
+      effect: Ad service becomes unavailable and receives no requests
+      source: ad-pod-1
+      target: ad-service-1
+    - condition: Frontend cannot retrieve ads via gRPC call to ad service
+      effect: Frontend service experiences request errors
+      source: ad-service-1
+      target: frontend-service-1
+    - condition: Frontend errors propagate to frontend-proxy due to service dependencies
+      effect: Frontend-proxy service experiences request errors
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Evaluate current namespace memory usage and requirements
+          - Increase memory quota on otel-demo namespace to accommodate all services
+        id: increase_memory_quota

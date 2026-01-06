@@ -1,0 +1,36 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-1
+spec:
+  applications:
+    - otelDemo:
+        enabled: true
+        options:
+          autoscaling: false
+  faults:
+    - injections:
+        - args:
+            flag:
+              name: loadGeneratorFloodHomepage
+              state: "on"
+            kubernetesObject:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: flagd-config
+                namespace: otel-demo
+          id: opentelemetry-demo-feature-flag
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: false
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

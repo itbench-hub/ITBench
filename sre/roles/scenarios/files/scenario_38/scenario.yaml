@@ -1,0 +1,49 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-38
+spec:
+  applications:
+    - otelDemo:
+        enabled: true
+        options:
+          autoscaling: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: fraud-detection
+                namespace: otel-demo
+          id: misconfigured-kubernetes-horizontal-pod-autoscaler
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: frontend
+                namespace: otel-demo
+          id: misconfigured-kubernetes-horizontal-pod-autoscaler
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: image-provider
+                namespace: otel-demo
+          id: misconfigured-kubernetes-horizontal-pod-autoscaler
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: false
+    costMonitoring:
+      opencost:
+        enabled: true
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

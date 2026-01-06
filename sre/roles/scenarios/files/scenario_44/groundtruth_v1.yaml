@@ -1,0 +1,49 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-44
+spec:
+  alerts:
+    - group_id: payment-pod-1
+      id: PendingPodsDetected
+      metadata:
+        description: Payment pods stuck in Pending state due to unsatisfiable anti-affinity rules
+  aliases:
+    - - payment-service-1
+      - payment-pod-1
+  fault:
+    - category: Configuration
+      condition: Strict pod anti-affinity requires pods on different nodes but insufficient nodes available
+      entity:
+        group_id: payment-pod-1
+        kind: Pod
+        name: payment-pod-1
+      fault_mechanism: pod-anti-affinity-rescheduling
+  groups:
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - payment-.*
+      id: payment-pod-1
+      kind: Pod
+      namespace: otel-demo
+      root_cause: true
+  propagations:
+    - condition: Anti-affinity rules require more nodes than available in cluster
+      effect: Pods unable to schedule and stuck in Pending state
+      source: payment-anti-affinity
+      target: payment-pod-1
+    - condition: Reduced number of payment pods available to serve traffic
+      effect: Payment service has insufficient capacity
+      source: payment-pod-1
+      target: payment-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Update anti-affinity rules from requiredDuringScheduling to preferredDuringScheduling
+          - Or increase cluster node count to satisfy anti-affinity requirements
+        id: relax_anti_affinity

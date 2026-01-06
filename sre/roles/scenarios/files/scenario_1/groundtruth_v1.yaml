@@ -1,0 +1,72 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-1
+spec:
+  alerts:
+    - group_id: frontend-proxy-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Error rate is above threshold for frontend-proxy service
+    - group_id: frontend-proxy-service-1
+      id: RequestLatency
+      metadata:
+        description: Latency is above threshold for frontend-proxy service
+  aliases:
+    - - load-generator-service-1
+      - load-generator-pod-1
+      - frontend-proxy-service-1
+      - frontend-proxy-pod-1
+  fault:
+    - category: Change
+      condition: To be specified
+      entity:
+        group_id: load-generator-pod-1
+        kind: Pod
+        name: load-generator-pod-1
+      fault_mechanism: custom
+  groups:
+    - filter:
+        - load-generator-.*
+      id: load-generator-pod-1
+      kind: Pod
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - load-generator\b
+      id: load-generator-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy-.*
+      id: frontend-proxy-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: load-generator pod is configured with a higher number of users
+      effect: load-generator creates a high number of requests as a result
+      source: load-generator-pod-1
+      target: load-generator-service-1
+    - condition: frontend-proxy service overloaded - request volume exceeds configured capacity
+      effect: frontend-proxy service error rate is above threshold
+      source: load-generator-service-1
+      target: frontend-proxy-service-1
+    - condition: frontend-proxy service overloaded - request volume exceeds configured capacity
+      effect: frontend-proxy service latency is above threshold
+      source: load-generator-service-1
+      target: frontend-proxy-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - deem if traffic is legit
+        id: deem_if_traffic_is_legit
+    - solution:
+        actions:
+          - set up autoscaler
+        id: set_up_autoscaler

@@ -1,0 +1,33 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-33
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ad
+        namespace: otel-demo
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: cart
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/ad
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment ad
+            text: Manually edit the manifest and replace the node selector with the correct value.
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/cart
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment cart
+            text: Manually edit the manifest and replace the node selector with the correct value.

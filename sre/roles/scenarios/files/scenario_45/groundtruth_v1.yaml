@@ -1,0 +1,50 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-45
+spec:
+  alerts:
+    - group_id: email-pod-1
+      id: PendingPodsDetected
+      metadata:
+        description: Emailservice pod stuck in Init phase due to hanging init container
+    - group_id: email-service-1
+      id: NoRequestsDetected
+      metadata:
+        description: No incoming requests handled by emailservice because pods are pending
+  aliases:
+    - - email-pod-1
+      - email-service-1
+  fault:
+    - category: Custom
+      condition: Init container stuck in sleep loop, preventing pod from starting
+      entity:
+        group_id: email-pod-1
+        kind: Custom
+        name: init-container-hang-demo
+      fault_mechanism: patch
+  groups:
+    - filter:
+        - email-.*
+      id: email-pod-1
+      kind: Pod
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - email\b
+      id: email-service-1
+      kind: Service
+      namespace: otel-demo
+  propagations:
+    - condition: Init container prevents pod startup
+      effect: Emailservice endpoint unavailable
+      source: email-pod-1
+      target: email-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Identify init container stuck in Init phase via `kubectl describe pod`
+          - Patch or delete the init container to restore normal startup
+          - Redeploy the emailservice deployment to remove hang behavior
+        id: remove_hang_patch

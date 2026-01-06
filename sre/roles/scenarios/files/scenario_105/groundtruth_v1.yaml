@@ -1,0 +1,209 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-105
+spec:
+  alerts:
+    - group_id: product-catalog-pod-1
+      id: PodCrashLoopBackOff
+      metadata:
+        description: Product catalog pod is in CrashLoopBackOff state
+    - group_id: checkout-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Checkout service experiencing connection failures to product-catalog
+    - group_id: payment-service-1
+      id: NoRequestsDetected
+      metadata:
+        description: Payment service receiving no requests - checkout flow blocked
+    - group_id: shipping-service-1
+      id: NoRequestsDetected
+      metadata:
+        description: Shipping service receiving no requests - checkout flow blocked
+    - group_id: email-service-1
+      id: NoRequestsDetected
+      metadata:
+        description: Email service receiving no requests - checkout flow blocked
+    - group_id: currency-service-1
+      id: NoRequestsDetected
+      metadata:
+        description: Currency service receiving no requests - checkout flow blocked
+    - group_id: accounting-service-1
+      id: NoRequestsDetected
+      metadata:
+        description: Accounting service receiving no requests - order processing blocked
+    - group_id: fraud-detection-service-1
+      id: NoRequestsDetected
+      metadata:
+        description: Fraud detection service receiving no requests - order processing blocked
+  aliases:
+    - - product-catalog-service-1
+      - product-catalog-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+    - - payment-service-1
+      - payment-pod-1
+    - - shipping-service-1
+      - shipping-pod-1
+    - - email-service-1
+      - email-pod-1
+    - - currency-service-1
+      - currency-pod-1
+    - - accounting-service-1
+      - accounting-pod-1
+    - - fraud-detection-service-1
+      - fraud-detection-pod-1
+    - - quote-service-1
+      - quote-pod-1
+  fault:
+    - category: Infrastructure
+      condition: Pod container in CrashLoopBackOff state due to invalid command
+      entity:
+        group_id: product-catalog-pod-1
+        kind: Pod
+        name: product-catalog-pod-1
+      fault_mechanism: command_injection
+  groups:
+    - filter:
+        - product-catalog-.*
+      id: product-catalog-deployment
+      kind: Deployment
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - product-catalog-.*
+      id: product-catalog-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - product-catalog\b
+      id: product-catalog-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - checkout-.*
+      id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - payment-.*
+      id: payment-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - shipping\b
+      id: shipping-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - shipping-.*
+      id: shipping-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - email\b
+      id: email-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - email-.*
+      id: email-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - currency\b
+      id: currency-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - currency-.*
+      id: currency-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - accounting\b
+      id: accounting-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - accounting-.*
+      id: accounting-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - fraud-detection\b
+      id: fraud-detection-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - fraud-detection-.*
+      id: fraud-detection-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - quote\b
+      id: quote-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - quote-.*
+      id: quote-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: Invalid command in deployment
+      effect: Pod container fails to start due to invalid command
+      source: product-catalog-deployment
+      target: product-catalog-pod-1
+    - condition: Pod container fails to start due to invalid command
+      effect: Product catalog service becomes unavailable
+      source: product-catalog-pod-1
+      target: product-catalog-service-1
+    - condition: Checkout service cannot validate products via product-catalog
+      effect: Checkout operations fail early in the process
+      source: product-catalog-service-1
+      target: checkout-service-1
+    - condition: Checkout process never reaches payment stage due to product validation failure
+      effect: Payment service receives zero requests
+      source: checkout-service-1
+      target: payment-service-1
+    - condition: Checkout process never reaches shipping stage due to product validation failure
+      effect: Shipping service receives zero requests
+      source: checkout-service-1
+      target: shipping-service-1
+    - condition: Checkout process never completes to send order confirmation emails
+      effect: Email service receives zero requests
+      source: checkout-service-1
+      target: email-service-1
+    - condition: Checkout process never reaches currency conversion stage
+      effect: Currency service receives zero requests
+      source: checkout-service-1
+      target: currency-service-1
+    - condition: No completed orders to process via Kafka queue
+      effect: Accounting service receives zero order messages
+      source: checkout-service-1
+      target: accounting-service-1
+    - condition: No completed orders to analyze via Kafka queue
+      effect: Fraud detection service receives zero order messages
+      source: checkout-service-1
+      target: fraud-detection-service-1
+    - condition: Shipping service not processing any requests
+      effect: Quote service receives zero shipping quote requests
+      source: shipping-service-1
+      target: quote-service-1
+  recommended_actions:
+    - solution:
+        actions:
+          - Identify and correct the invalid command in product-catalog deployment
+        id: fix_container_command

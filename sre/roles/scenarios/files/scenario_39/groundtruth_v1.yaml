@@ -1,0 +1,63 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-39
+spec:
+  alerts:
+    - group_id: payment-service-1
+      id: RequestLatency
+      metadata:
+        description: Payment service latency increased due to pod stuck on stressed node
+    - group_id: payment-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Payment service experiencing errors as node becomes unhealthy
+  aliases:
+    - - payment-service-1
+      - payment-pod-1
+  fault:
+    - category: Configuration
+      condition: Overly restrictive PDB (minAvailable=2) blocks pod eviction during node drain
+      entity:
+        group_id: payment-pdb-1
+        kind: PodDisruptionBudget
+        name: payment-pdb-1
+      fault_mechanism: pdb-blocking-drain
+  groups:
+    - filter:
+        - payment-pdb
+      id: payment-pdb-1
+      kind: PodDisruptionBudget
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - payment-.*
+      id: payment-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: PDB prevents pod eviction during node drain operation
+      effect: Pod remains stuck on node undergoing maintenance/stress
+      source: payment-pdb-1
+      target: payment-pod-1
+    - condition: Pod experiencing degraded performance on stressed node
+      effect: Payment service latency increases and error rate rises
+      source: payment-pod-1
+      target: payment-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Update PDB to use maxUnavailable instead of minAvailable
+          - Set maxUnavailable to 1 to allow controlled disruptions
+        id: relax_pdb_constraints
+    - solution:
+        actions:
+          - Temporarily delete PDB to complete drain operation
+          - Recreate PDB with appropriate constraints after maintenance
+        id: force_drain_completion

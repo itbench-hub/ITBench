@@ -17,6 +17,14 @@
     state: directory
   register: documentation_temporary_directory
 
+- name: Generate map for applications based on application id
+  ansible.builtin.set_fact:
+    documentation_applications: "{{ (documentation_applications | default({})) | combine({application.id: application}) }}"
+  loop: "{{ lookup('ansible.builtin.file', 'files/library/applications/index.json') | from_json }}"
+  loop_control:
+    label: application/{{ application.name }}
+    loop_var: application
+
 - name: Generate map for faults based on fault id
   ansible.builtin.set_fact:
     documentation_faults: "{{ (documentation_faults | default({})) | combine({fault.id: fault}) }}"
@@ -24,6 +32,14 @@
   loop_control:
     label: fault/{{ fault.name }}
     loop_var: fault
+
+- name: Generate map for waiters based on waiter id
+  ansible.builtin.set_fact:
+    documentation_waiters: "{{ (documentation_waiters | default({})) | combine({waiter.id: waiter}) }}"
+  loop: "{{ lookup('ansible.builtin.file', 'files/library/waiters/index.json') | from_json }}"
+  loop_control:
+    label: waiter/{{ waiter.name }}
+    loop_var: waiter
 
 - name: Validate unique ids for all scenarios
   ansible.builtin.assert:
@@ -46,23 +62,7 @@
             scenario.id: (
               scenario |
               ansible.utils.remove_keys(target=["solutionTemplates"]) |
-              combine({"solutions": []})
-            )
-          }
-        )
-      }}
-    documentation_scenario_injections: |-
-      {{
-        (
-          documentation_scenario_injections | default({})
-        ) |
-        combine(
-          {
-            scenario.id: (
-              scenario.disruptions |
-              community.general.json_query("[*].injections") |
-              flatten |
-              items2dict(key_name="id", value_name="args")
+              combine({"alerts": [], "solutions": []})
             )
           }
         )
@@ -74,10 +74,7 @@
         ) +
         (
           [scenario.id] |
-          product(
-            scenario.solutionTemplates |
-            community.general.json_query('[*].refId')
-          )
+          product(scenario.solutionTemplates)
         )
       }}
   loop: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/index.j2') | from_yaml }}"
@@ -85,30 +82,74 @@
     label: scenario-{{ scenario.id }}
     loop_var: scenario
 
-- name: Generate scenario solution template file
+- name: Generate scenario solution template files
   ansible.builtin.copy:
     content: |-
       {{
-        documentation_faults[group[1]].solutions.templates |
+        documentation_faults[scenario_injection.id].solutions.templates |
         to_nice_yaml |
-        replace("args.", "documentation_scenario_injections[group[0]][group[1]].")
+        replace("args.", "scenario_injection.args.")
       }}
-    dest: "{{ documentation_temporary_directory.path }}/scenario-{{ group[0] }}-{{ group[1] }}.j2"
+    dest: "{{ documentation_temporary_directory.path }}/{{ solution_file_name }}.j2"
     mode: "0644"
   loop: "{{ documentation_scenario_solutions }}"
   loop_control:
-    label: scenario-{{ group[0] }}/{{ group[1] }}
+    label: scenario-{{ group[0] }}/solution-{{ group[1].disruptionIndex }}-{{ group[1].injectionIndex }}
     loop_var: group
+  vars:
+    scenario_injection: |-
+      {{
+        documentation_scenarios[
+          group[0]
+        ].disruptions[
+          group[1].disruptionIndex
+        ].injections[
+          group[1].injectionIndex
+        ]
+      }}
+    solution_file_name: |-
+      {{
+        [
+          "scenario",
+          group[0],
+          "solution",
+          group[1].disruptionIndex,
+          group[1].injectionIndex
+        ] |
+        join("-")
+      }}
 
 - name: Template scenario solution files
   ansible.builtin.template:
-    src: "{{ documentation_temporary_directory.path }}/scenario-{{ group[0] }}-{{ group[1] }}.j2"
-    dest: "{{ documentation_temporary_directory.path }}/scenario-{{ group[0] }}-{{ group[1] }}.yaml"
+    src: "{{ documentation_temporary_directory.path }}/{{ solution_file_name }}.j2"
+    dest: "{{ documentation_temporary_directory.path }}/{{ solution_file_name }}.yaml"
     mode: "0644"
   loop: "{{ documentation_scenario_solutions }}"
   loop_control:
-    label: scenario-{{ group[0] }}/{{ group[1] }}
+    label: scenario-{{ group[0] }}/solution-{{ group[1].disruptionIndex }}-{{ group[1].injectionIndex }}
     loop_var: group
+  vars:
+    scenario_injection: |-
+      {{
+        documentation_scenarios[
+          group[0]
+        ].disruptions[
+          group[1].disruptionIndex
+        ].injections[
+          group[1].injectionIndex
+        ]
+      }}
+    solution_file_name: |-
+      {{
+        [
+          "scenario",
+          group[0],
+          "solution",
+          group[1].disruptionIndex,
+          group[1].injectionIndex
+        ] |
+        join("-")
+      }}
 
 - name: Add templated fault solutions to scenarios
   ansible.builtin.set_fact:
@@ -121,6 +162,20 @@
               documentation_scenarios[group[0]] |
               combine(
                 {
+                  "alerts": (
+                    (
+                      documentation_scenarios[group[0]].alerts +
+                      (
+                        documentation_faults[scenario_injection.id].alerts.application |
+                        default ([])
+                      ) +
+                      (
+                        documentation_faults[scenario_injection.id].alerts.goldenSignal |
+                        default ([])
+                      )
+                    ) |
+                    unique
+                  ),
                   "solutions": (
                     documentation_scenarios[group[0]].solutions +
                     [
@@ -130,8 +185,7 @@
                           [
                             documentation_temporary_directory.path,
                             (
-                              ["scenario-", group[0], "-", group[1], ".yaml"] |
-                              join
+                              [solution_file_name, ".yaml"] | join("")
                             )
                           ] |
                           join("/")
@@ -148,19 +202,41 @@
       }}
   loop: "{{ documentation_scenario_solutions }}"
   loop_control:
-    label: scenario-{{ group[0] }}/{{ group[1] }}
+    label: scenario-{{ group[0] }}/solution-{{ group[1].disruptionIndex }}-{{ group[1].injectionIndex }}
     loop_var: group
+  vars:
+    scenario_injection: |-
+      {{
+        documentation_scenarios[
+          group[0]
+        ].disruptions[
+          group[1].disruptionIndex
+        ].injections[
+          group[1].injectionIndex
+        ]
+      }}
+    solution_file_name: |-
+      {{
+        [
+          "scenario",
+          group[0],
+          "solution",
+          group[1].disruptionIndex,
+          group[1].injectionIndex
+        ] |
+        join("-")
+      }}
 
 - name: Generate scenarios libary schema
   ansible.builtin.copy:
     content: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/schema.j2') | from_yaml | to_nice_json }}"
-    dest: "{{ playbook_dir }}/../roles/documentation/files/library/scenarios/schema.json"
+    dest: "{{ [role_path, 'files', 'library', 'scenarios', 'schema.json'] | path_join }}"
     mode: "0644"
 
 - name: Generate scenarios libary index
   ansible.builtin.copy:
     content: "{{ documentation_scenarios.values() | sort(attribute='id') | to_nice_json }}"
-    dest: "{{ playbook_dir }}/../roles/documentation/files/library/scenarios/index.json"
+    dest: "{{ [role_path, 'files', 'library', 'scenarios', 'index.json'] | path_join }}"
     mode: "0644"
 
 - name: Generate Scenarios README

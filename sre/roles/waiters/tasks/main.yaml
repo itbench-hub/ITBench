@@ -1,0 +1,26 @@
+---
+- name: Load waiters library index map
+  ansible.builtin.set_fact:
+    waiters_library_map: "{{ lookup('ansible.builtin.file', 'files/library/map.yaml') | from_yaml }}"
+
+- name: Verify that all ids are valid
+  ansible.builtin.assert:
+    that:
+      - (ids_difference | length) == 0
+    fail_msg: Invalid waiter ids discovered ({{ ids_difference | join(', ') }}). Please remove invalid ids.
+    success_msg: All waiter ids are valid.
+  vars:
+    ids_difference: "{{ waiters_tasks | community.general.json_query('[*].id') | difference(waiters_library_map.keys()) }}"
+
+- name: Include wait tasks
+  ansible.builtin.include_tasks:
+    file: "{{ waiters_library_map[waiter_task.id].taskFile }}"
+    apply:
+      tags:
+        - fault_injection
+      vars:
+        waiter_args: "{{ waiter_task.args }}"
+  loop: "{{ waiters_tasks }}"
+  loop_control:
+    label: task/{{ waiter_task.id }}
+    loop_var: waiter_task

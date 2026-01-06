@@ -2,6 +2,7 @@ type: array
 items:
   type: object
   required:
+    - alerts
     - category
     - complexity
     - disruptions
@@ -10,6 +11,10 @@ items:
     - platforms
     - tags
   properties:
+    alerts:
+      type: array
+      items:
+        type: string
     category:
       type: string
       enum:
@@ -39,7 +44,7 @@ items:
                   enum: {{ documentation_faults.keys() }}
                 args:
                   type: object
-          waitConditions:
+          waitFor:
             type: array
             items:
               type: object
@@ -49,6 +54,7 @@ items:
               properties:
                 id:
                   type: string
+                  enum: {{ documentation_waiters.keys() }}
                 args:
                   type: object
     environment:
@@ -66,17 +72,13 @@ items:
             properties:
               id:
                 type: string
-                enum:
-                  - bookinfo
-                  - opentelemetry-demo
+                enum: {{ documentation_applications.keys() }}
     id:
       type: integer
     platforms:
       type: array
       items:
         type: string
-        enum:
-          - Kubernetes
     solutions:
       type: array
       items:
@@ -101,8 +103,3 @@ items:
       type: array
       items:
         type: string
-        enum:
-          - Authentication
-          - Deployment
-          - Networking
-          - Performance

@@ -48,9 +48,10 @@ cz commit -- --signoff
 
 ## Committing to SRE Scenarios
 
-### Add a new tool
+> [!WARNING]
+> Before creating a pull request (PR), please ensure that the capability is not already present within the codebase and that there is not already a PR to add the capability. PRs duplicating features causes slows the reviewing process. Such requests will be closed by the maintainers.
 
-**Note:** Before submitting a PR, please first submit an feature reuqest.
+### Add a new tool
 
 **Note:** It is recommended that a tool installed to a Kubernetes cluster use Helm as the deployment mechanism. This helps to simplify the deployment process and keeps the general uniformity of ITBench's deployment.
 
@@ -61,8 +62,6 @@ cz commit -- --signoff
 4. Create a PR titled: `feat: new tool [<tool name>]`
 
 ### Add a new application
-
-**Note:** Before submitting a PR, please first submit an feature reuqest.
 
 **Note:** It is recommended that an application installed to a Kubernetes cluster use Helm as the deployment mechanism. This helps to simplify the deployment process and keeps the general uniformity of ITBench's deployment.
 
@@ -76,8 +75,6 @@ cz commit -- --signoff
 
 ### Add a new fault injection (and removal)
 
-**Note:** Before submitting a PR, please first submit an feature reuqest.
-
 **Note:** When creating tasks, please use the given Ansible modules whenever possible. This reduces the overhead in reviewing the fault and keeps the uniformity of the ITBench codebase. For example, when making a task that creates a Kubernetes object, use the `kubernetes.core.k8s` collection instead of using `ansible.builtin.command` and invoking the kubectl CLI. The collections used in this project can be found [here](./sre/requirements.yaml) and documentation for them can be found [here](https://docs.ansible.com/ansible/latest/collections/index.html).
 
 1. Create task files in the faults role which handle the injection and removal of the fault. These files should be title `inject_<fault type>_<fault name>` and `remove_<fault type>_<fault name>`.
@@ -89,10 +86,40 @@ cz commit -- --signoff
   - This file is titled `incident_<unique int id>`
 5. Create a PR titled: `feat: new fault [<fault name>]`
 
-### Add a new incident
+### Add a new waiter
 
-**Note:** The structure of the incident spec file is defined [here](./sre/roles/incidents/meta/argument_specs.yaml) and the structure of the fault spec is defined [here](./sre/roles/faults/meta/argument_specs.yaml).
+For more information about existing waiters (and a description of what a waiter), please consult the [documentation](./sre/docs/waiters.md).
 
-1. Create a new [incident spec](./sre/roles/incidents/files/specs/) and [ground truth file](./sre/roles/incidents/files/ground_truths/) to act as a sample to show how to use the new fault
-  - This file is titled `incident_<unique int id>`
-2. Create a PR titled: `feat: new incident [<incident id>]`
+1. Add a new element to the JSON list in the waiters' [library index](./sre/roles/documentation/files/library/waiters/index.json). The required JSON fields are described in the [schema](./sre/roles/documentation/files/library/waiters/schema.json).
+2. Once the new entry has been added, run the following commands to generate and verify the resulting documenation files.
+```shell
+make -C sre generate_docs
+make -C sre validate_docs
+```
+3. Run the following command to generate the implementation files of the new waiter:
+```shell
+make -C sre generate_scenario_files
+```
+4. Add the implementation for the new waiter.
+> [!NOTE]
+> Using the `git status` command can help quickly show which files are untracted. The newly created waiter task yaml file will be under the `sre/roles/waiter/tasks` directory.
+5. Create a PR with the title, `feat: add waiter <waiter name>`, and leave a description of what it does in the text field of the PR.
+6. **Optional:** A scenario showing the capability of the new waiter can be added within the same PR. See the [section on adding new scenarios](#add-a-new-scenario) for more information.
+
+### Add a new scenario
+
+For more information about existing scenarios, please consult the [documentation](./sre/docs/scenarios.md).
+
+1. Add a new element to the JSON list in the scenarios' [library index](./sre/roles/documentation/templates/library/scenarios/index.j2). The required JSON fields are described in the [schema](./sre/roles/documentation/files/library/scenarios/schema.json).
+> [!NOTE]
+> A scenario element is quite dense. The recommended approach would be copy-pasting a previous element and replacing the values as needed.
+2. Once the new entry has been added, run the following commands to generate and verify the resulting documenation files.
+```shell
+make -C sre generate_docs
+make -C sre validate_docs
+```
+3. Run the following command to generate the files for the new scenario:
+```shell
+make -C sre generate_scenario_files
+```
+4. Create a PR with the title, `feat: add scenario <scenario name>`, and leave a description of what it does in the text field of the PR.

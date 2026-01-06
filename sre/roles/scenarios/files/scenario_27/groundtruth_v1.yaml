@@ -1,0 +1,125 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-27
+spec:
+  alerts:
+    - group_id: frontend-proxy-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Error rate is above threshold for frontend-proxy service
+    - group_id: frontend-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Error rate is above threshold for frontend service
+    - group_id: checkout-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Error rate is above threshold for checkout service
+    - group_id: shipping-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Error rate is above threshold for shipping service
+  aliases:
+    - - quote-service-1
+      - quote-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+    - - shipping-service-1
+      - shipping-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+    - - frontend-proxy-service-1
+      - frontend-proxy-pod-1
+  fault:
+    - category: Chaos
+      condition: HTTP Chaos fault aborting POST requests to quote service /getquote endpoint
+      entity:
+        group_id: http-abort-otel-demo-quoteservice-1
+        kind: HttpChaos
+        name: http-abort-otel-demo-quoteservice-1
+      fault_mechanism: chaos
+  groups:
+    - filter:
+        - otel-demo-quote-http-chaos-abort
+      id: otel-demo-quote-http-chaos-abort
+      kind: Schedule
+      namespace: chaos-mesh
+      root_cause: true
+    - filter:
+        - quote\b
+      id: quote-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - quote-.*
+      id: quote-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - checkout-.*
+      id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - shipping\b
+      id: shipping-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - shipping-.*
+      id: shipping-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-.*
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy-.*
+      id: frontend-proxy-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: HTTP Chaos aborts all POST requests to quote service /getquote endpoint
+      effect: Quote service becomes unavailable for shipping quote requests
+      source: otel-demo-quote-http-chaos-abort
+      target: quote-service-1
+    - condition: Shipping service cannot get quotes due to quote service failures
+      effect: Shipping service experiences errors when calling quote service
+      source: quote-service-1
+      target: shipping-service-1
+    - condition: Checkout service receives errors from shipping service due to quote failures
+      effect: Checkout service experiences errors during shipping calculations
+      source: shipping-service-1
+      target: checkout-service-1
+    - condition: Frontend receives errors from checkout service due to shipping/quote failures
+      effect: Frontend service experiences errors during checkout process
+      source: checkout-service-1
+      target: frontend-service-1
+    - condition: Frontend-proxy receives errors from frontend service due to checkout failures
+      effect: Frontend-proxy service experiences errors when proxying requests
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+  recommended_actions:
+    - solution:
+        actions:
+          - Delete the HTTP Chaos resource targeting quote service
+        id: remove_chaos_experiment
