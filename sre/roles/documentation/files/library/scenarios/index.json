@@ -1,5 +1,6 @@
 [
     {
+        "alerts": [],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates the OpenTelemetry Demo's services being flooded with requests.",
@@ -59,6 +60,7 @@
         ]
     },
     {
+        "alerts": [],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates the OpenTelemetry Demo's `ad` service experiencing high CPU usage.",
@@ -118,6 +120,7 @@
         ]
     },
     {
+        "alerts": [],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario changes the environment variables of OpenTelemetry Demo's `shipping` service, causing it to be unable to reach the `quote` service.",
@@ -186,6 +189,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodNotReady"
+        ],
         "category": "sre",
         "complexity": "low",
         "description": "This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image.",
@@ -248,6 +254,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodNotReady"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario changes the environment variables of OpenTelemetry Demo's `shipping` service, causing it to be unable to reach the `quote` service.",
@@ -318,6 +327,7 @@
         ]
     },
     {
+        "alerts": [],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates tampered HTTP requests to OpenTelemetry Demo's `email` service.",
@@ -411,6 +421,7 @@
         ]
     },
     {
+        "alerts": [],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates aborted HTTP requests to OpenTelemetry Demo's `quote` service.",
@@ -496,6 +507,9 @@
         ]
     },
     {
+        "alerts": [
+            "HighRequestErrorRate"
+        ],
         "category": "sre",
         "complexity": "low",
         "description": "This scenario changes the specified port of OpenTelemetry Demo's `ad` service.",
@@ -548,6 +562,10 @@
         ]
     },
     {
+        "alerts": [
+            "NoRequestsReceived",
+            "HighRequestErrorRate"
+        ],
         "category": "sre",
         "complexity": "low",
         "description": "This scenario simulates all ingress traffic being blocked on OpenTelemetry Demo's `frontend` service.",
@@ -615,6 +633,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodNotReady"
+        ],
         "category": "sre",
         "complexity": "low",
         "description": "This scenario simulates OpenTelemetry Demo's `ad` and `cart` services being deployed on the wrong node.",
@@ -666,6 +687,24 @@
                 {
                     "steps": [
                         {
+                            "command": "kubectl -n otel-demo rollout undo deployment/ad",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment ad",
+                            "text": "Manually edit the manifest and replace the node selector with the correct value."
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "steps": [
+                        {
                             "command": "kubectl -n otel-demo rollout undo deployment/cart",
                             "text": "Revert the last change done to the manifest."
                         }
@@ -687,6 +726,9 @@
         ]
     },
     {
+        "alerts": [
+            "HighRequestLatency"
+        ],
         "category": "sre",
         "complexity": "low",
         "description": "This scenario simulates the wrong password being set as the user for OpenTelemetry Demo's `valkey-cart` service.",
@@ -738,6 +780,7 @@
         ]
     },
     {
+        "alerts": [],
         "category": "finops",
         "complexity": "low",
         "description": "This scenario simulates OpenTelemetry Demo services running normally with autoscaling.",
@@ -760,6 +803,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubeHpaMaxedOut"
+        ],
         "category": "finops",
         "complexity": "low",
         "description": "This scenario simulates several OpenTelemetry Demo services being incorrectly autoscaled.",
@@ -824,6 +870,26 @@
                 {
                     "steps": [
                         {
+                            "command": "kubectl -n otel-demo edit horizontalpodautoscaler fraud-detection",
+                            "text": "Manually edit the manifest and replace the utilization values with the correct values."
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit horizontalpodautoscaler frontend",
+                            "text": "Manually edit the manifest and replace the utilization values with the correct values."
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "steps": [
+                        {
                             "command": "kubectl -n otel-demo edit horizontalpodautoscaler image-provider",
                             "text": "Manually edit the manifest and replace the utilization values with the correct values."
                         }
@@ -837,6 +903,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodNotReady"
+        ],
         "category": "sre",
         "complexity": "low",
         "description": "This scenario simulates OpenTelemetry Demo's `payment` service being unable to schedule a new pod.",
@@ -907,6 +976,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodCrashLooping"
+        ],
         "category": "sre",
         "complexity": "low",
         "description": "This scenario simulates OpenTelemetry Demo's `valkey-cart` service experiencing an Out of Memory (OOM) error.",
@@ -981,6 +1053,7 @@
         ]
     },
     {
+        "alerts": [],
         "category": "sre",
         "complexity": "low",
         "description": "This scenario simulates the OpenTelemetry Demo's `cart` service consuming most of the node's available memory.",
@@ -1101,6 +1174,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodNotReady"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates the OpenTelemetry Demo's `kafka` service being evicted from the node.",
@@ -1171,6 +1247,9 @@
         ]
     },
     {
+        "alerts": [
+            "HighRequestErrorRate"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates the OpenTelemetry Demo's `frontend` service being reach other services.",
@@ -1230,6 +1309,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodNotReady"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates new pods of OpenTelemetry Demo's `payment` service being unscheduleable.",
@@ -1289,6 +1371,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubeContainerWaiting"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates new pods of OpenTelemetry Demo's `email` service being unable to execute.",
@@ -1356,6 +1441,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodCrashLooping"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates OpenTelemetry Demo's `postgresql` service not having enough resources.",
@@ -1418,6 +1506,9 @@
         ]
     },
     {
+        "alerts": [
+            "NoRequestsReceived"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates BookInfo's `gateway` service unable to receive GET HTTP requests.",
@@ -1480,6 +1571,9 @@
         ]
     },
     {
+        "alerts": [
+            "NoRequestsReceived"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates BookInfo's `gateway` service unable to receive GET HTTP requests.",
@@ -1530,6 +1624,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodNotReady"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates OpenTelemetry Demo's `frontend` service having a malformed readiness probe.",
@@ -1592,6 +1689,9 @@
         ]
     },
     {
+        "alerts": [
+            "HighRequestErrorRate"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates BookInfo's `productpage-v1` service being unable to communicate with other services.",
@@ -1651,6 +1751,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodNotReady"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.",
@@ -1701,7 +1804,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo get resourcequota`",
+                            "command": "kubectl -n otel-demo get resourcequota",
                             "text": "Retrieve and review the configuration of the resource quota(s) in the affected namespace."
                         },
                         {
@@ -1718,6 +1821,9 @@
         ]
     },
     {
+        "alerts": [
+            "KubePodCrashLooping"
+        ],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates OpenTelemetry Demo's `product-catalog` service having a malformed command.",

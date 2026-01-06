@@ -25,9 +25,8 @@ ITBench makes use of the following tools to process observability data:
 | Prometheus | https://github.com/prometheus/prometheus | Collector | Metrics |
 | Prometheus Operator | https://github.com/prometheus-operator/prometheus-operator | Collector | Metrics |
 
-Unless explicitly deactivated, these tools are always deployed in the environment. For more information about each tool, please review the documentation provided in the respective tool's GitHub repository.
-
-**Note:** When deploying Jaeger, OpenSearch is deployed as a storage unit for the traces received by Jaeger, regardless of whether OpenSearch is part of the active install list during an incident.
+> [!NOTE]
+> With the exception of Jaeger and OpenSearch, all of the observability tools are installed during a SRE or FinOps live scenario. The installation of Jaeger - and its backend storage OpenSearch by proxy - can be disabled via the scenario specification by setting `spec.observability.traces.enabled` to `false`.
 
 ### Chaos Engineering Tools
 
@@ -39,6 +38,9 @@ In ITBench, the following tool is used:
 | --- | --- |
 | Chaos Mesh | https://github.com/chaos-mesh/chaos-mesh |
 
+> [!NOTE]
+> Unless a Chaos Mesh fault defined, Chaos Mesh is not installed during a SRE or FinOps live scenario. While not recommened - as to save on resources - Chaos Mesh can be installed via the scenario specification by setting `spec.chaosEngineering.chaosMesh.enabled` to `true`. When a Chaos Mesh fault is defined within the spec, this field is set to true.
+
 ### Service Mesh Tools
 
 A service mesh tool is a technology which manages communication between pods in a Kubernetes environment. This allows developers to control traffic behavior, enforce security policies, and observe interactions between microservices.
@@ -47,11 +49,12 @@ A service mesh tool is a technology which manages communication between pods in 
 | --- | --- |
 | Istio | https://github.com/istio/istio |
 
-**Note:** Istio also supports an ambient mesh architecture, which is not included in the current installation. This setup uses the default configuration with only the ingress gateway enabled. To enable the ambient mesh, the installation must be extended to include additional Istio components such as ztunnel and istio-cni.
+> [!NOTE]
+> In order to provide external access to the observability tools and their dashboards, Istio is always installed during a SRE or FinOps live scenario. ITBench runs Istio in `ambient` mode in order to make [better use of resources](https://istio.io/latest/docs/overview/dataplane-modes/).
 
-### FinOps Tools
+### Cost Management Tools
 
-A **finops tool** is a technology which provides financial insights on the operational costs of running an application.
+A **cost management** is a technology which provides financial insights on the operational costs of running an application.
 
 In ITBench, the following tool is used:
 
@@ -59,7 +62,8 @@ In ITBench, the following tool is used:
 | --- | --- |
 | OpenCost | https://github.com/opencost/opencost |
 
-**Note:** When deploying OpenCost, Prometheus is deployed as a required dependency, regardless of whether Prometheus is part of the active install list during an incident.
+> [!NOTE]
+> OpenCost is installed during a FinOps live scenario only. While not recommened - as to save on resources - OpenCost can be installed via the scenario specification by setting `spec.costManagement.opencost.enabled` to `true`.
 
 ### Kubernetes Tools
 
@@ -69,10 +73,6 @@ ITBench deploys additional Kubernetes tools to enable additional features in a K
 | --- | --- | --- |
 | Kubernetes Gateway API | https://github.com/kubernetes-sigs/gateway-api | Networking |
 | Kubernetes Metric Server | https://github.com/kubernetes-sigs/metrics-server | Autoscaling |
-
-**Note:** The [Kubernetes Gateway API](https://kubernetes.io/docs/concepts/services-networking/gateway/) is the next generation of networking APIs offered by Kubernetes, succeeding Ingress. However, as an API, it requires a vendor to implement it. For Kind clusters, ITBench uses [Cloud Provider Kind](https://github.com/kubernetes-sigs/cloud-provider-kind) or [Istio](#service-mesh-tools) depending on the configuration. For more information on how to use Cloud Provider Kind in ITBench, please refer to the [local cluster documentation](../dev/local_cluster/README.md).
-
-**Note:** Due to increasing load being a frequent need in FinOps incidents (to "raise" cost), the Kubernetes Metrics Server is always deployed as part of the tool stack for FinOps scenarios unless deactivated. To install it as part of an SRE scenario, it needs to be explicitly added to the incident spec.
 
 ## Additional Notes
 
@@ -86,4 +86,4 @@ The following tools are provided by OpenShift and are not installed by ITBench:
 2. OpenTelemetry Operator
 3. Kubernetes Metrics Server
 
-In addition, when deploying on OpenShift, the Kubernetes NGINX Controller is not installed. Instead, Routes are used to provided external networking access to the observability tools.
+In addition, when deploying on OpenShift, OpenShift routes are used instead of a Kubernetes Gateway to provided external networking access to the observability tools.

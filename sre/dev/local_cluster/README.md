@@ -36,14 +36,14 @@ podman machine set --cpus 8 -m 16384
 podman machine start
 ```
 
-4. Create a kind cluster. A barebone kind configuration file has been provided [here](./kind-config.yaml).
+4. Create a kind cluster. A barebone kind configuration file has been provided [here](./kind/configs/simple.yaml).
 ```shell
-make create_single_node_cluster
+make create_simple_cluster
 ```
 
-5. Start the Gateway provider to allow for external cluster access to the tools:
+5. Start the service provider in a new terminal window to allow for external cluster access to the tools:
 ```shell
-sudo make run_gateway_provider
+sudo make run_service_provider
 ```
 
 > **Note:** This process runs in the foreground. Leave this terminal open and running, then open a new terminal window to continue with the remaining steps. In the new terminal, navigate to the project directory and activate your virtual environment:

@@ -1,0 +1,41 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-46
+spec:
+  alerts:
+    - group_id: postgresql-pod-1
+      id: CrashLoopBackOffPodsDetected
+      metadata:
+        description: Postgresql pods are stuck in CrashLoopBackOff state due to insufficient resources.
+  aliases:
+    - - postgresql-service-1
+      - postgresql-pod-1
+  fault:
+    - category: Configuration
+      condition: Postgresql pods cannot stablize because they have insufficient resources to run.
+      entity:
+        group_id: postgresql-pod-1
+        kind: Pod
+        name: postgresql-pod-1
+      fault_mechanism: insufficient-resources
+  groups:
+    - filter:
+        - postgresql\b
+      id: postgresql-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - postgresql-.*
+      id: postgresql-pod-1
+      kind: Pod
+      namespace: otel-demo
+      root_cause: true
+  propagations: []
+  recommendedActions:
+    - solution:
+        actions:
+          - no changes is needed in application
+          - update opencost alert to prevent false alerts
+        id: no_action

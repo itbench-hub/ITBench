@@ -1,0 +1,51 @@
+---
+- name: Load faults library index
+  ansible.builtin.set_fact:
+    injections_library_index: "{{ lookup('ansible.builtin.file', index_file_path) | from_json }}"
+  vars:
+    index_file_path: "{{ playbook_dir }}/../roles/documentation/files/library/faults/index.json"
+
+- name: Generate faults library index-task map
+  ansible.builtin.set_fact:
+    injections_library_map: |-
+      {{
+        (
+          injections_library_map | default({})
+        ) |
+        combine(
+          {
+            fault.id: {
+              "taskFile": task_file
+            }
+          }
+        )
+      }}
+  loop: "{{ injections_library_index }}"
+  loop_control:
+    label: fault/{{ fault.id }}
+    loop_var: fault
+  vars:
+    task_file: inject_{{ fault.id | replace('-', '_') }}.yaml
+
+- name: Create faults library index-task map file
+  ansible.builtin.copy:
+    content: "{{ injections_library_map | to_nice_json }}"
+    dest: "{{ [role_path, 'files', 'library', 'map.json'] | path_join }}"
+    mode: "0644"
+
+- name: Create fault injection tasks files
+  ansible.builtin.copy:
+    content: |-
+      ---
+      - name: Print message
+        ansible.builtin.debug:
+          msg: This fault injection ({{ fault.id }}) is unimplemented.
+    dest: "{{ [role_path, 'tasks', task_file_name] | path_join }}"
+    force: false
+    mode: "0644"
+  loop: "{{ injections_library_index }}"
+  loop_control:
+    label: fault/{{ fault.id }}
+    loop_var: fault
+  vars:
+    task_file_name: inject_{{ fault.id | replace('-', '_') }}.yaml

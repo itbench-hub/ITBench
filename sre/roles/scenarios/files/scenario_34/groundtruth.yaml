@@ -1,0 +1,19 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-34
+spec:
+  alerts:
+    - labels: {}
+      name: HighRequestLatency
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: valkey-cart
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo exec deployment/valkey-cart -- valkey-cli CONFIG SET requirepass ''
+            text: Change the password back to the original by access the pod directly.

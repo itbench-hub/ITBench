@@ -43,7 +43,7 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 0 | 24 |
+| 3 | 24 |
 
 ### Category Distribution
 
@@ -135,8 +135,6 @@ kubectl -n otel-demo rollout undo deployment/shipping
 
 OR
 
-Step 2
-
 - Manually edit the manifest and replace the environment variable(s) value with the correct value(s).
 
 ```shell
@@ -165,8 +163,6 @@ kubectl -n otel-demo rollout undo deployment/product-catalog
 ```
 
 OR
-
-Step 2
 
 - Manually edit the manifest and replace the invalid image with the correct value.
 
@@ -197,8 +193,6 @@ kubectl -n otel-demo rollout undo deployment/checkout
 
 OR
 
-Step 2
-
 - Manually edit the manifest and replace the invalid image with the correct value.
 
 ```shell
@@ -206,8 +200,6 @@ kubectl -n otel-demo edit deployment checkout
 ```
 
 OR
-
-Step 3
 
 - Manually edit the manifest and replace the node selector to allow Kubernetes to schedule the workload on a supported node (if exists).
 
@@ -331,8 +323,6 @@ kubectl -n otel-demo edit networkpolicy frontend-deny
 
 OR
 
-Step 2
-
 - Retrieve and review the configuration of the network policy(s) in the affected namespace.
 
 ```shell
@@ -363,12 +353,25 @@ Step 1
 - Revert the last change done to the manifest.
 
 ```shell
-kubectl -n otel-demo rollout undo deployment/cart
+kubectl -n otel-demo rollout undo deployment/ad
 ```
 
 OR
 
+- Manually edit the manifest and replace the node selector with the correct value.
+
+```shell
+kubectl -n otel-demo edit deployment ad
+```
 Step 2
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n otel-demo rollout undo deployment/cart
+```
+
+OR
 
 - Manually edit the manifest and replace the node selector with the correct value.
 
@@ -430,6 +433,20 @@ Step 1
 - Manually edit the manifest and replace the utilization values with the correct values.
 
 ```shell
+kubectl -n otel-demo edit horizontalpodautoscaler fraud-detection
+```
+Step 2
+
+- Manually edit the manifest and replace the utilization values with the correct values.
+
+```shell
+kubectl -n otel-demo edit horizontalpodautoscaler frontend
+```
+Step 3
+
+- Manually edit the manifest and replace the utilization values with the correct values.
+
+```shell
 kubectl -n otel-demo edit horizontalpodautoscaler image-provider
 ```
 ### Scenario 39
@@ -456,8 +473,6 @@ kubectl -n otel-demo rollout undo deployment/payment
 
 OR
 
-Step 2
-
 - Manually edit the manifest and replace the node selector with the correct value.
 
 ```shell
@@ -465,8 +480,6 @@ kubectl -n otel-demo edit deployment payment
 ```
 
 OR
-
-Step 3
 
 - Retrieve all worker node nodes
 
@@ -498,8 +511,6 @@ kubectl -n otel-demo rollout undo deployment/valkey-cart
 
 OR
 
-Step 2
-
 - Manually edit the manifest and remove the code change volumes.
 
 ```shell
@@ -515,8 +526,6 @@ kubectl -n otel-demo delete configmap valkey-storage-script
 ```
 
 OR
-
-Step 3
 
 - Manually edit the manifest and change the script.
 
@@ -556,7 +565,7 @@ kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/paus
 ```shell
 kubectl -n chaos-mesh delete schedule cart-stress-chaos-memory experiment.chaos-mesh.org/pause='true'
 ```
-Step 1
+Step 2
 
 - Revert the last change done to the manifest.
 
@@ -565,8 +574,6 @@ kubectl -n otel-demo rollout undo deployment/cart
 ```
 
 OR
-
-Step 2
 
 - Manually edit the manifest and replace the invalid container's resource configuration with the correct value(s).
 
@@ -597,8 +604,6 @@ kubectl -n otel-demo rollout undo deployment/kafka
 
 OR
 
-Step 2
-
 - Manually edit the manifest and remove the node selector value with the correct value(s).
 
 ```shell
@@ -606,8 +611,6 @@ kubectl -n otel-demo edit deployment kafka
 ```
 
 OR
-
-Step 3
 
 - Create a new priority class with a higher value than the workload which caused its preemption.
 - Manually edit the manifest and change the priority of the workload to the new priority.
@@ -639,8 +642,6 @@ kubectl -n otel-demo edit authorizationpolicy frontend-deny
 
 OR
 
-Step 2
-
 - Delete the faulty authorization policy.
 
 ```shell
@@ -669,8 +670,6 @@ kubectl -n otel-demo rollout undo deployment/payment
 ```
 
 OR
-
-Step 2
 
 - Manually edit the manifest and remove the faulty pod anti-affinity rule with the correct value.
 
@@ -701,8 +700,6 @@ kubectl -n otel-demo rollout undo deployment/email
 
 OR
 
-Step 2
-
 - Manually edit the manifest and replace the command of the hanging init container to one which will complete.
 
 ```shell
@@ -710,8 +707,6 @@ kubectl -n otel-demo edit deployment email
 ```
 
 OR
-
-Step 3
 
 - Manually edit the manifest and remove the faulty init container.
 
@@ -742,8 +737,6 @@ kubectl -n otel-demo rollout undo deployment/postgresql
 
 OR
 
-Step 2
-
 - Manually edit the manifest and replace the invalid container's resource configuration with the correct value(s).
 
 ```shell
@@ -772,8 +765,6 @@ kubectl -n bookinfo edit authorizationpolicy bookinfo-gateway-deny
 ```
 
 OR
-
-Step 2
 
 - Delete the faulty authorization policy.
 
@@ -825,8 +816,6 @@ kubectl -n otel-demo rollout undo deployment/frontend
 
 OR
 
-Step 2
-
 - Manually edit the manifest and remove the faulty readiness probe in the container rule.
 
 ```shell
@@ -855,8 +844,6 @@ kubectl -n bookinfo edit deployment productpage-v1
 ```
 
 OR
-
-Step 2
 
 - Manually edit the namespace manifest and to add the required Istio ambient mode labels to the workload.
 
@@ -895,12 +882,10 @@ kubectl -n otel-demo edit resourcequota otel-demo
 
 OR
 
-Step 2
-
 - Retrieve and review the configuration of the resource quota(s) in the affected namespace.
 
 ```shell
-kubectl -n otel-demo get resourcequota`
+kubectl -n otel-demo get resourcequota
 ```
 - Delete the offending resource quota(s) if it is no longer required.
 
@@ -930,8 +915,6 @@ kubectl -n otel-demo rollout undo deployment/product-catalog
 ```
 
 OR
-
-Step 2
 
 - Manually edit the manifest and replace the invalid command with the correct value.
 

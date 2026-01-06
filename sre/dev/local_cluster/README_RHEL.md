@@ -52,15 +52,15 @@ sudo modprobe ebtable_nat
 
 ## Setup
 
-1. Create a kind cluster. A barebone kind configuration file has been provided [here](./kind-config.yaml).
+1. Create a kind cluster. A barebone kind configuration file has been provided [here](./kind/configs/simple.yaml).
 ```shell
-make create_single_node_cluster
+make create_simple_cluster
 ```
 _Note: To delete the cluster, run this command: `make destory_cluster`_
 
-2. Start the Gateway provider to allow for external cluster access to the tools:
+2. Start the service provider in a new terminal window to allow for external cluster access to the tools:
 ```shell
-make start_gateway_provider
+sudo make run_service_provider
 ```
 
 3. Update the `kubeconfig` value in the `../../group_vars/environment/cluster.yaml`, with the absolute path to the kubeconfig (located at `$HOME/.kube/config` e.g. /home/rhel/.kube/config).

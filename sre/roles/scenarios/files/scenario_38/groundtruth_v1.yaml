@@ -1,0 +1,69 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-38
+spec:
+  alerts:
+    - group_id: otel-demo-namespace-1
+      id: CPUSpend
+      metadata:
+        description: Cost has increased significantly despite having low utilization
+  aliases:
+    - - fraud-detection-horizontal-pod-autoscalers-1
+    - - frontend-horizontal-pod-autoscalers-1
+    - - image-provider-horizontal-pod-autoscalers-1
+    - - otel-demo-namespace-1
+  fault:
+    - category: Other
+      condition: Misconfigured HPA
+      entity:
+        group_id: fraud-detection-horizontal-pod-autoscalers-1
+        kind: HorizontalPodAutoscaler
+        name: fraud-detection-horizontal-pod-autoscalers-1
+      fault_mechanism: custom
+    - category: Other
+      condition: Misconfigured HPA
+      entity:
+        group_id: frontend-horizontal-pod-autoscalers-1
+        kind: HorizontalPodAutoscaler
+        name: frontend-horizontal-pod-autoscalers-1
+      fault_mechanism: custom
+    - category: Other
+      condition: Misconfigured HPA
+      entity:
+        group_id: image-provider-horizontal-pod-autoscalers-1
+        kind: HorizontalPodAutoscaler
+        name: image-provider-horizontal-pod-autoscalers-1
+      fault_mechanism: custom
+  groups:
+    - id: otel-demo-namespace-1
+      kind: Namespace
+      name: otel-demo
+      namespace: otel-demo
+    - filter:
+        - "*.*"
+      id: fraud-detection-horizontal-pod-autoscalers-1
+      kind: HorizontalPodAutoscaler
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - "*.*"
+      id: frontend-horizontal-pod-autoscalers-1
+      kind: HorizontalPodAutoscaler
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - "*.*"
+      id: image-provider-horizontal-pod-autoscalers-1
+      kind: HorizontalPodAutoscaler
+      namespace: otel-demo
+      root_cause: true
+  propagations: []
+  recommendedActions:
+    - solution:
+        actions:
+          - check current and recent past utilization numbers through promethous
+          - found a temporary spike in application load
+          - detect misconfiguration in auto-scaler for scaling down
+        id: investigate_detect_misconfigured_autoscaler

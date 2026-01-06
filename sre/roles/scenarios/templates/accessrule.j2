@@ -1,0 +1,24 @@
+---
+apiVersion: itbench.io/v2
+kind: AccessRule
+metadata:
+  name: {{ ["scenario", scenario.id, "agent"] | join("-") }}
+spec:
+{% if "Kubernetes" in scenario.platforms %}
+{% if scenario.disruptions | length > 0 %}
+  namespaces:
+{% for namespace in scenario_namespaces %}
+    - name: {{ namespace }}
+      access: rw
+{% endfor %}
+{% endif %}
+{% endif %}
+  endpoints:
+    logs:
+      enabled: true
+    metrics:
+      enabled: true
+    topology:
+      enabled: true
+    traces:
+      enabled: true

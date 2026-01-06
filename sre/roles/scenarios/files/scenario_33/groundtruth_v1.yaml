@@ -1,0 +1,84 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-33
+spec:
+  alerts:
+    - group_id: ad-pod-1
+      id: PendingPodsDetected
+      metadata:
+        description: Ad pods stuck in Pending state due to invalid node selector
+    - group_id: frontend-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Frontend service experiencing connection failures to ad service
+    - group_id: frontend-proxy-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Frontend proxy experiencing errors when serving pages that require ads functionality
+  aliases:
+    - - ad-service-1
+      - ad-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+    - - frontend-proxy-service-1
+      - frontend-proxy-pod-1
+  fault:
+    - category: Configuration
+      condition: Ad deployment pods cannot be scheduled due to invalid node selector
+      entity:
+        group_id: ad-pod-1
+        kind: Pod
+        name: ad-pod-1
+      fault_mechanism: invalid-node-selector
+  groups:
+    - filter:
+        - ad-.*
+      id: ad-pod-1
+      kind: Pod
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - ad\b
+      id: ad-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-.*
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy-.*
+      id: frontend-proxy-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+  propagations:
+    - condition: Ad pods cannot be scheduled, no backend pods available for service
+      effect: Ad service has no healthy endpoints, becomes completely unavailable
+      source: ad-pod-1
+      target: ad-service-1
+    - condition: Frontend service cannot connect to ad service with no available endpoints
+      effect: Frontend fails to retrieve ads and displays pages with missing ad content
+      source: ad-service-1
+      target: frontend-service-1
+    - condition: Frontend service returns degraded responses with missing ads errors
+      effect: Frontend service has slower and incorrect responses
+      source: frontend-service-1
+      target: frontend-proxy-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Review and correct node selector configuration for ad and cart deployments
+        id: fix_node_selectors

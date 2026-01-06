@@ -1,0 +1,49 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-43
+spec:
+  alerts:
+    - group_id: frontend-service-1
+      id: RequestLatency
+      metadata:
+        description: Latency in service frontend in namespace otel-demo is above 1500ms
+    - group_id: frontend-service-1
+      id: NoRequestsDetected
+      metadata:
+        description: No requests detected in service frontend in namespace otel-demo
+  aliases:
+    - - frontend-service-1
+      - frontend-pod-1
+  fault:
+    - category: Configuration
+      condition: DNS configuration misconfigured with excessive ndots value causing DNS query overload
+      entity:
+        group_id: frontend-pod-1
+        kind: Pod
+        name: frontend-pod
+      fault_mechanism: custom
+  groups:
+    - filter:
+        - frontend-.*
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+  propagations:
+    - condition: Frontend pod experiencing slow DNS resolution due to excessive DNS queries from high ndots value
+      effect: Frontend service experiences high latency when resolving service names
+      source: frontend-pod-1
+      target: frontend-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Remove dnsConfig from frontend deployment
+          - Restart frontend pods
+        id: fix_dns_configuration

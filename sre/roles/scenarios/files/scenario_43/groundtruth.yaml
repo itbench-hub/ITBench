@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-43
+spec:
+  alerts:
+    - labels: {}
+      name: HighRequestErrorRate
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: frontend
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo edit authorizationpolicy frontend-deny
+            text: Manually edit the manifest and replace the invalid rule with the correct value.
+      - steps:
+          - command: kubectl -n otel-demo delete authorizationpolicy frontend-deny
+            text: Delete the faulty authorization policy.

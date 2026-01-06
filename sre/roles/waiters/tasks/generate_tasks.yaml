@@ -1,0 +1,51 @@
+---
+- name: Load waiters library index
+  ansible.builtin.set_fact:
+    waiters_library_index: "{{ lookup('ansible.builtin.file', index_file_path) | from_json }}"
+  vars:
+    index_file_path: "{{ playbook_dir }}/../roles/documentation/files/library/waiters/index.json"
+
+- name: Generate waiters library index-task map
+  ansible.builtin.set_fact:
+    waiters_library_map: |-
+      {{
+        (
+          waiters_library_map | default({})
+        ) |
+        combine(
+          {
+            waiter.id: {
+              "taskFile": task_file
+            }
+          }
+        )
+      }}
+  loop: "{{ waiters_library_index }}"
+  loop_control:
+    label: waiter/{{ waiter.id }}
+    loop_var: waiter
+  vars:
+    task_file: "{{ waiter.id | replace('-', '_') }}.yaml"
+
+- name: Create waiters library index-task map file
+  ansible.builtin.copy:
+    content: "{{ waiters_library_map | to_nice_json }}"
+    dest: "{{ [role_path, 'files', 'library', 'map.json'] | path_join }}"
+    mode: "0644"
+
+- name: Create waiter tasks files
+  ansible.builtin.copy:
+    content: |-
+      ---
+      - name: Print message
+        ansible.builtin.debug:
+          msg: This waiter ({{ waiter.id }}) is unimplemented.
+    dest: "{{ [role_path, 'tasks', task_file_name] | path_join }}"
+    force: false
+    mode: "0644"
+  loop: "{{ waiters_library_index }}"
+  loop_control:
+    label: waiter/{{ waiter.id }}
+    loop_var: waiter
+  vars:
+    task_file_name: "{{ waiter.id | replace('-', '_') }}.yaml"

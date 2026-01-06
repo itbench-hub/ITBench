@@ -1,0 +1,26 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-42
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: kafka
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/kafka
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment kafka
+            text: Manually edit the manifest and remove the node selector value with the correct value(s).
+      - steps:
+          - text: Create a new priority class with a higher value than the workload which caused its preemption.
+          - command: kubectl -n otel-demo edit deployment kafka
+            text: Manually edit the manifest and change the priority of the workload to the new priority.

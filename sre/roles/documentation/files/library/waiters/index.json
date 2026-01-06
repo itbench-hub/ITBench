@@ -1,0 +1,82 @@
+[
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "seconds": {
+                        "minimum": 0,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "seconds"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "Pauses for the requested number of seconds.",
+        "id": "pause-execution",
+        "name": "Pause Execution",
+        "platform": "Any"
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    },
+                    "replicas": {
+                        "exclusiveMinimum": true,
+                        "minimum": 0,
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "replicas"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "Waits for a Kubernetes workload to scale to the requested number of replicas.",
+        "id": "scale-kubernetes-workload",
+        "name": "Scale Kubernetes Workload",
+        "platform": "Kubernetes"
+    }
+]

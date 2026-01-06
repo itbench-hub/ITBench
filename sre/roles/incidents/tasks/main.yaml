@@ -7,25 +7,15 @@
   ansible.builtin.include_vars:
     file: ../applications/defaults/main/instances.yaml
 
-- name: Create incident file path variable
-  ansible.builtin.set_fact:
-    incidents_truth_file_path: files/ground_truths/incident_{{ incidents_file.id }}.yaml
-
 - name: Load incident files
   ansible.builtin.set_fact:
-    incidents_ground_truth: "{{ lookup('ansible.builtin.file', truth_file_path) | from_yaml }}"
     incidents_spec: "{{ lookup('ansible.builtin.template', spec_file_path) | from_yaml }}"
   vars:
     spec_file_path: files/specs/incident_{{ incidents_file.id }}.yaml
-    truth_file_path: files/ground_truths/incident_{{ incidents_file.id }}.yaml
 
 - name: Import validation tasks
   ansible.builtin.import_tasks:
     file: validate_spec.yaml
-
-- name: Import validation tasks
-  ansible.builtin.import_tasks:
-    file: validate_ground_truth.yaml
 
 - name: Create variables for Ansible role usage
   ansible.builtin.set_fact:
