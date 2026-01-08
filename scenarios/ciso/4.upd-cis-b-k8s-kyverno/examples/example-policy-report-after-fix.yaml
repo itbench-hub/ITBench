@@ -1,0 +1,49 @@
+apiVersion: wgpolicyk8s.io/v1alpha2
+kind: PolicyReport
+metadata:
+  creationTimestamp: "2024-11-13T05:24:34Z"
+  generation: 3
+  labels:
+    app.kubernetes.io/managed-by: kyverno
+  name: a7f1666b-cf62-41d6-9b13-ced385d6cea3
+  namespace: paa
+  ownerReferences:
+  - apiVersion: v1
+    kind: Pod
+    name: test-untrusted-registry
+    uid: a7f1666b-cf62-41d6-9b13-ced385d6cea3
+  resourceVersion: "62948"
+  uid: ef9b647c-a663-4058-abba-d3822d34744f
+results:
+- message: validation rule 'require-non-default-service-account' passed.
+  policy: service-account-requirements
+  result: pass
+  rule: require-non-default-service-account
+  scored: true
+  source: kyverno
+  timestamp:
+    nanos: 0
+    seconds: 1731475595
+- message: 'validation error: Privilege escalation and root user execution are not
+    allowed, and only images from trusted-registry.com are permitted. rule disallow-privilege-escalation-and-root
+    failed at path /spec/containers/0/image/'
+  policy: container-security-controls
+  result: fail
+  rule: disallow-privilege-escalation-and-root
+  scored: true
+  source: kyverno
+  timestamp:
+    nanos: 0
+    seconds: 1731475595
+scope:
+  apiVersion: v1
+  kind: Pod
+  name: test-untrusted-registry
+  namespace: paa
+  uid: a7f1666b-cf62-41d6-9b13-ced385d6cea3
+summary:
+  error: 0
+  fail: 1
+  pass: 1
+  skip: 0
+  warn: 0

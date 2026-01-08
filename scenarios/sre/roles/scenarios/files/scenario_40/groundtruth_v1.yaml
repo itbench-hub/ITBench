@@ -1,0 +1,123 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-40
+spec:
+  alerts:
+    - group_id: cart-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Request error rate in service cart in namespace otel-demo is above 0
+    - group_id: cart-service-1
+      id: RequestLatency
+      metadata:
+        description: Latency in service cart in namespace otel-demo is above 1500ms
+    - group_id: checkout-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Request error rate in service checkout in namespace otel-demo is above 0
+    - group_id: frontend-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Request error rate in service frontend in namespace otel-demo is above 0
+    - group_id: frontend-proxy-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Request error rate in service frontend-proxy in namespace otel-demo is above 0
+  aliases:
+    - - valkey-service-1
+      - valkey-pod-1
+    - - cart-service-1
+      - cart-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+    - - frontend-proxy-service-1
+      - frontend-proxy-pod-1
+  fault:
+    - category: Resource
+      condition: Storage filled to 90% capacity by sidecar container writing dummy data
+      entity:
+        group_id: valkey-pod-1
+        kind: Pod
+        name: valkey-cart-pod
+      fault_mechanism: custom
+  groups:
+    - filter:
+        - valkey-cart-.*
+      id: valkey-pod-1
+      kind: Pod
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - valkey-cart\b
+      id: valkey-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - cart\b
+      id: cart-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - cart-.*
+      id: cart-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - checkout-.*
+      id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-.*
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy-.*
+      id: frontend-proxy-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: Valkey storage full, unable to write new cart data
+      effect: Cart service experiences write failures and errors when storing cart items
+      source: valkey-pod-1
+      target: cart-service-1
+    - condition: Checkout service receives errors when trying to access cart information
+      effect: Checkout service experiences errors during cart operations
+      source: cart-service-1
+      target: checkout-service-1
+    - condition: Frontend receives errors from checkout service due to cart failures
+      effect: Frontend service experiences errors during cart and checkout operations
+      source: checkout-service-1
+      target: frontend-service-1
+    - condition: Frontend-proxy receives errors from frontend service due to cart/checkout failures
+      effect: Frontend-proxy service experiences errors when proxying requests
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Identify and remove the storage-filler sidecar container from valkey-cart deployment
+          - Delete the /data/filler file to free up disk space
+          - Verify valkey-cart can successfully write data
+          - Monitor disk usage to prevent future storage exhaustion
+        id: fix_storage_issue

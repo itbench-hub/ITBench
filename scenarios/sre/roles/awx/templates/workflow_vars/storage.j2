@@ -1,0 +1,14 @@
+---
+{% if awx_experiments.storage.local is defined %}
+local:
+  directory: "{{ awx_experiments.storage.local.directory }}/{{ run_directory }}"
+{% endif %}
+{% if awx_experiments.storage.s3 is defined %}
+s3:
+  bucket: "{{ awx_experiments.storage.s3.bucket }}"
+  directory: "{{ run_directory }}"
+  endpoint: "{{ awx_experiments.storage.s3.endpoint }}"
+{% endif %}
+{% if (awx_experiments.storage.keys() | length) == 0 %}
+{}
+{% endif %}

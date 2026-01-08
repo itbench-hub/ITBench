@@ -1,0 +1,35 @@
+---
+- name: Validate control node configuration
+  ansible.builtin.assert:
+    that:
+      - kops_cluster.nodes.control.count > 0
+      - kops_cluster.nodes.control.count % 2 == 1
+    fail_msg: Invalid number of control nodes set. Must be an odd number and greater than 0.
+    success_msg: Valid number of control nodes configured.
+
+- name: Validate worker node configuration
+  ansible.builtin.assert:
+    that:
+      - kops_cluster.nodes.worker.count > 0
+    fail_msg: Invalid number of worker nodes set. Must be greater than 0.
+    success_msg: Valid number of worker nodes configured.
+
+- name: Creating bucket if it doesn't exist
+  amazon.aws.s3_bucket:
+    name: "{{ cluster.s3.bucket_name }}"
+    region: "{{ cluster.aws.region }}"
+    state: present
+
+- name: Retrieve the file stats of the public SSH key file
+  ansible.builtin.stat:
+    path: "{{ cluster.ssh.public_key_path }}"
+  register: kops_ssh_public_key_file_path
+
+- name: Check if the public SSH key file path is valid
+  ansible.builtin.assert:
+    that:
+      - kops_ssh_public_key_file_path.stat.exists
+      - kops_ssh_public_key_file_path.stat.isreg
+      - kops_ssh_public_key_file_path.stat.size > 0
+    fail_msg: Public SSH key file path is invalid. Please check the 'cluster.ssh.public_key_path' value in group_vars/development/kops_cluster.yaml
+    success_msg: Public SSH key file path is valid.

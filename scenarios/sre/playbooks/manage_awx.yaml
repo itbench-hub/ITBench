@@ -1,0 +1,44 @@
+---
+- name: Manage SRE and FinOps AWX Stack
+  hosts:
+    - runner
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+      vars:
+        cluster_files:
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: "{{ system_oc_exists }}"
+  tasks:
+    - name: Import awx role
+      ansible.builtin.import_role:
+        name: awx
+      vars:
+        awx_cluster:
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
+          provider: "{{ cluster_provider }}"
+        awx_credentials: "{{ credentials }}"
+        awx_experiments:
+          phase: "{{ run_phase | default(omit) }}"
+          scenarios: "{{ experiments.scenarios }}"
+          storage: "{{ storage }}"
+          trials: "{{ experiments.trials }}"
+        awx_github: "{{ github }}"
+        awx_runners:
+          kubeconfigs: "{{ stack.runners.kubeconfigs }}"
+        awx_agent:
+          version: "{{ agent_configuration.version }}"
+          configuration: "{{ agent_configuration.configuration }}"

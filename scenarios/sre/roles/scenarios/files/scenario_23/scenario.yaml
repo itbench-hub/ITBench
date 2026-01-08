@@ -1,0 +1,35 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-23
+spec:
+  applications:
+    - otelDemo:
+        enabled: true
+        options:
+          autoscaling: false
+  faults:
+    - injections:
+        - args:
+            container:
+              name: checkout
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: checkout
+                namespace: otel-demo
+          id: unsupported-architecture-kubernetes-workload-container-image
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: false
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

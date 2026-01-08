@@ -1,0 +1,54 @@
+---
+- name: Execute fault injection
+  hosts: localhost
+  vars_files:
+    - ./vars.yaml
+  pre_tasks:
+    - include_tasks: ../tasks/precondition_setup.yml
+  tasks:
+  - block:
+    - include_tasks: ../tasks/status_update.yml
+      vars:
+        new_conditions:
+        - type: "FaultInjected"
+          status: "False"
+          reason: "FaultInjectionNotReady"
+          message: "Fault-injecting ..."
+        - type: "Destroyed"
+          status: "False"
+          reason: "FaultInjectionNotReady"
+          message: "Waiting for the fault injection to be completed"
+
+    - include_tasks: ../tasks/fault_inject.yml
+
+    - include_tasks: ../tasks/status_update.yml
+      vars:
+        new_conditions:
+        - type: "FaultInjected"
+          status: "True"
+        - type: "Destroyed"
+          status: "False"
+          reason: "DestroyNotReady"
+          message: "Waiting for the destruction"
+
+    rescue:
+      - include_tasks: ../tasks/status_update.yml
+        vars:
+          new_conditions:
+          - type: "Deployed"
+            status: "True"
+          - type: "FaultInjected"
+            status: "False"
+            reason: "FaultInjectionFailed"
+            message: >
+              FaultInjection is failed due to the following reason.
+              The task "{{ ansible_failed_task.name }}" failed with error:
+              {{ ansible_failed_result.msg }}
+          - type: "Destroyed"
+            status: "False"
+            reason: "FaultInjectionFailed"
+            message: "Waiting for the fault injection to complete"
+
+      - name: Show full details of the failed task
+        debug:
+          var: ansible_failed_result

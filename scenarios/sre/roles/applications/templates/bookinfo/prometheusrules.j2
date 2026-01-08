@@ -1,0 +1,114 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: bookinfo-alerting-rules
+  namespace: [[ applications_instances.bookinfo.namespace ]]
+spec:
+  groups:
+    - name: bookinfo.productpage.goldensignal
+      rules:
+        - alert: HighRequestErrorRate
+          expr: |
+            sum (
+              rate(
+                request_result_total{
+                  response_code!~"20*",
+                  namespace="[[ applications_instances.bookinfo.namespace ]]"
+                }[5m]
+              )
+            ) by (destination_app, response_code, namespace)
+            > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "Request error rate (code: {{ $labels.response_code }}) between productpage and {{ $labels.destination_app }} in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
+    - name: bookinfo.productpage.requests
+      rules:
+        - alert: NoRequestsReceived
+          expr: |
+            sum (
+              rate(
+                request_result_total{
+                  namespace="[[ applications_instances.bookinfo.namespace ]]"
+                }[5m]
+              )
+            ) by (destination_app, namespace)
+            == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "{{ $labels.destination_app }} in namespace {{ $labels.namespace }} has received no requests from productpage in namespace {{ $labels.namespace }}"
+    - name: bookinfo.gateway.goldensignal
+      rules:
+        - alert: HighRequestLatency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum (
+                rate(
+                  istio_request_duration_milliseconds_bucket{
+                    source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"
+                  }[5m]
+                )
+              ) by(le, destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace)
+            )
+            > 1500
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Connection latency between {{ $labels.source_canonical_service }} in namespace {{ $labels.source_workload_namespace }} and {{ $labels.destination_canonical_service }} in namespace {{ $labels.destination_workload_namespace }} is above 1500ms (current: {{ $value }}s)"
+        - alert: HighRequestErrorRate
+          expr: |
+            sum (
+              rate(
+                istio_requests_total{
+                  response_code!~"20*",
+                  source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"
+                }[5m]
+              )
+            ) by (destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace, response_code)
+            > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Request error rate (code: {{ $labels.response_code }}) between {{ $labels.source_canonical_service }} in namespace {{ $labels.source_workload_namespace }} and {{ $labels.destination_canonical_service }} in namespace {{ $labels.destination_workload_namespace }} is above 0 (current: {{ $value }})"
+    - name: bookinfo.gateway.requests
+      rules:
+        - alert: NoRequestsReceived
+          expr: |
+            sum (
+              rate(
+                istio_requests_total{
+                  source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"
+                }[5m]
+              )
+            ) by (destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace)
+            == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "{{ $labels.destination_canonical_service }} in namespace {{ $labels.destination_workload_namespace }} has received no requests from {{ $labels.source_canonical_service }} in namespace {{ $labels.source_workload_namespace }}"
+    - name: bookinfo.servicemesh.requests
+      rules:
+        - alert: NoRequestsOpened
+          expr: |
+            sum (
+              rate(
+                istio_tcp_connections_opened_total{
+                  source_canonical_service!~"load-generator*",
+                  source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"
+                }[5m]
+              )
+            ) by (destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace)
+            == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            description: "{{ $labels.destination_canonical_service }} in namespace {{ $labels.destination_workload_namespace }}  has received no requests from {{ $labels.source_canonical_service }} in namespace {{ $labels.source_workload_namespace }}"

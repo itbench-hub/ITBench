@@ -1,0 +1,22 @@
+---
+- name: Launch the workflow for syncing scenario repositories
+  awx.awx.workflow_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    workflow_template: Sync-Scenarios-Workflow
+  register: awx_sync_workflows
+
+- name: Wait for workflows to complete
+  awx.awx.workflow_node_wait:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    interval: 20
+    name: Sync-Scenarios
+    request_timeout: 30
+    timeout: 600
+    workflow_job_id: "{{ item.id }}"
+  loop: "{{ awx_sync_workflows.results }}"
+  loop_control:
+    label: Workflow-{{ item.id }}

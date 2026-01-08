@@ -1,0 +1,26 @@
+---
+- name: Get AWX service information
+  kubernetes.core.k8s_info:
+    kind: Service
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    name: "{{ awx_instances.awx.name }}-service"
+    namespace: "{{ awx_instances.awx.namespace }}"
+  register: awx_service
+  until:
+    - awx_service.resources | length > 0
+    - awx_service.resources[0].status.loadBalancer.ingress is defined
+    - awx_service.resources[0].status.loadBalancer.ingress | length > 0
+  delay: 15
+  retries: 12
+
+- name: Extract ip address information
+  ansible.builtin.set_fact:
+    awx_controller_host: "http://{{ awx_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+  when:
+    - awx_service.resources[0].status.loadBalancer.ingress[0].ip is defined
+
+- name: Extract hostname address information
+  ansible.builtin.set_fact:
+    awx_controller_host: "http://{{ awx_service.resources[0].status.loadBalancer.ingress[0].hostname }}"
+  when:
+    - awx_service.resources[0].status.loadBalancer.ingress[0].hostname is defined

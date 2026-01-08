@@ -1,0 +1,59 @@
+---
+argument_specs:
+  main:
+    short_description: Main entry point for applications role
+    description:
+      - This role is responsible for installing and uninstalling the applications that faults will be injected to for benchmarking.
+    author:
+      - Gerard Vanloo
+    options:
+      agent_cluster:
+        description:
+          - The Kubernetes or OpenShift cluster that the application(s) will be installed to or uninstalled from.
+        required: true
+        type: dict
+        options:
+          kubeconfig:
+            description:
+              - The file path of the Kubernetes configuration file.
+              - Use '~' over '$HOME' to substitute for the root directory or provide the absolute path.
+            required: true
+            type: str
+      agent_namespaces:
+        elements: dict
+        required: true
+        type: list
+        options:
+          access:
+            choices:
+              - read-only
+              - read-write
+            required: true
+            type: str
+          name:
+            required: true
+            type: str
+      agent_storage:
+        required: true
+        type: dict
+        options:
+          local:
+            required: false
+            type: dict
+            options:
+              directory:
+                required: true
+                type: str
+          s3:
+            required: false
+            type: dict
+            options:
+              bucket:
+                required: true
+                type: str
+              directory:
+                required: true
+                type: str
+              endpoint:
+                required: true
+                type: str

@@ -1,0 +1,54 @@
+---
+- name: Extract external HTTP address from Kubernetes Gateway
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Retrieve Gateway with assigned address
+      kubernetes.core.k8s_info:
+        api_version: gateway.networking.k8s.io/v1
+        kind: Gateway
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: "{{ tools_external_network_object.name }}"
+        namespace: "{{ tools_instances.kubernetes_gateways.namespace }}"
+      register: tools_gateway
+      until:
+        - tools_gateway.resources | length == 1
+        - tools_gateway.resources[0].status.addresses is defined
+        - tools_gateway.resources[0].status.addresses | length > 0
+      delay: 15
+      retries: 20
+
+    - name: Extract ip address information
+      ansible.builtin.set_fact:
+        tools_external_http_endpoint: http://{{ tools_gateway.resources[0].status.addresses[0].value }}:80
+      when:
+        - tools_gateway.resources[0].status.addresses[0].type == "IPAddress"
+
+    - name: Extract hostname address information
+      ansible.builtin.set_fact:
+        tools_external_http_endpoint: http://{{ tools_gateway.resources[0].status.addresses[0].value }}
+      when:
+        - tools_gateway.resources[0].status.addresses[0].type == "Hostname"
+
+- name: Extract external HTTP address from OpenShift Route
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Retrieve Route with assigned host
+      kubernetes.core.k8s_info:
+        api_version: route.openshift.io/v1
+        kind: Route
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: "{{ tools_external_network_object.name }}"
+        namespace: "{{ tools_external_network_object.namespace }}"
+      register: tools_openshift_route
+      until:
+        - tools_openshift_route.resources | length == 1
+        - tools_openshift_route.resources[0].status.ingress is defined
+        - tools_openshift_route.resources[0].status.ingress | length > 0
+      delay: 15
+      retries: 20
+
+    - name: Extract address information
+      ansible.builtin.set_fact:
+        tools_external_http_endpoint: http://{{ tools_openshift_route.resources[0].status.ingress.host }}

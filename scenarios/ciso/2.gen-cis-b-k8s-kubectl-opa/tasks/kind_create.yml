@@ -1,0 +1,26 @@
+- name: Check if KinD cluster exists
+  command: kind get clusters
+  register: cluster_list
+
+- name: Create KinD cluster if it doesn't exist
+  command: kind create cluster --name "{{ cluster_name }}" --kubeconfig "{{ kubeconfig }}" --image kindest/node:v1.28.13 --wait 5m
+  when: cluster_name not in cluster_list.stdout_lines
+  register: create_result
+  ignore_errors: true  # Ignore errors if cluster already exists
+
+- name: Get kubeconfig for existing cluster
+  command: kind get kubeconfig --name {{ cluster_name }}
+  when: cluster_name in cluster_list.stdout_lines
+  register: kubeconfig_result
+
+- name: Write kubeconfig to /tmp/kubeconfig.yaml
+  copy:
+    content: "{{ kubeconfig_result.stdout }}"
+    dest: "{{ kubeconfig }}"
+  when: cluster_name in cluster_list.stdout_lines
+
+- name: Check if KinD cluster is running by getting namespaces
+  command: kubectl get ns --kubeconfig {{ kubeconfig }}
+  register: ns_result
+  failed_when: "'Active' not in ns_result.stdout"
+  ignore_errors: true

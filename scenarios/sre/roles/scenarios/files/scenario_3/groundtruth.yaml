@@ -1,0 +1,19 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-3
+spec:
+  alerts: []
+  entities:
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: flagd-config
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo edit configmap flagd-config
+            text: Disable the feature flag (adHighCpu) by manually editing the contents of the ConfigMap
+          - command: kubectl -n otel-demo rollout restart deployment
+            text: Restart all of the Deployment workloads.

@@ -1,0 +1,57 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+    groups:
+      actions-production-dependencies:
+        dependency-type: "production"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "docker"
+    directories:
+      - "ciso/"
+    groups:
+      docker-production-dependencies:
+        dependency-type: "production"
+    schedule:
+      interval: daily
+
+  - package-ecosystem: "docker"
+    directories:
+      - "sre/roles/applications/files/bookinfo/loadgenerator.yaml"
+      - "sre/roles/faults/files/**/deployment*.yaml"
+      - "sre/roles/recorders/files/**/**/"
+      - "sre/roles/tools/files/opensearch/"
+      - "sre/tools/kubernetes-topology-monitor/"
+      - "sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/templates/"
+      - "sre/tools/hello-bench/"
+    groups:
+      docker-production-dependencies:
+        dependency-type: "production"
+    schedule:
+      interval: daily
+
+  - package-ecosystem: "gomod"
+    directories:
+      - "sre/dev/local_cluster/"
+    groups:
+      go-production-dependencies:
+        dependency-type: "production"
+    schedule:
+      interval: "daily"
+
+  - package-ecosystem: "pip"
+    directories:
+      - "/"
+      - "sre/"
+      - "sre/roles/recorders/files/**/**/scripts/"
+      - "sre/tools/kubernetes-topology-monitor/"
+    groups:
+      pip-production-dependencies:
+        dependency-type: "production"
+      pip-development-dependencies:
+        dependency-type: "development"
+    schedule:
+      interval: "daily"

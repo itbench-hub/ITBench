@@ -1,0 +1,66 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/component: access-provider
+    app.kubernetes.io/name: agent-access
+    app.kubernetes.io/part-of: it-bench
+  name: agent-access
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - services
+      - configmaps
+      - secrets
+      - endpoints
+      - persistentvolumeclaims
+      - nodes
+      - namespaces
+      - events
+      - persistentvolumes
+      - pods/exec
+      - pods/attach
+      - pods/portforward
+      - pods/log
+      - resourcequotas
+    verbs: {{ verbs }}
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - replicasets
+      - daemonsets
+      - statefulsets
+    verbs: {{ verbs }}
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs: {{ verbs }}
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - "*"
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - rolebindings
+    verbs: {{ verbs }}
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs: {{ verbs }}
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - networkpolicies
+      - ingresses
+    verbs: {{ verbs }}

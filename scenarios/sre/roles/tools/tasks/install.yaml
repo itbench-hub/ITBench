@@ -1,0 +1,73 @@
+---
+- name: Import tasks to approve pending certificate requests
+  ansible.builtin.include_role:
+    name: cluster
+    tasks_from: approve_certificate_requests
+  vars:
+    cluster_files:
+      kubeconfig: "{{ tools_cluster.kubeconfig }}"
+  when:
+    - tools_cluster.provider == 'kind'
+
+- name: Import Kubernetes Gateway API installation tasks
+  ansible.builtin.import_tasks:
+    file: install_kubernetes_gateway_api.yaml
+
+- name: Import Prometheus installation tasks
+  ansible.builtin.import_tasks:
+    file: install_prometheus.yaml
+  when:
+    - (tools_installation_plan.prometheus.enabled | default(true)) or
+      (tools_installation_plan.opencost.enabled | default(false))
+
+- name: Import Clickhouse installation tasks
+  ansible.builtin.import_tasks:
+    file: install_clickhouse.yaml
+  when:
+    - (tools_installation_plan.clickhouse.enabled | default(true)) or
+      (tools_installation_plan.istio.enabled | default(false)) or
+      (tools_installation_plan.opentelemetry.enabled | default(true))
+
+- name: Import OpenSearch installation tasks
+  ansible.builtin.import_tasks:
+    file: install_opensearch.yaml
+  when:
+    - tools_installation_plan.jaeger.enabled | default(true)
+
+- name: Import OpenTelemetry installation tasks
+  ansible.builtin.import_tasks:
+    file: install_opentelemetry.yaml
+  when:
+    - (tools_installation_plan.opentelemetry.enabled | default(true)) or
+      (tools_installation_plan.jaeger.enabled | default(true)) or
+      (tools_installation_plan.istio.enabled | default(false))
+
+- name: Import OpenCost installation tasks
+  ansible.builtin.import_tasks:
+    file: install_opencost.yaml
+  when:
+    - tools_installation_plan.opencost.enabled | default(false)
+
+- name: Import Chaos Mesh installation tasks
+  ansible.builtin.import_tasks:
+    file: install_chaos_mesh.yaml
+  when:
+    - tools_installation_plan.chaos_mesh.enabled | default(false)
+
+- name: Import Kubernetes Metrics Server installation tasks
+  ansible.builtin.import_tasks:
+    file: install_kubernetes_metrics_server.yaml
+  when:
+    - tools_installation_plan.kubernetes_metrics_server.enabled | default(false)
+
+- name: Import Kubernetes Topology Monitor installation tasks
+  ansible.builtin.import_tasks:
+    file: install_kubernetes_topology_monitor.yaml
+  when:
+    - tools_installation_plan.kubernetes_topology_monitor.enabled | default(true)
+
+- name: Import Istio installation tasks
+  ansible.builtin.import_tasks:
+    file: install_istio.yaml
+  when:
+    - tools_installation_plan.istio.enabled | default(false)

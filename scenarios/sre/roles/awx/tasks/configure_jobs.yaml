@@ -1,0 +1,340 @@
+---
+- name: Add job template for installing tools
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: install_tools
+    job_type: run
+    name: Deploy-Tools
+    organization: ITBench
+    playbook: sre/playbooks/manage_tools.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for uninstalling tools
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: uninstall_tools
+    job_type: run
+    name: Undeploy-Tools
+    organization: ITBench
+    playbook: sre/playbooks/manage_tools.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for installing applicaions
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: install_applications
+    job_type: run
+    name: Deploy-Applications
+    organization: ITBench
+    playbook: sre/playbooks/manage_applications.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for uninstalling applications
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: uninstall_applications
+    job_type: run
+    name: Undeploy-Applications
+    organization: ITBench
+    playbook: sre/playbooks/manage_applications.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for injecting faults
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: inject_faults
+    job_type: run
+    name: Inject-Faults
+    organization: ITBench
+    playbook: sre/playbooks/manage_incidents.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for removing faults
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: remove_faults
+    job_type: run
+    name: Remove-Faults
+    organization: ITBench
+    playbook: sre/playbooks/manage_incidents.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for installing data recorders
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: install_recorders
+    job_type: run
+    name: Install-Data-Recorders
+    organization: ITBench
+    playbook: sre/playbooks/manage_recorders.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for uninstalling data recorders
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: uninstall_recorders
+    job_type: run
+    name: Uninstall-Data-Recorders
+    organization: ITBench
+    playbook: sre/playbooks/manage_recorders.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for running topology data recorder
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    extra_vars:
+      tools:
+        prometheus: false
+        jaeger: false
+        kubernetes_topology_monitor: true
+    inventory: ITBench
+    job_tags: install_recorders
+    job_type: run
+    name: Run-Topology-Data-Recorder
+    organization: ITBench
+    playbook: sre/playbooks/manage_recorders.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for enabling agent access
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: grant_access
+    job_type: run
+    name: Grant-Access-To-Agent
+    organization: ITBench
+    playbook: sre/playbooks/manage_agent_access.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for disabling agent access
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: revoke_access
+    job_type: run
+    name: Remove-Access-From-Agent
+    organization: ITBench
+    playbook: sre/playbooks/manage_agent_access.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for checking alerts in firing state
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_type: run
+    name: Check-for-Alerts
+    organization: ITBench
+    playbook: sre/playbooks/check_for_specific_alerts_in_firing_state.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for pause
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: pause
+    job_type: run
+    name: Pause
+    organization: ITBench
+    playbook: sre/playbooks/pause_execution.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for handing over to agent
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: agent_handover
+    job_type: run
+    name: Handover-To-Agent
+    organization: ITBench
+    playbook: sre/playbooks/manage_agent_transition.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for handing back from agent
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: agent_handback
+    job_type: run
+    name: Handback-From-Agent
+    organization: ITBench
+    playbook: sre/playbooks/manage_agent_transition.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for running agent
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: sre_agent
+    job_type: run
+    name: Run-Agent
+    organization: ITBench
+    playbook: deployments/ansible/base.yaml
+    project: GitHub-LLM-Agent
+    state: present
+    timeout: "{{ awx_agent.configuration['max_runtime_in_seconds'] | int + 900 }}"
+    extra_vars:
+      prometheus_namespace_project_name: prometheus
+      sre_agent_directory: /runner/project
+      venv_directory: /runner/venv
+      provider_agents: "{{ awx_agent.configuration['agents_config']['provider'] }}"
+      model_agents: "{{ awx_agent.configuration['agents_config']['model'] }}"
+      url_agents: "{{ awx_agent.configuration['agents_config']['url'] }}"
+      api_key_agents: "{{ awx_agent.configuration['agents_config']['api_key'] }}" # pragma: allowlist secret
+      api_version_agents: "{{ awx_agent.configuration['agents_config']['api_version'] }}"
+      seed_agents: "{{ awx_agent.configuration['agents_config']['seed'] }}"
+      top_p_agents: "{{ awx_agent.configuration['agents_config']['top_p'] }}"
+      temperature_agents: "{{ awx_agent.configuration['agents_config']['temperature'] }}"
+      reasoning_effort_agents: "{{ awx_agent.configuration['agents_config']['reasoning_effort'] }}"
+      thinking_agents: "{{ awx_agent.configuration['agents_config']['thinking'] }}"
+      thinking_budget_agents: "{{ awx_agent.configuration['agents_config']['thinking_budget'] }}"
+      max_tokens_agents: "{{ awx_agent.configuration['agents_config']['max_tokens'] }}"
+      model_embedding: "{{ awx_agent.configuration['agents_config']['model_embedding'] }}"
+      url_embedding: "{{ awx_agent.configuration['agents_config']['url_embedding'] }}"
+      api_version_embedding: "{{ awx_agent.configuration['agents_config']['api_version_embedding'] }}"
+      provider_tools: "{{ awx_agent.configuration['tools_config']['provider'] }}"
+      model_tools: "{{ awx_agent.configuration['tools_config']['model'] }}"
+      url_tools: "{{ awx_agent.configuration['tools_config']['url'] }}"
+      api_key_tools: "{{ awx_agent.configuration['tools_config']['api_key'] }}" # pragma: allowlist secret
+      api_version_tools: "{{ awx_agent.configuration['tools_config']['api_version'] }}"
+      seed_tools: "{{ awx_agent.configuration['tools_config']['seed'] }}"
+      top_p_tools: "{{ awx_agent.configuration['tools_config']['top_p'] }}"
+      temperature_tools: "{{ awx_agent.configuration['tools_config']['temperature'] }}"
+      reasoning_effort_tools: "{{ awx_agent.configuration['tools_config']['reasoning_effort'] }}"
+      thinking_tools: "{{ awx_agent.configuration['tools_config']['thinking'] }}"
+      thinking_budget_tools: "{{ awx_agent.configuration['tools_config']['thinking_budget'] }}"
+      max_tokens_tools: "{{ awx_agent.configuration['tools_config']['max_tokens'] }}"
+      wx_project_id: "{{ awx_agent.configuration['watsonx_config']['wx_project_id'] }}"
+      wx_deployment_space_id: "{{ awx_agent.configuration['watsonx_config']['wx_deployment_space_id'] }}"
+      god_mode: "{{ awx_agent.configuration['agents_config']['god_mode'] }}"
+      agent_analytics_sdk_username: "{{ awx_agent.configuration['agent_analytics_sdk']['git_username'] }}"
+      agent_analytics_sdk_token: "{{ awx_agent.configuration['agent_analytics_sdk']['git_token'] }}"
+      run_mode: remote
+      max_runtime_in_seconds: "{{ awx_agent.configuration['max_runtime_in_seconds'] }}"
+
+- name: Add job template to sync scenarios
+  awx.awx.job_template:
+    allow_simultaneous: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_type: run
+    name: Sync-Scenarios
+    organization: ITBench
+    playbook: sre/playbooks/sync_scenarios.yaml
+    project: GitHub-ITBench
+    state: present

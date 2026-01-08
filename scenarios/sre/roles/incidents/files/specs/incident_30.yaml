@@ -1,0 +1,26 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Low
+    id: 30
+    name: Misconfigured Ad Service port
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+    faults:
+      - custom:
+          name: misconfigured-service-port
+          misconfigured_service_port:
+            service:
+              name: ad
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+              target_port: 8080

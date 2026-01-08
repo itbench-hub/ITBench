@@ -1,0 +1,25 @@
+---
+- name: Inject fault (misconfigured horizontal pod spec.autoscaler)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: "{{ spec.autoscaler.name }}"
+        namespace: "{{ spec.autoscaler.namespace }}"
+      spec:
+        metrics:
+          - type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 30
+          - type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 40
+    state: patched

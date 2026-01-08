@@ -1,0 +1,27 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-50
+spec:
+  alerts:
+    - labels: {}
+      name: HighRequestErrorRate
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: productpage-v1
+        namespace: bookinfo
+    - apiVersion: security.istio.io/v1
+      kind: PeerAuthentication
+      metadata:
+        name: strict-mtls-mode
+        namespace: bookinfo
+  solutions:
+    - - steps:
+          - command: kubectl -n bookinfo edit deployment productpage-v1
+            text: Manually edit the manifest and to add the required Istio ambient mode labels to the workload.
+      - steps:
+          - command: kubectl edit namespace bookinfo
+            text: Manually edit the namespace manifest and to add the required Istio ambient mode labels to the workload.

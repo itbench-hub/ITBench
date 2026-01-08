@@ -1,0 +1,43 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-47
+spec:
+  alerts:
+    - group_id: bookinfo-gateway
+      id: RequestErrorRate
+      metadata:
+        description: Increased error rate for bookinfo gateway service due to denied GET requests
+  aliases:
+    - []
+  fault:
+    - category: Change
+      condition: Authorization policy is applied to bookinfo-gateway-service service which denys GET requests
+      entity:
+        group_id: bookinfo-gateway-service
+        kind: Service
+        name: bookinfo-gateway-service
+      fault_mechanism: misconfigured_service_mesh
+  groups:
+    - filter:
+        - bookinfo-gateway
+      id: bookinfo-gateway
+      kind: Gateway
+      namespace: bookinfo
+    - filter:
+        - bookinfo-gateway-*
+      id: bookinfo-gateway-service
+      kind: Service
+      namespace: bookinfo
+      root_cause: true
+  propagations:
+    - condition: Authorization policy 'deny-method-get' is applied to httpbin service in foo namespace
+      effect: GET requests to httpbin service are denied, leading to an increased error rate.
+      source: bookinfo-gateway-service
+      target: bookinfo-gateway-service
+  recommendedActions:
+    - solution:
+        actions:
+          - Remove the 'deny-method-get' AuthorizationPolicy from the 'foo' namespace.
+        id: remove_deny_authorization_policy

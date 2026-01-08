@@ -1,0 +1,99 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-42
+spec:
+  alerts:
+    - group_id: payment-service-1
+      id: NoRequestsDetected
+      metadata:
+        description: Payment service receiving no requests after pod eviction
+    - group_id: checkout-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Checkout service experiencing connection failures to payment
+    - group_id: frontend-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Frontend service errors due to payment unavailability
+    - group_id: payment-pod-1
+      id: PendingPodsDetected
+      metadata:
+        description: Payment pods stuck in Pending state after eviction
+  aliases:
+    - - payment-service-1
+      - payment-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+  fault:
+    - category: Resource
+      condition: High-priority pods deployed causing eviction of lower-priority payment pods
+      entity:
+        group_id: high-priority-pods
+        kind: Pod
+        name: high-priority-pods
+      fault_mechanism: pod-priority-eviction
+  groups:
+    - filter:
+        - eviction-pod-.*
+      id: high-priority-pods
+      kind: Pod
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - payment-.*
+      id: payment-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - checkout-.*
+      id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-.*
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: High-priority pods consume resources causing payment pod eviction
+      effect: Payment pods evicted and unable to reschedule
+      source: high-priority-pods
+      target: payment-pod-1
+    - condition: Payment pods evicted leaving service with no backends
+      effect: Payment service becomes unavailable
+      source: payment-pod-1
+      target: payment-service-1
+    - condition: Checkout service cannot reach payment service
+      effect: Checkout operations fail with connection errors
+      source: payment-service-1
+      target: checkout-service-1
+    - condition: Frontend cannot process payments
+      effect: Frontend displays payment errors to users
+      source: payment-service-1
+      target: frontend-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Delete high-priority eviction pods to free resources
+          - Verify payment pods reschedule successfully
+          - Implement ResourceQuotas to prevent priority abuse
+        id: remove_high_priority_pods

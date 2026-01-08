@@ -1,0 +1,29 @@
+---
+- name: Check for Helm CLI
+  ansible.builtin.command:
+    cmd: which helm
+  register: system_helm_path
+  changed_when: false
+  failed_when: false
+
+- name: Validate Helm CLI exists
+  ansible.builtin.assert:
+    that: system_helm_path.rc == 0
+    fail_msg: "Unable to find Helm CLI. Please install Helm by following README.md instructions"
+    success_msg: "Helm CLI is installed."
+
+- name: Get helm version
+  ansible.builtin.command:
+    cmd: "{{ system_helm_path.stdout }} version --short"
+  register: system_raw_helm_version
+  changed_when: false
+
+- name: Parse helm version
+  ansible.builtin.set_fact:
+    system_helm_version: "{{ system_raw_helm_version.stdout_lines[0] | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+).*', '\\1') | first }}"
+
+- name: Validate helm version
+  ansible.builtin.assert:
+    that: "'3.16' is version_compare(system_helm_version, '<=')"
+    fail_msg: Helm version for system {{ system_helm_path }} must be 3.16 or later. Got {{ system_helm_version }}
+    success_msg: Helm version {{ system_helm_version }} (>= 3.16) is OK.

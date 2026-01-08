@@ -1,0 +1,26 @@
+---
+- name: Retrieve all worker nodes on the cluster
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Node
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    label_selectors:
+      - node-role.kubernetes.io/node =
+  register: faults_nodes
+
+- name: Uncordon the worker nodes
+  kubernetes.core.k8s_drain:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ node.metadata.name }}"
+    state: uncordon
+  loop: "{{ faults_nodes.resources }}"
+  loop_control:
+    label: node/{{ node.metadata.name }}
+    loop_var: node
+  when:
+    - node.spec.unschedulable is defined
+    - node.spec.unschedulable
+
+- name: Display fault removal instructions
+  ansible.builtin.debug:
+    msg: To remove this fault, please uninstall and reinstall the application it was injected into.

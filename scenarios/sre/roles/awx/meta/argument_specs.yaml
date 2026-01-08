@@ -1,0 +1,138 @@
+---
+argument_specs:
+  main:
+    short_description: Main entry point for awx role
+    description:
+      - This is the main entry point for the awx role.
+      - This role is responsible for installing and uninstalling awx and services.
+    author:
+      - Gerard Vanloo
+    options:
+      awx_agent:
+        required: false
+        type: dict
+        options:
+          configuration:
+            required: true
+            type: dict
+          version:
+            required: true
+            type: str
+      awx_cluster:
+        required: true
+        type: dict
+        options:
+          kubeconfig:
+            required: true
+            type: str
+          provider:
+            required: true
+            type: str
+      awx_credentials:
+        required: false
+        type: dict
+        options:
+          aws:
+            required: false
+            type: dict
+            options:
+              access_key_id:
+                required: true
+                type: str
+              secret_access_key:
+                required: true
+                type: str
+      awx_experiments:
+        required: true
+        type: dict
+        options:
+          phase:
+            choices:
+              - full
+              - start
+              - stop
+            required: false
+            type: str
+          scenarios:
+            elements: int
+            required: true
+            type: list
+          storage:
+            required: false
+            type: dict
+            options:
+              local:
+                required: false
+                type: dict
+                options:
+                  directory:
+                    required: true
+                    type: str
+              s3:
+                required: false
+                type: dict
+                options:
+                  bucket:
+                    required: true
+                    type: str
+                  directory:
+                    required: false
+                    type: str
+                  endpoint:
+                    required: true
+                    type: str
+          trials:
+            required: true
+            type: int
+      awx_github:
+        required: true
+        type: dict
+        options:
+          it_bench:
+            required: true
+            type: dict
+            options:
+              ssh:
+                required: false
+                type: dict
+                options:
+                  private_key_passphrase:
+                    required: true
+                    type: str
+                  private_key_path:
+                    required: true
+                    type: str
+              url:
+                required: true
+                type: str
+              branch:
+                required: true
+                type: str
+          llm_agent:
+            required: true
+            type: dict
+            options:
+              ssh:
+                required: false
+                type: dict
+                options:
+                  private_key_passphrase:
+                    required: true
+                    type: str
+                  private_key_path:
+                    required: true
+                    type: str
+              url:
+                required: true
+                type: str
+              branch:
+                required: true
+                type: str
+      awx_runners:
+        required: true
+        type: dict
+        options:
+          kubeconfigs:
+            elements: str
+            required: true
+            type: list

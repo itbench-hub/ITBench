@@ -1,0 +1,104 @@
+---
+- name: Manage SRE and FinOps Leaderboard Bundle
+  hosts:
+    - environment
+  tasks:
+    - name: Import docs role
+      ansible.builtin.import_role:
+        name: documentation
+
+    - name: Load spec and truth files
+      ansible.builtin.set_fact:
+        incidents: |
+          {{
+            (
+              incidents | default([])
+            ) +
+            [
+              {
+                "spec": (lookup('ansible.builtin.file', spec_path) | from_yaml),
+                "truth": (lookup('ansible.builtin.file', truth_path) | from_yaml)
+              }
+            ]
+          }}
+      loop: "{{ documentation_incidents_ids | sort }}"
+      loop_control:
+        label: "incident-{{ item }}"
+      tags:
+        - always
+      vars:
+        spec_path: "{{ playbook_dir }}/../roles/incidents/files/specs/incident_{{ item }}.yaml"
+        truth_path: "{{ playbook_dir }}/../roles/incidents/files/ground_truths/incident_{{ item }}.yaml"
+
+    - name: Initialize bundle contents
+      ansible.builtin.set_fact:
+        bundle_contents: []
+      tags:
+        - always
+
+    - name: Create bundle contents
+      ansible.builtin.set_fact:
+        bundle_contents: |
+          {{
+            bundle_contents +
+            [{
+              "bundle": {
+                "name": item.spec.metadata.name,
+                "path": "~/sre",
+                "agent_operation_timeout": 1500,
+                "bundle_ready_timeout": 3000,
+                "params": {
+                  "INCIDENT_NUMBER": item.spec.metadata.id,
+                  "location": "~/sre/roles/incidents"
+                },
+                "scenario_type": "SRE",
+                "make_target_mapping": {
+                  "deploy": {
+                    "file": "Makefile.runner",
+                    "target": "launch_start_workflow"
+                  },
+                  "inject_fault": {
+                    "unused": ""
+                  },
+                  "delete": {
+                    "file": "Makefile.runner",
+                    "target": "launch_stop_workflow"
+                  },
+                  "status": {
+                    "file": "Makefile",
+                    "target": "generate_leaderboard_bundle_status"
+                  },
+                  "get": {
+                    "file": "Makefile",
+                    "target": "generate_agent_bundle"
+                  },
+                  "on_error": {
+                    "file": "Makefile.runner",
+                    "target": "launch_stop_workflow"
+                  }
+                }
+              },
+              "scenario": {
+                "instance_id": item.spec.metadata.id,
+                "name": item.spec.metadata.name,
+                "type": "SRE",
+                "description": item.spec.metadata.name,
+                "category": (item.truth.fault | map(attribute='category') | unique | list | last) | default('Other'),
+                "complexity": item.spec.metadata.complexity,
+                "scenario_class": (item.truth.fault | map(attribute='category') | unique | list | last) | default('Other')
+              }
+            }]
+          }}
+      loop: "{{ incidents }}"
+      loop_control:
+        label: incident-{{ item.spec.metadata.id }}
+      tags:
+        - always
+
+    - name: Create bundle file
+      ansible.builtin.copy:
+        content: "{{ bundle_contents | to_nice_json }}"
+        dest: "{{ playbook_dir }}/../docs/scenario_bundle.json"
+        mode: "0644"
+      tags:
+        - always

@@ -1,0 +1,39 @@
+---
+- name: KOps (Kubernetes Operations) Cluster Management
+  hosts:
+    - development
+  pre_tasks:
+    - name: Import kOps role validation tasks
+      ansible.builtin.import_role:
+        name: kops
+        tasks_from: validate_cluster
+      vars:
+        kops_cluster: "{{ cluster }}"
+      tags:
+        - always
+
+    - name: Import kOps role pre tasks for create tasks
+      ansible.builtin.import_role:
+        name: kops
+        tasks_from: pre_tasks_create
+      vars:
+        kops_cluster: "{{ cluster }}"
+      tags:
+        - create_cluster
+
+    - name: Import kOps role pre tasks for list, export, and delete tasks
+      ansible.builtin.import_role:
+        name: kops
+        tasks_from: pre_tasks_general
+      vars:
+        kops_cluster: "{{ cluster }}"
+      tags:
+        - list_clusters
+        - export_cluster
+        - delete_cluster
+  tasks:
+    - name: Import kOps role
+      ansible.builtin.import_role:
+        name: kops
+      vars:
+        kops_cluster: "{{ cluster }}"

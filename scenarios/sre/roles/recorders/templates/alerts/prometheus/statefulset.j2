@@ -1,0 +1,72 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: prometheus-alert-recorder
+    app.kubernetes.io/part-of: it-bench
+  name: prometheus-alert-recorder
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus-alert-recorder
+      app.kubernetes.io/part-of: it-bench
+  template:
+    metadata:
+      annotations:
+        openshift.io/required-scc: restricted-v2
+      labels:
+        app.kubernetes.io/name: prometheus-alert-recorder
+        app.kubernetes.io/part-of: it-bench
+    spec:
+      containers:
+        - name: recorder
+          image: {{ container_image }}
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - "python3.12 -m pip install -r ~/deps/requirements.txt && python3.12 ~/scripts/gather.py"
+          env: {{ container_environment_variables }}
+          resources:
+            requests:
+              cpu: 100m
+              memory: 125Mi
+            limits:
+              memory: 250Mi
+          volumeMounts:
+            - name: dependencies
+              mountPath: /opt/app-root/src/deps
+              readOnly: true
+            - name: scripts
+              mountPath: /opt/app-root/src/scripts
+              readOnly: true
+            - name: prometheus-alert-records
+              mountPath: /opt/app-root/src/records
+      securityContext:
+        fsGroup: 1001
+      volumes:
+        - name: scripts
+          configMap:
+            name: alerts-recorder-prometheus-scripts
+            items:
+              - key: script
+                path: gather.py
+        - name: dependencies
+          configMap:
+            name: alerts-recorder-prometheus-scripts
+            items:
+              - key: deps
+                path: requirements.txt
+  replicas: 1
+  volumeClaimTemplates:
+    - metadata:
+        name: prometheus-alert-records
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete

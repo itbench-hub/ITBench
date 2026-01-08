@@ -1,0 +1,64 @@
+---
+- name: Create ResourceQuota with hard memory limits
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: "{{ spec.namespace.name }}-memory"
+        namespace: "{{ spec.namespace.name }}"
+      spec:
+        hard:
+          memory: 2Gi
+    state: present
+
+- name: Retrieve workload replica information
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: "{{ workload.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ workload.name }}"
+    namespace: "{{ spec.namespace.name }}"
+  register: faults_workloads_info
+  loop: "{{ spec.workloads }}"
+  loop_control:
+    label: "{{ workload.kind | lower }}/{{ workload.name }}"
+    loop_var: workload
+  when:
+    - workload.name != 'otel-collector'
+
+- name: Scale down workloads to 0 replicas
+  kubernetes.core.k8s_scale:
+    api_version: "{{ result.resources[0].apiVersion }}"
+    kind: "{{ result.resources[0].kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ result.resources[0].metadata.name }}"
+    namespace: "{{ result.resources[0].metadata.namespace }}"
+    replicas: 0
+    wait: true
+    wait_timeout: 60
+  loop: "{{ faults_workloads_info.results }}"
+  loop_control:
+    label: "{{ result.resources[0].kind | lower }}/{{ result.resources[0].metadata.name }}"
+    loop_var: result
+  when:
+    - faults_workloads_info is defined
+    - result.resources | length == 1
+
+- name: Scale up workloads to original replica count
+  kubernetes.core.k8s_scale:
+    api_version: "{{ result.resources[0].apiVersion }}"
+    kind: "{{ result.resources[0].kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ result.resources[0].metadata.name }}"
+    namespace: "{{ result.resources[0].metadata.namespace }}"
+    replicas: "{{ result.resources[0].spec.replicas }}"
+    wait: false
+  loop: "{{ faults_workloads_info.results }}"
+  loop_control:
+    label: "{{ result.resources[0].kind | lower }}/{{ result.resources[0].metadata.name }}"
+    loop_var: result
+  when:
+    - faults_workloads_info is defined
+    - result.resources | length == 1

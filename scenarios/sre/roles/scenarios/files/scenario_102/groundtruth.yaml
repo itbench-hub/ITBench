@@ -1,0 +1,31 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-102
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ad
+        namespace: otel-demo
+    - apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: strict-resource-quota
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo get resourcequota
+            text: Retrieve and review the configuration of the resource quota(s) in the affected namespace.
+          - command: kubectl -n otel-demo edit resourcequota otel-demo
+            text: Manually edit the manifest(s) and increase the values of the resource quota(s).
+      - steps:
+          - command: kubectl -n otel-demo get resourcequota
+            text: Retrieve and review the configuration of the resource quota(s) in the affected namespace.
+          - command: kubectl -n otel-demo delete resourcequota otel-demo
+            text: Delete the offending resource quota(s) if it is no longer required.

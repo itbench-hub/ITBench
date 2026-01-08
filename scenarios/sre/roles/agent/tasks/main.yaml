@@ -1,0 +1,47 @@
+---
+- name: Retrieve all namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+  register: agent_namespaces_info
+  tags:
+    - always
+
+- name: Filter out namespace which do not exist
+  ansible.builtin.set_fact:
+    agent_existing_namespaces: |
+      {{
+        (
+          agent_existing_namespaces | default([])
+        ) +
+        [ns]
+      }}
+  loop: "{{ agent_namespaces }}"
+  loop_control:
+    label: namespace/{{ ns.name }}
+    loop_var: ns
+  tags:
+    - always
+  vars:
+    namespace_names: "{{ agent_namespaces_info.resources | community.general.json_query('[*].metadata.name') }}"
+  when:
+    - namespace_names | intersect([ns.name]) | length == 1
+
+- name: Import tasks for granting agent access to namespaces
+  ansible.builtin.import_tasks:
+    file: add_namespace_rbac.yaml
+  tags:
+    - grant_access
+
+- name: Import for restricted kubeconfig generation
+  ansible.builtin.import_tasks:
+    file: generate_restricted_kubeconfig.yaml
+  tags:
+    - grant_access
+
+- name: Import tasks for revoking agent access to namespaces
+  ansible.builtin.import_tasks:
+    file: remove_namespace_rbac.yaml
+  tags:
+    - revoke_access

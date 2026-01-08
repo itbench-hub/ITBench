@@ -1,0 +1,75 @@
+---
+- become: true 
+  block:
+  - name: Add ansible user
+    user:
+      name: "{{ check_target_user }}"
+      state: present
+      shell: /bin/bash
+      create_home: yes
+
+  - name: Set password for ansible user
+    user:
+      name: "{{ check_target_user }}"
+      password: "{{ 'created_user_password' | password_hash('sha512') }}"
+
+  - name: Create .ssh directory
+    file:
+      path: "/home/{{ check_target_user }}/.ssh"
+      state: directory
+      mode: '0700'
+      owner: "{{ check_target_user }}"
+      group: "{{ check_target_user }}"
+
+  - name: Generate SSH key pair
+    openssh_keypair:
+      path: "/home/{{ check_target_user }}/.ssh/id_rsa"
+      owner: "{{ check_target_user }}"
+      group: "{{ check_target_user }}"
+      mode: '0600'
+      type: rsa
+      size: 2048
+    register: keypair
+
+  - name: Set up public key for SSH access
+    copy:
+      content: "{{ keypair.public_key }}"
+      dest: "/home/{{ check_target_user }}/.ssh/authorized_keys"
+      mode: '0600'
+      owner: "{{ check_target_user }}"
+      group: "{{ check_target_user }}"
+
+  - name: Grant sudo privileges to ansible user for ansible-playbook command
+    copy:
+      dest: "/etc/sudoers.d/{{ check_target_user }}"
+      content: |
+        {{ check_target_user }} ALL=(ALL) NOPASSWD: /usr/bin/ansible-playbook
+        {{ check_target_user }} ALL=(ALL) NOPASSWD: /bin/sh
+      mode: '0440'
+
+  - name: Output user details and private key
+    debug:
+      msg: |
+        User created: "{{ check_target_user }}"
+        Private Key:
+        {{ keypair.filename }}
+
+  - name: Fetch a file from remote to local
+    fetch:
+      src: "{{ keypair.filename }}"
+      dest: "{{ check_target_ssh_key }}"
+      flat: yes
+    become: false
+
+  - name: Define inventory content
+    set_fact:
+      inventory_content: |
+        [rhel9_servers]
+        rhel9 ansible_host="{{ check_target_hostname }}" ansible_user="{{ check_target_user }}" ansible_ssh_private_key_file="{{ check_target_ssh_key }}" ansible_python_interpreter="{{ check_target_python_interpreter }}"
+
+  - name: Write inventory content to a file
+    ansible.builtin.copy:
+      content: "{{ inventory_content }}"
+      dest: "{{ path_to_evaluator_inventory }}"
+    delegate_to: localhost
+    become: false

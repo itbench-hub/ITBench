@@ -1,0 +1,35 @@
+---
+- name: Include tasks to approve pending certificate requests
+  ansible.builtin.include_role:
+    name: cluster
+    tasks_from: approve_certificate_requests
+  vars:
+    cluster_files:
+      kubeconfig: "{{ awx_cluster.kubeconfig }}"
+  when:
+    - awx_cluster.provider == "kind"
+
+- name: Install AWX operator
+  kubernetes.core.helm:
+    chart_ref: awx-operator
+    chart_repo_url: https://ansible-community.github.io/awx-operator-helm
+    chart_version: 3.2.0
+    create_namespace: true
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    release_name: "{{ awx_helm_releases.awx_operator.name }}"
+    release_namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+    release_state: present
+    timeout: 10m0s
+    wait: true
+
+- name: Install AWX
+  kubernetes.core.k8s:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    template: templates/kubernetes/awx.j2
+    state: present
+    wait: true
+    wait_condition:
+      reason: Successful
+      status: "True"
+      type: Successful
+    wait_timeout: 900

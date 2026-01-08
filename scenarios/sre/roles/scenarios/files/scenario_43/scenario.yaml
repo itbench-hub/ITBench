@@ -1,0 +1,33 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-43
+spec:
+  applications:
+    - otelDemo:
+        enabled: true
+        options:
+          autoscaling: false
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: frontend
+                namespace: otel-demo
+          id: failing-name-resolution-kubernetes-workload-dns-policy
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: false
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

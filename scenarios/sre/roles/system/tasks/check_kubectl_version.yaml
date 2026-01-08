@@ -1,0 +1,45 @@
+---
+- name: Check for kubectl
+  ansible.builtin.command:
+    cmd: which kubectl
+  register: system_kubectl_path
+  changed_when: false
+  failed_when: false
+
+- name: Validate kubectl exists
+  ansible.builtin.assert:
+    that: system_kubectl_path.rc == 0
+    fail_msg: "Unable to find kubectl. Please install kubectl by following README.md instructions"
+    success_msg: "kubectl is installed."
+
+- name: Get kubectl client version
+  ansible.builtin.command:
+    argv:
+      - "{{ system_kubectl_path.stdout }}"
+      - version
+      - -o
+      - json
+      - --kubeconfig={{ system_cluster.kubeconfig | ansible.builtin.expanduser }}
+  register: system_raw_kubectl_version
+  changed_when: false
+
+- name: Convert kubectl version to JSON
+  ansible.builtin.set_fact:
+    system_kubectl_version: "{{ system_raw_kubectl_version.stdout | from_json }}"
+
+- name: Parse kubectl version
+  ansible.builtin.set_fact:
+    system_kubectl_client_version: "{{ system_kubectl_version.clientVersion.gitVersion | split('v') | last }}"
+    system_kubectl_server_version: "{{ system_kubectl_version.serverVersion.gitVersion | split('v') | last }}"
+
+- name: Validate kubectl client version
+  ansible.builtin.assert:
+    that: "'1.33' is version_compare(system_kubectl_client_version, '<=')"
+    fail_msg: kubectl client for system {{ system_kubectl_path }} must be 1.33 or later. Got {{ system_kubectl_client_version }}
+    success_msg: kubectl client version {{ system_kubectl_client_version }} (>= 1.33) is OK.
+
+- name: Validate kubectl server version
+  ansible.builtin.assert:
+    that: "'1.32' is version_compare(system_kubectl_server_version, '<=')"
+    fail_msg: kubernetes server version for cluster must be 1.32 or later. Got {{ system_kubectl_server_version }}
+    success_msg: kubernetes server version {{ system_kubectl_server_version }} (>= 1.32) is OK.

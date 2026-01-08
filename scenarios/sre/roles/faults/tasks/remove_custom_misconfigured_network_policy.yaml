@@ -1,0 +1,16 @@
+---
+- name: Delete NetworkPolicy
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: "{{ spec.workload.name }}-block-all-ports"
+        namespace: "{{ spec.workload.namespace }}"
+    state: absent
+    wait: true
+
+- name: Display fault removal instructions
+  ansible.builtin.debug:
+    msg: To remove this fault, please uninstall and reinstall the application it was injected into.

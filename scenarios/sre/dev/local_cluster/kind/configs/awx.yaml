@@ -1,0 +1,107 @@
+---
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: kind-awx
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        apiVersion: kubelet.config.k8s.io/v1beta1
+        kind: KubeletConfiguration
+        serverTLSBootstrap: true
+      - |
+        apiVersion: kubeproxy.config.k8s.io/v1alpha1
+        kind: KubeProxyConfiguration
+        metricsBindAddress: "0.0.0.0:10249"
+      - |
+        kind: ClusterConfiguration
+        controllerManager:
+          extraArgs:
+            bind-address: "0.0.0.0"
+            authorization-always-allow-paths: "/metrics"
+        etcd:
+          local:
+            extraArgs:
+              listen-metrics-urls: "http://0.0.0.0:2381"
+        scheduler:
+          extraArgs:
+            bind-address: "0.0.0.0"
+            authorization-always-allow-paths: "/metrics"
+  - role: worker
+    labels:
+      itbench.io/component: orchestraction
+    kubeadmConfigPatches:
+      - |
+        apiVersion: kubelet.config.k8s.io/v1beta1
+        kind: KubeletConfiguration
+        serverTLSBootstrap: true
+      - |
+        apiVersion: kubeproxy.config.k8s.io/v1alpha1
+        kind: KubeProxyConfiguration
+        metricsBindAddress: "0.0.0.0:10249"
+      - |
+        kind: ClusterConfiguration
+        controllerManager:
+          extraArgs:
+            bind-address: "0.0.0.0"
+            authorization-always-allow-paths: "/metrics"
+        etcd:
+          local:
+            extraArgs:
+              listen-metrics-urls: "http://0.0.0.0:2381"
+        scheduler:
+          extraArgs:
+            bind-address: "0.0.0.0"
+            authorization-always-allow-paths: "/metrics"
+  - role: worker
+    labels:
+      itbench.io/component: sandbox
+    kubeadmConfigPatches:
+      - |
+        apiVersion: kubelet.config.k8s.io/v1beta1
+        kind: KubeletConfiguration
+        serverTLSBootstrap: true
+      - |
+        apiVersion: kubeproxy.config.k8s.io/v1alpha1
+        kind: KubeProxyConfiguration
+        metricsBindAddress: "0.0.0.0:10249"
+      - |
+        kind: ClusterConfiguration
+        controllerManager:
+          extraArgs:
+            bind-address: "0.0.0.0"
+            authorization-always-allow-paths: "/metrics"
+        etcd:
+          local:
+            extraArgs:
+              listen-metrics-urls: "http://0.0.0.0:2381"
+        scheduler:
+          extraArgs:
+            bind-address: "0.0.0.0"
+            authorization-always-allow-paths: "/metrics"
+  - role: worker
+    labels:
+      itbench.io/component: tools
+    kubeadmConfigPatches:
+      - |
+        apiVersion: kubelet.config.k8s.io/v1beta1
+        kind: KubeletConfiguration
+        serverTLSBootstrap: true
+      - |
+        apiVersion: kubeproxy.config.k8s.io/v1alpha1
+        kind: KubeProxyConfiguration
+        metricsBindAddress: "0.0.0.0:10249"
+      - |
+        kind: ClusterConfiguration
+        controllerManager:
+          extraArgs:
+            bind-address: "0.0.0.0"
+            authorization-always-allow-paths: "/metrics"
+        etcd:
+          local:
+            extraArgs:
+              listen-metrics-urls: "http://0.0.0.0:2381"
+        scheduler:
+          extraArgs:
+            bind-address: "0.0.0.0"
+            authorization-always-allow-paths: "/metrics"

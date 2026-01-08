@@ -1,0 +1,60 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-41
+spec:
+  applications:
+    - otelDemo:
+        enabled: true
+        options:
+          autoscaling: false
+  faults:
+    - injections:
+        - args:
+            container:
+              name: cart
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: cart
+                namespace: otel-demo
+          id: unassigned-kubernetes-workload-container-resource-limits
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: cart-stress-chaos-memory
+                namespace: chaos-mesh
+            scheduleSpec:
+              concurrencyPolicy: Forbid
+              historyLimit: 1
+              schedule: "* * * * *"
+              stressChaos:
+                duration: 55s
+                mode: all
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: cart
+                  namespaces:
+                    - otel-demo
+                stressors:
+                  memory:
+                    size: 85%
+                    workers: 10
+              type: StressChaos
+          id: scheduled-chaos-mesh-experiment
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: true
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

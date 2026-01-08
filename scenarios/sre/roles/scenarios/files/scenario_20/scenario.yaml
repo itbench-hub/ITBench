@@ -1,0 +1,35 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-20
+spec:
+  applications:
+    - otelDemo:
+        enabled: true
+        options:
+          autoscaling: false
+  faults:
+    - injections:
+        - args:
+            container:
+              name: product-catalog
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: product-catalog
+                namespace: otel-demo
+          id: nonexistent-kubernetes-workload-container-image
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: false
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

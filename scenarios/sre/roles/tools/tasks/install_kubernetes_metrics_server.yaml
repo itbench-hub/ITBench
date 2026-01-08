@@ -1,0 +1,31 @@
+---
+- name: Create release namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ tools_helm_releases.kubernetes_metrics_server.namespace }}"
+        labels:
+          it-bench/monitoring: "true"
+    state: present
+
+- name: Install Kubernetes Metrics Server
+  kubernetes.core.helm:
+    chart_ref: metrics-server
+    chart_repo_url: https://kubernetes-sigs.github.io/metrics-server/
+    chart_version: 3.13.0
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_helm_releases.kubernetes_metrics_server.name }}"
+    release_namespace: "{{ tools_helm_releases.kubernetes_metrics_server.namespace }}"
+    release_state: present
+    timeout: 10m0s
+    values:
+      apiService:
+        insecureSkipTLSVerify: false
+      tls:
+        type: helm
+      serviceMonitor:
+        enabled: "{{ tools_installation_plan.prometheus.enabled | default(true) }}"
+    wait: true

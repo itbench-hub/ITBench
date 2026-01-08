@@ -1,0 +1,60 @@
+---
+- name: Include Helm Release variables from Observability Tools role
+  ansible.builtin.include_vars:
+    file: ../tools/defaults/main/helm_releases.yaml
+
+- name: Pause Chaos Mesh experiement
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: Schedule
+      metadata:
+        annotations:
+          "experiment.chaos-mesh.org/pause": "true"
+        name: "{{ spec.schedule.name }}"
+        namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+    state: patched
+
+- name: Wait for experiment to be paused
+  kubernetes.core.k8s_info:
+    api_version: chaos-mesh.org/v1alpha1
+    kind: "{{ spec.schedule.spec.type }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    label_selectors:
+      - managed-by={{ spec.schedule.name }}
+    namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+    wait: true
+    wait_condition:
+      type: Paused
+      status: "True"
+  register: faults_paused_experiments_info
+
+- name: Delete resources allocated by schedule for Chaos Mesh experiment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ experiment.apiVersion }}"
+      kind: "{{ experiment.kind }}"
+      metadata:
+        annotations:
+          "chaos-mesh.chaos-mesh.org/cleanFinalizer": "forced"
+        name: "{{ experiment.metadata.name }}"
+        namespace: "{{ experiment.metadata.namespace }}"
+    state: patched
+  loop: "{{ faults_paused_experiments_info.resources }}"
+  loop_control:
+    label: "{{ experiment.kind | lower }}/{{ experiment.metadata.name }}"
+    loop_var: experiment
+
+- name: Delete schedule containing Chaos Mesh experiment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: chaos-mesh.org/v1alpha1
+      kind: Schedule
+      metadata:
+        name: "{{ spec.schedule.name }}"
+        namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+    state: absent
+    wait: true

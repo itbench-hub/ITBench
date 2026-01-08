@@ -1,0 +1,25 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-45
+spec:
+  alerts:
+    - labels: {}
+      name: KubeContainerWaiting
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: email
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/email
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment email
+            text: Manually edit the manifest and replace the command of the hanging init container to one which will complete.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment email
+            text: Manually edit the manifest and remove the faulty init container.

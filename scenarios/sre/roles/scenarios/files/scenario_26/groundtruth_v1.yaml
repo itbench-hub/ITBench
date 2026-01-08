@@ -1,0 +1,69 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-26
+spec:
+  alerts:
+    - group_id: email-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Request error rate in service email in namespace otel-demo is above 0
+    - group_id: checkout-service-1
+      id: RequestErrorRate
+      metadata:
+        description: Request error rate in service checkout in namespace otel-demo is above 0
+  aliases:
+    - - email-service-1
+      - email-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+  fault:
+    - category: Chaos
+      condition: HTTP Chaos fault tampering POST request body to email service with corrupted JSON payload
+      entity:
+        group_id: tamper-body-otel-demo-emailservice-1
+        kind: HttpChaos
+        name: tamper-body-otel-demo-emailservice-1
+      fault_mechanism: chaos
+  groups:
+    - filter:
+        - otel-demo-email-http-chaos-post-body-tamper
+      id: tamper-body-otel-demo-emailservice-1
+      kind: HttpChaos
+      namespace: chaos-mesh
+      root_cause: true
+    - filter:
+        - email\b
+      id: email-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - email-.*
+      id: email-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - checkout-.*
+      id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: HTTP Chaos tampers POST request bodies with invalid JSON payload
+      effect: Email service receives corrupted requests and fails to process them
+      source: tamper-body-otel-demo-emailservice-1
+      target: email-service-1
+    - condition: Email service returns errors due to corrupted request payload
+      effect: Checkout service experiences errors when sending order confirmation emails
+      source: email-service-1
+      target: checkout-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Delete the HTTP Chaos resource tampering email service requests
+        id: remove_chaos_experiment

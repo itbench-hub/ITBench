@@ -1,0 +1,40 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-50
+spec:
+  alerts:
+    - group_id: productpage-v1-pod-1
+      id: RequestErrorRate
+      metadata:
+        description: Increased error rate for product page service due to erroring requests
+  aliases:
+    - - productpage-v1-pod-1
+      - productpage-v1-service-1
+  fault:
+    - category: Change
+      condition: Peer authentication is applied to productpage-v1 service which cannot communicate to the other services
+      entity:
+        group_id: productpage-v1-service-1
+        kind: Service
+        name: productpage-v1-service-1
+      fault_mechanism: custom
+  groups:
+    - filter:
+        - productpage-v1-*
+      id: productpage-v1-pod-1
+      kind: Pod
+      namespace: bookinfo
+    - filter:
+        - productpage-v1-*
+      id: productpage-v1-service-1
+      kind: Service
+      namespace: bookinfo
+      root_cause: true
+  propagations:
+    - condition: Authenticaition policy causes service to be unable to communicate to other pods.
+      effect: HTTP requests to service are denied, leading to an increased error rate.
+      source: productpage-v1-service-1
+      target: productpage-v1-service-1
+  recommendedActions: []

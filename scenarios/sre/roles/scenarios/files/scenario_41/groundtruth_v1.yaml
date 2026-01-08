@@ -1,0 +1,52 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-41
+spec:
+  alerts:
+    - group_id: node-1
+      id: NodeMemoryHighUtilization
+      metadata:
+        description: The node running the cart pod will have much of its memory resources consumed.
+  aliases:
+    - - cart-service-1
+      - cart-pod-1
+  fault:
+    - category: Chaos
+      condition: Node resource exhaustion via removed CPU/memory limits
+      entity:
+        group_id: cart-pod-1
+        kind: Pod
+        name: remove-resource-limits-cart
+      fault_mechanism: custom
+      name: exhaust-node-resources
+  groups:
+    - filter:
+        - ""
+      id: node-1
+      kind: Node
+      namespace: ""
+    - filter:
+        - cart\b
+      id: cart-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - cart-.*
+      id: cart-pod-1
+      kind: Pod
+      namespace: otel-demo
+      root_cause: true
+  propagations:
+    - condition: Removing CPU/memory limits allows pods to consume more resources, potentially causing node exhaustion
+      effect: Latency may increase
+      source: remove-resource-limits-cart
+      target: cart-pod-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Restore CPU/memory limits
+          - Increase requests/limits as needed
+          - Consider autoscaling
+        id: tune_resources

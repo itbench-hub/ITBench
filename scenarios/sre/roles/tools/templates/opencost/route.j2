@@ -1,0 +1,15 @@
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ tools_helm_releases.opencost.name }}
+  namespace: {{ tools_helm_releases.opencost.namespace }}
+spec:
+  httpHeaders:
+    actions:
+      response: {{ tools_route_response_headers }}
+  port:
+    targetPort: 9090
+  to:
+    kind: Service
+    name: {{ tools_helm_releases.opencost.name }}

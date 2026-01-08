@@ -1,0 +1,99 @@
+---
+- identifier: node-handback-from-agent
+  related:
+    always_nodes:
+      - identifier: node-remove-access-from-agent
+{% if requires_aws_credentials %}
+    credentials:
+      - name: AWS
+{% endif %}
+  unified_job_template:
+    name: Handback-From-Agent
+    type: job_template
+- identifier: node-remove-access-from-agent
+  related:
+    always_nodes:
+      - identifier: node-install-run-topology-recorder-post-agent-execution
+    credentials:
+      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
+{% if requires_aws_credentials %}
+      - name: AWS
+{% endif %}
+  unified_job_template:
+    name: Remove-Access-From-Agent
+    type: job_template
+- identifier: node-install-run-topology-recorder-post-agent-execution
+  extra_data:
+    recorders_awx_topology_filename_prefix: end
+  related:
+    always_nodes:
+      - identifier: node-pause-post-agent-execution
+    credentials:
+      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
+{% if requires_aws_credentials %}
+      - name: AWS
+{% endif %}
+  unified_job_template:
+    name: Run-Topology-Data-Recorder
+    type: job_template
+- identifier: node-pause-post-agent-execution
+  related:
+    always_nodes:
+      - identifier: node-uninstall-recorders
+  unified_job_template:
+    name: Pause
+    type: job_template
+- identifier: node-uninstall-recorders
+  extra_data:
+    incident_id: {{ scenario_id }}
+  related:
+    always_nodes:
+      - identifier: node-remove-fault
+    credentials:
+      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
+{% if requires_aws_credentials %}
+      - name: AWS
+{% endif %}
+  unified_job_template:
+    name: Uninstall-Data-Recorders
+    type: job_template
+- identifier: node-remove-fault
+  extra_data:
+    incident_id: {{ scenario_id }}
+  related:
+    always_nodes:
+      - identifier: node-undeploy-applications
+    credentials:
+      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
+{% if requires_aws_credentials %}
+      - name: AWS
+{% endif %}
+  unified_job_template:
+    name: Remove-Faults
+    type: job_template
+- identifier: node-undeploy-applications
+  extra_data:
+    incident_id: {{ scenario_id }}
+  related:
+    always_nodes:
+      - identifier: node-undeploy-tools
+    credentials:
+      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
+{% if requires_aws_credentials %}
+      - name: AWS
+{% endif %}
+  unified_job_template:
+    name: Undeploy-Applications
+    type: job_template
+- identifier: node-undeploy-tools
+  extra_data:
+    incident_id: {{ scenario_id }}
+  related:
+    credentials:
+      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
+{% if requires_aws_credentials %}
+      - name: AWS
+{% endif %}
+  unified_job_template:
+    name: Undeploy-Tools
+    type: job_template

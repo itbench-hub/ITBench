@@ -1,0 +1,31 @@
+---
+- name: Retrieve namespace
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: Namespace
+    name: "{{ spec.namespace.name }}"
+  register: faults_namespace
+
+- name: Validate that namespace exists
+  ansible.builtin.assert:
+    that:
+      - faults_namespace is defined
+      - faults_namespace.resources | length == 1
+    fail_msg: Unable to find namespace. Please verify that the namespace exists.
+    success_msg: Found namespace.
+
+- name: Inject fault (disable ambient mode)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_namespace.resources[0].apiVersion }}"
+      kind: "{{ faults_namespace.resources[0].kind }}"
+      metadata:
+        labels: |-
+          {{
+            faults_namespace.resources[0].metadata.labels |
+            combine({"istio.io/dataplane-mode": "none"})
+          }}
+        name: "{{ faults_namespace.resources[0].metadata.name }}"
+    state: patched

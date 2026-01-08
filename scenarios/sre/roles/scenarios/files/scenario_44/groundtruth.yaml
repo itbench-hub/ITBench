@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-44
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: payment
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/payment
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment payment
+            text: Manually edit the manifest and remove the faulty pod anti-affinity rule with the correct value.

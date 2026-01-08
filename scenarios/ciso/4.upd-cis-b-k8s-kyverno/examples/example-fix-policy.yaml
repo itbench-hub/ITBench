@@ -1,0 +1,21 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: container-security-controls
+spec:
+  rules:
+    - name: disallow-privilege-escalation-and-root
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Privilege escalation and root user execution are not allowed, and only images from trusted-registry.com are permitted."
+        pattern:
+          spec:
+            containers:
+              - (name): "*"
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  runAsNonRoot: true
+                image: "trusted-registry.com/*"

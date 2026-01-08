@@ -1,0 +1,91 @@
+---
+- name: Evaluate the system compliance
+  hosts: localhost
+  vars_files:
+    - ./vars.yaml
+  vars:
+    shared_workspace: /tmp
+    path_to_output: /tmp/evaluate.json
+  pre_tasks:
+    - include_tasks: ../tasks/precondition_setup.yml
+  tasks:
+  - block:
+    - name: Ensure virtual environment exists
+      ansible.builtin.stat:
+        path: "{{ venv_dir }}/bin/activate"
+      register: venv_exists
+
+    - name: Create a virtual environment
+      ansible.builtin.command:
+        cmd: "python3 -m venv {{ venv_dir }}"
+      args:
+        creates: venv_path/bin/activate
+      when: not venv_exists.stat.exists
+
+    - name: Install modules
+      ansible.builtin.command:
+        argv:
+        - "{{ venv_python }}"
+        - -m
+        - pip
+        - install
+        - PyYaml
+
+    - name: Download all Policies
+      shell: "kubectl get policy -A --kubeconfig={{ kubeconfig }} -o yaml > {{ work_dir }}/policies.yaml"
+    - name: Download all ClusterPolicies
+      shell: "kubectl get clusterpolicy --kubeconfig={{ kubeconfig }} -o yaml > {{ work_dir }}/clusterpolicies.yaml"
+    - name: Download all PolicyReports
+      shell: "kubectl get policyreport -A --kubeconfig={{ kubeconfig }} -o yaml > {{ work_dir }}/policyreports.yaml"
+    - name: Download all ClusterPolicyReports
+      shell: "kubectl get clusterpolicyreport --kubeconfig={{ kubeconfig }} -o yaml > {{ work_dir }}/clusterpolicyreports.yaml"
+
+    - name: Run evaluation
+      ansible.builtin.command:
+        argv:
+        - "{{ venv_python }}"
+        - ../evaluation.py
+        - ../eval_config.yaml
+        - --epol
+        - ../manifests/existing-policy.yaml
+        - --pol
+        - "{{ work_dir }}/policies.yaml"
+        - --cpol
+        - "{{ work_dir }}/clusterpolicies.yaml"
+        - --polr
+        - "{{ work_dir }}/policyreports.yaml"
+        - --cpolr
+        - "{{ work_dir }}/clusterpolicyreports.yaml"
+      register: evaluation_output
+
+    - name: Dump evaluation output to file
+      ansible.builtin.copy:
+        content: "{{ evaluation_output.stdout }}"
+        dest: "{{ path_to_output }}"
+                
+    - name: Pretty print the
+      debug:
+        msg: "{{ evaluation_output }}"
+
+    rescue:
+      - name: Set pass result
+        set_fact:
+          pass_result:
+            pass: false
+            errors:
+            - code: "{{ ansible_failed_task.name }}"
+              message: |
+                The task "{{ ansible_failed_task.name }}" failed with error:
+                {{ ansible_failed_result.msg | default('No error message provided') }}
+                {{ ansible_failed_result.stdout | default('No stdout provided') }}
+                {{ ansible_failed_result.stderr | default('No stderr provided'}}
+
+
+      - name: Write pass result to JSON file
+        copy:
+          content: "{{ pass_result | to_json }}"
+          dest: "{{ path_to_output }}"
+
+      - name: Pretty print the
+        debug:
+          msg: "{{ pass_result }}"
