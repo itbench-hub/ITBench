@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - sre/tools/**
-      - '!sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/**'
+      - scenarios/sre/tools/**
+      - '!scenarios/sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/**'
 
 concurrency:
   group: ci-build-test-${{ github.ref }}
@@ -37,22 +37,22 @@ jobs:
         run: |
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
-        working-directory: sre
+        working-directory: scenarios/sre
       - name: Create AWX Execution Environment image context
         run: |
           ansible-builder create --output-filename Dockerfile
-        working-directory: sre/tools/awx-ee
+        working-directory: scenarios/sre/tools/awx-ee
       - name: Copy requirements to expected location
         run: |
           cp _build/requirements.yml requirements.yml
           cp _build/requirements.txt requirements.txt
-        working-directory: sre/tools/awx-ee/context
+        working-directory: scenarios/sre/tools/awx-ee/context
       - name: Build AWX Execution Environment image
         uses: docker/build-push-action@v6.18.0
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: sre/tools/awx-ee/context
+          context: scenarios/sre/tools/awx-ee/context
           platforms: |
             ${{ matrix.platform }}
           push: false
@@ -74,7 +74,7 @@ jobs:
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: sre/tools/hello-bench
+          context: scenarios/sre/tools/hello-bench
           platforms: |
             linux/amd64
           push: false
@@ -96,7 +96,7 @@ jobs:
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: sre/tools/hello-bench
+          context: scenarios/sre/tools/hello-bench
           platforms: |
             linux/arm64
           push: false
@@ -125,7 +125,7 @@ jobs:
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: sre/tools/opentelemetry-collector-builder
+          context: scenarios/sre/tools/opentelemetry-collector-builder
           platforms: |
             ${{ matrix.platform }}
           push: false
@@ -154,7 +154,7 @@ jobs:
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: sre/tools/kubernetes-topology-monitor
+          context: scenarios/sre/tools/kubernetes-topology-monitor
           platforms: |
             ${{ matrix.platform }}
           push: false

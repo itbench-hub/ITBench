@@ -5,15 +5,15 @@ on:
     branches:
       - main
     paths:
-      - sre/dev/local_cluster/go.*
-      - sre/playbooks/manage_agent_access.yaml
-      - sre/playbooks/manage_applications.yaml
-      - sre/playbooks/manage_documentation.yaml
-      - sre/playbooks/manage_incidents.yaml
-      - sre/playbooks/manage_recorders.yaml
-      - sre/playbooks/manage_tools.yaml
-      - sre/roles/**
-      - '!sre/roles/awx/**'
+      - scenarios/sre/dev/local_cluster/go.*
+      - scenarios/sre/playbooks/manage_agent_access.yaml
+      - scenarios/sre/playbooks/manage_applications.yaml
+      - scenarios/sre/playbooks/manage_documentation.yaml
+      - scenarios/sre/playbooks/manage_incidents.yaml
+      - scenarios/sre/playbooks/manage_recorders.yaml
+      - scenarios/sre/playbooks/manage_tools.yaml
+      - scenarios/sre/roles/**
+      - '!scenarios/sre/roles/awx/**'
 
 concurrency:
   group: ci-integration-${{ github.ref }}
@@ -33,33 +33,33 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=26 make -C sre create_environment
+          INCIDENT_NUMBER=26 make -C scenarios/sre create_environment
       - name: Test access granting
         run: |
-          make -C sre enable_agent_access
+          make -C scenarios/sre enable_agent_access
       - name: Test access revoking
         run: |
-          make -C sre disable_agent_access
+          make -C scenarios/sre disable_agent_access
   bookinfo:
     name: Istio Book Info Smoke Tests
     needs:
@@ -72,35 +72,35 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_service_provider &
+          make -C scenarios/sre/dev/local_cluster run_service_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/istio.yaml sre/group_vars/environment/tools.yaml
-          mv sre/tests/files/bookinfo.yaml sre/group_vars/environment/applications.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/istio.yaml scenarios/sre/group_vars/environment/tools.yaml
+          mv scenarios/sre/tests/files/bookinfo.yaml scenarios/sre/group_vars/environment/applications.yaml
       - name: Install tools
         run: |
-          make -C sre deploy_tools
+          make -C scenarios/sre deploy_tools
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_applications
+          make -C scenarios/sre deploy_applications
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_applications
+          make -C scenarios/sre undeploy_applications
   chaos-mesh:
     name: Chaos Mesh Smoke Tests
     runs-on: ubuntu-24.04
@@ -111,31 +111,31 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/chaos-mesh.yaml sre/group_vars/environment/tools.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/chaos-mesh.yaml scenarios/sre/group_vars/environment/tools.yaml
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_tools
+          make -C scenarios/sre deploy_tools
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_tools
+          make -C scenarios/sre undeploy_tools
       - name: Run remove custom resource definitions
         run: |
-          make -C sre remove_tools_crds
+          make -C scenarios/sre remove_tools_crds
   clickhouse:
     name: Alinity Clickhouse Smoke Tests
     runs-on: ubuntu-24.04
@@ -146,34 +146,34 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/clickhouse.yaml sre/group_vars/environment/tools.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/clickhouse.yaml scenarios/sre/group_vars/environment/tools.yaml
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_tools
+          make -C scenarios/sre deploy_tools
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_tools
+          make -C scenarios/sre undeploy_tools
       - name: Run remove custom resource definitions
         run: |
-          make -C sre remove_tools_crds
+          make -C scenarios/sre remove_tools_crds
   istio:
     name: Istio Smoke Tests
     runs-on: ubuntu-24.04
@@ -190,34 +190,34 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_service_provider &
+          make -C scenarios/sre/dev/local_cluster run_service_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/istio.yaml sre/group_vars/environment/tools.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/istio.yaml scenarios/sre/group_vars/environment/tools.yaml
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_tools
+          make -C scenarios/sre deploy_tools
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_tools
+          make -C scenarios/sre undeploy_tools
       - name: Run remove custom resource definitions
         run: |
-          make -C sre remove_tools_crds
+          make -C scenarios/sre remove_tools_crds
   jaeger:
     name: Jaeger Smoke Tests
     runs-on: ubuntu-24.04
@@ -230,40 +230,40 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/jaeger.yaml sre/group_vars/environment/tools.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/jaeger.yaml scenarios/sre/group_vars/environment/tools.yaml
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_tools
+          make -C scenarios/sre deploy_tools
       - name: Run data recorder installation smoke test
         run: |
-          make -C sre deploy_recorders
+          make -C scenarios/sre deploy_recorders
       - name: Run data recorder uninstallation smoke test
         run: |
-          make -C sre undeploy_recorders
+          make -C scenarios/sre undeploy_recorders
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_tools
+          make -C scenarios/sre undeploy_tools
       - name: Run remove custom resource definitions
         run: |
-          make -C sre remove_tools_crds
+          make -C scenarios/sre remove_tools_crds
   kubernetes-metrics-server:
     name: Kubernetes Metrics Server Smoke Tests
     runs-on: ubuntu-24.04
@@ -274,31 +274,31 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/kubernetes-metrics-server.yaml sre/group_vars/environment/tools.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/kubernetes-metrics-server.yaml scenarios/sre/group_vars/environment/tools.yaml
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_tools
+          make -C scenarios/sre deploy_tools
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_tools
+          make -C scenarios/sre undeploy_tools
       - name: Run remove custom resource definitions
         run: |
-          make -C sre remove_tools_crds
+          make -C scenarios/sre remove_tools_crds
   kubernetes-topology-monitor:
     name: Kubernetes Topology Monitor Smoke Tests
     runs-on: ubuntu-24.04
@@ -309,40 +309,40 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/kubernetes-topology-monitor.yaml sre/group_vars/environment/tools.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/kubernetes-topology-monitor.yaml scenarios/sre/group_vars/environment/tools.yaml
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_tools
+          make -C scenarios/sre deploy_tools
       - name: Run data recorder installation smoke test
         run: |
-          make -C sre deploy_recorders
+          make -C scenarios/sre deploy_recorders
       - name: Run data recorder uninstallation smoke test
         run: |
-          make -C sre undeploy_recorders
+          make -C scenarios/sre undeploy_recorders
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_tools
+          make -C scenarios/sre undeploy_tools
       - name: Run remove custom resource definitions
         run: |
-          make -C sre remove_tools_crds
+          make -C scenarios/sre remove_tools_crds
   opencost:
     name: OpenCost Smoke Tests
     needs:
@@ -355,34 +355,34 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/opencost.yaml sre/group_vars/environment/tools.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/opencost.yaml scenarios/sre/group_vars/environment/tools.yaml
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_tools
+          make -C scenarios/sre deploy_tools
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_tools
+          make -C scenarios/sre undeploy_tools
       - name: Run remove custom resource definitions
         run: |
-          make -C sre remove_tools_crds
+          make -C scenarios/sre remove_tools_crds
   opentelemetry:
     name: OpenTelemetry Collector Smoke Tests
     needs:
@@ -395,34 +395,34 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/opentelemetry.yaml sre/group_vars/environment/tools.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/opentelemetry.yaml scenarios/sre/group_vars/environment/tools.yaml
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_tools
+          make -C scenarios/sre deploy_tools
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_tools
+          make -C scenarios/sre undeploy_tools
       - name: Run remove custom resource definitions
         run: |
-          make -C sre remove_tools_crds
+          make -C scenarios/sre remove_tools_crds
   otel-demo:
     name: OpenTelemetry Demo (Astronomy Shop) Smoke Tests
     needs:
@@ -437,34 +437,34 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/otel-demo.yaml sre/group_vars/environment/applications.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/otel-demo.yaml scenarios/sre/group_vars/environment/applications.yaml
       - name: Install tools
         run: |
-          INCIDENT_NUMBER=1 make -C sre deploy_tools
+          INCIDENT_NUMBER=1 make -C scenarios/sre deploy_tools
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_applications
+          make -C scenarios/sre deploy_applications
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_applications
+          make -C scenarios/sre undeploy_applications
   prometheus:
     name: Prometheus Smoke Tests
     runs-on: ubuntu-24.04
@@ -475,40 +475,40 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
-          mv sre/tests/files/prometheus.yaml sre/group_vars/environment/tools.yaml
+          make -C scenarios/sre group_vars
+          mv scenarios/sre/tests/files/prometheus.yaml scenarios/sre/group_vars/environment/tools.yaml
       - name: Run installation smoke test
         run: |
-          make -C sre deploy_tools
+          make -C scenarios/sre deploy_tools
       - name: Run data recorder installation smoke test
         run: |
-          make -C sre deploy_recorders
+          make -C scenarios/sre deploy_recorders
       - name: Run data recorder uninstallation smoke test
         run: |
-          make -C sre undeploy_recorders
+          make -C scenarios/sre undeploy_recorders
       - name: Run uninstallation smoke test
         run: |
-          make -C sre undeploy_tools
+          make -C scenarios/sre undeploy_tools
       - name: Run remove custom resource definitions
         run: |
-          make -C sre remove_tools_crds
+          make -C scenarios/sre remove_tools_crds
   sre-incident-1:
     name: SRE Incident 1 Smoke Test
     needs:
@@ -523,36 +523,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=1 make -C sre create_environment
+          INCIDENT_NUMBER=1 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=1 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=1 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=1 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=1 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=1 make -C sre destroy_environment
+          INCIDENT_NUMBER=1 make -C scenarios/sre destroy_environment
   sre-incident-3:
     name: SRE Incident 3 Smoke Test
     needs:
@@ -567,36 +567,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=3 make -C sre create_environment
+          INCIDENT_NUMBER=3 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=3 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=3 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=3 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=3 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=3 make -C sre destroy_environment
+          INCIDENT_NUMBER=3 make -C scenarios/sre destroy_environment
   sre-incident-16:
     name: SRE Incident 16 Smoke Test
     needs:
@@ -611,36 +611,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=16 make -C sre create_environment
+          INCIDENT_NUMBER=16 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=16 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=16 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=16 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=16 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=16 make -C sre destroy_environment
+          INCIDENT_NUMBER=16 make -C scenarios/sre destroy_environment
   sre-incident-20:
     name: SRE Incident 20 Smoke Test
     needs:
@@ -655,36 +655,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=20 make -C sre create_environment
+          INCIDENT_NUMBER=20 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=20 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=20 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=20 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=20 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=20 make -C sre destroy_environment
+          INCIDENT_NUMBER=20 make -C scenarios/sre destroy_environment
   sre-incident-23:
     name: SRE Incident 23 Smoke Test
     needs:
@@ -699,36 +699,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=23 make -C sre create_environment
+          INCIDENT_NUMBER=23 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=23 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=23 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=23 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=23 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=23 make -C sre destroy_environment
+          INCIDENT_NUMBER=23 make -C scenarios/sre destroy_environment
   sre-incident-26:
     name: SRE Incident 26 Smoke Test
     needs:
@@ -744,36 +744,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=26 make -C sre create_environment
+          INCIDENT_NUMBER=26 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=26 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=26 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=26 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=26 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=26 make -C sre destroy_environment
+          INCIDENT_NUMBER=26 make -C scenarios/sre destroy_environment
   sre-incident-30:
     name: SRE Incident 30 Smoke Test
     needs:
@@ -788,36 +788,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=30 make -C sre create_environment
+          INCIDENT_NUMBER=30 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=30 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=30 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=30 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=30 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=30 make -C sre destroy_environment
+          INCIDENT_NUMBER=30 make -C scenarios/sre destroy_environment
   sre-incident-31:
     name: SRE Incident 31 Smoke Test
     needs:
@@ -832,36 +832,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=31 make -C sre create_environment
+          INCIDENT_NUMBER=31 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=31 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=31 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=31 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=31 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=31 make -C sre destroy_environment
+          INCIDENT_NUMBER=31 make -C scenarios/sre destroy_environment
   sre-incident-33:
     name: SRE Incident 33 Smoke Test
     needs:
@@ -876,36 +876,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=33 make -C sre create_environment
+          INCIDENT_NUMBER=33 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=33 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=33 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=33 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=33 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=33 make -C sre destroy_environment
+          INCIDENT_NUMBER=33 make -C scenarios/sre destroy_environment
   sre-incident-34:
     name: SRE Incident 34 Smoke Test
     needs:
@@ -920,36 +920,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=34 make -C sre create_environment
+          INCIDENT_NUMBER=34 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=34 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=34 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=34 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=34 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=34 make -C sre destroy_environment
+          INCIDENT_NUMBER=34 make -C scenarios/sre destroy_environment
   sre-incident-40:
     name: SRE Incident 40 Smoke Test
     needs:
@@ -964,36 +964,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=40 make -C sre create_environment
+          INCIDENT_NUMBER=40 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=40 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=40 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=40 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=40 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=40 make -C sre destroy_environment
+          INCIDENT_NUMBER=40 make -C scenarios/sre destroy_environment
   sre-incident-41:
     name: SRE Incident 41 Smoke Test
     needs:
@@ -1008,36 +1008,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=41 make -C sre create_environment
+          INCIDENT_NUMBER=41 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=41 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=41 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=41 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=41 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=41 make -C sre destroy_environment
+          INCIDENT_NUMBER=41 make -C scenarios/sre destroy_environment
   sre-incident-43:
     name: SRE Incident 43 Smoke Test
     needs:
@@ -1052,36 +1052,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=43 make -C sre create_environment
+          INCIDENT_NUMBER=43 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=43 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=43 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=43 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=43 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=43 make -C sre destroy_environment
+          INCIDENT_NUMBER=43 make -C scenarios/sre destroy_environment
   sre-incident-45:
     name: SRE Incident 45 Smoke Test
     needs:
@@ -1096,36 +1096,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=45 make -C sre create_environment
+          INCIDENT_NUMBER=45 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=45 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=45 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=45 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=45 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=45 make -C sre destroy_environment
+          INCIDENT_NUMBER=45 make -C scenarios/sre destroy_environment
   sre-incident-46:
     name: SRE Incident 46 Smoke Test
     needs:
@@ -1140,36 +1140,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=46 make -C sre create_environment
+          INCIDENT_NUMBER=46 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=46 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=46 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=46 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=46 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=46 make -C sre destroy_environment
+          INCIDENT_NUMBER=46 make -C scenarios/sre destroy_environment
   sre-incident-47:
     name: SRE Incident 47 Smoke Test
     needs:
@@ -1184,36 +1184,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_service_provider &
+          make -C scenarios/sre/dev/local_cluster run_service_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=47 make -C sre create_environment
+          INCIDENT_NUMBER=47 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=47 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=47 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=47 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=47 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=47 make -C sre destroy_environment
+          INCIDENT_NUMBER=47 make -C scenarios/sre destroy_environment
   sre-incident-48:
     name: SRE Incident 48 Smoke Test
     needs:
@@ -1228,36 +1228,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_service_provider &
+          make -C scenarios/sre/dev/local_cluster run_service_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=48 make -C sre create_environment
+          INCIDENT_NUMBER=48 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=48 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=48 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=48 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=48 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=48 make -C sre destroy_environment
+          INCIDENT_NUMBER=48 make -C scenarios/sre destroy_environment
   sre-incident-49:
     name: SRE Incident 49 Smoke Test
     needs:
@@ -1272,36 +1272,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=49 make -C sre create_environment
+          INCIDENT_NUMBER=49 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=49 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=49 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=49 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=49 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=49 make -C sre destroy_environment
+          INCIDENT_NUMBER=49 make -C scenarios/sre destroy_environment
   sre-incident-50:
     name: SRE Incident 50 Smoke Test
     needs:
@@ -1316,36 +1316,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_service_provider &
+          make -C scenarios/sre/dev/local_cluster run_service_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=50 make -C sre create_environment
+          INCIDENT_NUMBER=50 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=50 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=50 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=50 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=50 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=50 make -C sre destroy_environment
+          INCIDENT_NUMBER=50 make -C scenarios/sre destroy_environment
   sre-incident-102:
     name: SRE Incident 102 Smoke Test
     needs:
@@ -1360,36 +1360,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=102 make -C sre create_environment
+          INCIDENT_NUMBER=102 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=102 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=102 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=102 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=102 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=102 make -C sre destroy_environment
+          INCIDENT_NUMBER=102 make -C scenarios/sre destroy_environment
   sre-incident-105:
     name: SRE Incident 105 Smoke Test
     needs:
@@ -1404,36 +1404,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=105 make -C sre create_environment
+          INCIDENT_NUMBER=105 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=105 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=105 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=105 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=105 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=105 make -C sre destroy_environment
+          INCIDENT_NUMBER=105 make -C scenarios/sre destroy_environment
   finops-incident-37:
     name: FinOps Incident 37 Smoke Test
     needs:
@@ -1450,36 +1450,36 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=37 make -C sre create_environment
+          INCIDENT_NUMBER=37 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=37 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=37 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=37 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=37 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=37 make -C sre destroy_environment
+          INCIDENT_NUMBER=37 make -C scenarios/sre destroy_environment
   finops-incident-38:
     name: FinOps Incident 38 Smoke Test
     needs:
@@ -1496,33 +1496,33 @@ jobs:
           python-version: '3.13'
       - uses: actions/setup-go@v6.1.0
         with:
-          go-version-file: sre/dev/local_cluster/go.mod
-          cache-dependency-path: sre/dev/local_cluster/go.sum
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.18.6
       - name: Install Python and Ansible dependencies
         run: |
-          pip install -r sre/requirements.txt
-          ansible-galaxy install -r sre/requirements.yaml
+          pip install -r scenarios/sre/requirements.txt
+          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
-          make -C sre/dev/local_cluster create_simple_cluster
+          make -C scenarios/sre/dev/local_cluster create_simple_cluster
       - name: Run Cloud Provider
         run: |
-          make -C sre/dev/local_cluster run_gateway_provider &
+          make -C scenarios/sre/dev/local_cluster run_gateway_provider &
       - name: Create group vars
         run: |
-          make -C sre group_vars
+          make -C scenarios/sre group_vars
       - name: Create environment
         run: |
-          INCIDENT_NUMBER=38 make -C sre create_environment
+          INCIDENT_NUMBER=38 make -C scenarios/sre create_environment
       - name: Test fault injection
         run: |
-          INCIDENT_NUMBER=38 make -C sre inject_incident_fault
+          INCIDENT_NUMBER=38 make -C scenarios/sre inject_incident_fault
       - name: Test fault removal
         run: |
-          INCIDENT_NUMBER=38 make -C sre remove_incident_fault
+          INCIDENT_NUMBER=38 make -C scenarios/sre remove_incident_fault
       - name: Destroy environment
         run: |
-          INCIDENT_NUMBER=38 make -C sre destroy_environment
+          INCIDENT_NUMBER=38 make -C scenarios/sre destroy_environment
