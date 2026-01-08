@@ -1,0 +1,10 @@
+---
+- name: Update status
+  ansible.builtin.set_fact:
+    leaderboard_status_events: "{{ leaderboard_current_status.events + [status_event] }}"
+  vars:
+    status_event:
+      phase: recorder-uninstallation
+      status: "{{ leaderboard_status.status }}"
+      task: "{{ leaderboard_status.failed_task | default(omit) }}"
+      timestamp: "{{ now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ') }}"

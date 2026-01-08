@@ -1,0 +1,77 @@
+---
+argument_specs:
+  main:
+    short_description: Main entry point for recorders role
+    description:
+      - This is the main entry point for the recorders role.
+      - This role is responsible for installing and uninstalling data recorders.
+    author:
+      - Gerard Vanloo
+    options:
+      recorders_cluster:
+        required: false
+        type: dict
+        options:
+          kubeconfig:
+            default: ~/.kube/config
+            required: false
+            type: str
+          platform:
+            choices:
+              - kubernetes
+              - openshift
+            default: kubernetes
+            required: false
+            type: str
+      recorders_required:
+        required: false
+        type: dict
+        options:
+          alerts:
+            required: false
+            type: dict
+            options:
+              prometheus:
+                default: true
+                required: false
+                type: bool
+          topology:
+            required: false
+            type: dict
+            options:
+              kubernetes:
+                default: true
+                required: false
+                type: bool
+          traces:
+            required: false
+            type: dict
+            options:
+              jaeger:
+                default: true
+                required: false
+                type: bool
+      recorders_storage:
+        required: true
+        type: dict
+        options:
+          local:
+            required: false
+            type: dict
+            options:
+              directory:
+                required: true
+                type: str
+          s3:
+            required: false
+            type: dict
+            options:
+              bucket:
+                required: true
+                type: str
+              directory:
+                required: true
+                type: str
+              endpoint:
+                required: true
+                type: str

@@ -1,0 +1,15 @@
+---
+- name: Update status
+  ansible.builtin.set_fact:
+    leaderboard_status_conditions: "{{ leaderboard_current_assertion.status.conditions + [status_condition] }}"
+    leaderboard_status_events: "{{ leaderboard_current_status.events + [status_event] }}"
+  vars:
+    status_condition:
+      type: FaultInjected
+      status: "{{ leaderboard_status.status == 'succeeded' }}"
+      lastTransitionTime: "{{ now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+    status_event:
+      phase: fault-injection
+      status: "{{ leaderboard_status.status }}"
+      task: "{{ leaderboard_status.failed_task | default(omit) }}"
+      timestamp: "{{ now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ') }}"

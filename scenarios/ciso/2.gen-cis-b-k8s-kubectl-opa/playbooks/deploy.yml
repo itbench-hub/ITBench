@@ -1,0 +1,126 @@
+- name: Deploy the environment
+  hosts: localhost
+  vars_files:
+    - ./vars.yaml
+  pre_tasks:
+    - include_tasks: ../tasks/precondition_setup.yml
+  tasks:
+  - block:
+    - block:
+      - debug:
+          msg: "Executing block: Create cluster"
+      - include_tasks: ../tasks/status_update.yml
+        vars:
+          new_conditions:
+          - type: "Deployed"
+            status: "False"
+            reason: "DeploymentInProgress"
+            message: "Deploying KinD Cluster..."
+          - type: "FaultInjected"
+            status: "False"
+            reason: "DeploymentNotReady"
+            message: "Waiting for the deployment to complete"
+          - type: "Destroyed"
+            status: "False"
+            reason: "DeploymentNotReady"
+            message: "Waiting for the deployment to complete"
+
+      - include_tasks: ../tasks/kind_create.yml
+      when: provided_kubeconfig == ''
+
+    - block:
+      - debug:
+          msg: "Executing block: Use existing cluster"
+      - include_tasks: ../tasks/status_update.yml
+        vars:
+          new_conditions:
+          - type: "Deployed"
+            status: "False"
+            reason: "DeploymentInProgress"
+            message: "Connecting an existing cluster..."
+          - type: "FaultInjected"
+            status: "False"
+            reason: "DeploymentNotReady"
+            message: "Waiting for the deployment to complete"
+          - type: "Destroyed"
+            status: "False"
+            reason: "DeploymentNotReady"
+            message: "Waiting for the deployment to complete"
+      - debug:
+          var: bundle_input_file
+      - debug:
+          var: bundle_input
+      - debug:
+          var: shared_workspace
+      - name: "Write kubeconfig to {{ kubeconfig }} for Bundle Setup"
+        copy:
+          src: "{{ provided_kubeconfig }}"
+          dest: "{{ kubeconfig }}"
+      when: provided_kubeconfig != ''
+
+    # TODO: Create Kubeconfig for a temporal service account
+    - name: "Write kubeconfig to {{ agent_kubeconfig }} for Agent"
+      copy:
+        src: "{{ kubeconfig }}"
+        dest: "{{ agent_kubeconfig }}"
+
+    - name: Check if namespace exists
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig }}"
+        kind: Namespace
+        name: "{{ target_ns }}"
+      register: namespace_info
+      failed_when: false  # Don't fail if namespace doesn't exist
+
+    - name: Print namespace_info for debugging
+      debug:
+        var: namespace_info
+
+    - name: Create namespace if it does not exist
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ target_ns }}"
+      when: namespace_info.resources | length == 0
+
+    - include_tasks: ../tasks/status_update.yml
+      vars:
+        new_conditions:
+        - type: "Deployed"
+          status: "True"
+        - type: "FaultInjected"
+          status: "False"
+          reason: "FaultInjectionNotReady"
+          message: "Waiting for the fault injection to be completed"
+        - type: "Destroyed"
+          status: "False"
+          reason: "FaultInjectionNotReady"
+          message: "Waiting for the fault injection to be completed"
+    
+    rescue:
+      - include_tasks: ../tasks/status_update.yml
+        vars:
+          new_conditions:
+          - type: "Deployed"
+            status: "False"
+            reason: "DeploymentFailed"
+            message: >
+              Deployment is failed due to the following reason.
+              The task "{{ ansible_failed_task.name }}" failed with error:
+              {{ ansible_failed_result.msg }}
+          - type: "FaultInjected"
+            status: "False"
+            reason: "DeploymentFailed"
+            message: "Waiting for the deployment to complete"
+          - type: "Destroyed"
+            status: "False"
+            reason: "DeploymentFailed"
+            message: "Waiting for the deployment to complete"
+
+      - name: Show full details of the failed task
+        debug:
+          var: ansible_failed_result

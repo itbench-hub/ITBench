@@ -1,0 +1,55 @@
+---
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: {{ tools_instances.opentelemetry_collectors.names.jaeger }}
+  namespace: {{ tools_instances.opentelemetry_collectors.namespace }}
+spec:
+  image: {{ item.container_image }}
+  mode: deployment
+  observability:
+    metrics:
+      enableMetrics: {{ tools_installation_plan.prometheus.enabled | default(true) }}
+{% if tools_cluster.platform == "openshift" %}
+  podAnnotations:
+    openshift.io/required-scc: restricted-v2
+{% endif %}
+  ports:
+    - name: jaeger
+      port: 16686
+  config:
+    service:
+      extensions:
+        - jaeger_storage
+        - jaeger_query
+      pipelines:
+        traces:
+          receivers:
+            - otlp
+          exporters:
+            - debug
+            - jaeger_storage_exporter
+    extensions:
+      jaeger_query:
+{% if (tools_installation_plan.istio.enabled | default(false)) %}
+        base_path: /jaeger
+{% endif %}
+        storage:
+          traces: traces_store
+      jaeger_storage:
+        backends:
+          traces_store:
+            opensearch:
+              server_urls:
+                - http://opensearch-cluster-master.{{ tools_helm_releases.opensearch.namespace }}.svc.cluster.local:9200
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug: {}
+      jaeger_storage_exporter:
+        trace_storage: traces_store

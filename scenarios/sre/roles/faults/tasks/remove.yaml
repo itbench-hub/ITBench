@@ -1,0 +1,26 @@
+---
+- name: Import custom fault removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_custom.yaml
+  when:
+    - fault.custom is defined
+
+- name: Import Chaos Mesh fault removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_chaos_mesh.yaml
+  vars:
+    spec: "{{ fault.chaos_mesh }}"
+  when:
+    - fault.chaos_mesh is defined
+
+- name: Import Otel Demo fault removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_otel_demo.yaml
+  when:
+    - fault.otel_demo is defined
+
+- name: Import Valkey fault removal tasks
+  ansible.builtin.import_tasks:
+    file: remove_valkey.yaml
+  when:
+    - fault.valkey is defined

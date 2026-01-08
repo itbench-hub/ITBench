@@ -1,0 +1,13 @@
+---
+- name: Include Helm Release variables from applications role
+  ansible.builtin.include_vars:
+    file: ../applications/defaults/main/helm_releases.yaml
+
+- name: Import flagd injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_otel_demo_flagd.yaml
+  vars:
+    spec: "{{ fault.otel_demo.flagd }}"
+    helm_release: "{{ applications_helm_releases.otel_demo }}"
+  when:
+    - fault.otel_demo.flagd is defined

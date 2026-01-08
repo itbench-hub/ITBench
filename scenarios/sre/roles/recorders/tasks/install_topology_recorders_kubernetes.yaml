@@ -1,0 +1,57 @@
+---
+- name: Import tools role for variable setting tasks
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_kubernetes_topology_monitor_endpoint
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+      platform: "{{ recorders_cluster.platform }}"
+
+- name: Load job information
+  ansible.builtin.set_fact:
+    recorders_kubernetes_job: "{{ lookup('ansible.builtin.file', 'files/topology/kubernetes/job.yaml') | from_yaml }}"
+
+- name: Create PersistentVolumeClaim to retain records
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    src: files/topology/kubernetes/persistentvolumeclaim.yaml
+    state: present
+
+- name: Create ConfigMap with Python script
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    template: templates/topology/kubernetes/configmap.j2
+    state: present
+  vars:
+    python_script_file_contents: "{{ lookup('ansible.builtin.file', 'files/topology/kubernetes/scripts/gather.py') }}"
+    requirements_file_contents: "{{ lookup('ansible.builtin.file', 'files/topology/kubernetes/scripts/requirements.txt') }}"
+
+- name: Wait for any ongoing jobs to be removed
+  kubernetes.core.k8s_info:
+    api_version: "{{ recorders_kubernetes_job.apiVersion }}"
+    kind: "{{ recorders_kubernetes_job.kind }}"
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    name: "{{ recorders_kubernetes_job.metadata.name }}"
+    namespace: "{{ recorders_namespace.name }}"
+  register: recorders_kubernetes_job_info
+  until:
+    - recorders_kubernetes_job_info.resources | length == 0
+  retries: 8
+  delay: 15
+
+- name: Install Kubernetes Topology Recorder
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    template: templates/topology/kubernetes/job.j2
+    state: present
+  vars:
+    container_image: "{{ recorders_kubernetes_job.spec.template.spec.containers[0].image }}"
+    container_environment_variables:
+      - name: KUBERNETES_TOPOLOGY_MONITOR_ENDPOINT
+        value: "{{ tools_kubernetes_topology_monitor_endpoint }}"
+      - name: FILENAME_ANNOTATION
+        value: "{{ recorders_awx_topology_filename_prefix | default('') }}"

@@ -1,0 +1,26 @@
+---
+- name: Import custom fault injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_custom.yaml
+  when:
+    - fault.custom is defined
+
+- name: Import Chaos Mesh fault injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_chaos_mesh.yaml
+  vars:
+    spec: "{{ fault.chaos_mesh }}"
+  when:
+    - fault.chaos_mesh is defined
+
+- name: Import Otel Demo fault injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_otel_demo.yaml
+  when:
+    - fault.otel_demo is defined
+
+- name: Import Valkey fault injection tasks
+  ansible.builtin.import_tasks:
+    file: inject_valkey.yaml
+  when:
+    - fault.valkey is defined

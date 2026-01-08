@@ -1,0 +1,49 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 41
+    name: Exhaust Node Resources
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - chaos-mesh
+          - kubernetes-topology-monitor
+    faults:
+      - custom:
+          name: remove-resource-limits
+          remove_resource_limits:
+            workload:
+              kind: Deployment
+              name: cart
+              namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+              container:
+                name: cart
+      - chaos_mesh:
+          schedule:
+            name: exhaust-node-cart-pod-failure
+            spec:
+              schedule: "* * * * *"
+              historyLimit: 1
+              concurrencyPolicy: Forbid
+              type: StressChaos
+              stressChaos:
+                mode: all
+                selector:
+                  namespaces:
+                    - "{{ applications_helm_releases.otel_demo.namespace }}"
+                  labelSelectors:
+                    "app.kubernetes.io/component": cart
+                stressors:
+                  memory:
+                    size: 85%
+                    workers: 10
+                duration: 55s

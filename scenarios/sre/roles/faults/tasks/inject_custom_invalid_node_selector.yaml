@@ -1,0 +1,16 @@
+---
+- name: Inject fault (node selector)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: apps/v1
+      kind: "{{ spec.workload.kind }}"
+      metadata:
+        name: "{{ spec.workload.name }}"
+        namespace: "{{ spec.workload.namespace }}"
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              "kubernetes.io/hostname": invalid-node
+    state: patched

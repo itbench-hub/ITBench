@@ -1,0 +1,65 @@
+---
+name: New SRE Fault Mechanism Request
+description: Request to add a new fault mechanism to the SRE fault catalog
+labels:
+  - enhancement
+  - fault mechanism
+  - sre
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filling out this feature request! Please verify that there is not a fault mechanism which covers the request before submitting.
+  - type: dropdown
+    id: fault-type
+    attributes:
+      label: Mechanism Type
+      description: What type is the fault mechanism?
+      options:
+        - Chaos Mesh
+        - Custom (Generic)
+        - Database
+        - Flagd
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: fault-domain
+    attributes:
+      label: Domain
+      description: What IT domain is affected by this fault?
+      multiple: true
+      options:
+        - Application Code
+        - Deployment
+        - Infrastructure
+        - Monitoring (Observability)
+        - Networking
+        - Performance
+        - Security
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is the expected behavior of the service after the fault is injected?
+    validations:
+      required: true
+  - type: textarea
+    id: limitations
+    attributes:
+      label: Limitations
+      description: Are there any limitations to injecting the fault?
+      placeholder: This fault can only be used with the OpenTelemetry Demo application because it uses their Flagd fault.
+    validations:
+      required: true
+  - type: textarea
+    id: inputs
+    attributes:
+      label: Inputs
+      description: What is required to inject the fault?
+      placeholder: This fault requires a Kubernetes workload name, namespace, and type.
+    validations:
+      required: true

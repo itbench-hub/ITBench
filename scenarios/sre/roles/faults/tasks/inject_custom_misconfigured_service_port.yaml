@@ -1,0 +1,18 @@
+---
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_faults_service_target_port_index.yaml
+  vars:
+    faults_service: "{{ spec.service }}"
+
+- name: Inject fault (misconfigured service port)
+  kubernetes.core.k8s_json_patch:
+    api_version: v1
+    kind: Service
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ spec.service.name }}"
+    namespace: "{{ spec.service.namespace }}"
+    patch:
+      - op: replace
+        path: /spec/ports/{{ faults_service_target_port_index }}/targetPort
+        value: 9999

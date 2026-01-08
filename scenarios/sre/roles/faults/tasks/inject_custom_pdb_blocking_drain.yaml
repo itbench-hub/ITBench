@@ -1,0 +1,79 @@
+---
+- name: Retrieve worker nodes on the cluster
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Node
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    label_selectors:
+      - node-role.kubernetes.io/node =
+  register: faults_nodes
+
+- name: Validate that worker nodes exists
+  ansible.builtin.assert:
+    that:
+      - faults_nodes is defined
+      - faults_nodes.resources | length > 0
+    fail_msg: Unable to find worker nodes. Please run this fault on a cluster with worker nodes.
+    success_msg: Found worker nodes.
+
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: apps/v1
+    kind: "{{ spec.workload.kind }}"
+    name: "{{ spec.workload.name }}"
+    namespace: "{{ spec.workload.namespace }}"
+  register: faults_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - faults_workload is defined
+      - faults_workload.resources | length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Assign workload to node
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              "kubernetes.io/hostname": "{{ faults_nodes.resources[0].metadata.name }}"
+
+- name: Wait for workload to update
+  kubernetes.core.k8s_info:
+    api_version: "{{ faults_workload.resources[0].apiVersion }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    kind: "{{ faults_workload.resources[0].kind }}"
+    name: "{{ faults_workload.resources[0].metadata.name }}"
+    namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+  register: faults_updated_workload
+  until:
+    - faults_updated_workload.resources | length == 1
+    - faults_updated_workload.resources[0].status.availableReplicas == faults_updated_workload.resources[0].status.replicas
+  delay: 15
+  retries: 20
+
+- name: Cordon workload's node
+  kubernetes.core.k8s_drain:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ faults_nodes.resources[0].metadata.name }}"
+    state: cordon
+
+- name: Scale workload
+  kubernetes.core.k8s_scale:
+    api_version: "{{ faults_workload.resources[0].apiVersion }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    kind: "{{ faults_workload.resources[0].kind }}"
+    name: "{{ faults_workload.resources[0].metadata.name }}"
+    namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+    replicas: "{{ faults_workload.resources[0].spec.replicas + 1 }}"
+    wait: false

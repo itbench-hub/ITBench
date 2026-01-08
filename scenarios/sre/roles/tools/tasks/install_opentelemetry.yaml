@@ -1,0 +1,251 @@
+---
+- name: Install OpenTelemetry Operator on Kubernetes
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Create the release namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ tools_helm_releases.opentelemetry_operator.namespace }}"
+            labels:
+              it-bench/monitoring: "true"
+        state: present
+
+    - name: Install OpenTelemetry Operator
+      kubernetes.core.helm:
+        chart_ref: oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-operator
+        chart_version: 0.99.2
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_helm_releases.opentelemetry_operator.name }}"
+        release_namespace: "{{ tools_helm_releases.opentelemetry_operator.namespace }}"
+        release_state: present
+        timeout: 10m0s
+        values:
+          manager:
+            serviceMonitor:
+              enabled: "{{ tools_installation_plan.prometheus.enabled | default(true) }}"
+          admissionWebhooks:
+            certManager:
+              enabled: false
+            autoGenerateCert:
+              enabled: true
+        wait: true
+
+- name: Install RedHat build of OpenTelemetry Operator on OpenShift
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Create the project for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: project.openshift.io/v1
+          kind: Project
+          metadata:
+            name: openshift-opentelemetry-operator
+            labels:
+              kubernetes.io/metadata.name: openshift-opentelemetry-operator
+              openshift.io/cluster-monitoring: "true"
+        state: present
+
+    - name: Create the operator group for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: openshift-opentelemetry-operator
+            namespace: openshift-opentelemetry-operator
+          spec:
+            upgradeStrategy: Default
+        state: present
+
+    - name: Create the subscription for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: opentelemetry-product
+            namespace: openshift-opentelemetry-operator
+          spec:
+            channel: stable
+            installPlanApproval: Automatic
+            name: opentelemetry-product
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+        state: present
+
+    - name: Wait for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s_info:
+        api_version: operators.coreos.com/v1alpha1
+        kind: ClusterServiceVersion
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: openshift-opentelemetry-operator
+      register: tools_openshift_otel_operator_csv
+      until:
+        - tools_openshift_otel_operator_csv.resources | selectattr("status.phase", "==", "Succeeded") | length == 0
+      retries: 10
+      delay: 30
+
+    - name: Wait for OpenTelemetry CRD to be installed
+      kubernetes.core.k8s_info:
+        api_version: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: opentelemetrycollectors.opentelemetry.io
+      register: tools_openshift_otel_collector_crd
+      until:
+        - tools_openshift_otel_collector_crd.resources | length == 1
+      retries: 10
+      delay: 30
+
+- name: Create the release namespace for OpenTelemetry Collectors
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ tools_instances.opentelemetry_collectors.namespace }}"
+        labels:
+          it-bench/monitoring: "true"
+          it-bench/shared-gateway-access: "true"
+    state: present
+
+- name: Import variable setting task
+  ansible.builtin.import_tasks:
+    file: set_clickhouse_credentials.yaml
+
+- name: Import variable setting task
+  ansible.builtin.import_tasks:
+    file: set_clickhouse_endpoint.yaml
+
+- name: Install OpenTelemetry Collector(s)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    template: "{{ item.template_path }}"
+    state: present
+  loop:
+    - enabled: "{{ (tools_installation_plan.jaeger.enabled | default(true)) }}"
+      template_path: templates/opentelemetry/collectors/jaeger.j2
+      container_image: |
+        {{
+          lookup('ansible.builtin.file', 'files/opentelemetry/collectors/jaeger.yaml') |
+          from_yaml |
+          community.general.json_query('spec.image')
+        }}
+    - enabled: "{{ (tools_installation_plan.opentelemetry.enabled | default(true)) }}"
+      template_path: templates/opentelemetry/collectors/kubernetes-objects.j2
+      container_image: |
+        {{
+          lookup('ansible.builtin.file', 'files/opentelemetry/collectors/kubernetes-objects.yaml') |
+          from_yaml |
+          community.general.json_query('spec.image')
+        }}
+    - enabled: "{{ (tools_installation_plan.istio.enabled | default(false)) }}"
+      template_path: templates/opentelemetry/collectors/istio.j2
+      container_image: |
+        {{
+          lookup('ansible.builtin.file', 'files/opentelemetry/collectors/istio.yaml') |
+          from_yaml |
+          community.general.json_query('spec.image')
+        }}
+  loop_control:
+    label: template/{{ item.template_path | basename }}
+  when:
+    - item.enabled
+
+- name: Fetch all OpenTelemetry Collector Deployments
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    label_selectors:
+      - app.kubernetes.io/component = opentelemetry-collector
+      - app.kubernetes.io/managed-by = opentelemetry-operator
+      - app.kubernetes.io/part-of = opentelemetry
+    namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
+  register: tools_otel_collector_deployments
+
+- name: Wait for all OpenTelemetry Collectors deployments to stabalize
+  kubernetes.core.k8s_info:
+    api_version: "{{ resource.apiVersion }}"
+    kind: "{{ resource.kind }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ resource.metadata.name }}"
+    namespace: "{{ resource.metadata.namespace }}"
+    wait: true
+  loop: "{{ tools_otel_collector_deployments.resources }}"
+  loop_control:
+    label: deployment/{{ resource.metadata.name }}
+    loop_var: resource
+
+- name: Enable external access to Jaeger
+  when:
+    - tools_installation_plan.jaeger.enabled
+    - tools_installation_plan.jaeger.external_access
+  block:
+    - name: Enable external access on Kind
+      when:
+        - tools_cluster.provider == "kind"
+        - not tools_installation_plan.istio.enabled
+      block:
+        - name: Create Cloud Provider Kind Kubernetes Gateway
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/kubernetes_gateways/kind.j2
+            state: present
+            wait: true
+            wait_condition:
+              reason: Programmed
+              status: "True"
+              type: Programmed
+          vars:
+            gateway:
+              name: "{{ tools_instances.opentelemetry_collectors.names.jaeger }}"
+
+        - name: Create HTTP Route
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/opentelemetry/http_routes/jaeger.j2
+            state: present
+          vars:
+            gateway:
+              name: "{{ tools_instances.opentelemetry_collectors.names.jaeger }}"
+
+        - name: Import connection test to external endpoint
+          ansible.builtin.import_tasks:
+            file: test_gateway_endpoint.yaml
+          vars:
+            tools_external_paths:
+              - /
+            tools_kubernetes_gateway:
+              name: "{{ tools_instances.opentelemetry_collectors.names.jaeger }}"
+
+    - name: Enable external access on OpenShift
+      when:
+        - tools_cluster.platform == "openshift"
+      block:
+        - name: Create OpenShift Route
+          kubernetes.core.k8s:
+            kubeconfig: "{{ tools_cluster.kubeconfig }}"
+            template: templates/opentelemetry/routes/jaeger.j2
+            state: present
+          register: tools_jaeger_openshift_route
+
+        - name: Import connection test to external endpoint
+          ansible.builtin.import_tasks:
+            file: test_route_endpoint.yaml
+          vars:
+            tools_external_paths:
+              - /
+            tools_route:
+              name: "{{ tools_jaeger_openshift_route.result.metadata.name }}"
+              namespace: "{{ tools_jaeger_openshift_route.result.metadata.namespace }}"

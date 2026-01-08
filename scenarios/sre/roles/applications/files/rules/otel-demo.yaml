@@ -1,0 +1,45 @@
+---
+# NOTE: This file is deprecated. Please use the template instead.
+#       This file is not to be removed until the finops alerts are decided upon.
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: otel-demo-alerting-rules
+spec:
+  groups:
+    # ToDo: Disabled until (1) are made conditional and (2) appropriate threshold values are introduced
+    - name: CostAlerts
+      interval: 1m
+      rules:
+        - alert: CPUSpend
+          expr: sum by (namespace) (container_namespace_node:container_cpu_allocation_cost_per_node:avg5m{container!="load-generator", namespace="otel-demo"}) > 3
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            description: "{{ $labels.namespace }} has exceeded the allocated budget for vCPU for 5m (current: ${{ $value }})"
+        - alert: MemorySpend
+          expr: sum by (namespace) (container_namespace_node:container_memory_allocation_gigabytes_cost_per_node:avg5m{container!="load-generator", namespace="otel-demo"}) > 9
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            description: "{{ $labels.namespace }} has exceeded the allocated budget for RAM for 5m (current: ${{ $value }})"
+    - name: EfficiencyAlerts
+      interval: 1m
+      rules:
+        - alert: CPUEfficiency
+          expr: round(avg by (container, namespace) (container_namespace:container_cpu_usage_seconds_per_requests:ratio_irate1m{container!="load-generator", namespace="otel-demo"}) * 100) < 65
+          for: 2m
+          labels:
+            severity: info
+          annotations:
+            description: "{{ $labels.container }} in {{ $labels.namespace }} has a cpu efficiency below 65% for 5m (current: {{ $value }}%)"
+        - alert: MemoryEfficiency
+          expr: round(avg by (container, namespace) (container_namespace:container_memory_working_set_bytes_per_requests_bytes:ratio_avg1m{container!~"load-generator|flagd-ui", namespace="otel-demo"}) * 100) < 75
+          for: 2m
+          labels:
+            severity: info
+          annotations:
+            description: "{{ $labels.container }} in {{ $labels.namespace }} has a memory efficiency below 75% for 5m (current: {{ $value }}%)"

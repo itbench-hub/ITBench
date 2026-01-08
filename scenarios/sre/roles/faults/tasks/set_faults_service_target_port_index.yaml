@@ -1,0 +1,25 @@
+---
+- name: Retrieve services from cluster
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ faults_service.name }}"
+    namespace: "{{ faults_service.namespace }}"
+  register: faults_services_info
+
+- name: Find the index of the target service port
+  ansible.builtin.set_fact:
+    faults_service_target_port_index: |
+      {{
+        lookup(
+          'ansible.utils.index_of',
+          faults_services_info.resources[0].spec.ports,
+          'eq',
+          faults_service.target_port,
+          'targetPort'
+        )
+      }}
+  when:
+    - faults_services_info is defined
+    - faults_services_info.resources | length > 0

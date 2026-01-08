@@ -1,0 +1,15 @@
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ tools_instances.opentelemetry_collectors.names.jaeger }}
+  namespace: {{ tools_instances.opentelemetry_collectors.namespace }}
+spec:
+  httpHeaders:
+    actions:
+      response: {{ tools_route_response_headers }}
+  port:
+    targetPort: 16686
+  to:
+    kind: Service
+    name: {{ tools_instances.opentelemetry_collectors.names.jaeger }}-collector

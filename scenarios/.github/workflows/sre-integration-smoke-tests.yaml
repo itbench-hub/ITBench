@@ -1,0 +1,1528 @@
+name: Perform integration smoke tests for SRE incidents
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - sre/dev/local_cluster/go.*
+      - sre/playbooks/manage_agent_access.yaml
+      - sre/playbooks/manage_applications.yaml
+      - sre/playbooks/manage_documentation.yaml
+      - sre/playbooks/manage_incidents.yaml
+      - sre/playbooks/manage_recorders.yaml
+      - sre/playbooks/manage_tools.yaml
+      - sre/roles/**
+      - '!sre/roles/awx/**'
+
+concurrency:
+  group: ci-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  agent-access:
+    name: Agent Access Smoke Tests
+    needs:
+      - chaos-mesh
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=26 make -C sre create_environment
+      - name: Test access granting
+        run: |
+          make -C sre enable_agent_access
+      - name: Test access revoking
+        run: |
+          make -C sre disable_agent_access
+  bookinfo:
+    name: Istio Book Info Smoke Tests
+    needs:
+      - istio
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_service_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/istio.yaml sre/group_vars/environment/tools.yaml
+          mv sre/tests/files/bookinfo.yaml sre/group_vars/environment/applications.yaml
+      - name: Install tools
+        run: |
+          make -C sre deploy_tools
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_applications
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_applications
+  chaos-mesh:
+    name: Chaos Mesh Smoke Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/chaos-mesh.yaml sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+      - name: Run remove custom resource definitions
+        run: |
+          make -C sre remove_tools_crds
+  clickhouse:
+    name: Alinity Clickhouse Smoke Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/clickhouse.yaml sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+      - name: Run remove custom resource definitions
+        run: |
+          make -C sre remove_tools_crds
+  istio:
+    name: Istio Smoke Tests
+    runs-on: ubuntu-24.04
+    needs:
+      - clickhouse
+      - jaeger
+      - kubernetes-topology-monitor
+      - opencost
+      - prometheus
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_service_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/istio.yaml sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+      - name: Run remove custom resource definitions
+        run: |
+          make -C sre remove_tools_crds
+  jaeger:
+    name: Jaeger Smoke Tests
+    runs-on: ubuntu-24.04
+    needs:
+      - opentelemetry
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/jaeger.yaml sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run data recorder installation smoke test
+        run: |
+          make -C sre deploy_recorders
+      - name: Run data recorder uninstallation smoke test
+        run: |
+          make -C sre undeploy_recorders
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+      - name: Run remove custom resource definitions
+        run: |
+          make -C sre remove_tools_crds
+  kubernetes-metrics-server:
+    name: Kubernetes Metrics Server Smoke Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/kubernetes-metrics-server.yaml sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+      - name: Run remove custom resource definitions
+        run: |
+          make -C sre remove_tools_crds
+  kubernetes-topology-monitor:
+    name: Kubernetes Topology Monitor Smoke Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/kubernetes-topology-monitor.yaml sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run data recorder installation smoke test
+        run: |
+          make -C sre deploy_recorders
+      - name: Run data recorder uninstallation smoke test
+        run: |
+          make -C sre undeploy_recorders
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+      - name: Run remove custom resource definitions
+        run: |
+          make -C sre remove_tools_crds
+  opencost:
+    name: OpenCost Smoke Tests
+    needs:
+      - prometheus
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/opencost.yaml sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+      - name: Run remove custom resource definitions
+        run: |
+          make -C sre remove_tools_crds
+  opentelemetry:
+    name: OpenTelemetry Collector Smoke Tests
+    needs:
+      - clickhouse
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/opentelemetry.yaml sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+      - name: Run remove custom resource definitions
+        run: |
+          make -C sre remove_tools_crds
+  otel-demo:
+    name: OpenTelemetry Demo (Astronomy Shop) Smoke Tests
+    needs:
+      - clickhouse
+      - jaeger
+      - prometheus
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/otel-demo.yaml sre/group_vars/environment/applications.yaml
+      - name: Install tools
+        run: |
+          INCIDENT_NUMBER=1 make -C sre deploy_tools
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_applications
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_applications
+  prometheus:
+    name: Prometheus Smoke Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+          mv sre/tests/files/prometheus.yaml sre/group_vars/environment/tools.yaml
+      - name: Run installation smoke test
+        run: |
+          make -C sre deploy_tools
+      - name: Run data recorder installation smoke test
+        run: |
+          make -C sre deploy_recorders
+      - name: Run data recorder uninstallation smoke test
+        run: |
+          make -C sre undeploy_recorders
+      - name: Run uninstallation smoke test
+        run: |
+          make -C sre undeploy_tools
+      - name: Run remove custom resource definitions
+        run: |
+          make -C sre remove_tools_crds
+  sre-incident-1:
+    name: SRE Incident 1 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=1 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=1 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=1 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=1 make -C sre destroy_environment
+  sre-incident-3:
+    name: SRE Incident 3 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=3 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=3 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=3 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=3 make -C sre destroy_environment
+  sre-incident-16:
+    name: SRE Incident 16 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=16 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=16 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=16 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=16 make -C sre destroy_environment
+  sre-incident-20:
+    name: SRE Incident 20 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=20 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=20 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=20 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=20 make -C sre destroy_environment
+  sre-incident-23:
+    name: SRE Incident 23 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=23 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=23 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=23 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=23 make -C sre destroy_environment
+  sre-incident-26:
+    name: SRE Incident 26 Smoke Test
+    needs:
+      - chaos-mesh
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=26 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=26 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=26 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=26 make -C sre destroy_environment
+  sre-incident-30:
+    name: SRE Incident 30 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=30 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=30 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=30 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=30 make -C sre destroy_environment
+  sre-incident-31:
+    name: SRE Incident 31 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=31 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=31 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=31 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=31 make -C sre destroy_environment
+  sre-incident-33:
+    name: SRE Incident 33 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=33 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=33 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=33 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=33 make -C sre destroy_environment
+  sre-incident-34:
+    name: SRE Incident 34 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=34 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=34 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=34 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=34 make -C sre destroy_environment
+  sre-incident-40:
+    name: SRE Incident 40 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=40 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=40 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=40 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=40 make -C sre destroy_environment
+  sre-incident-41:
+    name: SRE Incident 41 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=41 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=41 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=41 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=41 make -C sre destroy_environment
+  sre-incident-43:
+    name: SRE Incident 43 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=43 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=43 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=43 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=43 make -C sre destroy_environment
+  sre-incident-45:
+    name: SRE Incident 45 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=45 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=45 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=45 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=45 make -C sre destroy_environment
+  sre-incident-46:
+    name: SRE Incident 46 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=46 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=46 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=46 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=46 make -C sre destroy_environment
+  sre-incident-47:
+    name: SRE Incident 47 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - prometheus
+      - bookinfo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_service_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=47 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=47 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=47 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=47 make -C sre destroy_environment
+  sre-incident-48:
+    name: SRE Incident 48 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - prometheus
+      - bookinfo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_service_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=48 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=48 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=48 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=48 make -C sre destroy_environment
+  sre-incident-49:
+    name: SRE Incident 49 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=49 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=49 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=49 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=49 make -C sre destroy_environment
+  sre-incident-50:
+    name: SRE Incident 50 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - prometheus
+      - bookinfo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_service_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=50 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=50 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=50 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=50 make -C sre destroy_environment
+  sre-incident-102:
+    name: SRE Incident 102 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=102 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=102 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=102 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=102 make -C sre destroy_environment
+  sre-incident-105:
+    name: SRE Incident 105 Smoke Test
+    needs:
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=105 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=105 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=105 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=105 make -C sre destroy_environment
+  finops-incident-37:
+    name: FinOps Incident 37 Smoke Test
+    needs:
+      - kubernetes-metrics-server
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - opencost
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=37 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=37 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=37 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=37 make -C sre destroy_environment
+  finops-incident-38:
+    name: FinOps Incident 38 Smoke Test
+    needs:
+      - kubernetes-metrics-server
+      - kubernetes-topology-monitor
+      - opentelemetry
+      - opencost
+      - otel-demo
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-go@v6.1.0
+        with:
+          go-version-file: sre/dev/local_cluster/go.mod
+          cache-dependency-path: sre/dev/local_cluster/go.sum
+      - uses: azure/setup-helm@v4.3.1
+        with:
+          version: v3.18.6
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create Kind cluster
+        run: |
+          make -C sre/dev/local_cluster create_simple_cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C sre/dev/local_cluster run_gateway_provider &
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Create environment
+        run: |
+          INCIDENT_NUMBER=38 make -C sre create_environment
+      - name: Test fault injection
+        run: |
+          INCIDENT_NUMBER=38 make -C sre inject_incident_fault
+      - name: Test fault removal
+        run: |
+          INCIDENT_NUMBER=38 make -C sre remove_incident_fault
+      - name: Destroy environment
+        run: |
+          INCIDENT_NUMBER=38 make -C sre destroy_environment

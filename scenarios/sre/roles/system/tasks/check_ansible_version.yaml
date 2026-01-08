@@ -1,0 +1,19 @@
+---
+- name: Find Ansible executable
+  ansible.builtin.command:
+    cmd: which ansible
+  register: system_ansible_path
+  changed_when: false
+  failed_when: false
+
+- name: Validate ansible version
+  ansible.builtin.assert:
+    that: "'2.19' is version_compare(ansible_version.full, '<=')"
+    fail_msg: Ansible version for system {{ system_ansible_path }} must be 2.19 or later. Got {{ ansible_version.full }}
+    success_msg: Ansible version {{ ansible_version.full }} (>= 2.19) is OK.
+
+- name: Validate python version
+  ansible.builtin.assert:
+    that: "'3.12' is version_compare(ansible_facts.python_version, '<=')"
+    fail_msg: Python version for system {{ ansible_facts.python.executable }} must be 3.12 or later. Got {{ ansible_facts.python_version }}
+    success_msg: Python version {{ ansible_facts.python_version }} (>= 3.12) is OK.

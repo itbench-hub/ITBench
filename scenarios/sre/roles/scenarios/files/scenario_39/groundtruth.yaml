@@ -1,0 +1,26 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-39
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: payment
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/payment
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment payment
+            text: Manually edit the manifest and replace the node selector with the correct value.
+      - steps:
+          - command: kubectl get nodes --selector='node-role.kubernetes.io/node='
+            text: Retrieve all worker node nodes
+          - text: Uncordon all worker nodes which are cordoned.

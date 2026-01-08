@@ -1,0 +1,39 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-48
+spec:
+  alerts:
+    - group_id: bookinfo-namespace-1
+      id: NoServiceMeshConnectionsOpened
+      metadata:
+        description: No requests detected for services in bookinfo due to sidecar injection being off
+  aliases:
+    - - bookinfo-namespace-1
+  fault:
+    - category: Change
+      condition: Ambient mode is disabled in namespace
+      entity:
+        group_id: bookinfo-namespace-1
+        kind: Namespace
+        name: bookinfo
+      fault_mechanism: misconfigured_service_mesh
+  groups:
+    - filter:
+        - bookinfo
+      id: bookinfo-namespace-1
+      kind: Namespace
+      namespace: bookinfo
+      root_cause: true
+  propagations:
+    - condition: Sidecar injection is disabled for bookinfo namespace
+      effect: Pods in the bookinfo namespace will not be in the service mesh, leading to no traffic.
+      source: bookinfo-namespace-1
+      target: bookinfo-namespace-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Re-enable Istio sidecar injection for the 'otel-demo' namespace.
+          - Restart affected pods to ensure sidecars are injected.
+        id: re_enable_sidecar_injection

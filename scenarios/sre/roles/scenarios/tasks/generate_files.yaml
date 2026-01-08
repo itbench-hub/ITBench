@@ -1,0 +1,70 @@
+---
+- name: Load scenarios library index
+  ansible.builtin.set_fact:
+    scenarios_library_index: "{{ lookup('ansible.builtin.file', index_file_path) | from_json }}"
+  vars:
+    index_file_path: "{{ playbook_dir }}/../roles/documentation/files/library/scenarios/index.json"
+
+- name: Generate scenario directory paths
+  ansible.builtin.set_fact:
+    scenarios_directory_paths: "{{ scenarios_directory_paths | default({}) | combine({scenario.id: directory_path}) }}"
+  loop: "{{ scenarios_library_index }}"
+  loop_control:
+    label: scenario-{{ scenario.id }}
+    loop_var: scenario
+  vars:
+    directory_path: |-
+      {{
+        [
+          role_path,
+          'files',
+          [
+            'scenario',
+            scenario.id
+          ] | join('_')
+        ] |
+        path_join
+      }}
+
+- name: Generate scenario directories
+  ansible.builtin.file:
+    mode: "0755"
+    path: "{{ scenarios_directory_paths[scenario.id] }}"
+    state: directory
+  loop: "{{ scenarios_library_index }}"
+  loop_control:
+    label: scenario-{{ scenario.id }}
+    loop_var: scenario
+  when:
+    - not (scenarios_directory_paths[scenario.id] is directory)
+
+- name: Generate scenario specs
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/scenario.j2') | from_yaml | to_nice_yaml(indent=2, width=160) }}"
+    dest: "{{ scenarios_directory_paths[scenario.id] }}/scenario.yaml"
+    force: "{{ scenarios_files_generator.options.overwrite | default(false) }}"
+    mode: "0644"
+  loop: "{{ scenarios_library_index }}"
+  loop_control:
+    label: scenario-{{ scenario.id }}
+    loop_var: scenario
+  vars:
+    chaos_mesh_fault_count: |-
+      {{
+        scenario.disruptions |
+        community.general.json_query("[*].injections[?id=='scheduled-chaos-mesh-experiment']") |
+        flatten |
+        select() |
+        length
+      }}
+
+- name: Generate scenario ground truths
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/groundtruth.j2') | from_yaml | to_nice_yaml(indent=2, width=160) }}"
+    dest: "{{ scenarios_directory_paths[scenario.id] }}/groundtruth.yaml"
+    force: "{{ scenarios_files_generator.options.overwrite | default(false) }}"
+    mode: "0644"
+  loop: "{{ scenarios_library_index }}"
+  loop_control:
+    label: scenario-{{ scenario.id }}
+    loop_var: scenario

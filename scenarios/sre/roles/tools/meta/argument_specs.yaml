@@ -1,0 +1,175 @@
+---
+argument_specs:
+  main:
+    short_description: Main entry point for tools role
+    description:
+      - This is the main entry point for the tools role.
+      - This role is responsible for installing and uninstalling tools and services.
+    author:
+      - Gerard Vanloo
+    options:
+      tools_cluster:
+        required: true
+        type: dict
+        options:
+          kubeconfig:
+            required: true
+            type: str
+          provider:
+            required: true
+            type: str
+          platform:
+            choices:
+              - kubernetes
+              - openshift
+            required: true
+            type: str
+      tools_installation_plan:
+        required: false
+        type: dict
+        options:
+          chaos_mesh:
+            required: false
+            type: dict
+            options:
+              enabled:
+                default: false
+                required: false
+                type: bool
+          clickhouse:
+            required: false
+            type: dict
+            options:
+              enabled:
+                default: true
+                required: false
+                type: bool
+              external_access:
+                default: true
+                required: false
+                type: bool
+          istio:
+            required: false
+            type: dict
+            options:
+              enabled:
+                default: false
+                required: false
+                type: bool
+          jaeger:
+            required: false
+            type: dict
+            options:
+              enabled:
+                default: true
+                required: false
+                type: bool
+              external_access:
+                default: true
+                required: false
+                type: bool
+          kubernetes_metrics_server:
+            required: false
+            type: dict
+            options:
+              enabled:
+                default: false
+                required: false
+                type: bool
+          kubernetes_topology_monitor:
+            required: false
+            type: dict
+            options:
+              enabled:
+                default: true
+                required: false
+                type: bool
+              external_access:
+                default: true
+                required: false
+                type: bool
+          opencost:
+            required: false
+            type: dict
+            options:
+              enabled:
+                default: false
+                required: false
+                type: bool
+              external_access:
+                default: true
+                required: false
+                type: bool
+          opentelemetry:
+            required: false
+            type: dict
+            options:
+              enabled:
+                default: false
+                required: false
+                type: bool
+          prometheus:
+            required: false
+            type: dict
+            options:
+              enabled:
+                default: true
+                required: false
+                type: bool
+              external_access:
+                default: true
+                required: false
+                type: bool
+      tools_uninstallation_plan:
+        required: false
+        type: dict
+        options:
+          remove_crds:
+            default: true
+            required: false
+            type: bool
+  set_clickhouse_credentials:
+    author:
+      - Gerard Vanloo
+    options:
+      tools_cluster:
+        required: true
+        type: dict
+        options:
+          kubeconfig:
+            required: true
+            type: str
+  set_clickhouse_endpoint:
+    author:
+      - Gerard Vanloo
+    options:
+      tools_cluster:
+        required: true
+        type: dict
+        options:
+          kubeconfig:
+            required: true
+            type: str
+  set_prometheus_endpoint:
+    short_description: Main entry point for tools role
+    description:
+      - This is the main entry point for the tools role.
+      - This role is responsible for installing and uninstalling tools and services.
+    author:
+      - Gerard Vanloo
+    options:
+      tools_cluster:
+        required: false
+        type: dict
+        options:
+          kubeconfig:
+            default: ~/.kube/config
+            required: false
+            type: str
+          platform:
+            choices:
+              - kubernetes
+              - openshift
+            default: kubernetes
+            required: false
+            type: str

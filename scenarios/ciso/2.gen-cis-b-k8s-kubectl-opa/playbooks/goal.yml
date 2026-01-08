@@ -1,0 +1,43 @@
+---
+- name: Build a goal descriptioin
+  hosts: localhost
+  vars_files:
+    - ./vars.yaml
+  vars:
+    shared_workspace: /tmp
+    path_to_output: /tmp/goal.json
+  pre_tasks:
+    - include_tasks: ../tasks/precondition_setup.yml
+  tasks:
+  - name: Load info.json
+    set_fact:
+      info_content: "{{ lookup('file', '../info.json') | from_json }}"
+
+  - name: Build the goal description
+    set_fact:
+      goal_object:
+        goal: |
+          I would like to check if the following condition is satisfiled, given a Kubernetes cluster with `kubeconfig.yaml`
+              {{ info_content.goal }} 
+
+          To check the condition, do the following steps. 
+          - get related resource(s) on the cluster by kubectl command
+          - chcek if the conditions are satisfied by OPA Rego policy
+
+          for those steps, you need to create an OPA Rego policy `policy.rego`. 
+          Also, save the kubectl command as `script.sh` with the following design. 
+          - The script should output the collected related resources to a file named `collected_data.json` in the current working directory.
+          - Please remove any kubeconfig configuration (e.g. --kubeconfig args) from the script, as users will configure the kubeconfig using environment variables or other methods.
+
+          If running the policy failed and if you can fix the issue, you will do it and try running again.
+
+          Once you get a final answer, you can quit the work.
+
+          The cluster's kubeconfig is at `{% raw %}{{ kubeconfig }}{% endraw %}`.
+        vars:
+          kubeconfig: "{{ lookup('file', agent_kubeconfig) }}"
+
+  - name: Write the goal description to JSON file
+    copy:
+      content: "{{ goal_object | to_json }}"
+      dest: "{{ path_to_output }}"

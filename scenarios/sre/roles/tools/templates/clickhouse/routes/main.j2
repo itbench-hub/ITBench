@@ -1,0 +1,15 @@
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ tools_instances.clickhouse.names.main }}
+  namespace: {{ tools_instances.clickhouse.namespace }}
+spec:
+  httpHeaders:
+    actions:
+      response: {{ tools_route_response_headers }}
+  port:
+    targetPort: 8123
+  to:
+    kind: Service
+    name: clickhouse-{{ tools_instances.clickhouse.names.main }}

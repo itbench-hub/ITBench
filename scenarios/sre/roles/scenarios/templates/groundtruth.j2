@@ -1,0 +1,59 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: {{ ["scenario", scenario.id] | join("-") }}
+spec:
+{% if scenario.alerts | length == 0 %}
+  alerts: []
+{% else %}
+  alerts:
+{% for alert in scenario.alerts %}
+    - name: {{ alert }}
+      labels: {}
+{% endfor %}
+{% endif %}
+{% if scenario.disruptions | length == 0 %}
+  entities: []
+{% else %}
+  entities:
+{% for disruption in scenario.disruptions %}
+{% for injection in disruption.injections %}
+{% if injection.args.kubernetesObject is defined %}
+    - {{ injection.args.kubernetesObject }}
+{% if injection.id == "ingress-port-blocking-network-policy" %}
+    - apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: {{ [injection.args.kubernetesObject.metadata.name, "block", "all", "ports"] | join("-") }}
+        namespace: {{ injection.args.kubernetesObject.metadata.namespace }}
+{% elif injection.id == "insufficent-kubernetes-resource-quota" %}
+    - apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: strict-resource-quota
+        namespace: {{ injection.args.kubernetesObject.metadata.namespace }}
+{% elif injection.id == "misconfigured-kubernetes-horizontal-pod-autoscaler" %}
+    - apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: {{ injection.args.kubernetesObject.metadata.name }}
+        namespace: {{ injection.args.kubernetesObject.metadata.namespace }}
+{% elif injection.id == "strict-mutual-tls-istio-service-mesh-enforcement" %}
+    - apiVersion: security.istio.io/v1
+      kind: PeerAuthentication
+      metadata:
+        name: strict-mtls-mode
+        namespace: {{ injection.args.kubernetesObject.metadata.namespace }}
+{% elif injection.id == "traffic-denying-istio-gateway-authorization-policy" %}
+    - apiVersion: security.istio.io/v1
+      kind: AuthorizationPolicy
+      metadata:
+        name: {{ [injection.args.kubernetesObject.metadata.name, "deny"] | join("-") }}
+        namespace: {{ injection.args.kubernetesObject.metadata.namespace }}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% endif %}
+  solutions: {{ scenario.solutions }}

@@ -1,0 +1,29 @@
+---
+- name: Manage SRE and FinOps Scenario Files
+  hosts:
+    - environment
+  tasks:
+    - name: Import injections role
+      ansible.builtin.import_role:
+        name: injections
+        tasks_from: generate_tasks
+      tags:
+        - generate_files
+
+    - name: Import waiters role
+      ansible.builtin.import_role:
+        name: waiters
+        tasks_from: generate_tasks
+      tags:
+        - generate_files
+
+    - name: Include scenarios role
+      ansible.builtin.import_role:
+        name: scenarios
+        tasks_from: generate_files
+      tags:
+        - generate_files
+      vars:
+        scenarios_files_generator:
+          options:
+            overwrite: "{{ overwrite_files | default(false) | bool }}"

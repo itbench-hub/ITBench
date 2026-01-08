@@ -1,0 +1,40 @@
+---
+- name: Create identifiers for applications
+  ansible.builtin.set_fact:
+    documentation_applications_library: |
+      {{
+        (
+          documentation_applications_library | default([])
+        ) +
+        [
+          (
+            application |
+            combine({"id": application.name | lower | replace(" ", "-")})
+          )
+        ]
+      }}
+  loop: "{{ lookup('ansible.builtin.file', 'files/library/applications/index.json') | from_json }}"
+  loop_control:
+    label: application/{{ application.name }}
+    loop_var: application
+
+- name: Validate unique ids for all applications
+  ansible.builtin.assert:
+    that:
+      - (documentation_applications_library | unique(attribute="id") | length) == (documentation_applications_library | length)
+    fail_msg: Duplicate id discovered in library index. Please ensure all applications have a unique name or id value.
+    success_msg: All applications in library index have unique ids.
+
+- name: Generate applications library index
+  ansible.builtin.copy:
+    content: "{{ documentation_applications_library | sort(attribute='name') | to_nice_json }}"
+    dest: "{{ [role_path, 'files', 'library', 'applications', 'index.json'] | path_join }}"
+    mode: "0644"
+
+- name: Generate applications README
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/readmes/applications.j2') }}"
+    dest: "{{ playbook_dir }}/../docs/applications.md"
+    mode: "0644"
+  vars:
+    documentation_contents: "{{ lookup('ansible.builtin.file', 'files/library/applications/index.json') | from_json }}"

@@ -1,0 +1,16 @@
+---
+- name: Validate runners cluster count
+  ansible.builtin.assert:
+    that:
+      - kops_stack.runners.count > 0
+    fail_msg: Invalid number of kOps clusters set. Must be greater than 0.
+    success_msg: Valid number of kOps clusters configured.
+
+- name: Validate Elastic IP allocation ID
+  ansible.builtin.assert:
+    that:
+      - kops_stack.runners.aws.elastic_ip_allocation_id | length > 0
+    fail_msg: Invalid number of kOps clusters set. Must be greater than 0.
+    success_msg: Valid number of kOps clusters configured.
+  when:
+    - kops_stack.runners.aws.elastic_ip_allocation_id is defined

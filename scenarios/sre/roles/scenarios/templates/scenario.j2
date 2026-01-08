@@ -1,0 +1,32 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: {{ ["scenario", scenario.id] | join("-") }}
+spec:
+  applications:
+{% for application in scenario.environment.applications %}
+{% if application.id == "book-info" %}
+    - bookInfo:
+        enabled: true
+        options: {}
+{% elif application.id == "opentelemetry-demo" %}
+    - otelDemo:
+        enabled: true
+        options:
+          autoscaling: {{ scenario.category == "finops" }}
+{% endif %}
+{% endfor %}
+  faults: {{ scenario.disruptions }}
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: {{ chaos_mesh_fault_count > 0 }}
+    costMonitoring:
+      opencost:
+        enabled: {{ scenario.category == "finops" }}
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

@@ -1,0 +1,72 @@
+---
+- name: Manage SRE and FinOps Incident Environment Sample Application Stack
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import variables for incident
+      ansible.builtin.import_role:
+        name: incidents
+      tags:
+        - always
+      vars:
+        incidents_file:
+          id: "{{ incident_id }}"
+      when:
+        - incident_id is defined
+  tasks:
+    - name: Import leaderboard role
+      ansible.builtin.import_role:
+        name: leaderboard
+      vars:
+        leaderboard_status:
+          status: progressing
+        leaderboard_storage: "{{ storage }}"
+
+    - name: Attempt to perform tasks in application role
+      block:
+        - name: Import applications role
+          ansible.builtin.import_role:
+            name: applications
+          vars:
+            applications_cluster:
+              kubeconfig: "{{ cluster.kubeconfig }}"
+            applications_required:
+              bookinfo:
+                enabled: "{{ incidents_applications.bookinfo.enabled | default(applications.bookinfo) }}"
+              otel_demo:
+                configuration: "{{ incidents_applications.otel_demo.configuration | default({}) }}"
+                enabled: "{{ incidents_applications.otel_demo.enabled | default(applications.otel_demo) }}"
+
+        - name: Import leaderboard role
+          ansible.builtin.import_role:
+            name: leaderboard
+          vars:
+            leaderboard_status:
+              status: succeeded
+            leaderboard_storage: "{{ storage }}"
+      rescue:
+        - name: Import leaderboard role
+          ansible.builtin.import_role:
+            name: leaderboard
+          vars:
+            leaderboard_status:
+              failed_task:
+                name: "{{ ansible_failed_task.name }}"
+                result: "{{ ansible_failed_result }}"
+              status: failed
+            leaderboard_storage: "{{ storage }}"
+
+        - name: Fail playbook
+          ansible.builtin.fail:
+            msg: Playbook failed to complete successfully. Please check log for more info.
+          tags:
+            - always

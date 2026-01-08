@@ -1,0 +1,119 @@
+---
+- name: Set state store variable
+  ansible.builtin.set_fact:
+    kops_state_store: s3://{{ kops_cluster.s3.bucket_name }}
+  tags:
+    - always
+
+- name: Set kops stack head cluster name variable
+  ansible.builtin.set_fact:
+    kops_stack_head_cluster_name: "{{ kops_stack.name_prefix }}-head-aws.k8s.local"
+  tags:
+    - always
+  when:
+    - kops_stack is defined
+
+- name: Set kops kops runner cluster names
+  ansible.builtin.set_fact:
+    kops_stack_runner_cluster_names: |
+      {{
+        (
+          kops_stack_runner_cluster_names | default([])
+        ) +
+        [
+          kops_stack.name_prefix + '-runner-' + (item | string) + '-aws.k8s.local'
+        ]
+      }}
+  loop: "{{ range(1, kops_stack.runners.count + 1) | list }}"
+  tags:
+    - always
+  when:
+    - kops_stack is defined
+
+- name: Import single cluster creation tasks
+  ansible.builtin.import_tasks:
+    file: create_cluster.yaml
+  vars:
+    cluster_name: "{{ kops_full_cluster_name_override | default(kops_cluster.name_prefix + '-aws.k8s.local') }}"
+  tags:
+    - create_cluster
+
+- name: Import single cluster list tasks
+  ansible.builtin.import_tasks:
+    file: list_clusters.yaml
+  tags:
+    - list_clusters
+
+- name: Import single cluster export tasks
+  ansible.builtin.import_tasks:
+    file: export_cluster.yaml
+  vars:
+    cluster_name: "{{ kops_full_cluster_name_override | default(kops_cluster.name_prefix + '-aws.k8s.local') }}"
+  tags:
+    - export_cluster
+
+- name: Import single cluster deletion tasks
+  ansible.builtin.import_tasks:
+    file: delete_cluster.yaml
+  vars:
+    cluster_name: "{{ kops_full_cluster_name_override | default(kops_cluster.name_prefix + '-aws.k8s.local') }}"
+  tags:
+    - delete_cluster
+
+- name: Retrieve list of clusters
+  ansible.builtin.command:
+    cmd: kops get clusters --output json --state {{ kops_state_store }}
+  register: kops_stack_clusters_output
+  changed_when: false
+  failed_when: false
+  tags:
+    - create_stack
+    - delete_stack
+
+- name: Parse cluster names
+  ansible.builtin.set_fact:
+    kops_stack_existing_cluster_names: |
+      {{
+        kops_stack_clusters_output.stdout |
+        from_json |
+        community.general.json_query('[*].metadata.name')
+      }}
+  tags:
+    - create_stack
+    - delete_stack
+  when:
+    - kops_stack_clusters_output.rc == 0
+
+- name: Import asynchronous stack creation tasks
+  ansible.builtin.import_tasks:
+    file: create_stack_async.yaml
+  vars:
+    stack_cluster_names: |
+      {{
+        (kops_stack_runner_cluster_names + [kops_stack_head_cluster_name]) |
+        difference(kops_stack_existing_cluster_names | default([]))
+      }}
+  tags:
+    - create_stack
+
+- name: Import cluster stack export tasks
+  ansible.builtin.import_tasks:
+    file: export_stack.yaml
+  vars:
+    stack_head_name: "{{ kops_stack_head_cluster_name | default('') }}"
+    stack_runner_names: "{{ kops_stack_runner_cluster_names | default([]) }}"
+  tags:
+    - export_stack
+
+- name: Import asynchronous stack deletion tasks
+  ansible.builtin.import_tasks:
+    file: delete_stack_async.yaml
+  vars:
+    stack_cluster_names: |
+      {{
+        kops_stack_existing_cluster_names |
+        default([]) |
+        intersect((kops_stack_runner_cluster_names + [kops_stack_head_cluster_name]))
+      }}
+  tags:
+    - delete_stack

@@ -1,0 +1,29 @@
+name: Validate SRE docs
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - sre/roles/documentation/files/library/**
+      - sre/roles/documentation/templates/library/**
+
+jobs:
+  validate-docs:
+    name: Validate documents
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.1
+      - uses: actions/setup-python@v6.1.0
+        with:
+          python-version: '3.13'
+      - name: Install Python and Ansible dependencies
+        run: |
+          pip install -r sre/requirements.txt
+          ansible-galaxy install -r sre/requirements.yaml
+      - name: Create group vars
+        run: |
+          make -C sre group_vars
+      - name: Run validation playbook
+        run: |
+          make -C sre validate_docs

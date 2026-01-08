@@ -1,0 +1,28 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 47
+    name: Kubernetes Gateway Invalid TLS Certificates
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        bookinfo:
+          enabled: true
+        otel_demo:
+          enabled: false
+      tools:
+        category: sre
+        selected:
+          - istio
+    faults:
+      - custom:
+          name: strict-mutual-tls
+          strict_mutual_tls:
+            workload:
+              kind: Deployment
+              name: productpage-v1
+              namespace: "{{ applications_instances.bookinfo.namespace }}"

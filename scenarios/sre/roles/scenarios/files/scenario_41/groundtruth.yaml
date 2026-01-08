@@ -1,0 +1,33 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-41
+spec:
+  alerts: []
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: cart
+        namespace: otel-demo
+    - apiVersion: chaos-mesh.org/v1alpha1
+      kind: Schedule
+      metadata:
+        name: cart-stress-chaos-memory
+        namespace: chaos-mesh
+  solutions:
+    - - steps:
+          - command: kubectl -n chaos-mesh annotate schedule cart-stress-chaos-memory experiment.chaos-mesh.org/pause='true'
+            text: Annotate the schedule to pause the active experiment.
+          - command: kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'
+            text: Retrieve the associated experiment managed by the schedule.
+          - text: Delete the retrieved experiement after it has entered the `Paused` state.
+          - command: kubectl -n chaos-mesh delete schedule cart-stress-chaos-memory experiment.chaos-mesh.org/pause='true'
+            text: Delete the schedule.
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/cart
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment cart
+            text: Manually edit the manifest and replace the invalid container's resource configuration with the correct value(s).

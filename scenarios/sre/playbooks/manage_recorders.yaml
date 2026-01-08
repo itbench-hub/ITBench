@@ -1,0 +1,86 @@
+---
+- name: Manage SRE and FinOps Incident Data Recorder Stack
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: "{{ system_oc_exists }}"
+
+    - name: Import variables for incident
+      ansible.builtin.import_role:
+        name: incidents
+      tags:
+        - always
+      vars:
+        incidents_file:
+          id: "{{ incident_id }}"
+      when:
+        - incident_id is defined
+  tasks:
+    - name: Import leaderboard role
+      ansible.builtin.import_role:
+        name: leaderboard
+      vars:
+        leaderboard_status:
+          status: progressing
+        leaderboard_storage: "{{ storage }}"
+
+    - name: Attempt to perform recorders role tasks
+      block:
+        - name: Import recorders role
+          ansible.builtin.import_role:
+            name: recorders
+          vars:
+            recorders_cluster:
+              kubeconfig: "{{ cluster.kubeconfig }}"
+              platform: "{{ cluster_platform }}"
+            recorders_required:
+              alerts:
+                prometheus: "{{ incidents_tools.prometheus | default(tools.prometheus) }}"
+              topology:
+                kubernetes: "{{ incidents_tools.kubernetes_topology_monitor | default(tools.kubernetes_topology_monitor) }}"
+              traces:
+                jaeger: "{{ incidents_tools.jaeger | default(tools.jaeger) }}"
+            recorders_storage: "{{ storage }}"
+
+        - name: Import leaderboard role
+          ansible.builtin.import_role:
+            name: leaderboard
+          vars:
+            leaderboard_status:
+              status: succeeded
+            leaderboard_storage: "{{ storage }}"
+      rescue:
+        - name: Import leaderboard role
+          ansible.builtin.import_role:
+            name: leaderboard
+          vars:
+            leaderboard_status:
+              failed_task:
+                name: "{{ ansible_failed_task.name }}"
+                result: "{{ ansible_failed_result }}"
+              status: failed
+            leaderboard_storage: "{{ storage }}"
+
+        - name: Fail playbook
+          ansible.builtin.fail:
+            msg: Playbook failed to complete successfully. Please check log for more info.
+          tags:
+            - always

@@ -1,0 +1,72 @@
+---
+- name: Create Custom Resourse Definition deletion list
+  ansible.builtin.set_fact:
+    tools_custom_resource_definitions: []
+
+- name: Retrieve all Custom Resource Definitions
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+  register: tools_crds
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Import Kubernetes Topology Monitor uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_kubernetes_topology_monitor.yaml
+
+- name: Import Chaos Mesh uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_chaos_mesh.yaml
+
+- name: Import OpenCost uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_opencost.yaml
+
+- name: Import OpenTelemetry uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_opentelemetry.yaml
+
+- name: Import Clickhouse installation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_clickhouse.yaml
+
+- name: Import OpenSearch uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_opensearch.yaml
+
+- name: Import Prometheus uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_prometheus.yaml
+
+- name: Import Istio uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_istio.yaml
+
+- name: Import Kubernetes Metrics Server uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_kubernetes_metrics_server.yaml
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Import Kubernetes Gateway API uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_kubernetes_gateway_api.yaml
+
+- name: Remove installed Custom Resource Definitions
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: "{{ crd.apiVersion }}"
+      kind: "{{ crd.kind }}"
+      metadata:
+        name: "{{ crd.metadata.name }}"
+    state: absent
+    wait: true
+  loop: "{{ tools_custom_resource_definitions }}"
+  loop_control:
+    label: customresourcedefinition/{{ crd.metadata.name }}
+    loop_var: crd
+  when:
+    - tools_uninstallation_plan.remove_crds | default(false)

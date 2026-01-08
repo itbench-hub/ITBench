@@ -1,0 +1,35 @@
+---
+- name: Retrieve Jaeger service
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_instances.opentelemetry_collectors.names.jaeger }}-collector"
+    namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
+  register: tools_jaeger_service
+
+- name: Verify that object exists
+  ansible.builtin.assert:
+    that:
+      - tools_jaeger_service is defined
+      - tools_jaeger_service.resources | length == 1
+    fail_msg: Unable to find service information for Jaeger. Please verify that the Jaeger is installed.
+    success_msg: Found service information for Jaeger.
+
+- name: Retrieve Istio namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_helm_releases.istio.namespace }}"
+  register: tools_istio_namespace
+
+- name: Construct Jaeger in-cluster endpoints
+  ansible.builtin.set_fact:
+    tools_jaeger_collector_otlp_grpc_endpoint: "{{ service.name }}.{{ service.namespace }}.svc.cluster.local:4317"
+    tools_jaeger_querier_endpoint: http://{{ service.name }}.{{ service.namespace }}.svc.cluster.local:16686/{{ query_path }}
+  vars:
+    service:
+      name: "{{ tools_jaeger_service.resources[0].metadata.name }}"
+      namespace: "{{ tools_jaeger_service.resources[0].metadata.namespace }}"
+    query_path: "{{ 'jaeger' if (tools_istio_namespace.resources | length == 1) else '' }}"

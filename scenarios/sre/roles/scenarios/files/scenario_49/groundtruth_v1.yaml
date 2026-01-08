@@ -1,0 +1,40 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-49
+spec:
+  alerts:
+    - group_id: frontend-pod-1
+      id: PendingPodsDetected
+      metadata:
+        description: Frontend service pod stuck because of readiness probe
+  aliases:
+    - - frontend-pod-1
+      - frontend-service-1
+  fault:
+    - category: Custom
+      condition: Frontend service pod stuck because of readiness probe
+      entity:
+        group_id: frontend-pod-1
+        kind: Custom
+        name: frontend-pod-1
+      fault_mechanism: patch
+  groups:
+    - filter:
+        - frontend-.*
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+  propagations:
+    - condition: Bad readiness probe prevents pod startup
+      effect: Frontend endpoint unavailable
+      source: frontend-pod-1
+      target: frontend-service-1
+  recommendedActions: []

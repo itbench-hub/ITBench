@@ -1,0 +1,32 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-50
+spec:
+  applications:
+    - bookInfo:
+        enabled: true
+        options: {}
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: productpage-v1
+                namespace: bookinfo
+          id: strict-mutual-tls-istio-service-mesh-enforcement
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: false
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

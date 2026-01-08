@@ -1,0 +1,38 @@
+---
+- name: Add Kyverno Helm repo
+  kubernetes.core.helm_repository:
+    name: kyverno
+    repo_url: https://kyverno.github.io/kyverno/
+
+- name: Install Kyverno via Helm
+  kubernetes.core.helm:
+    kubeconfig: "{{ kubeconfig }}"
+    state: present
+    name: kyverno
+    chart_ref: kyverno/kyverno
+    release_namespace: kyverno
+    create_namespace: true
+
+- name: Wait until all kyverno deployments are available
+  command: >
+    kubectl wait --for=condition=available deployment --all --namespace=kyverno --timeout=300s
+  environment:
+    KUBECONFIG: "{{ kubeconfig }}"
+  register: result
+  failed_when: result.rc != 0
+
+- name: Wait for all kyverno pods to be running
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig }}"
+    namespace: kyverno
+    kind: Pod
+  register: pod_info
+  until: >
+    pod_info.resources | selectattr('status.phase', 'in', ['Running', 'Completed']) | list | length == pod_info.resources | length
+  retries: 1
+  delay: 15
+  failed_when: pod_info.resources | length == 0
+
+- name: Print result of kubectl wait command
+  debug:
+    var: result.stdout

@@ -1,0 +1,20 @@
+target_ns: paa
+cluster_name: ciso-scenario
+bundle_id: "{{ cookiecutter.bundle_name }}"
+bundle_title: "{{ cookiecutter.bundle_title }}"
+work_dir: "{{ lookup('env', 'WORK_DIR') | default('/tmp/caa-bench', true) }}"
+
+bundle_input_file: "{{ lookup('env', 'BUNDLE_INPUT_FILE') | default('../input.json', true) }}"
+bundle_input: "{{ lookup('file', bundle_input_file) | from_json }}"
+
+provided_kubeconfig: "{{ bundle_input.kubeconfig | default('') }}"
+kubeconfig: "{{ work_dir }}/kubeconfig.caa.yaml"
+path_to_status: "{{ work_dir }}/status.json"
+
+shared_workspace: "{{ bundle_input.shared_workspace }}"
+agent_kubeconfig: "{{ shared_workspace }}/kubeconfig.yaml"
+agent_output: "{{ shared_workspace }}/agent_output.data"
+agent_output_destination: "{{ work_dir }}/agent_output"
+
+venv_dir: "{{ work_dir }}/.venv"
+venv_python: "{{ venv_dir }}/bin/python"

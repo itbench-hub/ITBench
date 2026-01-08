@@ -1,0 +1,27 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-40
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodCrashLooping
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: valkey-cart
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/valkey-cart
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment valkey-cart
+            text: Manually edit the manifest and remove the code change volumes.
+          - command: kubectl -n otel-demo delete configmap valkey-storage-script
+            text: Delete the injected ConfigMap object.
+      - steps:
+          - command: kubectl -n otel-demo edit configmap valkey-storage-script
+            text: Manually edit the manifest and change the script.

@@ -1,0 +1,36 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: service-account-requirements
+spec:
+  rules:
+    - name: require-non-default-service-account
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "A non-default service account must be specified."
+        pattern:
+          spec:
+            serviceAccountName: "!default"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: container-security-controls
+spec:
+  rules:
+    - name: disallow-privilege-escalation
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Privilege escalation is not allowed."
+        pattern:
+          spec:
+            containers:
+              - (name): "*"
+                securityContext:
+                  allowPrivilegeEscalation: false
