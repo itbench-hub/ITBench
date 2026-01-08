@@ -1,6 +1,6 @@
 # ITBench-Scenarios
 
-This repository contains infrastructure automation scripts for both deploying the environments and configuring the scenarios required to run [ITBench](https://github.com/ITBench-Hub/ITBench).
+This repository contains infrastructure automation scripts for both deploying the environments and configuring the scenarios required to run ITBench.
 These scenarios are realistic simulations based on actual IT automation challenges faced by CISO, SRE, and FinOps teams.
 For example, one of the SRE scenarios is to resolve a “high error rate on service checkout” while a CISO scenario involves assessing the compliance posture for a “new control rule detected for RHEL 9.”
 Every ITBench scenario is deployed in a sandboxed operational Kubernetes (K8s) environment.
@@ -35,7 +35,6 @@ FinOps scenarios are located [here](./sre) along-side SRE scenarios.
 
 ## ITBench Ecosystem and Related Repositories
 
-- [ITBench](https://github.com/ITBench-Hub/ITBench): Central repository providing an overview of the ITBench ecosystem, the ITBench Leaderboard, related announcements, and publications.
 - [CISO-CAA Agent](https://github.com/ITBench-Hub/ITBench-CISO-CAA-Agent): CISO (Chief Information Security Officer) agents that automate compliance assessments by generating policies from natural language, collecting evidence, integrating with GitOps workflows, and deploying policies for assessment.
 - [SRE Agent](https://github.com/ITBench-Hub/ITBench-SRE-Agent): SRE (Site Reliability Engineering) agents designed to diagnose and remediate problems in Kubernetes-based environments. Leverage logs, metrics, traces, and Kubernetes states/events from the IT enviroment.
 - [ITBench Utilities](https://github.com/ITBench-Hub/ITBench-Utilities): Collection of supporting tools and utilities for participants in the ITBench ecosystem and leaderboard challenges.

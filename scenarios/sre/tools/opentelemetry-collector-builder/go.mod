@@ -1,4 +1,4 @@
-module github.com/itbench-hub/ITBench-Scenarios/tools/opentelemetry-collector
+module github.com/itbench-hub/ITBench/tools/opentelemetry-collector
 
 go 1.24.0
 

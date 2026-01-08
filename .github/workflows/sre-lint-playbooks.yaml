@@ -5,10 +5,10 @@ on:
     branches:
       - main
     paths:
-      - sre/playbooks/**
-      - sre/roles/**
-      - sre/dev/remote_cluster/playbooks/**
-      - sre/dev/remote_cluster/roles/**
+      - scenarios/sre/playbooks/**
+      - scenarios/sre/roles/**
+      - scenarios/sre/dev/remote_cluster/playbooks/**
+      - scenarios/sre/dev/remote_cluster/roles/**
 
 jobs:
   lint-main-playbooks:
@@ -21,14 +21,14 @@ jobs:
           python-version: '3.13'
       - name: Install Python dependencies
         run: |
-          pip install -r sre/requirements.txt
-          pip install -r sre/requirements-dev.txt
+          pip install -r scenarios/sre/requirements.txt
+          pip install -r scenarios/sre/requirements-dev.txt
       - name: Run ansible-lint
         uses: ansible/ansible-lint@v25.12.2
         with:
           args: playbooks roles
           setup_python: "false"
-          working_directory: sre
+          working_directory: scenarios/sre
           requirements_file: requirements.yaml
   lint-remote-cluster-playbooks:
     name: Lint playbooks and roles in remote cluster directory
@@ -40,11 +40,11 @@ jobs:
           python-version: '3.13'
       - name: Install Python dependencies
         run: |
-          pip install -r sre/requirements.txt
-          pip install -r sre/requirements-dev.txt
+          pip install -r scenarios/sre/requirements.txt
+          pip install -r scenarios/sre/requirements-dev.txt
       - name: Run ansible-lint
         uses: ansible/ansible-lint@v25.12.2
         with:
           setup_python: "false"
-          working_directory: sre/dev/remote_cluster
+          working_directory: scenarios/sre/dev/remote_cluster
           requirements_file: ../../requirements.yaml

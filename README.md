@@ -82,7 +82,7 @@ ITBench incorporates a collection of problems that we call **scenarios**. Each s
 - **CISO**: Assess compliance posture for "new control rule detected for RHEL 9"
 - **FinOps**: Identify and resolve cost overruns and anomalies
 
-**Find all scenarios**: [Scenarios repository](https://github.com/IBM/ITBench-Scenarios)
+**Find all scenarios**: [Scenarios repository](./scenarios/)
 
 ---
 

@@ -1,4 +1,4 @@
-module github.com/itbench-hub/ITBench-Scenarios/sre/local_cluster
+module github.com/itbench-hub/ITBench/sre/local_cluster
 
 go 1.24.0
 
