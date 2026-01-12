@@ -17,7 +17,7 @@ DEFAULT_INPUT_FILE := input.json
 PASSED_INPUT_FILE := $(WORK_DIR)/input.json
 export BUNDLE_INPUT_FILE := $(PASSED_INPUT_FILE)
 
-# parameters to replace default input.json 
+# parameters to replace default input.json
 KUBECONFIG :=
 SHARED_WORKSPACE :=
 JQ_UPDATE_TEMPLATE = if [ -n "$(1)" ]; then \
@@ -25,8 +25,8 @@ JQ_UPDATE_TEMPLATE = if [ -n "$(1)" ]; then \
 fi
 
 ifeq ($(FOREGROUND), true)
-	REDIRECT := 
-	BG := 
+	REDIRECT :=
+	BG :=
 else
 	REDIRECT := &> $$WORK_DIR/$(LOG_FILE)
 	BG := &
@@ -65,7 +65,7 @@ remove_fault: prepare_directory
 
 revert: prepare_directory
 	@$(MAKE) run_playbook LOG_FILE=revert.log PLAYBOOK=revert.yml
-	
+
 run_playbook: prepare_directory
 	@echo "ansible-playbook ./$(PLAYBOOK_DIR)/$(PLAYBOOK) $(EXTRA_VARS) $(REDIRECT) $(BG)"
 	@ansible-playbook ./$(PLAYBOOK_DIR)/$(PLAYBOOK) $(EXTRA_VARS) $(REDIRECT) $(BG)
