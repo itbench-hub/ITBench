@@ -13,7 +13,7 @@ jobs:
     name: Registers an Agent
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
       - name: Parse issue
         id: parse
         run: |
@@ -33,7 +33,7 @@ jobs:
           echo "agent_repo_owner=$agent_repo_owner" >> "$GITHUB_OUTPUT"
           echo "agent_repo_name=$agent_repo_name" >> "$GITHUB_OUTPUT"
       - name: Comment on issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           COMMENT_BODY: |
             👋 ${{ github.event.issue.user.login }}
@@ -67,7 +67,7 @@ jobs:
 
       - name: Generate GitHub token on behalf of repo
         id: generate-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ vars.ITBENCH_APP_ID }}
           private-key: ${{ secrets.ITBENCH_APP_KEY }}
@@ -194,7 +194,7 @@ jobs:
           fi
 
       - name: Comment on issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           COMMENT_BODY: |
             👋 ${{ github.event.issue.user.login }}
@@ -231,7 +231,7 @@ jobs:
 
       - name: Report Failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           PRIVATE_REPO:  ${{ steps.check-repo-private.outputs.error_public_repo == 1}}
           ERROR_ON_GENERATE_MANIFEST: ${{ steps.generate-manifest.outputs.error == 1 }}
