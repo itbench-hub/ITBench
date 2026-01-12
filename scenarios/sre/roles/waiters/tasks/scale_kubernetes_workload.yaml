@@ -1,4 +1,26 @@
 ---
-- name: Print message
-  ansible.builtin.debug:
-    msg: This waiter (scale-kubernetes-workload) is unimplemented.
+- name: Retrieve Kubernetes workload
+  kubernetes.core.k8s_info:
+    api_version: "{{ waiter_args.kubernetesObject.apiVersion }}"
+    kind: "{{ waiter_args.kubernetesObject.kind }}"
+    kubeconfig: "{{ waiters_cluster.kubeconfig }}"
+    name: "{{ waiter_args.kubernetesObject.metadata.name }}"
+    namespace: "{{ waiter_args.kubernetesObject.metadata.namespace }}"
+  register: waiters_workload
+
+- name: Verify the workload exists
+  ansible.builtin.assert:
+    that: waiters_workload.resources | length == 1
+    fail_msg: Unable to find workload. Please ensure that workload exists.
+    success_msg: Workload verified.
+
+- name: Scale workload
+  kubernetes.core.k8s_scale:
+    api_version: "{{ waiters_workload.resources[0].apiVersion }}"
+    kind: "{{ waiters_workload.resources[0].kind }}"
+    kubeconfig: "{{ waiters_cluster.kubeconfig }}"
+    name: "{{ waiters_workload.resources[0].metadata.name }}"
+    namespace: "{{ waiters_workload.resources[0].metadata.namespace }}"
+    replicas: "{{ waiter_args.replicas }}"
+    wait: true
+    wait_timeout: 60

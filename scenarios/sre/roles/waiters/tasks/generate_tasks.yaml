@@ -33,6 +33,14 @@
     dest: "{{ [role_path, 'files', 'library', 'map.json'] | path_join }}"
     mode: "0644"
 
+- name: Create waiters roles meta argument specs file
+  ansible.builtin.copy:
+    content: "{{ waiters_argument_specs | to_nice_yaml(indent=2) }}"
+    dest: "{{ [role_path, 'meta', 'argument_specs.yaml'] | path_join }}"
+    mode: "0644"
+  vars:
+    waiters_argument_specs: "{{ lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') | from_yaml }}"
+
 - name: Create waiter tasks files
   ansible.builtin.copy:
     content: |-

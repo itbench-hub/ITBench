@@ -3,15 +3,6 @@
   ansible.builtin.set_fact:
     waiters_library_map: "{{ lookup('ansible.builtin.file', 'files/library/map.yaml') | from_yaml }}"
 
-- name: Verify that all ids are valid
-  ansible.builtin.assert:
-    that:
-      - (ids_difference | length) == 0
-    fail_msg: Invalid waiter ids discovered ({{ ids_difference | join(', ') }}). Please remove invalid ids.
-    success_msg: All waiter ids are valid.
-  vars:
-    ids_difference: "{{ waiters_tasks | community.general.json_query('[*].id') | difference(waiters_library_map.keys()) }}"
-
 - name: Include wait tasks
   ansible.builtin.include_tasks:
     file: "{{ waiters_library_map[waiter_task.id].taskFile }}"
