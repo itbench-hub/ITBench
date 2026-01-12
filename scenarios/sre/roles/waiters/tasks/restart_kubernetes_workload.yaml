@@ -1,0 +1,29 @@
+---
+- name: Retrieve Kubernetes workload
+  kubernetes.core.k8s_info:
+    api_version: "{{ waiter_args.kubernetesObject.apiVersion }}"
+    kind: "{{ waiter_args.kubernetesObject.kind }}"
+    kubeconfig: "{{ waiters_cluster.kubeconfig }}"
+    name: "{{ waiter_args.kubernetesObject.metadata.name }}"
+    namespace: "{{ waiter_args.kubernetesObject.metadata.namespace }}"
+  register: waiters_workload
+
+- name: Verify the workload exists
+  ansible.builtin.assert:
+    that: waiters_workload.resources | length == 1
+    fail_msg: Unable to find workload. Please ensure that workload exists.
+    success_msg: Workload verified.
+
+- name: Restart only the deployments associated with the modified flags
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - "{{ waiters_workload.resources[0].metadata.namespace }}"
+      - rollout
+      - restart
+      - "{{ waiters_workload.resources[0].kind | lower }}"
+      - "{{ waiters_workload.resources[0].metadata.name }}"
+      - --kubeconfig={{ waiters_cluster.kubeconfig | ansible.builtin.expanduser }}
+  register: waiters_rollout_restart_result
+  changed_when: waiters_rollout_restart_result.rc == 0
