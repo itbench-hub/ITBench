@@ -6,12 +6,12 @@
     - include_tasks: ../tasks/precondition_setup.yml
   tasks:
 
-  - name: debug lookup("env", "PWD") 
+  - name: debug lookup("env", "PWD")
     debug:
       var: lookup("env", "PWD")
   - name: debug ansible_env
     debug:
-      var: ansible_env   
+      var: ansible_env
   - name: Display contents of vars.yaml
     debug:
       var: vars
@@ -74,7 +74,7 @@
       copy:
         src: "{{ kubeconfig }}"
         dest: "{{ agent_kubeconfig }}"
-        
+
     - name: Check if namespace exists
       kubernetes.core.k8s_info:
         kubeconfig: "{{ kubeconfig }}"
@@ -121,7 +121,7 @@
           status: "False"
           reason: "FaultInjectionNotReady"
           message: "Waiting for the fault injection to be completed"
-    
+
     rescue:
       - include_tasks: ../tasks/status_update.yml
         vars:

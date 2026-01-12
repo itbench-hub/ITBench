@@ -18,7 +18,7 @@ $ kind get kubeconfig --name <CLUSTER_NAME> > ./kubeconfig.yaml
 ```
 
 Replace <CLUSTER_NAME> with the actual name of your cluster. You can find the correct name by running:
- 
+
 ```bash
 $ kind get clusters
 ```

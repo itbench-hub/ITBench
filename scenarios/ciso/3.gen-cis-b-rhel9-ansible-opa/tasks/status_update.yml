@@ -2,7 +2,7 @@
 - vars:
     new_conditions:
   delegate_to: localhost
-  become: false 
+  become: false
   block:
   - name: Check if status file exists
     stat:
@@ -42,7 +42,7 @@
   - name: Initialize updated_conditions as an empty list
     set_fact:
       updated_conditions: []
-      
+
   - name: Loop through each condition and update only matching ones
     set_fact:
       updated_conditions: "{{ updated_conditions + [ (updated_item | combine({'lastTransitionTime': ansible_date_time.iso8601}) if updated_item != item else item) ] }}"

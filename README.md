@@ -28,10 +28,10 @@ ITBench measures the performance of AI agents across a wide variety of **complex
 
 ### Key Features
 
-- **Real-world representation** of IT environments and incident scenarios  
-- **Open, extensible framework** with comprehensive IT coverage  
-- **Push-button workflows** and interpretable metrics  
-- **Kubernetes-based** scenario environments  
+- **Real-world representation** of IT environments and incident scenarios
+- **Open, extensible framework** with comprehensive IT coverage
+- **Push-button workflows** and interpretable metrics
+- **Kubernetes-based** scenario environments
 
 ### What's Included
 

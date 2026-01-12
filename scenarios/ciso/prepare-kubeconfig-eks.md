@@ -18,7 +18,7 @@ $ aws eks update-kubeconfig --region <AWS_REGION> --name <CLUSTER_NAME>
 Added new context arn:aws:eks:(...):cluster/<CLUSTER_NAME> to /Users/<USERNAME>/.kube/config
 ```
 
-Replace <CLUSTER_NAME> and <AWS_REGION> with the actual values for your cluster. 
+Replace <CLUSTER_NAME> and <AWS_REGION> with the actual values for your cluster.
 
 Then copy the kubeconfig file to edit.
 
