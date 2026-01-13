@@ -76,6 +76,41 @@
       injectionIndex: 0
   tags: {{ documentation_faults["modified-kubernetes-workload-container-environment-variable"].tags }}
 - category: sre
+  complexity: high
+  description: This scenario simulates OpenTelemetry Demo's `checkout` service experiencing a failure.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: chaos-mesh.org/v1alpha1
+            kind: Schedule
+            metadata:
+              name: otel-demo-product-catalog-network-delay
+              namespace: {{ tools_helm_releases.chaos_mesh.namespace }}
+          scheduleSpec:
+            schedule: "* * * * *"
+            historyLimit: 1
+            concurrencyPolicy: Forbid
+            type: PodChaos
+            podChaos:
+              action: pod-failure
+              mode: all
+              selector:
+                namespaces:
+                  - {{ applications_helm_releases.otel_demo.namespace }}
+                labelSelectors:
+                  "app.kubernetes.io/component": "checkout"
+        id: scheduled-chaos-mesh-experiment
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 18
+  platforms: {{ [documentation_faults["scheduled-chaos-mesh-experiment"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["scheduled-chaos-mesh-experiment"].tags }}
+- category: sre
   complexity: low
   description: This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image.
   disruptions:

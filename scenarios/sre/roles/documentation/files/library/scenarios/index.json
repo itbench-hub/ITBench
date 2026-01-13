@@ -189,6 +189,87 @@
         ]
     },
     {
+        "alerts": [],
+        "category": "sre",
+        "complexity": "high",
+        "description": "This scenario simulates OpenTelemetry Demo's `checkout` service experiencing a failure.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "otel-demo-product-catalog-network-delay",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "concurrencyPolicy": "Forbid",
+                                "historyLimit": 1,
+                                "podChaos": {
+                                    "action": "pod-failure",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "checkout"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    }
+                                },
+                                "schedule": "* * * * *",
+                                "type": "PodChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 18,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule otel-demo-product-catalog-network-delay experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get podchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule otel-demo-product-catalog-network-delay experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
         "alerts": [
             "KubePodNotReady"
         ],

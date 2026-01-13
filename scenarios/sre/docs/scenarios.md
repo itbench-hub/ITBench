@@ -12,6 +12,7 @@ The following scenarios are being open-sourced at this time and their implementa
 | [1](#Scenario-1) | sre | medium | Kubernetes | Deployment, Performance |
 | [3](#Scenario-3) | sre | medium | Kubernetes | Deployment, Performance |
 | [16](#Scenario-16) | sre | medium | Kubernetes | Deployment, Performance |
+| [18](#Scenario-18) | sre | high | Kubernetes | Deployment, Performance |
 | [20](#Scenario-20) | sre | low | Kubernetes | Deployment, Performance |
 | [23](#Scenario-23) | sre | medium | Kubernetes | Deployment, Performance |
 | [26](#Scenario-26) | sre | medium | Kubernetes | Deployment, Performance |
@@ -43,19 +44,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 3 | 24 |
+| 3 | 25 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 25 |
+| 2 | 26 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 10 | 17 | 0 |
+| 10 | 17 | 1 |
 
 ## Detailed Summary of Scenarios
 
@@ -139,6 +140,38 @@ OR
 
 ```shell
 kubectl -n otel-demo edit deployment shipping
+```
+### Scenario 18
+
+**Description:** This scenario simulates OpenTelemetry Demo's `checkout` service experiencing a failure.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Scheduled Chaos Mesh Experiment](./faults.md#Scheduled-Chaos-Mesh-Experiment)
+
+**Solution:**
+
+Step 1
+
+- Annotate the schedule to pause the active experiment.
+
+```shell
+kubectl -n chaos-mesh annotate schedule otel-demo-product-catalog-network-delay experiment.chaos-mesh.org/pause='true'
+```
+- Retrieve the associated experiment managed by the schedule.
+
+```shell
+kubectl -n chaos-mesh get podchaos --selector='experiment.chaos-mesh.org/pause=true'
+```
+- Delete the retrieved experiement after it has entered the `Paused` state.
+- Delete the schedule.
+
+```shell
+kubectl -n chaos-mesh delete schedule otel-demo-product-catalog-network-delay experiment.chaos-mesh.org/pause='true'
 ```
 ### Scenario 20
 
