@@ -13,7 +13,7 @@ jobs:
     name: Registers an Agent
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6.0.1
       - name: Parse issue
         id: parse
         run: |
@@ -33,7 +33,7 @@ jobs:
           echo "agent_repo_owner=$agent_repo_owner" >> "$GITHUB_OUTPUT"
           echo "agent_repo_name=$agent_repo_name" >> "$GITHUB_OUTPUT"
       - name: Comment on issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           COMMENT_BODY: |
             👋 ${{ github.event.issue.user.login }}
@@ -48,7 +48,7 @@ jobs:
             Level:  ${{ fromJson(steps.parse.outputs.payload)['Agent Level'] }}
 
             Target Config Repo: ${{ fromJson(steps.parse.outputs.payload)['Config Repo']}}
-        
+
         with:
           script: |
             github.rest.issues.createComment({
@@ -67,7 +67,7 @@ jobs:
 
       - name: Generate GitHub token on behalf of repo
         id: generate-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2.2.1
         with:
           app-id: ${{ vars.ITBENCH_APP_ID }}
           private-key: ${{ secrets.ITBENCH_APP_KEY }}
@@ -94,7 +94,7 @@ jobs:
 
       - name: Check Issue opened by repo collaborator
         id: check-repo-collaborator
-        env: 
+        env:
           GH_TOKEN: ${{ steps.generate-token.outputs.token }}
         run : |
            repo_full_path="repos/${{ steps.extract-parsed-data.outputs.agent_repo_owner}}/${{ steps.extract-parsed-data.outputs.agent_repo_name}}/collaborators"
@@ -118,9 +118,9 @@ jobs:
           response_json='${{steps.parse.outputs.payload}}'
 
           agent_body=$(echo $response_json | jq '{"name": ."Agent Name", "type" : ."Agent Type", "level" : ."Agent Level", "scenario_categories" : [."Agent Scenarios" | to_entries[] | select(.value).key]}')
-          
+
           echo $agent_body | jq
-          
+
           response_file=$(mktemp)
           trap 'echo "Cleaning up $response_file"; rm -f "$response_file"' EXIT
           status_code=$(curl \
@@ -132,14 +132,14 @@ jobs:
             --write-out "%{http_code}")
 
           if [[ $? -eq 0 ]]; then
-          
+
             echo "Curl execution was successful"
 
             echo "::debug:: $(cat $response_file)"
             # Check that the spec is in the response body
-          
+
             if [[ "$status_code" == "200" || "$status_code" == "201" ]]; then
-              
+
               echo "manifest=$( cat $response_file | jq '.spec.agent_manifest + {metadata: {id: .metadata.id}}' | base64 -w 0)" >> "$GITHUB_OUTPUT"
 
             else
@@ -172,7 +172,7 @@ jobs:
           echo "Repo Path: $repo_full_path"
 
           current_sha=$(gh api $repo_full_path -q '.sha' || echo "")
-          
+
           echo "Current SHA: $current_sha"
 
           ghout=$(gh api -X PUT \
@@ -194,7 +194,7 @@ jobs:
           fi
 
       - name: Comment on issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           COMMENT_BODY: |
             👋 ${{ github.event.issue.user.login }}
@@ -211,7 +211,7 @@ jobs:
             Level:  ${{ fromJson(steps.parse.outputs.payload)['Agent Level'] }}
 
             Target Config Repo: ${{ fromJson(steps.parse.outputs.payload)['Config Repo']}}
-        
+
         with:
           script: |
             github.rest.issues.createComment({
@@ -231,7 +231,7 @@ jobs:
 
       - name: Report Failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           PRIVATE_REPO:  ${{ steps.check-repo-private.outputs.error_public_repo == 1}}
           ERROR_ON_GENERATE_MANIFEST: ${{ steps.generate-manifest.outputs.error == 1 }}
@@ -260,16 +260,16 @@ jobs:
 
           ERROR_ON_GENERATE_MANIFEST_COMMENT_BODY: |
             👋 ${{ github.event.issue.user.login }}
-        
+
             There was an issue while registering the agent.
-        
+
             Error Detail:
             ${{ steps.generate-manifest.outputs.error_detail }}
-        
+
             ----
-        
+
             Run link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        
+
         with:
           script: |
             console.log(`Private Repo: ${process.env.PRIVATE_REPO}`)
@@ -305,5 +305,3 @@ jobs:
               repo: context.repo.repo,
               labels: ['error']
             })
-        
-            

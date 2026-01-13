@@ -21,7 +21,7 @@ jobs:
     name: Update the Leaderboard
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6.0.1
 
       - name: List Issues of Finished Benchmark
         env:
@@ -30,7 +30,7 @@ jobs:
         run: |
           gh issue list --label "benchmark" --state "closed" --json number,author,comments > issues.json
           jq -c '[.[].number]' issues.json
-          
+
           usernames=($(jq -r '.[].author.login' issues.json | sort -u))
           query='{'$'\n'
           for i in "${!usernames[@]}"; do
@@ -40,9 +40,9 @@ jobs:
           query+='}'
 
           gh api graphql -f query="$query" | jq -r '
-            .data | 
-            to_entries | 
-            map({ key: .value.login, value: { company: .value.company } }) | 
+            .data |
+            to_entries |
+            map({ key: .value.login, value: { company: .value.company } }) |
             from_entries
           ' > users.json
 
@@ -66,7 +66,7 @@ jobs:
           else
             python ./.github/workflows/leaderboard.py global --issues updated_issues.json --users users.json --out-overall LEADERBOARD.md --out-ciso LEADERBOARD_CISO.md --out-sre LEADERBOARD_SRE.md
           fi
-         
+
       - name: Open PR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

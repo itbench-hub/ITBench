@@ -4,7 +4,7 @@ on:
     - cron: "*/10 * * * *"
   issue_comment:
     types: [created]
-  workflow_dispatch: 
+  workflow_dispatch:
 
 env:
   REQUEST_TIMEOUT: ${{ vars.REQUEST_TIMEOUT }}
@@ -32,7 +32,7 @@ jobs:
             echo "TRIGGER=schedule" >> $GITHUB_ENV
           fi
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6.0.1
       - name: List Issues with 'track-progress' Label
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,7 +64,7 @@ jobs:
           python ./.github/workflows/update_benchmark_helper.py status -i updated_issues.json -o benchmark_statuses.json
           echo "Generate benchmark status comment"
           python .github/workflows/update_benchmark_helper.py comment -i benchmark_statuses.json -o benchmark_status_comments.jsonl
-          
+
           echo "Update each issues"
           cat benchmark_status_comments.jsonl | while IFS= read -r line
           do
@@ -90,4 +90,3 @@ jobs:
                   gh issue close $number
               fi
           done
-
