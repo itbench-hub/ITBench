@@ -15,6 +15,7 @@ ITBench uses various applications to offer a diverse set of environments for whi
 ### Book Info
 
 **Repository:** https://github.com/istio/istio
+
 **Description:** This microservice application is primarily used to showcase the capabitlities of Istio.
 
 **Resources:**
@@ -24,7 +25,9 @@ ITBench uses various applications to offer a diverse set of environments for whi
 ### OpenTelemetry Demo
 
 **Aliases:** Astronomy Shop
+
 **Repository:** https://github.com/open-telemetry/opentelemetry-demo
+
 **Description:** This microservice application is primarily used to showcase the capabitlities of OpenTelemetry.
 
 **Resources:**
