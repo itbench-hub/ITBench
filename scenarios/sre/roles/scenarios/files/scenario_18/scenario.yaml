@@ -1,36 +1,37 @@
+---
 apiVersion: itbench.io/v2
 kind: Scenario
 metadata:
   name: scenario-18
 spec:
   applications:
-  - otelDemo:
-      enabled: true
-      options:
-        autoscaling: false
+    - otelDemo:
+        enabled: true
+        options:
+          autoscaling: false
   faults:
-  - injections:
-    - args:
-        kubernetesObject:
-          apiVersion: chaos-mesh.org/v1alpha1
-          kind: Schedule
-          metadata:
-            name: otel-demo-product-catalog-network-delay
-            namespace: chaos-mesh
-        scheduleSpec:
-          concurrencyPolicy: Forbid
-          historyLimit: 1
-          podChaos:
-            action: pod-failure
-            mode: all
-            selector:
-              labelSelectors:
-                app.kubernetes.io/component: checkout
-              namespaces:
-              - otel-demo
-          schedule: '* * * * *'
-          type: PodChaos
-      id: scheduled-chaos-mesh-experiment
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: otel-demo-product-catalog-network-delay
+                namespace: chaos-mesh
+            scheduleSpec:
+              concurrencyPolicy: Forbid
+              historyLimit: 1
+              podChaos:
+                action: pod-failure
+                mode: all
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: checkout
+                  namespaces:
+                    - otel-demo
+              schedule: "* * * * *"
+              type: PodChaos
+          id: scheduled-chaos-mesh-experiment
   tools:
     chaosEngineering:
       chaosMesh:
