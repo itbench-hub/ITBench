@@ -8,6 +8,7 @@ A waiter is an action that will occur before an injection.
 | Name | Platform |
 | --- | --- |
 | [Pause Execution](#Pause-Execution) | Any |
+| [Restart Kubernetes Workload](#Restart-Kubernetes-Workload) | Kubernetes |
 | [Scale Kubernetes Workload](#Scale-Kubernetes-Workload) | Kubernetes |
 
 ## Detailed Summary of Waiters
@@ -27,6 +28,59 @@ A waiter is an action that will occur before an injection.
     },
     "required": [
         "seconds"
+    ],
+    "type": "object"
+}
+```
+### Restart Kubernetes Workload
+
+**Description:** Waits for a Kubernetes workload to be restarted.
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
     ],
     "type": "object"
 }

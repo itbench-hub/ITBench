@@ -14,13 +14,16 @@
     fail_msg: Unable to find workload. Please ensure that workload exists.
     success_msg: Workload verified.
 
-- name: Scale workload
-  kubernetes.core.k8s_scale:
-    api_version: "{{ waiters_workload.resources[0].apiVersion }}"
-    kind: "{{ waiters_workload.resources[0].kind }}"
-    kubeconfig: "{{ waiters_cluster.kubeconfig }}"
-    name: "{{ waiters_workload.resources[0].metadata.name }}"
-    namespace: "{{ waiters_workload.resources[0].metadata.namespace }}"
-    replicas: "{{ waiter_args.replicas }}"
-    wait: true
-    wait_timeout: 60
+- name: Restart only the deployments associated with the modified flags
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - "{{ waiters_workload.resources[0].metadata.namespace }}"
+      - rollout
+      - restart
+      - "{{ waiters_workload.resources[0].kind | lower }}"
+      - "{{ waiters_workload.resources[0].metadata.name }}"
+      - --kubeconfig={{ waiters_cluster.kubeconfig | ansible.builtin.expanduser }}
+  register: waiters_rollout_restart_result
+  changed_when: waiters_rollout_restart_result.rc == 0
