@@ -1,3 +1,14 @@
+## v1.4.1 (2026-01-12)
+
+### Feat
+
+- autogeneration of scenario files (https://github.com/itbench-hub/ITBench-Scenarios/pull/457)
+- create scenario library json for indexing and search (https://github.com/itbench-hub/ITBench-Scenarios/pull/429)
+
+### Fix
+
+- update incident 20, 23, 27, 31, 105 ground truths (https://github.com/itbench-hub/ITBench-Scenarios/pull/472)
+
 ## v1.4.0 (2025-12-11)
 
 ### Feat
