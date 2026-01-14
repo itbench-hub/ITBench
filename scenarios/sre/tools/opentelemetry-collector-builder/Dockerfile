@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10-minimal:10.0-1758699349 AS certs
+FROM registry.access.redhat.com/ubi10-minimal:10.1-1766033715 AS certs
 
 FROM registry.access.redhat.com/ubi10/go-toolset:1.25.3-1767889253 AS builder
 
