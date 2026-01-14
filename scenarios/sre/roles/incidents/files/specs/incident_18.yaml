@@ -1,0 +1,37 @@
+---
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 18
+    name: checkoutservice Pod Failure Chaos
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - chaos-mesh
+          - kubernetes-topology-monitor
+    faults:
+      - chaos_mesh:
+          schedule:
+            name: otel-demo-product-catalog-network-delay
+            spec:
+              schedule: "* * * * *"
+              historyLimit: 1
+              concurrencyPolicy: Forbid
+              type: PodChaos
+              podChaos:
+                action: pod-failure
+                mode: all
+                selector:
+                  namespaces:
+                    - "{{ applications_helm_releases.otel_demo.namespace }}"
+                  labelSelectors:
+                    "app.kubernetes.io/component": checkout
+                duration: 55s

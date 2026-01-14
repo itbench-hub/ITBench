@@ -46,7 +46,7 @@ run_gateway_provider: ## Runs Cloud Provider Kind for Kubernetes Gateway
 
 .PHONY: run_service_provider
 run_service_provider: ## Runs Cloud Provider Kind for Load Balancer services
-	$(GO) tool cloud-provider-kind --gateway-channel disabled &
+	$(GO) tool cloud-provider-kind --gateway-channel disabled
 
 .PHONY: create_cluster
 create_cluster: ## DEPRECATED: Creates a Kind cluster
