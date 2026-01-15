@@ -1,4 +1,91 @@
 ---
-- name: Print message
-  ansible.builtin.debug:
-    msg: This fault injection (cordoned-kubernetes-worker-node) is unimplemented.
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    api_version: "{{ injections_args.kubernetesObject.apiVersion }}"
+    kind: "{{ injections_args.kubernetesObject.kind }}"
+    name: "{{ injections_args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injections_args.kubernetesObject.metadata.namespace }}"
+  register: injections_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - injections_workload is defined
+      - injections_workload.resources | length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+# TODO: We need to add node labels to specific worker nodes so that the
+#       the tool stack is not impacted by these faults.
+
+- name: Retrieve worker nodes
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Node
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    label_selectors:
+      - node-role.kubernetes.io/node =
+  register: injections_worker_nodes
+
+- name: Validate that worker nodes exists
+  ansible.builtin.assert:
+    that:
+      - injections_worker_nodes is defined
+      - injections_worker_nodes.resources | length > 0
+    fail_msg: Unable to find worker nodes. Please run this fault on a cluster with worker nodes.
+    success_msg: Found worker nodes.
+
+- name: Select an available worker node randomly
+  ansible.builtin.set_fact:
+    injections_node: "{{ injections_worker_nodes.resources | random }}"
+
+- name: Assign workload to selected worker node
+  kubernetes.core.k8s:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ injections_workload.resources[0].apiVersion }}"
+      kind: "{{ injections_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ injections_workload.resources[0].metadata.name }}"
+        namespace: "{{ injections_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              "kubernetes.io/hostname": "{{ injections_node.metadata.name }}"
+    state: patched
+
+- name: Wait for workload to update
+  kubernetes.core.k8s_info:
+    api_version: "{{ injections_workload.resources[0].apiVersion }}"
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    kind: "{{ injections_workload.resources[0].kind }}"
+    name: "{{ injections_workload.resources[0].metadata.name }}"
+    namespace: "{{ injections_workload.resources[0].metadata.namespace }}"
+  register: injections_patched_workload
+  until:
+    - injections_patched_workload.resources | length == 1
+    - injections_patched_workload.resources[0].status.availableReplicas == injections_patched_workload.resources[0].status.replicas
+  delay: 15
+  retries: 20
+
+- name: Cordon the selected worker node
+  kubernetes.core.k8s_drain:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    name: "{{ injections_node.metadata.name }}"
+    state: cordon
+
+# NOTE: Do not wait for the following operation to complete successfully.
+#       It will not because the node is cordoned and thus no new pods can
+#       be created on the node.
+
+- name: Scale workload
+  kubernetes.core.k8s_scale:
+    api_version: "{{ injections_workload.resources[0].apiVersion }}"
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    kind: "{{ injections_workload.resources[0].kind }}"
+    name: "{{ injections_workload.resources[0].metadata.name }}"
+    namespace: "{{ injections_workload.resources[0].metadata.namespace }}"
+    replicas: "{{ injections_workload.resources[0].spec.replicas + 1 }}"
+    wait: false
