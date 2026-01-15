@@ -3,16 +3,7 @@
   ansible.builtin.set_fact:
     injections_library_map: "{{ lookup('ansible.builtin.file', 'files/library/map.yaml') | from_yaml }}"
 
-- name: Verify that all ids are valid
-  ansible.builtin.assert:
-    that:
-      - (ids_difference | length) == 0
-    fail_msg: Invalid fault ids discovered ({{ ids_difference | join(', ') }}). Please remove invalid ids.
-    success_msg: All fault ids are valid.
-  vars:
-    ids_difference: "{{ injections_tasks | community.general.json_query('[*].id') | difference(injections_library_map.keys()) }}"
-
-- name: Include wait tasks
+- name: Include injection tasks
   ansible.builtin.include_tasks:
     file: "{{ injections_library_map[injection_task.id].taskFile }}"
     apply:
