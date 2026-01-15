@@ -15,7 +15,7 @@ COPY manafest.yaml manafest.yaml
 
 RUN go tool builder --config manafest.yaml
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian13:nonroot
 
 COPY --chmod=555 --from=certs /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/ssl/certs/ca-certificates.crt
 
