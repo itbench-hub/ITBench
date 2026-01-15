@@ -6,6 +6,21 @@ metadata:
   namespace: [[ applications_helm_releases.otel_demo.namespace ]]
 spec:
   groups:
+    - name: opentelemetrydemo.workloads
+      rules:
+        - alert: FailedPodsDetected
+          expr: |
+            sum by (namespace) (
+              kube_pod_status_phase{
+                namespace="[[ applications_helm_releases.otel_demo.namespace ]]",
+                phase="Failed"
+              }
+            ) > 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            description: "Pods in failed state in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"
     - name: opentelemetrydemo.frontend.goldensignal
       rules:
         - alert: HighRequestLatency
@@ -17,12 +32,12 @@ spec:
                   traces_span_metrics_duration_milliseconds_bucket{
                     service_name=~"frontend|frontend-proxy",
                     namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
-                  }[5m]
+                  }[2m]
                 )
               ) by(le, service_name, namespace)
             )
             > 1500
-          for: 5m
+          for: 1m
           labels:
             severity: critical
           annotations:
@@ -35,11 +50,11 @@ spec:
                   service_name=~"frontend|frontend-proxy",
                   status_code="STATUS_CODE_ERROR",
                   namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
-                }[5m]
+                }[2m]
               )
             ) by (service_name, namespace)
-            > 3
-          for: 5m
+            > 0
+          for: 1m
           labels:
             severity: critical
           annotations:
@@ -55,12 +70,12 @@ spec:
                   traces_span_metrics_duration_milliseconds_bucket{
                     service_name!~"flagd|load-generator|frontend*",
                     namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
-                  }[5m]
+                  }[2m]
                 )
               ) by(le, service_name, namespace)
             )
-            > 15000
-          for: 5m
+            > 1500
+          for: 1m
           labels:
             severity: critical
           annotations:
@@ -73,15 +88,29 @@ spec:
                   service_name!~"flagd|load-generator|frontend|frontend-proxy",
                   status_code="STATUS_CODE_ERROR",
                   namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
-                }[5m]
+                }[2m]
               )
             ) by (service_name, namespace)
-            > 1
-          for: 5m
+            > 0
+          for: 1m
           labels:
             severity: critical
           annotations:
             description: "Request error rate in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 1 (current: {{ $value }})"
+        - alert: HighKafkaConnectionClosureRate
+          expr: |
+            sum by (job) (
+              rate(
+                kafka_consumer_connection_close_rate{
+                  namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                }[2m]
+              )
+            ) > 0
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            description: "Job {{ $labels.job }} has a closure rate above 0 (current: {{ $value }})"
     - name: opentelemetrydemo.requests
       rules:
         - alert: NoRequestsReceived
@@ -92,11 +121,11 @@ spec:
                   service_name!~"flagd|load-generator",
                   status_code=~"STATUS_CODE_UNSET|STATUS_CODE_OK",
                   namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
-                }[5m]
+                }[10m]
               )
             ) by (service_name, namespace)
             == 0
-          for: 5m
+          for: 10m
           labels:
             severity: critical
           annotations:

@@ -17,6 +17,12 @@ prometheus:
       matchLabels:
         it-bench/monitoring: "true"
     serviceMonitorSelectorNilUsesHelmValues: false
+    enableOTLPReceiver: true
+    remoteWrite:
+      - url: "http://default:@{{ tools_instances.clickhouse.names.main }}-{{ tools_instances.clickhouse.names.main }}.{{ tools_instances.clickhouse.namespace }}.svc.cluster.local:9363/write"
+        queueConfig:
+          maxSamplesPerSend: 5000
+          batchSendDeadline: 10s
 {% if tools_installation_plan.istio.enabled | default(false) %}
     routePrefix: /prometheus
 {% endif %}

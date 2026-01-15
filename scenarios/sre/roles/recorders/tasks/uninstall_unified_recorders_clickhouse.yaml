@@ -1,0 +1,126 @@
+---
+- name: Retrieve the unified recorder pod name
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    label_selectors:
+      - app.kubernetes.io/name = clickhouse-unified-recorder
+      - app.kubernetes.io/part-of = it-bench
+  register: recorders_clickhouse_pods_info
+  until:
+    - recorders_clickhouse_pods_info.resources | length >= 1
+    - (recorders_clickhouse_pods_info.resources[0].status.phase | default('')) == 'Running'
+    - (recorders_clickhouse_pods_info.resources[0].status.containerStatuses | default([])) | length > 0
+    - recorders_clickhouse_pods_info.resources[0].status.containerStatuses[0].ready | default(false)
+  retries: 20
+  delay: 15
+
+- name: Ensure local directory exists
+  ansible.builtin.file:
+    path: /tmp/observability_information_from_clickhouse
+    state: directory
+    mode: "0755"
+  when:
+    - recorders_clickhouse_pods_info.resources | length == 1
+
+- name: Copy records directory from pod
+  ansible.builtin.shell: |
+    set -o pipefail
+    kubectl exec \
+      --kubeconfig="{{ recorders_cluster.kubeconfig }}" \
+      -n "{{ recorders_clickhouse_pods_info.resources[0].metadata.namespace }}" \
+      -c recorder \
+      "{{ recorders_clickhouse_pods_info.resources[0].metadata.name }}" \
+      -- tar cf - -C /opt/app-root/src/records --exclude='lost+found' . | \
+    tar xf - -C /tmp/observability_information_from_clickhouse/
+  args:
+    executable: /bin/bash
+  changed_when: true
+  when:
+    - recorders_clickhouse_pods_info.resources | length == 1
+
+- name: Uninstall ClickHouse unified recorder
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    src: files/unified/clickhouse/statefulset.yaml
+    state: absent
+    wait: true
+
+- name: Delete ConfigMap with Python script
+  kubernetes.core.k8s:
+    api_version: v1
+    delete_all: true
+    kind: ConfigMap
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    label_selectors:
+      - app.kubernetes.io/name = clickhouse-unified-recorder
+      - app.kubernetes.io/part-of = it-bench
+    state: absent
+    wait: true
+
+- name: Delete PersistentVolumeClaims from StatefulSet
+  kubernetes.core.k8s:
+    api_version: v1
+    delete_all: true
+    kind: PersistentVolumeClaim
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    label_selectors:
+      - app.kubernetes.io/name = clickhouse-unified-recorder
+      - app.kubernetes.io/part-of = it-bench
+    state: absent
+    wait: true
+
+- name: Find all exported files
+  ansible.builtin.find:
+    path: /tmp/observability_information_from_clickhouse
+    recurse: true
+    patterns:
+      - "*.json"
+      - "*.tsv"
+      - "*.parquet"
+  register: recorders_clickhouse_files
+
+- name: Ensure observability_information directory exists on local
+  ansible.builtin.file:
+    path: "{{ recorders_storage.local.directory }}/observability_information_from_clickhouse"
+    state: directory
+    mode: "0755"
+  when:
+    - recorders_storage.local is defined
+
+- name: Copy exported data into local directory
+  ansible.builtin.copy:
+    dest: >-
+      {{ recorders_storage.local.directory }}/observability_information_from_clickhouse/{{
+      file.path | regex_replace('^/tmp/observability_information_from_clickhouse/?', '') }}
+    mode: "0644"
+    src: "{{ file.path }}"
+  loop: "{{ recorders_clickhouse_files.files }}"
+  loop_control:
+    label: file/{{ file.path | basename }}
+    loop_var: file
+  when:
+    - recorders_storage.local is defined
+    - recorders_clickhouse_files is defined
+
+- name: Upload exported data to S3 bucket
+  amazon.aws.s3_object:
+    endpoint_url: "{{ recorders_storage.s3.endpoint }}"
+    bucket: "{{ recorders_storage.s3.bucket }}"
+    object: >-
+      /{{ recorders_storage.s3.directory }}/observability_information_from_clickhouse/{{
+      file.path | regex_replace('^/tmp/observability_information_from_clickhouse/?', '') }}
+    src: "{{ file.path }}"
+    mode: put
+  loop: "{{ recorders_clickhouse_files.files }}"
+  loop_control:
+    label: file/{{ file.path | basename }}
+    loop_var: file
+  when:
+    - recorders_storage.s3 is defined
+    - recorders_clickhouse_files is defined

@@ -33,7 +33,7 @@ launch_sync_workflow: ## Launches the scenario sync workflow
 .PHONY: launch_start_workflow
 launch_start_workflow: ## Launches the workflow equivalent of start_incident on AWX
 	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "run_phase=init"
+		--extra-vars "run_phase=start"
 
 .PHONY: launch_stop_workflow
 launch_stop_workflow: ## Launches the workflow equivalent of stop_incident on AWX
@@ -44,6 +44,11 @@ launch_stop_workflow: ## Launches the workflow equivalent of stop_incident on AW
 launch_full_workflow: ## Launches the scenario full execution workflow
 	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
 		--extra-vars "run_phase=full"
+
+.PHONY: launch_data_collection_workflow
+launch_data_collection_workflow: ## Launches the data collection execution workflow
+	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
+		--extra-vars "run_phase=data_collection"
 
 .PHONY: awx_configure_init
 awx_configure_init:

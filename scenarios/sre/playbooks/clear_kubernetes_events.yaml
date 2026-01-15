@@ -1,0 +1,49 @@
+---
+- name: Clear Kubernetes events
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: "{{ system_oc_exists }}"
+  tasks:
+    - name: Retrieve all events
+      kubernetes.core.k8s_info:
+        api_version: events.k8s.io/v1
+        kind: Event
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_events_info
+
+    - name: Delete all events
+      kubernetes.core.k8s:
+        api_version: events.k8s.io/v1
+        delete_all: true
+        kind: Event
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        namespace: "{{ event_namespace }}"
+        state: absent
+      loop: |
+        {{
+          tools_events_info.resources |
+          community.general.json_query('[*].metadata.namespace') |
+          unique
+        }}
+      loop_control:
+        label: namespace/{{ event_namespace }}
+        loop_var: event_namespace

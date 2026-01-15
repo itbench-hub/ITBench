@@ -32,8 +32,8 @@
           kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
         tools_external_network_object:
-          name: prometheus
-          namespace: prometheus
+          name: istio-main
+          namespace: kube-gateways
 
     - name: Attempt to check for firing alerts
       block:
@@ -57,14 +57,17 @@
              selectattr('state', '==', 'firing') |
              selectattr('labels.alertname', 'in', [
                'FailedPodsDetected',
-               'PendingPodsDetected',
-               'RequestLatency',
-               'RequestErrorRate',
+               'HighRequestLatency',
+               'HighRequestErrorRate',
                'KafkaConnectionClosureRate',
                'CPUSpend',
                'MemorySpend',
                'CPUEfficiency',
-               'MemoryEfficiency'
+               'MemoryEfficiency',
+               'KubeContainerWaiting',
+               'KubeHpaMaxedOut',
+               'KubePodCrashLooping',
+               'KubePodNotReady'
              ]) |
              list | length > 0)
 

@@ -142,7 +142,15 @@
           community.general.json_query('spec.image')
         }}
     - enabled: "{{ (tools_installation_plan.opentelemetry.enabled | default(true)) }}"
-      template_path: templates/opentelemetry/collectors/kubernetes-objects.j2
+      template_path: templates/opentelemetry/collectors/kubernetes-objects-events.j2
+      container_image: |
+        {{
+          lookup('ansible.builtin.file', 'files/opentelemetry/collectors/kubernetes-objects.yaml') |
+          from_yaml |
+          community.general.json_query('spec.image')
+        }}
+    - enabled: "{{ (tools_installation_plan.opentelemetry.enabled | default(true)) }}"
+      template_path: templates/opentelemetry/collectors/kubernetes-objects-snapshot.j2
       container_image: |
         {{
           lookup('ansible.builtin.file', 'files/opentelemetry/collectors/kubernetes-objects.yaml') |
@@ -174,7 +182,7 @@
     namespace: "{{ tools_instances.opentelemetry_collectors.namespace }}"
   register: tools_otel_collector_deployments
 
-- name: Wait for all OpenTelemetry Collectors deployments to stabalize
+- name: Wait for all OpenTelemetry Collectors deployments to stabilize
   kubernetes.core.k8s_info:
     api_version: "{{ resource.apiVersion }}"
     kind: "{{ resource.kind }}"
