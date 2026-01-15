@@ -1,4 +1,31 @@
 ---
-- name: Print message
-  ansible.builtin.debug:
-    msg: This fault injection (disabled-istio-ambient-mode-kubernetes-namespace) is unimplemented.
+- name: Retrieve namespace
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    api_version: "{{ injection_args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_args.kubernetesObject.kind }}"
+    name: "{{ injection_args.kubernetesObject.metadata.name }}"
+  register: injections_namespace
+
+- name: Validate that namespace exists
+  ansible.builtin.assert:
+    that:
+      - injections_namespace is defined
+      - injections_namespace.resources | length == 1
+    fail_msg: Unable to find namespace. Please verify that the namespace exists.
+    success_msg: Found namespace.
+
+- name: Update namespace labels
+  kubernetes.core.k8s:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ injections_namespace.resources[0].apiVersion }}"
+      kind: "{{ injections_namespace.resources[0].kind }}"
+      metadata:
+        labels: |-
+          {{
+            injections_namespace.resources[0].metadata.labels |
+            combine({"istio.io/dataplane-mode": "none"})
+          }}
+        name: "{{ injections_namespace.resources[0].metadata.name }}"
+    state: patched
