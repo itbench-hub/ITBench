@@ -12,12 +12,12 @@
   ansible.builtin.assert:
     that:
       - injections_workload is defined
-      - injections_workload.resources | length == 1
+      - injections_workload.resources | ansible.builtin.length == 1
     fail_msg: Unable to find workload. Please verify that the workload exists.
     success_msg: Found workload.
 
 - name: Create network policy for workload
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
     state: present
     template: templates/kubernetes/ingress_port_blocking_network_policy/networkpolicy.j2
