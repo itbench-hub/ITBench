@@ -1,4 +1,57 @@
 ---
-- name: Print message
-  ansible.builtin.debug:
-    msg: This fault injection (nonexistent-kubernetes-workload-container-image) is unimplemented.
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    api_version: "{{ injections_args.kubernetesObject.apiVersion }}"
+    kind: "{{ injections_args.kubernetesObject.kind }}"
+    name: "{{ injections_args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injections_args.kubernetesObject.metadata.namespace }}"
+  register: injections_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - injections_workload is defined
+      - injections_workload.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Retrieve container
+  ansible.builtin.set_fact:
+    injections_container: |-
+      {{
+        injections_workload.resources[0].spec.template.spec.containers |
+        community.general.json_query("[?name==injections_args.container.name]")
+      }}
+
+- name: Validate that container exists
+  ansible.builtin.assert:
+    that:
+      - injections_container | ansible.builtin.length == 1
+    fail_msg: Unable to find container. Please verify that the container exists for workload.
+    success_msg: Found container.
+
+- name: Update workload containers
+  kubernetes.core.k8s:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ injections_workload.resources[0].apiVersion }}"
+      kind: "{{ injections_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ injections_workload.resources[0].metadata.name }}"
+        namespace: "{{ injections_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers: |-
+              {{
+                (
+                  injections_workload.resources[0].spec.template.spec.containers |
+                  rejectattr("name", "==", injections_args.container.name)
+                ) +
+                (
+                  injections_container |
+                  ansible.builtin.first |
+                  combine({"image": "quay.io/it-bench/hello-bench-invalid:1.0.0"})
+              }}
+    state: patched
