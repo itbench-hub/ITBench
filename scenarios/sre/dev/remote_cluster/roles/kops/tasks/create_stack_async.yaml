@@ -67,11 +67,10 @@
   when:
     - kops_elastic_ip_available
 
-- name: Create a route table for the public utility subnets
+- name: Create public route table
   amazon.aws.ec2_vpc_route_table:
     vpc_id: "{{ kops_vpc_info.vpc.id }}"
     region: "{{ kops_cluster.aws.region }}"
-    subnets: "{{ kops_public_subnet_ids }}"
     routes:
       - dest: "0.0.0.0/0"
         gateway_id: "{{ kops_igw_info.gateway_id }}"
@@ -79,12 +78,27 @@
       Name: "{{ kops_stack.name_prefix }}-public-route-table"
       Creator: "ansible"
     state: present
+  register: kops_public_route_table
 
-- name: Create route table for private subnets via shared NAT
+- name: Associate public subnets in batches of 10
   amazon.aws.ec2_vpc_route_table:
     vpc_id: "{{ kops_vpc_info.vpc.id }}"
     region: "{{ kops_cluster.aws.region }}"
-    subnets: "{{ kops_private_subnet_ids }}"
+    route_table_id: "{{ kops_public_route_table.route_table.id }}"
+    subnets: "{{ item }}"
+    purge_subnets: false
+    routes:
+      - dest: "0.0.0.0/0"
+        gateway_id: "{{ kops_igw_info.gateway_id }}"
+    state: present
+  loop: "{{ kops_public_subnet_ids | batch(10) | list }}"
+  loop_control:
+    pause: 2
+
+- name: Create private route table via shared NAT
+  amazon.aws.ec2_vpc_route_table:
+    vpc_id: "{{ kops_vpc_info.vpc.id }}"
+    region: "{{ kops_cluster.aws.region }}"
     routes:
       - dest: "0.0.0.0/0"
         nat_gateway_id: "{{ kops_nat_gateway.nat_gateway_id }}"
@@ -92,15 +106,33 @@
       Name: "{{ kops_stack.name_prefix }}-private-route-table-nat"
       Creator: "ansible"
     state: present
+  register: kops_private_route_table_nat
   when:
     - kops_nat_gateway is defined
     - kops_nat_gateway.nat_gateway_id is defined
 
-- name: Create route table for private subnets via the Internet Gateway
+- name: Associate private subnets with NAT route table in batches of 10
   amazon.aws.ec2_vpc_route_table:
     vpc_id: "{{ kops_vpc_info.vpc.id }}"
     region: "{{ kops_cluster.aws.region }}"
-    subnets: "{{ kops_private_subnet_ids }}"
+    route_table_id: "{{ kops_private_route_table_nat.route_table.id }}"
+    subnets: "{{ item }}"
+    purge_subnets: false
+    routes:
+      - dest: "0.0.0.0/0"
+        nat_gateway_id: "{{ kops_nat_gateway.nat_gateway_id }}"
+    state: present
+  loop: "{{ kops_private_subnet_ids | batch(10) | list }}"
+  loop_control:
+    pause: 2
+  when:
+    - kops_nat_gateway is defined
+    - kops_nat_gateway.nat_gateway_id is defined
+
+- name: Create private route table via Internet Gateway
+  amazon.aws.ec2_vpc_route_table:
+    vpc_id: "{{ kops_vpc_info.vpc.id }}"
+    region: "{{ kops_cluster.aws.region }}"
     routes:
       - dest: "0.0.0.0/0"
         gateway_id: "{{ kops_igw_info.gateway_id }}"
@@ -108,6 +140,24 @@
       Name: "{{ kops_stack.name_prefix }}-private-route-table-igw"
       Creator: "ansible"
     state: present
+  register: kops_private_route_table_igw
+  when:
+    - kops_nat_gateway is not defined or kops_nat_gateway.nat_gateway_id is not defined
+
+- name: Associate private subnets with IGW route table in batches of 10
+  amazon.aws.ec2_vpc_route_table:
+    vpc_id: "{{ kops_vpc_info.vpc.id }}"
+    region: "{{ kops_cluster.aws.region }}"
+    route_table_id: "{{ kops_private_route_table_igw.route_table.id }}"
+    subnets: "{{ item }}"
+    purge_subnets: false
+    routes:
+      - dest: "0.0.0.0/0"
+        gateway_id: "{{ kops_igw_info.gateway_id }}"
+    state: present
+  loop: "{{ kops_private_subnet_ids | batch(10) | list }}"
+  loop_control:
+    pause: 2
   when:
     - kops_nat_gateway is not defined or kops_nat_gateway.nat_gateway_id is not defined
 
@@ -121,7 +171,7 @@
       - --cloud
       - aws
       - --topology
-      - "{{ 'private' if kops_stack.runners.aws.elastic_ip_allocation_id is defined else 'public' }}"
+      - "{{ 'private' if kops_elastic_ip_available else 'public' }}"
       - --network-id
       - "{{ kops_vpc_info.vpc.id }}"
       - --subnets
@@ -182,6 +232,8 @@
       - "{{ kops_state_store }}"
       - --set
       - spec.networking.cilium.cniExclusive=false
+      - --set
+      - spec.networking.cilium.bpfLBSockHostNSOnly=true
   async: 600
   loop: "{{ stack_cluster_names }}"
   poll: 0

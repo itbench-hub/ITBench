@@ -1,0 +1,72 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: clickhouse-unified-recorder
+    app.kubernetes.io/part-of: it-bench
+  name: clickhouse-unified-recorder
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: clickhouse-unified-recorder
+      app.kubernetes.io/part-of: it-bench
+  template:
+    metadata:
+      annotations:
+        openshift.io/required-scc: restricted-v2
+      labels:
+        app.kubernetes.io/name: clickhouse-unified-recorder
+        app.kubernetes.io/part-of: it-bench
+    spec:
+      containers:
+        - name: recorder
+          image: {{ container_image }}
+          command:
+            - /bin/sh
+          args:
+            - -c
+            - "python3.12 -m pip install -r ~/deps/requirements.txt && python3.12 ~/scripts/gather.py && echo 'Script completed, waiting for data extraction...' && sleep infinity"
+          env: {{ container_environment_variables }}
+          resources:
+            requests:
+              cpu: 300m
+              memory: 1Gi
+            limits:
+              memory: 12Gi
+          volumeMounts:
+            - name: dependencies
+              mountPath: /opt/app-root/src/deps
+              readOnly: true
+            - name: scripts
+              mountPath: /opt/app-root/src/scripts
+              readOnly: true
+            - name: clickhouse-unified-records
+              mountPath: /opt/app-root/src/records
+      securityContext:
+        fsGroup: 1001
+      volumes:
+        - name: scripts
+          configMap:
+            name: clickhouse-unified-recorder-scripts
+            items:
+              - key: script
+                path: gather.py
+        - name: dependencies
+          configMap:
+            name: clickhouse-unified-recorder-scripts
+            items:
+              - key: deps
+                path: requirements.txt
+  replicas: 1
+  volumeClaimTemplates:
+    - metadata:
+        name: clickhouse-unified-records
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete

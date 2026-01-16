@@ -71,6 +71,23 @@
     project: GitHub-ITBench
     state: present
 
+- name: Add job template for clearing Kubernetes events
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_type: run
+    name: Clear-Kubernetes-Events
+    organization: ITBench
+    playbook: scenarios/sre/playbooks/clear_kubernetes_events.yaml
+    project: GitHub-ITBench
+    state: present
+
 - name: Add job template for injecting faults
   awx.awx.job_template:
     allow_simultaneous: true
@@ -116,6 +133,12 @@
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
     execution_environment: ITBench-Custom-EE
+    extra_vars:
+      tools:
+        prometheus: true
+        jaeger: true
+        kubernetes_topology_monitor: true
+        clickhouse: false
     inventory: ITBench
     job_tags: install_recorders
     job_type: run
@@ -134,6 +157,12 @@
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
     execution_environment: ITBench-Custom-EE
+    extra_vars:
+      tools:
+        prometheus: true
+        jaeger: true
+        kubernetes_topology_monitor: true
+        clickhouse: true
     inventory: ITBench
     job_tags: uninstall_recorders
     job_type: run
@@ -157,10 +186,56 @@
         prometheus: false
         jaeger: false
         kubernetes_topology_monitor: true
+        clickhouse: false
     inventory: ITBench
     job_tags: install_recorders
     job_type: run
     name: Run-Topology-Data-Recorder
+    organization: ITBench
+    playbook: scenarios/sre/playbooks/manage_recorders.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for uninstalling topology data recorder
+  awx.awx.job_template:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: "ITBench-Custom-EE"
+    extra_vars:
+      tools:
+        prometheus: false
+        jaeger: false
+        kubernetes_topology_monitor: true
+        clickhouse: false
+    inventory: ITBench
+    job_tags: uninstall_recorders
+    job_type: run
+    name: "Uninstall-Topology-Data-Recorder"
+    organization: ITBench
+    playbook: scenarios/sre/playbooks/manage_recorders.yaml
+    project: GitHub-ITBench
+    state: present
+
+- name: Add job template for running unified ClickHouse recorder
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    extra_vars:
+      tools:
+        prometheus: false
+        jaeger: false
+        kubernetes_topology_monitor: false
+        clickhouse: true
+    inventory: ITBench
+    job_tags: install_recorders
+    job_type: run
+    name: Run-Unified-ClickHouse-Recorder
     organization: ITBench
     playbook: scenarios/sre/playbooks/manage_recorders.yaml
     project: GitHub-ITBench
@@ -323,18 +398,3 @@
       agent_analytics_sdk_token: "{{ awx_agent.configuration['agent_analytics_sdk']['git_token'] }}"
       run_mode: remote
       max_runtime_in_seconds: "{{ awx_agent.configuration['max_runtime_in_seconds'] }}"
-
-- name: Add job template to sync scenarios
-  awx.awx.job_template:
-    allow_simultaneous: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_type: run
-    name: Sync-Scenarios
-    organization: ITBench
-    playbook: scenarios/sre/playbooks/sync_scenarios.yaml
-    project: GitHub-ITBench
-    state: present

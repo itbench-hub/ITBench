@@ -83,3 +83,20 @@
     run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item[0] }}/{{ item[1] }}"
   when:
     - awx_experiments.phase == "full"
+
+- name: Launch the scenario data collection execution workflow
+  awx.awx.workflow_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    extra_vars:
+      storage: "{{ lookup('ansible.builtin.template', 'templates/workflow_vars/storage.j2') | from_yaml }}"
+    workflow_template: Scenario-{{ item[0] }}-Data-Collection-Execution
+    wait: false
+  loop: "{{ awx_scenario_trial_groups }}"
+  loop_control:
+    label: Scenario-{{ item[0] }}/Trial-{{ item[1] }}
+  vars:
+    run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item[0] }}/{{ item[1] }}"
+  when:
+    - awx_experiments.phase == "data_collection"

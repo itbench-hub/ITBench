@@ -7,10 +7,23 @@
     success_msg: Valid number of kOps clusters configured.
 
 - name: Validate Elastic IP allocation ID
-  ansible.builtin.assert:
-    that:
-      - kops_stack.runners.aws.elastic_ip_allocation_id | length > 0
-    fail_msg: Invalid number of kOps clusters set. Must be greater than 0.
-    success_msg: Valid number of kOps clusters configured.
-  when:
-    - kops_stack.runners.aws.elastic_ip_allocation_id is defined
+  block:
+    - name: Check Elastic IP allocation ID
+      ansible.builtin.assert:
+        that:
+          - kops_stack.runners.aws.elastic_ip_allocation_id is defined
+          - kops_stack.runners.aws.elastic_ip_allocation_id | length > 0
+        fail_msg: Invalid or missing Elastic IP allocation ID.
+        success_msg: Valid Elastic IP allocation ID configured.
+
+    - name: Set validation flag for valid Elastic IP
+      ansible.builtin.set_fact:
+        kops_elastic_ip_available: true
+  rescue:
+    - name: Warning about invalid Elastic IP
+      ansible.builtin.debug:
+        msg: "WARNING: {{ ansible_failed_result.msg | default('Invalid or missing Elastic IP allocation ID') }}"
+
+    - name: Set validation flag for invalid Elastic IP
+      ansible.builtin.set_fact:
+        kops_elastic_ip_available: false

@@ -70,21 +70,21 @@
           replicas: "{{ configuration.accounting.replicas }}"
           resources:
             requests:
-              cpu: 15m
-              memory: 80Mi
-            limits:
               cpu: 50m
-              memory: 150Mi
+              memory: 160Mi
+            limits:
+              cpu: 250m
+              memory: 320Mi
         ad:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.ad.replicas }}"
           resources:
             requests:
-              cpu: 10m
+              cpu: 50m
               memory: 225Mi
             limits:
-              cpu: 50m
+              cpu: 400m
               memory: 450Mi
         cart:
           podAnnotations:
@@ -92,10 +92,10 @@
           replicas: "{{ configuration.cart.replicas }}"
           resources:
             requests:
-              cpu: 20m
+              cpu: 40m
               memory: 55Mi
             limits:
-              cpu: 50m
+              cpu: 200m
               memory: 110Mi
         checkout:
           podAnnotations:
@@ -103,53 +103,53 @@
           replicas: "{{ configuration.checkout.replicas }}"
           resources:
             requests:
-              cpu: 20m
-              memory: 17Mi
-            limits:
               cpu: 50m
-              memory: 40Mi
+              memory: 128Mi
+            limits:
+              cpu: 100m
+              memory: 256Mi
         currency:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.currency.replicas }}"
           resources:
             requests:
-              cpu: 10m
-              memory: 4Mi
+              cpu: 25m
+              memory: 64Mi
             limits:
-              cpu: 20m
-              memory: 10Mi
+              cpu: 50m
+              memory: 128Mi
         email:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.email.replicas }}"
           resources:
             requests:
-              cpu: 10m
+              cpu: 20m
               memory: 50Mi
             limits:
-              cpu: 30m
+              cpu: 100m
               memory: 100Mi
         flagd:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           resources:
             requests:
-              cpu: 10m
-              memory: 30Mi
+              cpu: 50m
+              memory: 128Mi
             limits:
-              cpu: 20m
-              memory: 60Mi
+              cpu: 100m
+              memory: 256Mi
         fraud-detection:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
           replicas: "{{ configuration.fraud_detection.replicas }}"
           resources:
             requests:
-              cpu: 20m
+              cpu: 75m
               memory: 200Mi
             limits:
-              cpu: 75m
+              cpu: 300m
               memory: 400Mi
         frontend:
           podAnnotations:
@@ -157,10 +157,10 @@
           replicas: "{{ configuration.frontend.replicas }}"
           resources:
             requests:
-              cpu: 50m
+              cpu: 100m
               memory: 100Mi
             limits:
-              cpu: 100m
+              cpu: 500m
               memory: 200Mi
         frontend-proxy:
           podAnnotations:
@@ -168,10 +168,10 @@
           replicas: "{{ configuration.frontend_proxy.replicas }}"
           resources:
             requests:
-              cpu: 15m
+              cpu: 25m
               memory: 25Mi
             limits:
-              cpu: 30m
+              cpu: 100m
               memory: 50Mi
         image-provider:
           podAnnotations:
@@ -193,15 +193,15 @@
           replicas: "{{ configuration.kafka.replicas }}"
           resources:
             requests:
-              cpu: 50m
+              cpu: 200m
               memory: 300Mi
             limits:
-              cpu: 400m
-              memory: 600Mi
+              cpu: 700m
+              memory: 900Mi
         load-generator:
           envOverrides:
             - name: LOCUST_BROWSER_TRAFFIC_ENABLED
-              value: "false"
+              value: "{{ configuration.load_generator.browser_traffic_enabled | default(false) | string }}"
             - name: LOCUST_SPAWN_RATE
               value: "{{ configuration.load_generator.spawn_rate | string }}"
             - name: LOCUST_USERS
@@ -221,10 +221,10 @@
           replicas: "{{ configuration.payment.replicas }}"
           resources:
             requests:
-              cpu: 10m
+              cpu: 20m
               memory: 80Mi
             limits:
-              cpu: 20m
+              cpu: 80m
               memory: 160Mi
         postgresql:
           podAnnotations:
@@ -232,10 +232,10 @@
           replicas: "{{ configuration.postgres.replicas }}"
           resources:
             requests:
-              cpu: 10m
+              cpu: 30m
               memory: 50Mi
             limits:
-              cpu: 50m
+              cpu: 150m
               memory: 100Mi
         product-catalog:
           podAnnotations:
@@ -254,10 +254,10 @@
           replicas: "{{ configuration.quote.replicas }}"
           resources:
             requests:
-              cpu: 2m
+              cpu: 5m
               memory: 20Mi
             limits:
-              cpu: 5m
+              cpu: 15m
               memory: 40Mi
         recommendation:
           podAnnotations:
@@ -265,11 +265,11 @@
           replicas: "{{ configuration.recommendation.replicas }}"
           resources:
             requests:
-              cpu: 15m
-              memory: 40Mi
-            limits:
               cpu: 50m
               memory: 80Mi
+            limits:
+              cpu: 100m
+              memory: 160Mi
         shipping:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
@@ -313,7 +313,7 @@
             clickhouse:
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}"
-              endpoint: "{{ tools_clickhouse_endpoint }}"
+              endpoint: "{{ tools_clickhouse_endpoint }}:8123"
               logs_table_name: otel_demo_logs
               traces_table_name: otel_demo_traces
             opensearch:
@@ -346,8 +346,6 @@
                 level: detailed
                 readers:
                   - pull:
-                      # interval: 10000
-                      # timeout: 5000
                       exporter:
                         prometheus:
                           host: 0.0.0.0
@@ -440,3 +438,7 @@
     label: horizontalpodautoscaler/{{ item | regex_replace('_', '-') }}
   when:
     - configuration[item].autoscaling | default(false)
+
+- name: Pausing for 300 seconds to allow for the application to stabilize
+  ansible.builtin.pause:
+    seconds: 300

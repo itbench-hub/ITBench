@@ -17,6 +17,12 @@
   when:
     - recorders_required.traces is defined
 
+- name: Import unified recorders uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_unified_recorders.yaml
+  when:
+    - recorders_required.unified is defined
+
 - name: Delete the namespace
   kubernetes.core.k8s:
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"

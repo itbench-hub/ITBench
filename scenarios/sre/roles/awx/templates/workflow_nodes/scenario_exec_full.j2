@@ -44,9 +44,23 @@
     failure_nodes:
       - identifier: node-uninstall-recorders
     success_nodes:
-      - identifier: node-pause-at-start
+      - identifier: node-clear-kubernetes-events
   unified_job_template:
     name: Install-Data-Recorders
+    type: job_template
+- identifier: node-clear-kubernetes-events
+  related:
+    credentials:
+      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
+{% if requires_aws_credentials %}
+      - name: AWS
+{% endif %}
+    failure_nodes:
+      - identifier: node-uninstall-recorders
+    success_nodes:
+      - identifier: node-pause-at-start
+  unified_job_template:
+    name: Clear-Kubernetes-Events
     type: job_template
 - identifier: node-pause-at-start
   extra_data:
@@ -193,9 +207,21 @@
     duration_in_minutes: 10
   related:
     always_nodes:
-      - identifier: node-uninstall-recorders
+      - identifier: node-install-unified-clickhouse-recorder
   unified_job_template:
     name: Pause
+    type: job_template
+- identifier: node-install-unified-clickhouse-recorder
+  related:
+    always_nodes:
+      - identifier: node-uninstall-recorders
+    credentials:
+      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
+{% if requires_aws_credentials %}
+      - name: AWS
+{% endif %}
+  unified_job_template:
+    name: Run-Unified-ClickHouse-Recorder
     type: job_template
 - identifier: node-uninstall-recorders
   extra_data:

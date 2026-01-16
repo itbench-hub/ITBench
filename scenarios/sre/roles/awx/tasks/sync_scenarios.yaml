@@ -1,0 +1,130 @@
+---
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_awx_controller_host.yaml
+
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_awx_controller_password.yaml
+
+- name: Sync the project and wait for completion
+  awx.awx.project_update:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}"
+    controller_username: admin
+    project: "GitHub-ITBench"
+    wait: true
+    timeout: 300
+
+- name: Get project info
+  ansible.builtin.uri:
+    url: "{{ awx_controller_host }}/api/v2/projects/?name=GitHub-ITBench"
+    method: GET
+    user: admin
+    password: "{{ awx_controller_password }}"
+    force_basic_auth: true
+    validate_certs: false
+  register: awx_project_info
+
+- name: Get project playbooks
+  ansible.builtin.uri:
+    url: "{{ awx_controller_host }}{{ awx_project_info.json.results[0].related.playbooks }}"
+    method: GET
+    user: admin
+    password: "{{ awx_controller_password }}"
+    force_basic_auth: true
+    validate_certs: false
+  register: awx_playbooks_list
+
+- name: Determine correct playbook path
+  ansible.builtin.set_fact:
+    awx_warmup_playbook_path: >-
+      {{
+        [
+          'ITBench-Scenarios/sre/playbooks/warmup_awx.yaml',
+          'sre/playbooks/warmup_awx.yaml'
+        ] | select('in', awx_playbooks_list.json) | first
+      }}
+
+- name: Create a dummy job template for warming
+  awx.awx.job_template:
+    allow_simultaneous: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}"
+    controller_username: admin
+    name: "warmup-job"
+    organization: ITBench
+    project: GitHub-ITBench
+    playbook: "{{ awx_warmup_playbook_path }}"
+    inventory: ITBench
+
+- name: Launch warmup jobs
+  awx.awx.job_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}"
+    controller_username: admin
+    job_template: "warmup-job"
+    wait: true
+  loop: "{{ range(12) | list }}"
+  async: 600
+  poll: 0
+  register: awx_warmup_jobs
+
+- name: Wait for all project syncs to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ awx_warmup_jobs.results }}"
+  register: awx_warmup_jobs_results
+  until: awx_warmup_jobs_results.finished
+  retries: 60
+  delay: 10
+
+- name: Get AWX task pod names
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    kind: Pod
+    namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+    label_selectors:
+      - "app.kubernetes.io/name=awx-deployment-task"
+    field_selectors:
+      - "status.phase=Running"
+  register: awx_task_pods
+
+- name: Run sync script in all task pods
+  kubernetes.core.k8s_exec:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+    pod: "{{ item }}"
+    container: awx-deployment-task
+    command: |
+      /bin/bash -c '
+        PROJECT_DIR=$(find /var/lib/awx/projects -maxdepth 1 -type d -name "*__github_itbench" 2>/dev/null | head -1)
+
+        if [ -z "$PROJECT_DIR" ]; then
+          echo "Project directory not found on this pod"
+          exit 0
+        fi
+
+        echo "Found project directory: $PROJECT_DIR"
+        cd "$PROJECT_DIR"
+
+        if [ -f "scripts/copy-scenarios-to-submodule.sh" ]; then
+          chmod +x scripts/copy-scenarios-to-submodule.sh
+          ./scripts/copy-scenarios-to-submodule.sh
+          echo "Scenarios synced successfully"
+        else
+          echo "Copy script not found in $PROJECT_DIR, skipping"
+        fi
+      '
+  loop: "{{ awx_task_pods.resources | map(attribute='metadata.name') | list }}"
+  loop_control:
+    label: "{{ item }}"
+  register: awx_sync_results
+  changed_when: "'Scenarios synced' in (item.stdout | default(''))"
+
+- name: Show sync results
+  ansible.builtin.debug:
+    msg: "{{ item.item }}: {{ item.stdout_lines | default(['no output']) | join('\n') }}"
+  loop: "{{ awx_sync_results.results }}"
+  loop_control:
+    label: "{{ item.item }}"

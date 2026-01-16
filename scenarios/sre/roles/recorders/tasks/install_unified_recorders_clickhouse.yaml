@@ -1,0 +1,67 @@
+---
+- name: Import tools role for variable setting tasks - ClickHouse endpoint
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_clickhouse_endpoint
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+
+- name: Import tools role for variable setting tasks - ClickHouse username and password
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_clickhouse_credentials
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+
+- name: Load statefulset information
+  ansible.builtin.set_fact:
+    recorders_unified_clickhouse_statefulset: "{{ lookup('ansible.builtin.file', 'files/unified/clickhouse/statefulset.yaml') | from_yaml }}"
+
+- name: Create ClickHouse-based unified recorder environment list
+  ansible.builtin.set_fact:
+    recorders_clickhouse_env_vars:
+      - name: CLICKHOUSE_ENDPOINT
+        value: "{{ tools_clickhouse_endpoint }}"
+      - name: CLICKHOUSE_USERNAME
+        value: "{{ tools_clickhouse_username }}"
+      - name: CLICKHOUSE_PASSWORD
+        value: "{{ tools_clickhouse_password }}"
+
+- name: Create ConfigMap with Python script
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    template: templates/unified/clickhouse/configmap.j2
+    state: present
+  vars:
+    python_script_file_contents: "{{ lookup('ansible.builtin.file', 'files/unified/clickhouse/scripts/gather.py') }}"
+    requirements_file_contents: "{{ lookup('ansible.builtin.file', 'files/unified/clickhouse/scripts/requirements.txt') }}"
+
+- name: Install ClickHouse unified recorder
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_namespace.name }}"
+    template: templates/unified/clickhouse/statefulset.j2
+    state: present
+  register: recorders_clickhouse_workload
+  vars:
+    container_image: "{{ recorders_unified_clickhouse_statefulset.spec.template.spec.containers[0].image }}"
+    container_environment_variables: "{{ recorders_clickhouse_env_vars }}"
+
+- name: Wait for workload to update
+  kubernetes.core.k8s_info:
+    api_version: "{{ recorders_clickhouse_workload.result.apiVersion }}"
+    kind: "{{ recorders_clickhouse_workload.result.kind }}"
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    name: "{{ recorders_clickhouse_workload.result.metadata.name }}"
+    namespace: "{{ recorders_clickhouse_workload.result.metadata.namespace }}"
+  register: recorders_clickhouse_statefulset_info
+  until:
+    - recorders_clickhouse_statefulset_info.resources | length > 0
+    - recorders_clickhouse_statefulset_info.resources[0].status is defined
+    - recorders_clickhouse_statefulset_info.resources[0].status.readyReplicas is defined
+    - recorders_clickhouse_statefulset_info.resources[0].status.readyReplicas == 1
+  retries: 20
+  delay: 15
