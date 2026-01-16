@@ -21,13 +21,22 @@ spec:
     spec:
       containers:
         - name: recorder
-          image: {{ container_image }}
+          image: registry.access.redhat.com/ubi10/python-312-minimal:10.1-1766449846
           command:
             - /bin/sh
           args:
             - -c
             - "python3.12 -m pip install -r ~/deps/requirements.txt && python3.12 ~/scripts/gather.py"
-          env: {{ container_environment_variables }}
+          env:
+            - name: PROMETHEUS_ENDPOINT
+              value: << tools_prometheus_endpoint >>
+{% if recorders_cluster.platform == "openshift" and tools_prometheus_bearer_token is defined %}
+            - name: PROMETHEUS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: alerts-recorder-prometheus-token
+                  key: << tools_prometheus_bearer_token >>
+{% endif %}
           resources:
             requests:
               cpu: 100m
