@@ -12,7 +12,7 @@
   ansible.builtin.assert:
     that:
       - injections_workload is defined
-      - injections_workload.resources | length == 1
+      - injections_workload.resources | ansible.builtin.length == 1
     fail_msg: Unable to find workload. Please verify that the workload exists.
     success_msg: Found workload.
 
@@ -32,13 +32,13 @@
   ansible.builtin.assert:
     that:
       - injections_worker_nodes is defined
-      - injections_worker_nodes.resources | length > 0
+      - injections_worker_nodes.resources | ansible.builtin.length > 0
     fail_msg: Unable to find worker nodes. Please run this fault on a cluster with worker nodes.
     success_msg: Found worker nodes.
 
 - name: Select an available worker node randomly
   ansible.builtin.set_fact:
-    injections_node: "{{ injections_worker_nodes.resources | random }}"
+    injections_node: "{{ injections_worker_nodes.resources | ansible.builtin.random }}"
 
 - name: Assign workload to selected worker node
   kubernetes.core.k8s:
@@ -65,7 +65,7 @@
     namespace: "{{ injections_workload.resources[0].metadata.namespace }}"
   register: injections_patched_workload
   until:
-    - injections_patched_workload.resources | length == 1
+    - injections_patched_workload.resources | ansible.builtin.length == 1
     - injections_patched_workload.resources[0].status.availableReplicas == injections_patched_workload.resources[0].status.replicas
   delay: 15
   retries: 20
