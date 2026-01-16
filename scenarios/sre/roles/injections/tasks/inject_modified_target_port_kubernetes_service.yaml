@@ -1,4 +1,56 @@
 ---
-- name: Print message
-  ansible.builtin.debug:
-    msg: This fault injection (modified-target-port-kubernetes-service) is unimplemented.
+- name: Retrieve service
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    api_version: "{{ injections_args.kubernetesObject.apiVersion }}"
+    kind: "{{ injections_args.kubernetesObject.kind }}"
+    name: "{{ injections_args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injections_args.kubernetesObject.metadata.namespace }}"
+  register: injections_service
+
+- name: Validate that serivce exists
+  ansible.builtin.assert:
+    that:
+      - injections_service is defined
+      - injections_service.resources | length == 1
+    fail_msg: Unable to find service. Please verify that the service exists.
+    success_msg: Found service.
+
+- name: Retrieve current target port configuration
+  ansible.builtin.set_fact:
+    injections_target_port: |-
+      {{
+        injections_service.resources[0].spec.ports |
+        community.general.json_query("[?targetPort==injections_args.targetPort]")
+      }}
+
+- name: Validate that target port exists
+  ansible.builtin.assert:
+    that:
+      - injections_target_port | length == 1
+    fail_msg: Unable to find target port. Please verify that the target port exists for service.
+    success_msg: Found target port.
+
+- name: Update service ports
+  kubernetes.core.k8s:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ injections_service.resources[0].apiVersion }}"
+      kind: "{{ injections_service.resources[0].kind }}"
+      metadata:
+        name: "{{ injections_service.resources[0].metadata.name }}"
+        namespace: "{{ injections_service.resources[0].metadata.namespace }}"
+      spec:
+        ports: |-
+          {{
+            (
+              injections_service.resources[0].spec.ports |
+              rejectattr("targetPort", "==", injections_args.targetPort)
+            ) +
+            (
+              injections_target_port |
+              first |
+              combine({"targetPort": 9999})
+            )
+          }}
+    state: patched
