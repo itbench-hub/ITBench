@@ -21,13 +21,15 @@ spec:
     spec:
       containers:
         - name: recorder
-          image: {{ container_image }}
+          image: "registry.access.redhat.com/ubi10/python-312-minimal:10.1-1766449846"
           command:
             - /bin/sh
           args:
             - -c
             - "python3.12 -m pip install -r ~/deps/requirements.txt && python3.12 ~/scripts/gather.py"
-          env: {{ container_environment_variables }}
+          env:
+            - name: JAEGER_ENDPOINT
+              value: << tools_jaeger_querier_endpoint >>
           resources:
             requests:
               cpu: 100m

@@ -26,14 +26,12 @@
   kubernetes.core.k8s:
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     namespace: "{{ recorders_namespace.name }}"
-    template: templates/traces/jaeger/statefulset.j2
+    template:
+      path: templates/traces/jaeger/statefulset.j2
+      variable_end_string: ">>"
+      variable_start_string: "<<"
     state: present
   register: recorders_jaeger_workload
-  vars:
-    container_image: "{{ recorders_jaeger_statefulset.spec.template.spec.containers[0].image }}"
-    container_environment_variables:
-      - name: JAEGER_ENDPOINT
-        value: "{{ tools_jaeger_querier_endpoint }}"
 
 - name: Wait for workload to update
   kubernetes.core.k8s_info:
