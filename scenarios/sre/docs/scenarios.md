@@ -351,7 +351,7 @@ OR
 - Manually edit the manifest(s) and allow access to workload's ports of the network policy(s).
 
 ```shell
-kubectl -n otel-demo edit networkpolicy frontend-deny
+kubectl -n otel-demo edit networkpolicy frontend-ingress
 ```
 
 OR
@@ -364,7 +364,7 @@ kubectl -n otel-demo get networkpolicy
 - Delete the offending network policy(s) if it is no longer required.
 
 ```shell
-kubectl -n otel-demo edit networkpolicy frontend-deny
+kubectl -n otel-demo edit networkpolicy frontend-ingress
 ```
 ### Scenario 33
 

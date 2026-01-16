@@ -1,4 +1,23 @@
 ---
-- name: Print message
-  ansible.builtin.debug:
-    msg: This fault injection (ingress-port-blocking-network-policy) is unimplemented.
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    api_version: "{{ injections_args.kubernetesObject.apiVersion }}"
+    kind: "{{ injections_args.kubernetesObject.kind }}"
+    name: "{{ injections_args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injections_args.kubernetesObject.metadata.namespace }}"
+  register: injections_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - injections_workload is defined
+      - injections_workload.resources | length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Create network policy for workload
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    state: present
+    template: templates/kubernetes/ingress_port_blocking_network_policy/networkpolicy.j2
