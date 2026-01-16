@@ -1,4 +1,33 @@
 ---
-- name: Print message
-  ansible.builtin.debug:
-    msg: This fault injection (nonexistent-kubernetes-workload-node) is unimplemented.
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    api_version: "{{ injections_args.kubernetesObject.apiVersion }}"
+    kind: "{{ injections_args.kubernetesObject.kind }}"
+    name: "{{ injections_args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injections_args.kubernetesObject.metadata.namespace }}"
+  register: injections_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - injections_workload is defined
+      - injections_workload.resources | length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Update workload node selector
+  kubernetes.core.k8s:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ injections_workload.resources[0].apiVersion }}"
+      kind: "{{ injections_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ injections_workload.resources[0].metadata.name }}"
+        namespace: "{{ injections_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            nodeSelector:
+              "kubernetes.io/hostname": invalid-node-{{ 1000 | ansible.builtin.random }}
+    state: patched
