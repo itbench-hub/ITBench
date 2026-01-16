@@ -726,6 +726,17 @@ A fault is a solvable issue injected into an environment to create an incident.
 ```json
 {
     "properties": {
+        "container": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "type": "object"
+        },
         "kubernetesObject": {
             "properties": {
                 "apiVersion": {
