@@ -804,22 +804,19 @@ See the scenario ground truth file where this fault is invoked.
         "container": {
             "properties": {
                 "env": {
-                    "items": {
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "value": {
-                                "type": "string"
-                            }
+                    "properties": {
+                        "name": {
+                            "type": "string"
                         },
-                        "required": [
-                            "name",
-                            "value"
-                        ],
-                        "type": "object"
+                        "value": {
+                            "type": "string"
+                        }
                     },
-                    "type": "array"
+                    "required": [
+                        "name",
+                        "value"
+                    ],
+                    "type": "object"
                 },
                 "name": {
                     "type": "string"
