@@ -1,4 +1,42 @@
 ---
-- name: Print message
-  ansible.builtin.debug:
-    msg: This fault injection (strict-mutual-tls-istio-service-mesh-enforcement) is unimplemented.
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    api_version: "{{ injections_args.kubernetesObject.apiVersion }}"
+    kind: "{{ injections_args.kubernetesObject.kind }}"
+    name: "{{ injections_args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injections_args.kubernetesObject.metadata.namespace }}"
+  register: injections_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - injections_workload is defined
+      - injections_workload.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Create PeerAuthentication
+  kubernetes.core.k8s:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    template: templates/kubernetes/strict_mutual_tls_istio_service_mesh_enforcement/peerauthentication.j2
+    state: present
+
+- name: Update workload labels
+  kubernetes.core.k8s:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ injections_workload.resources[0].apiVersion }}"
+      kind: "{{ injections_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ injections_workload.resources[0].metadata.name }}"
+        namespace: "{{ injections_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          metadata:
+            labels: |-
+              {{
+                injections_workload.resources[0].spec.template.metadata.labels |
+                combine({"istio.io/dataplane-mode": "none"})
+              }}
+    state: patched
