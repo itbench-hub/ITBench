@@ -19,9 +19,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: actions/setup-python@v6.2.0
+      - uses: astral-sh/setup-uv@v7.2.1
         with:
-          python-version: '3.13'
+          working-directory: scenarios/sre
       - uses: actions/setup-go@v6.2.0
         with:
           go-version-file: scenarios/sre/dev/local_cluster/go.mod
@@ -29,16 +29,15 @@ jobs:
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0
-      - name: Install Python and Ansible dependencies
-        run: |
-          pip install -r scenarios/sre/requirements.txt
-          ansible-galaxy install -r scenarios/sre/requirements.yaml
       - name: Create Kind cluster
         run: |
           make -C scenarios/sre/dev/local_cluster create_awx_cluster
       - name: Run Cloud Provider
         run: |
           make -C scenarios/sre/dev/local_cluster run_service_provider &
+      - name: Install project dependencies
+        run: |
+          make -C scenarios/sre deps
       - name: Create group vars
         run: |
           make -C scenarios/sre group_vars

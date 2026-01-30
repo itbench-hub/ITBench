@@ -67,29 +67,10 @@ sudo dnf install python3.13
 
 1. Create a Python virtual environment
 ```bash
-python3.13 -m venv venv
-source venv/bin/activate
+make deps
 ```
 
-2. Install Python dependencies
-```bash
-python -m pip install -r requirements.txt
-```
-
-**Optional**
-
-_Note: The developer requirements are required in order to lint the playbooks, build the AWX execution environment image, or use the provided playbooks for remote cluster setup. If this functionality is not required, then it is not necessary to install these requirements._
-
-```bash
-python -m pip install -r requirements-dev.txt
-```
-
-3. Install Ansible collections.
-```bash
-ansible-galaxy install -r requirements.yaml --force
-```
-
-4. Create the relevant environment variable files by running
+2. Create the relevant environment variable files by running
 ```bash
 make group_vars
 ```

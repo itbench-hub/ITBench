@@ -14,13 +14,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: actions/setup-python@v6.2.0
+      - uses: astral-sh/setup-uv@v7.2.1
         with:
-          python-version: '3.13'
-      - name: Install Python and Ansible dependencies
+          working-directory: scenarios/sre
+      - name: Install project dependencies
         run: |
-          pip install -r scenarios/sre/requirements.txt
-          ansible-galaxy install -r scenarios/sre/requirements.yaml
+          make -C scenarios/sre deps
       - name: Create group vars
         run: |
           make -C scenarios/sre group_vars
