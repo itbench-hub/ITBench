@@ -109,18 +109,6 @@
         "arguments": {
             "jsonSchema": {
                 "properties": {
-                    "httpMethods": {
-                        "items": {
-                            "enum": [
-                                "GET",
-                                "POST",
-                                "DELETE",
-                                "PUT"
-                            ],
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
                     "kubernetesObject": {
                         "properties": {
                             "apiVersion": {
@@ -452,7 +440,7 @@
                             "text": "Retrieve and review the configuration of the network policy(s) in the affected namespace."
                         },
                         {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy {{ args.kubernetesObject.metadata.name }}-deny",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy {{ args.kubernetesObject.metadata.name }}-ingress",
                             "text": "Manually edit the manifest(s) and allow access to workload's ports of the network policy(s)."
                         }
                     ]
@@ -464,7 +452,7 @@
                             "text": "Retrieve and review the configuration of the network policy(s) in the affected namespace."
                         },
                         {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy {{ args.kubernetesObject.metadata.name }}-deny",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy {{ args.kubernetesObject.metadata.name }}-ingress",
                             "text": "Delete the offending network policy(s) if it is no longer required."
                         }
                     ]
@@ -950,6 +938,17 @@
         "arguments": {
             "jsonSchema": {
                 "properties": {
+                    "container": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    },
                     "kubernetesObject": {
                         "properties": {
                             "apiVersion": {
@@ -1038,22 +1037,19 @@
                     "container": {
                         "properties": {
                             "env": {
-                                "items": {
-                                    "properties": {
-                                        "name": {
-                                            "type": "string"
-                                        },
-                                        "value": {
-                                            "type": "string"
-                                        }
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
                                     },
-                                    "required": [
-                                        "name",
-                                        "value"
-                                    ],
-                                    "type": "object"
+                                    "value": {
+                                        "type": "string"
+                                    }
                                 },
-                                "type": "array"
+                                "required": [
+                                    "name",
+                                    "value"
+                                ],
+                                "type": "object"
                             },
                             "name": {
                                 "type": "string"

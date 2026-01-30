@@ -117,18 +117,6 @@ A fault is a solvable issue injected into an environment to create an incident.
 ```json
 {
     "properties": {
-        "httpMethods": {
-            "items": {
-                "enum": [
-                    "GET",
-                    "POST",
-                    "DELETE",
-                    "PUT"
-                ],
-                "type": "string"
-            },
-            "type": "array"
-        },
         "kubernetesObject": {
             "properties": {
                 "apiVersion": {
@@ -738,6 +726,17 @@ A fault is a solvable issue injected into an environment to create an incident.
 ```json
 {
     "properties": {
+        "container": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "type": "object"
+        },
         "kubernetesObject": {
             "properties": {
                 "apiVersion": {
@@ -805,22 +804,19 @@ See the scenario ground truth file where this fault is invoked.
         "container": {
             "properties": {
                 "env": {
-                    "items": {
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "value": {
-                                "type": "string"
-                            }
+                    "properties": {
+                        "name": {
+                            "type": "string"
                         },
-                        "required": [
-                            "name",
-                            "value"
-                        ],
-                        "type": "object"
+                        "value": {
+                            "type": "string"
+                        }
                     },
-                    "type": "array"
+                    "required": [
+                        "name",
+                        "value"
+                    ],
+                    "type": "object"
                 },
                 "name": {
                     "type": "string"
