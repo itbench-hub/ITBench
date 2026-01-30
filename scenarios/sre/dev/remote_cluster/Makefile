@@ -7,7 +7,7 @@ help: ## Display this help.
 .PHONY: group_vars
 group_vars: ## Generates the group variables
 	mkdir group_vars/all
-	echo "ansible_python_interpreter: $(shell which python3.13)" > group_vars/all/ansible.yaml
+	echo "ansible_python_interpreter: $(shell uv python find)" > group_vars/all/ansible.yaml
 	cp group_vars/development/awx_stack.yaml.example group_vars/development/awx_stack.yaml
 	cp group_vars/development/kops_cluster.yaml.example group_vars/development/kops_cluster.yaml
 

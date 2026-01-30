@@ -19,7 +19,7 @@ pre_commit_hooks: ## Installs pre-commit hooks
 
 .PHONY: group_vars
 group_vars: ## Generates the group variables
-	echo "ansible_python_interpreter: $(shell which python3.13)" > group_vars/all/ansible.yaml
+	echo "ansible_python_interpreter: $(shell uv python find)" > group_vars/all/ansible.yaml
 	cp group_vars/all/storage.yaml.example group_vars/all/storage.yaml
 	cp group_vars/environment/applications.yaml.example group_vars/environment/applications.yaml
 	cp group_vars/environment/cluster.yaml.example group_vars/environment/cluster.yaml
