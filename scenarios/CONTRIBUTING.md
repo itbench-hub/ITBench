@@ -8,23 +8,11 @@ ITBench-Scenarios accepts contributions through GitHub pull request.
 
 ## Environment Set Up Guide
 
-1. Create a Python virtual environment.
+1. Install `pre-commit` to the repo. This only needs to be done once.
 
 ```shell
-python -m venv venv
-```
-
-2. Install the Python dependencies
-
-```shell
-python -m pip install -r requirements-dev.txt
-```
-
-3. Install `pre-commit` to the repo. This only needs to be done once.
-
-```shell
-pre-commit install
-pre-commit install --hook-type commit-msg --hook-type pre-push
+uv run pre-commit install
+uv run pre-commit install --hook-type commit-msg --hook-type pre-push
 ```
 
 ## Committing Code
@@ -43,7 +31,7 @@ These tools are installed through the process mentioned [here](#environment-set-
 In order to sign and commit code using commitizen, please run the following command after staging changes via `git add`:
 
 ```shell
-cz commit -- --signoff
+uv run cz commit -- --signoff
 ```
 
 ## Committing to SRE Scenarios

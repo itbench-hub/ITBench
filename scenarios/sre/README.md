@@ -35,6 +35,7 @@ The playbook run is configured using variables defined in `group_vars`.
 - [Helm](https://helm.sh/docs/intro/install/) (v3.16+)
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [OpenShift CLI](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/cli_tools/openshift-cli-oc) (Required Only for OpenShift)
+- [UV](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### Installing Required Software via Homebrew (for MacOS)
 
@@ -45,6 +46,7 @@ brew install helm@3
 brew install kubectl
 brew install python@3.13
 brew install openshift-cli
+brew install uv
 ```
 
 **Note (11/19/2025):** When installing from Brew, it symlinks to most recent version automatically. In the case of Helm, please follow the instructions provided to ensure that the right version responds to the `helm` command. Helm 4 is [currently not supported by the `kubernetes.core` Ansible module](https://github.com/ansible-collections/kubernetes.core/issues/1038) and thus cannot be used by ITBench until a newer version with compatability with it is provided.
@@ -65,29 +67,10 @@ sudo dnf install python3.13
 
 1. Create a Python virtual environment
 ```bash
-python3.13 -m venv venv
-source venv/bin/activate
+make deps
 ```
 
-2. Install Python dependencies
-```bash
-python -m pip install -r requirements.txt
-```
-
-**Optional**
-
-_Note: The developer requirements are required in order to lint the playbooks, build the AWX execution environment image, or use the provided playbooks for remote cluster setup. If this functionality is not required, then it is not necessary to install these requirements._
-
-```bash
-python -m pip install -r requirements-dev.txt
-```
-
-3. Install Ansible collections.
-```bash
-ansible-galaxy install -r requirements.yaml --force
-```
-
-4. Create the relevant environment variable files by running
+2. Create the relevant environment variable files by running
 ```bash
 make group_vars
 ```

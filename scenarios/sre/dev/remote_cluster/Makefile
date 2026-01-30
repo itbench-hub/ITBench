@@ -7,47 +7,47 @@ help: ## Display this help.
 .PHONY: group_vars
 group_vars: ## Generates the group variables
 	mkdir group_vars/all
-	echo "ansible_python_interpreter: $(shell which python)" > group_vars/all/ansible.yaml
+	echo "ansible_python_interpreter: $(shell uv python find)" > group_vars/all/ansible.yaml
 	cp group_vars/development/awx_stack.yaml.example group_vars/development/awx_stack.yaml
 	cp group_vars/development/kops_cluster.yaml.example group_vars/development/kops_cluster.yaml
 
 .PHONY: create_kops_cluster
 create_kops_cluster: ## Creates a single cluster created by kops
-	ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "create_cluster"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "create_cluster"
 
 .PHONY: list_kops_clusters
 list_kops_clusters: ## Lists all active clusters created by kops
-	ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "list_clusters"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "list_clusters"
 
 .PHONY: export_kops_kubeconfig
 export_kops_kubeconfig: ## Exports the kubeconfig of a single cluster created by kops
 ifdef CLUSTER_NAME
-	ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "export_cluster" \
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "export_cluster" \
 		--extra-vars "kops_full_cluster_name_override=$(CLUSTER_NAME)"
 else
-	ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "export_cluster"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "export_cluster"
 endif
 
 .PHONY: destroy_kops_cluster
 destroy_kops_cluster: ## Deletes a single cluster created by kops
 ifdef CLUSTER_NAME
-	ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "delete_cluster" \
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "delete_cluster" \
 		--extra-vars "kops_full_cluster_name_override=$(CLUSTER_NAME)"
 else
-	ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "delete_cluster"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "delete_cluster"
 endif
 
 .PHONY: create_awx_stack
 create_awx_stack: ## Creates an AWX stack created by kops
-	ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "create_stack"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "create_stack"
 
 .PHONY: export_awx_kubeconfigs
 export_awx_kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
-	ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "export_stack"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "export_stack"
 
 .PHONY: destroy_awx_stack
 destroy_awx_stack: ## Destroy an AWX stack created by kops
-	ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "delete_stack"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "delete_stack"
 
 .PHONY: create
 create: ## DEPRECATED: Use 'make create_kops_cluster' instead. Creates a single cluster
