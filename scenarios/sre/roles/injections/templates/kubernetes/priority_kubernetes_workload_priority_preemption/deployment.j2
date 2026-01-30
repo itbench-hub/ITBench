@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/part-of: fault-injection
     app.kubernetes.io/managed-by: ITBench
   name: critical-data-collector
-  namespace: {{ fault_args.workload.namespace }}
+  namespace: {{ injections_args.kubernetesObject.metadata.namespace }}
 spec:
   replicas: {{ replicas + 1 }}
   selector:
@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: {{ container_image }}
+          image: registry.access.redhat.com/ubi10-minimal:10.1-1769677092
           command:
             - /bin/sh
           args:
@@ -35,8 +35,8 @@ spec:
             - "sleep infinity"
           resources:
             requests:
-              cpu: {{ ((((worker_node.status.allocatable.cpu | int) - 1) / replicas) * 1000) }}m
+              cpu: {{ ((((injections_node.status.allocatable.cpu | int) - 1) / replicas) * 1000) }}m
               memory: 1Mi
       nodeSelector:
-        "kubernetes.io/hostname": {{ worker_node.metadata.name }}
+        "kubernetes.io/hostname": {{ injections_node.metadata.name }}
       priorityClassName: application-critical
