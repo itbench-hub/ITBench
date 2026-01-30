@@ -12,6 +12,11 @@ deps: ## Installs dependencies
 	uv sync
 	uv run ansible-galaxy install -r requirements.yaml
 
+.PHONY: pre_commit_hooks
+pre_commit_hooks: ## Installs pre-commit hooks
+	uv run pre-commit install
+	uv run pre-commit install --hook-type commit-msg --hook-type pre-push
+
 .PHONY: group_vars
 group_vars: ## Generates the group variables
 	echo "ansible_python_interpreter: $(shell which python3.13)" > group_vars/all/ansible.yaml
