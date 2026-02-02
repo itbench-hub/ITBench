@@ -2,10 +2,10 @@
 - name: Retrieve workload
   kubernetes.core.k8s_info:
     kubeconfig: "{{ injections_cluster.kubeconfig }}"
-    api_version: "{{ injections_args.kubernetesObject.apiVersion }}"
-    kind: "{{ injections_args.kubernetesObject.kind }}"
-    name: "{{ injections_args.kubernetesObject.metadata.name }}"
-    namespace: "{{ injections_args.kubernetesObject.metadata.namespace }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
   register: injections_workload
 
 - name: Validate that workload exists
@@ -21,7 +21,7 @@
     injections_container: |-
       {{
         injections_workload.resources[0].spec.template.spec.containers |
-        community.general.json_query("[?name==injections_args.container.name]")
+        community.general.json_query("[?name==injection_task.args.container.name]")
       }}
 
 - name: Validate that valid container exists
@@ -34,7 +34,7 @@
 - name: Validate that environment variable exists
   ansible.builtin.assert:
     that:
-      - injections_container[0].env | community.general.json_query("[?name==injections_args.container.env.name]") | length == 1
+      - injections_container[0].env | community.general.json_query("[?name==injection_task.args.container.env.name]") | length == 1
     fail_msg: Unable to find environment variable. Please verify that the environment variable exists.
     success_msg: Found environment variable.
 
@@ -53,6 +53,6 @@
             containers:
               - name: "{{ injections_container[0].name }}"
                 env:
-                  - name: "{{ injections_args.container.env.name }}"
-                    value: "{{ injections_args.container.env.value }}"
+                  - name: "{{ injection_task.args.container.env.name }}"
+                    value: "{{ injection_task.args.container.env.value }}"
     state: patched

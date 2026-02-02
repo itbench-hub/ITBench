@@ -3,27 +3,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/component: pod-priority-eviction-fault
     app.kubernetes.io/name: critical-data-collector
-    app.kubernetes.io/part-of: fault-injection
-    app.kubernetes.io/managed-by: ITBench
   name: critical-data-collector
-  namespace: {{ injections_args.kubernetesObject.metadata.namespace }}
+  namespace: {{ injection_task.args.kubernetesObject.metadata.namespace }}
 spec:
   replicas: {{ replicas + 1 }}
   selector:
     matchLabels:
-      app.kubernetes.io/component: pod-priority-eviction-fault
       app.kubernetes.io/name: critical-data-collector
-      app.kubernetes.io/part-of: fault-injection
-      app.kubernetes.io/managed-by: ITBench
   template:
     metadata:
       labels:
-        app.kubernetes.io/component: pod-priority-eviction-fault
         app.kubernetes.io/name: critical-data-collector
-        app.kubernetes.io/part-of: fault-injection
-        app.kubernetes.io/managed-by: ITBench
     spec:
       containers:
         - name: worker
