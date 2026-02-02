@@ -18,18 +18,18 @@
 
 - name: Retrieve current target port configuration
   ansible.builtin.set_fact:
-    injections_target_port: |-
+    injections_port: |-
       {{
         injections_service.resources[0].spec.ports |
         community.general.json_query("[?targetPort==injections_args.targetPort]")
       }}
 
-- name: Validate that target port exists
+- name: Validate that port exists
   ansible.builtin.assert:
     that:
-      - injections_target_port | ansible.builtin.length == 1
-    fail_msg: Unable to find target port. Please verify that the target port exists for service.
-    success_msg: Found target port.
+      - injections_port | ansible.builtin.length == 1
+    fail_msg: Unable to find port. Please verify that the port exists for service.
+    success_msg: Found port.
 
 - name: Update service ports
   kubernetes.core.k8s:
@@ -41,16 +41,7 @@
         name: "{{ injections_service.resources[0].metadata.name }}"
         namespace: "{{ injections_service.resources[0].metadata.namespace }}"
       spec:
-        ports: |-
-          {{
-            (
-              injections_service.resources[0].spec.ports |
-              rejectattr("targetPort", "==", injections_args.targetPort)
-            ) +
-            (
-              injections_target_port |
-              ansible.builtin.first |
-              combine({"targetPort": 9999})
-            )
-          }}
+        ports:
+          - port: "{{ injections_port[0].port }}"
+            targetPort: 9999
     state: patched

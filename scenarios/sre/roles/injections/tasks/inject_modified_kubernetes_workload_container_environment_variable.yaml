@@ -50,31 +50,9 @@
       spec:
         template:
           spec:
-            containers: |-
-              {{
-                (
-                  injections_workload.resources[0].spec.template.spec.containers |
-                  rejectattr("name", "==", injections_args.container.name)
-                ) +
-                (
-                  injections_container |
-                  ansible.builtin.first |
-                  combine(
-                    {
-                      "env": (
-                        (
-                          injections_container.env |
-                          rejectattr("name", "==", injections_args.container.env.name)
-                        ) +
-                        [
-                          {
-                            "name": injections_args.container.env.name,
-                            "value": injections_args.container.env.value
-                          }
-                        ]
-                      )
-                    }
-                  )
-                )
-              }}
+            containers:
+              - name: "{{ injections_container[0].name }}"
+                env:
+                  - name: "{{ injections_args.container.env.name }}"
+                    value: "{{ injections_args.container.env.value }}"
     state: patched

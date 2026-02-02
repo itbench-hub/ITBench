@@ -43,22 +43,8 @@
       spec:
         template:
           spec:
-            containers: |-
-              {{
-                (
-                  injections_workload.resources[0].spec.template.spec.containers |
-                  rejectattr("name", "==", injections_args.container.name)
-                ) +
-                (
-                  injections_container |
-                  ansible.builtin.first |
-                  combine(
-                    {
-                      "resources": {
-                        "requests": injections_container[0].resources.requests | default({})
-                      }
-                    }
-                  )
-                )
-              }}
+            containers:
+              - name: "{{ injections_container[0].name }}"
+                resources:
+                  limits: null
     state: patched

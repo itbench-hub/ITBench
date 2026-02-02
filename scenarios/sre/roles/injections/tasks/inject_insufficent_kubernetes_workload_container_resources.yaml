@@ -43,29 +43,13 @@
       spec:
         template:
           spec:
-            containers: |-
-              {{
-                (
-                  injections_workload.resources[0].spec.template.spec.containers |
-                  rejectattr("name", "==", injections_args.container.name)
-                ) +
-                (
-                  injections_container |
-                  ansible.builtin.first |
-                  combine(
-                    {
-                      "resources": {
-                        "limits": {
-                          "cpu": "5m",
-                          "memory": "5Mi"
-                        },
-                        "requests": {
-                          "cpu": "5m",
-                          "memory": "5Mi"
-                        }
-                      }
-                    }
-                  )
-                )
-              }}
+            containers:
+              - name: "{{ injections_container[0].name }}"
+                resources:
+                  limits:
+                    cpu: 5m
+                    memory: 5Mi
+                  requests:
+                    cpu: 5m
+                    memory: 5Mi
     state: patched

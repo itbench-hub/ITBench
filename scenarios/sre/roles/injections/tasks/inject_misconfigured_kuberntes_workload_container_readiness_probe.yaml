@@ -43,30 +43,15 @@
       spec:
         template:
           spec:
-            containers: |-
-              {{
-                (
-                  injections_workload.resources[0].spec.template.spec.containers |
-                  rejectattr("name", "==", injections_args.container.name)
-                ) +
-                (
-                  injections_container |
-                  ansible.builtin.first |
-                  combine(
-                    {
-                      "readinessProbe": {
-                        "failureThreshold": 3,
-                        "httpGet": {
-                          "path": "/ready",
-                          "port": 40,
-                          "scheme": "HTTP"
-                        },
-                        "periodSeconds": 5,
-                        "successThreshold": 1,
-                        "timeoutSeconds": 3
-                      }
-                    }
-                  )
-                )
-              }}
+            containers:
+              - name: "{{ injections_container[0].name }}"
+                readinessProbe:
+                  failureThreshold: 3
+                  httpGet:
+                    path: /ready
+                    port: 40
+                    scheme: HTTP
+                  periodSeconds: 5
+                  successThreshold: 1
+                  timeoutSeconds: 3
     state: patched
