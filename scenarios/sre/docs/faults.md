@@ -21,6 +21,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Modified Target Port Kubernetes Service](#Modified-Target-Port-Kubernetes-Service) | Kubernetes | Deployment, Networking |
 | [Nonexistent Kubernetes Workload Container Image](#Nonexistent-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
 | [Nonexistent Kubernetes Workload Node](#Nonexistent-Kubernetes-Workload-Node) | Kubernetes | Deployment, Performance |
+| [Nonexistent Kubernetes Workload Persistent Volume Claim](#Nonexistent-Kubernetes-Workload-Persistent-Volume-Claim) | Kubernetes | Deployment |
 | [OpenTelemetry Demo Feature Flag](#OpenTelemetry-Demo-Feature-Flag) | Kubernetes | Deployment, Performance |
 | [Priority Kubernetes Workload Priority Preemption](#Priority-Kubernetes-Workload-Priority-Preemption) | Kubernetes | Deployment, Performance |
 | [Scheduled Chaos Mesh Experiment](#Scheduled-Chaos-Mesh-Experiment) | Kubernetes | Deployment, Performance |
@@ -1019,6 +1020,83 @@ See the scenario ground truth file where this fault is invoked.
     },
     "required": [
         "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
+### Nonexistent Kubernetes Workload Persistent Volume Claim
+
+**Description:** This fault injects a workload with a nonexistent volume.
+
+**Expectation:** The faulted pod(s) will enter the `Pending` state. The workload will become unable to function.
+
+**[Implementation](../roles/injections/tasks/inject_nonexistent_kubernetes_workload_persistent_volume_claim.yaml)**
+
+**Firing Alerts**
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+- https://kubernetes.io/docs/concepts/workloads/
+- https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+- https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "container": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "type": "object"
+        },
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject",
+        "container"
     ],
     "type": "object"
 }

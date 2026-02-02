@@ -35,6 +35,7 @@ The following scenarios are being open-sourced at this time and their implementa
 | [48](#Scenario-48) | sre | medium | Kubernetes | Deployment, Networking |
 | [49](#Scenario-49) | sre | medium | Kubernetes | Deployment, Performance |
 | [50](#Scenario-50) | sre | medium | Kubernetes | Deployment, Networking |
+| [53](#Scenario-53) | sre | medium | Kubernetes | Deployment |
 | [102](#Scenario-102) | sre | medium | Kubernetes | Deployment, Performance |
 | [105](#Scenario-105) | sre | medium | Kubernetes | Deployment, Performance |
 
@@ -44,19 +45,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 3 | 25 |
+| 4 | 25 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 26 |
+| 2 | 27 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 10 | 17 | 1 |
+| 10 | 18 | 1 |
 
 ## Detailed Summary of Scenarios
 
@@ -882,6 +883,43 @@ OR
 
 ```shell
 kubectl edit namespace bookinfo
+```
+### Scenario 53
+
+**Description:** This scenario simulates BookInfo's `reviews-v3` service being unable to start due to lack of persistent storage.
+
+**Active Applications:**
+
+- [BookInfo](./applications.md#istio-bookinfo)
+
+**Faults Injected:**
+
+- [Nonexistent Kubernetes Workload Persistent Volume Claim](./faults.md#Nonexistent-Kubernetes-Workload-Persistent-Volume-Claim)
+
+**Solution:**
+
+Step 1
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n bookinfo rollout undo deployment/reviews-v3
+```
+
+OR
+
+- Manually edit the manifest and replace the `storageClassName` with the correct value.
+
+```shell
+kubectl -n bookinfo edit persistentvolumeclaim reviews-v3
+```
+
+OR
+
+- Manually edit the manifest and replace the volume claim with an existing persistent volume claim.
+
+```shell
+kubectl -n bookinfo edit deployment reviews-v3
 ```
 ### Scenario 102
 

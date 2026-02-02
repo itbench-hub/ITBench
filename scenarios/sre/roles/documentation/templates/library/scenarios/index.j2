@@ -704,6 +704,30 @@
   tags: {{ documentation_faults["strict-mutual-tls-istio-service-mesh-enforcement"].tags }}
 - category: sre
   complexity: medium
+  description: This scenario simulates BookInfo's `reviews-v3` service being unable to start due to lack of persistent storage.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: reviews
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: reviews-v3
+              namespace: {{ applications_instances.bookinfo.namespace }}
+        id: nonexistent-kubernetes-workload-persistent-volume-claim
+  environment:
+    applications:
+      - id: book-info
+  id: 53
+  platforms: {{ [documentation_faults["nonexistent-kubernetes-workload-persistent-volume-claim"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["nonexistent-kubernetes-workload-persistent-volume-claim"].tags }}
+- category: sre
+  complexity: medium
   description: This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.
   disruptions:
     - injections:
