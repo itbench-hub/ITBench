@@ -1,0 +1,47 @@
+---
+- name: Retrieve service
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+  register: faults_service
+
+- name: Validate that serivce exists
+  ansible.builtin.assert:
+    that:
+      - faults_service is defined
+      - faults_service.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find service. Please verify that the service exists.
+    success_msg: Found service.
+
+- name: Retrieve current target port configuration
+  ansible.builtin.set_fact:
+    faults_port: |-
+      {{
+        faults_service.resources[0].spec.ports |
+        community.general.json_query("[?targetPort==injection_task.args.targetPort]")
+      }}
+
+- name: Validate that port exists
+  ansible.builtin.assert:
+    that:
+      - faults_port | ansible.builtin.length == 1
+    fail_msg: Unable to find port. Please verify that the port exists for service.
+    success_msg: Found port.
+
+- name: Update service ports
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_service.resources[0].apiVersion }}"
+      kind: "{{ faults_service.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_service.resources[0].metadata.name }}"
+        namespace: "{{ faults_service.resources[0].metadata.namespace }}"
+      spec:
+        ports:
+          - port: "{{ faults_port[0].port }}"
+            targetPort: 9999
+    state: patched

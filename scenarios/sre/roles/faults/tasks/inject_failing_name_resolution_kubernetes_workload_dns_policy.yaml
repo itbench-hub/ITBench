@@ -1,0 +1,46 @@
+---
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+  register: faults_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - faults_workload is defined
+      - faults_workload.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Update workload dns policy
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            dnsPolicy: Default
+    state: patched
+
+- name: Wait for workload to update
+  kubernetes.core.k8s_info:
+    api_version: "{{ faults_workload.resources[0].apiVersion }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    kind: "{{ faults_workload.resources[0].kind }}"
+    name: "{{ faults_workload.resources[0].metadata.name }}"
+    namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+  register: faults_patched_workload
+  until:
+    - faults_patched_workload.resources | length == 1
+    - faults_patched_workload.resources[0].status.availableReplicas == faults_patched_workload.resources[0].status.replicas
+  delay: 15
+  retries: 20

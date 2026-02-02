@@ -1,26 +1,15 @@
 ---
-- name: Import custom fault injection tasks
-  ansible.builtin.import_tasks:
-    file: inject_custom.yaml
-  when:
-    - fault.custom is defined
+- name: Load injections library index map
+  ansible.builtin.set_fact:
+    faults_library_map: "{{ lookup('ansible.builtin.file', 'files/library/map.json') | from_json }}"
 
-- name: Import Chaos Mesh fault injection tasks
-  ansible.builtin.import_tasks:
-    file: inject_chaos_mesh.yaml
-  vars:
-    spec: "{{ fault.chaos_mesh }}"
-  when:
-    - fault.chaos_mesh is defined
-
-- name: Import Otel Demo fault injection tasks
-  ansible.builtin.import_tasks:
-    file: inject_otel_demo.yaml
-  when:
-    - fault.otel_demo is defined
-
-- name: Import Valkey fault injection tasks
-  ansible.builtin.import_tasks:
-    file: inject_valkey.yaml
-  when:
-    - fault.valkey is defined
+- name: Include injection tasks
+  ansible.builtin.include_tasks:
+    file: "{{ faults_library_map[injection_task.id].taskFile }}"
+    apply:
+      tags:
+        - inject_faults
+  loop: "{{ faults_injection_tasks }}"
+  loop_control:
+    label: task/{{ injection_task.id }}
+    loop_var: injection_task

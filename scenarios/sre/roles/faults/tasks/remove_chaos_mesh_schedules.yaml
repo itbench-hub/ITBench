@@ -1,0 +1,90 @@
+---
+- name: Retrive all Chaos Mesh schedules
+  kubernetes.core.k8s_info:
+    api_version: chaos-mesh.org/v1alpha1
+    kind: Schedule
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+  register: faults_schedules
+
+- name: Retrive all scheduled Chaos Mesh experiments
+  kubernetes.core.k8s_info:
+    api_version: chaos-mesh.org/v1alpha1
+    kind: Schedule
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+  loop: "{{ faults_schedule.resources | community.general.json_query('[*].status.active') }}"
+  loop_control:
+    label: "{{ experiment.kind | lower }}/{{ experiment.name }}"
+    loop_var: experiment
+  register: faults_experiments
+
+- name: Pause all scheduled experiments
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ schedule.apiVersion }}"
+      kind: "{{ schedule.kind }}"
+      metadata:
+        annotations: |
+          {{
+            schedule.metadata.annotations |
+            combine({'experiment.chaos-mesh.org/pause': 'true'})
+          }}
+        name: "{{ schedule.metadata.name }}"
+        namespace: "{{ schedule.metadata.namespace }}"
+    state: patched
+  loop: "{{ faults_schedules.resources }}"
+  loop_control:
+    label: schedule/{{ schedule.metadata.name }}
+    loop_var: schedule
+
+- name: Wait for scheduled experiement(s) to pause
+  kubernetes.core.k8s_info:
+    api_version: "{{ experiment.apiVersion }}"
+    kind: "{{ experiment.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ experiment.name }}"
+    namespace: "{{ experiment.namespace }}"
+    wait: true
+    wait_condition:
+      type: Paused
+      status: "True"
+  loop: "{{ faults_experiments.results | community.general.json_query('[*].resources') | flatten }}"
+  loop_control:
+    label: "{{ experiment.kind | lower }}/{{ experiment.name }}"
+    loop_var: experiment
+
+- name: Delete associated scheduled experiement(s)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ experiement.apiVersion }}"
+      kind: "{{ experiement.kind }}"
+      metadata:
+        annotations: |
+          {{
+            experiement.metadata.annotations |
+            combine({'chaos-mesh.chaos-mesh.org/cleanFinalizer': 'forced'})
+          }}
+        name: "{{ experiement.metadata.name }}"
+        namespace: "{{ experiement.metadata.namespace }}"
+    state: patched
+  loop: "{{ faults_experiments.results | community.general.json_query('[*].resources') | flatten }}"
+  loop_control:
+    label: "{{ experiment.kind | lower }}/{{ experiment.name }}"
+    loop_var: experiment
+
+- name: Delete Chaos Mesh schedules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ schedule.apiVersion }}"
+      kind: "{{ schedule.kind }}"
+      metadata:
+        name: "{{ schedule.metadata.name }}"
+        namespace: "{{ schedule.metadata.namespace }}"
+    state: absent
+    wait: true
+  loop: "{{ faults_schedules.resources }}"
+  loop_control:
+    label: schedule/{{ schedule.metadata.name }}
+    loop_var: schedule
