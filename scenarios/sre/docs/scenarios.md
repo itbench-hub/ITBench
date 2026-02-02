@@ -421,7 +421,7 @@ kubectl -n otel-demo edit deployment cart
 
 **Faults Injected:**
 
-- [Invalid Valkey Password](./faults.md#Invalid-Valkey-Password)
+- [Valkey Workload Changed Password](./faults.md#Valkey-Workload-Changed-Password)
 
 **Solution:**
 

@@ -770,85 +770,6 @@
     },
     {
         "alerts": {
-            "goldenSignal": [
-                "HighRequestLatency"
-            ]
-        },
-        "arguments": {
-            "jsonSchema": {
-                "properties": {
-                    "kubernetesObject": {
-                        "properties": {
-                            "apiVersion": {
-                                "enum": [
-                                    "apps/v1"
-                                ],
-                                "type": "string"
-                            },
-                            "kind": {
-                                "enum": [
-                                    "Deployment",
-                                    "StatefulSet"
-                                ],
-                                "type": "string"
-                            },
-                            "metadata": {
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "namespace": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "namespace"
-                                ],
-                                "type": "object"
-                            }
-                        },
-                        "required": [
-                            "apiVersion",
-                            "kind",
-                            "metadata"
-                        ],
-                        "type": "object"
-                    }
-                },
-                "required": [
-                    "kubernetesObject"
-                ],
-                "type": "object"
-            }
-        },
-        "description": "This fault changes the password of a Valkey workload.",
-        "expectation": "Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.",
-        "id": "invalid-valkey-password",
-        "name": "Invalid Valkey Password",
-        "platform": "Kubernetes",
-        "resources": [
-            "https://valkey.io/"
-        ],
-        "solutions": {
-            "templates": [
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} exec {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} -- valkey-cli CONFIG SET requirepass ''",
-                            "text": "Change the password back to the original by access the pod directly."
-                        }
-                    ]
-                }
-            ]
-        },
-        "tags": [
-            "Deployment",
-            "Authentication"
-        ]
-    },
-    {
-        "alerts": {
             "application": [
                 "KubeHpaMaxedOut"
             ]
@@ -2192,6 +2113,85 @@
         "tags": [
             "Deployment",
             "Performance"
+        ]
+    },
+    {
+        "alerts": {
+            "goldenSignal": [
+                "HighRequestLatency"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault changes the password of a Valkey workload.",
+        "expectation": "Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.",
+        "id": "valkey-workload-changed-password",
+        "name": "Valkey Workload Changed Password",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://valkey.io/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} exec {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} -- valkey-cli CONFIG SET requirepass ''",
+                            "text": "Change the password back to the original by access the pod directly."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Authentication"
         ]
     },
     {

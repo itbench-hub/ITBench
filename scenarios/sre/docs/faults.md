@@ -15,7 +15,6 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Insufficent Kubernetes Resource Quota](#Insufficent-Kubernetes-Resource-Quota) | Kubernetes | Deployment, Performance |
 | [Insufficent Kubernetes Workload Container Resources](#Insufficent-Kubernetes-Workload-Container-Resources) | Kubernetes | Deployment, Performance |
 | [Invalid Kubernetes Workload Container Command](#Invalid-Kubernetes-Workload-Container-Command) | Kubernetes | Deployment, Performance |
-| [Invalid Valkey Password](#Invalid-Valkey-Password) | Kubernetes | Authentication, Deployment |
 | [Misconfigured Kubernetes Horizontal Pod Autoscaler](#Misconfigured-Kubernetes-Horizontal-Pod-Autoscaler) | Kubernetes | Deployment, Performance |
 | [Misconfigured Kuberntes Workload Container Readiness Probe](#Misconfigured-Kuberntes-Workload-Container-Readiness-Probe) | Kubernetes | Deployment, Performance |
 | [Modified Kubernetes Workload Container Environment Variable](#Modified-Kubernetes-Workload-Container-Environment-Variable) | Kubernetes | Deployment, Performance |
@@ -30,6 +29,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Unassigned Kubernetes Workload Container Resource Limits](#Unassigned-Kubernetes-Workload-Container-Resource-Limits) | Kubernetes | Deployment, Performance |
 | [Unschedueable Kuberntes Workload Pod Anti Affinity Rule](#Unschedueable-Kuberntes-Workload-Pod-Anti-Affinity-Rule) | Kubernetes | Deployment, Performance |
 | [Unsupported Architecture Kubernetes Workload Container Image](#Unsupported-Architecture-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
+| [Valkey Workload Changed Password](#Valkey-Workload-Changed-Password) | Kubernetes | Authentication, Deployment |
 | [Valkey Workload Out of Memory](#Valkey-Workload-Out-of-Memory) | Kubernetes | Code, Deployment |
 
 ## Detailed Summary of Faults
@@ -573,70 +573,6 @@ A fault is a solvable issue injected into an environment to create an incident.
     "required": [
         "kubernetesObject",
         "container"
-    ],
-    "type": "object"
-}
-```
-### Invalid Valkey Password
-
-**Description:** This fault changes the password of a Valkey workload.
-
-**Expectation:** Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.
-
-**[Implementation](../roles/injections/tasks/inject_invalid_valkey_password.yaml)**
-
-**Firing Alerts**
-
-**Golden Signal Alerts:** HighRequestLatency
-
-**Resources:**
-- https://valkey.io/
-
-**Arguments Schema:**
-```json
-{
-    "properties": {
-        "kubernetesObject": {
-            "properties": {
-                "apiVersion": {
-                    "enum": [
-                        "apps/v1"
-                    ],
-                    "type": "string"
-                },
-                "kind": {
-                    "enum": [
-                        "Deployment",
-                        "StatefulSet"
-                    ],
-                    "type": "string"
-                },
-                "metadata": {
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "namespace": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "namespace"
-                    ],
-                    "type": "object"
-                }
-            },
-            "required": [
-                "apiVersion",
-                "kind",
-                "metadata"
-            ],
-            "type": "object"
-        }
-    },
-    "required": [
-        "kubernetesObject"
     ],
     "type": "object"
 }
@@ -1656,6 +1592,70 @@ See the scenario ground truth file where this fault is invoked.
     "required": [
         "kubernetesObject",
         "container"
+    ],
+    "type": "object"
+}
+```
+### Valkey Workload Changed Password
+
+**Description:** This fault changes the password of a Valkey workload.
+
+**Expectation:** Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.
+
+**[Implementation](../roles/injections/tasks/inject_valkey_workload_changed_password.yaml)**
+
+**Firing Alerts**
+
+**Golden Signal Alerts:** HighRequestLatency
+
+**Resources:**
+- https://valkey.io/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
     ],
     "type": "object"
 }
