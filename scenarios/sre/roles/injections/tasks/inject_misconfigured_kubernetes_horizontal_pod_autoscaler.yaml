@@ -1,4 +1,42 @@
 ---
-- name: Print message
-  ansible.builtin.debug:
-    msg: This fault injection (misconfigured-kubernetes-horizontal-pod-autoscaler) is unimplemented.
+- name: Retrieve autoscaler
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ injections_cluster.kubeconfig }}"
+    api_version: "{{ injections_args.kubernetesObject.apiVersion }}"
+    kind: "{{ injections_args.kubernetesObject.kind }}"
+    name: "{{ injections_args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injections_args.kubernetesObject.metadata.namespace }}"
+  register: injections_autoscaler
+
+- name: Validate that autoscaler exists
+  ansible.builtin.assert:
+    that:
+      - injections_autoscaler is defined
+      - injections_autoscaler.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find autoscaler. Please verify that the autoscaler exists.
+    success_msg: Found autoscaler.
+
+- name: Update autoscaler metrics
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ injections_autoscaler.resources[0].apiVersion }}"
+      kind: "{{ injections_autoscaler.resources[0].kind }}"
+      metadata:
+        name: "{{ injections_autoscaler.resources[0].metadata.name }}"
+        namespace: "{{ injections_autoscaler.resources[0].metadata.namespace }}"
+      spec:
+        metrics:
+          - type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 20
+          - type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 30
+    state: patched
