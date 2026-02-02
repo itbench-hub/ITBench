@@ -1,0 +1,18 @@
+---
+- name: Set scenario variables
+  ansible.builtin.set_fact:
+    scenarios_spec: "{{ lookup('ansible.builtin.file', [directory_path, 'scenarios.yaml'] | path_join) | from_yaml }}"
+    scenarios_truth: "{{ lookup('ansible.builtin.file', [directory_path, 'groundtruth.yaml'] | path_join) | from_yaml }}"
+  vars:
+    directory_path: |-
+      {{
+        [
+          role_path,
+          "files",
+          [
+            'scenario',
+            scenarios_identifier
+          ] | join('_')
+        ] |
+        path_join
+      }}

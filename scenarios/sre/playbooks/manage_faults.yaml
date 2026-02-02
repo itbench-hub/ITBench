@@ -1,0 +1,35 @@
+---
+- name: Manage SRE and FinOps Scenario Faults
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Ensure scenario id variable is defined
+      ansible.builtin.assert:
+        that: scenario_id is defined
+        fail_msg: scenario_id is not defined. Please run playbook with variable defined via CLI arguments.
+        success_msg: scenario_id is defined.
+      tags:
+        - inject_faults
+
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+  tasks:
+    - name: Import scenarios role
+      ansible.builtin.import_role:
+        name: scenarios
+      vars:
+        scenarios_identifier: "{{ scenario_id }}"
+
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        faults_injection_tasks: "{{ scenarios_spec.faults.injections[0] }}"

@@ -1,8 +1,5 @@
 # Makefile to run Ansible playbooks
 
-NUMBER_OF_RUNS = 1
-
-
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
@@ -46,18 +43,18 @@ regenerate_scenario_files: ## Overwrites scenario related files using library in
 
 .PHONY: deploy_tools
 deploy_tools: ## Deploys the observability and fault tools to cluster
-ifdef INCIDENT_NUMBER
+ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "install_tools" \
-		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
 else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "install_tools"
 endif
 
 .PHONY: undeploy_tools
 undeploy_tools: ## Undeploys the observability and fault tools from cluster
-ifdef INCIDENT_NUMBER
+ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools" \
-		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
 else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools"
 endif
@@ -72,56 +69,56 @@ remove_tools_crds: ## Removes all the observability and fault tools custom resou
 
 .PHONY: deploy_applications
 deploy_applications: ## Deploys the applications to cluster
-ifdef INCIDENT_NUMBER
+ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "install_applications" \
-		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
 else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "install_applications"
 endif
 
 .PHONY: undeploy_applications
 undeploy_applications: ## Undeploys the applications to cluster
-ifdef INCIDENT_NUMBER
+ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "uninstall_applications" \
-		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
 else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "uninstall_applications"
 endif
 
 .PHONY: deploy_recorders
 deploy_recorders: ## Deploys the data recorders to cluster
-ifdef INCIDENT_NUMBER
+ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_recorders.yaml --tags "install_recorders" \
-		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
 else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_recorders.yaml --tags "install_recorders"
 endif
 
 .PHONY: undeploy_recorders
 undeploy_recorders: ## Undeploys the data recorders to cluster
-ifdef INCIDENT_NUMBER
+ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_recorders.yaml --tags "uninstall_recorders" \
-		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
 else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_recorders.yaml --tags "uninstall_recorders"
 endif
 
-.PHONY: inject_incident_fault
-inject_incident_fault: ## Injects the fault used in a specific incident
-ifdef INCIDENT_NUMBER
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_incidents.yaml --tags "inject_faults" \
-		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+.PHONY: inject_scenario_fault
+inject_scenario_fault: ## Injects the fault used in a specific scenario
+ifdef SCENARIO_NUMBER
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_faults.yaml --tags "inject_faults" \
+		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	@echo "Missing INCIDENT_NUMBER argument. Please run this command with this variable."
+	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif
 
-.PHONY: remove_incident_fault
-remove_incident_fault: ## Removes the fault used in a specific incident
-ifdef INCIDENT_NUMBER
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_incidents.yaml --tags "remove_faults" \
-		--extra-vars "incident_id=$(INCIDENT_NUMBER)"
+.PHONY: remove_scenario_fault
+remove_scenario_fault: ## Removes resources used during fault injection
+ifdef SCENARIO_NUMBER
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_faults.yaml --tags "remove_faults" \
+		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	@echo "Missing INCIDENT_NUMBER argument. Please run this command with this variable."
+	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif
 
 .PHONY: create_environment
@@ -131,10 +128,10 @@ create_environment: deploy_tools deploy_applications ## Deploys tools and applic
 destroy_environment: undeploy_applications undeploy_tools ## Undeploys tools and applications to cluster
 
 .PHONY: start_incident
-start_incident: create_environment deploy_recorders inject_incident_fault ## Starts an incident by deploying a stack, applications, faults, and recorders for an incident
+start_incident: create_environment deploy_recorders inject_scenario_fault ## Starts an incident by deploying a stack, applications, faults, and recorders for an incident
 
 .PHONY: stop_incident
-stop_incident: undeploy_recorders remove_incident_fault destroy_environment ## Stops an incident by undeploying a stack, applications, faults, and recorders for an incident
+stop_incident: undeploy_recorders remove_scenario_fault destroy_environment ## Stops an incident by undeploying a stack, applications, faults, and recorders for an incident
 
 .PHONY: enable_agent_access
 enable_agent_access: ## Adds access controls for llm agent
@@ -166,7 +163,7 @@ deploy_observability_stack: ## DEPRECATED: Deploys the observability tools to cl
 	@echo "This command will be removed in a future version."
 	@echo "Executing 'make deploy_tools'..."
 	@echo ""
-	$(MAKE) deploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+	$(MAKE) deploy_tools $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
 
 .PHONY: undeploy_observability_stack
 undeploy_observability_stack: ## DEPRECATED: Undeploys observability tools to cluster
@@ -174,7 +171,7 @@ undeploy_observability_stack: ## DEPRECATED: Undeploys observability tools to cl
 	@echo "This command will be removed in a future version."
 	@echo "Executing 'make undeploy_environment_tools'..."
 	@echo ""
-	$(MAKE) undeploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+	$(MAKE) undeploy_tools $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
 
 .PHONY: deploy_finops_stack
 deploy_finops_stack: ## DEPRECATED: Deploys the finops tools to cluster
@@ -182,7 +179,7 @@ deploy_finops_stack: ## DEPRECATED: Deploys the finops tools to cluster
 	@echo "This command will be removed in a future version."
 	@echo "Executing 'make deploy_environment_tools'..."
 	@echo ""
-	$(MAKE) deploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+	$(MAKE) deploy_tools $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
 
 .PHONY: undeploy_finops_stack
 undeploy_finops_stack: ## DEPRECATED: Undeploys finops tools to cluster
@@ -190,7 +187,7 @@ undeploy_finops_stack: ## DEPRECATED: Undeploys finops tools to cluster
 	@echo "This command will be removed in a future version."
 	@echo "Executing 'make undeploy_environment_tools'..."
 	@echo ""
-	$(MAKE) undeploy_tools $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+	$(MAKE) undeploy_tools $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
 
 .PHONY: deploy_astronomy_shop
 deploy_astronomy_shop: ## DEPRECATED: Deploys the Astronomy Shop application
@@ -198,7 +195,7 @@ deploy_astronomy_shop: ## DEPRECATED: Deploys the Astronomy Shop application
 	@echo "This command will be removed in a future version."
 	@echo "Executing 'make deploy_applications'..."
 	@echo ""
-	$(MAKE) deploy_applications $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+	$(MAKE) deploy_applications $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
 
 .PHONY: undeploy_astronomy_shop
 undeploy_astronomy_shop: ## DEPRECATED: Undeploys the Astronomy Shop application
@@ -206,7 +203,7 @@ undeploy_astronomy_shop: ## DEPRECATED: Undeploys the Astronomy Shop application
 	@echo "This command will be removed in a future version."
 	@echo "Executing 'make undeploy_applications'..."
 	@echo ""
-	$(MAKE) undeploy_applications $(if $(INCIDENT_NUMBER),INCIDENT_NUMBER=$(INCIDENT_NUMBER))
+	$(MAKE) undeploy_applications $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
 
 .PHONY: deploy_hotel_reservation
 deploy_hotel_reservation: ## DEPRECATED: Deploys the Hotel Reservation application

@@ -38,9 +38,17 @@
   when:
     - not (scenarios_directory_paths[scenario.id] is directory)
 
+- name: Create scenarios roles meta argument specs file
+  ansible.builtin.copy:
+    content: "{{ scenarios_argument_specs | to_nice_yaml(indent=2) }}"
+    dest: "{{ [role_path, 'meta', 'argument_specs.yaml'] | path_join }}"
+    mode: "0644"
+  vars:
+    scenarios_argument_specs: "{{ lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') | from_yaml }}"
+
 - name: Generate scenario specs
   ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.template', 'templates/scenario.j2') | from_yaml | to_nice_yaml(indent=2, width=160) }}"
+    content: "{{ lookup('ansible.builtin.template', 'templates/manifests/scenario.j2') | from_yaml | to_nice_yaml(indent=2, width=160) }}"
     dest: "{{ scenarios_directory_paths[scenario.id] }}/scenario.yaml"
     force: "{{ scenarios_files_generator.options.overwrite | default(false) }}"
     mode: "0644"
@@ -60,7 +68,7 @@
 
 - name: Generate scenario ground truths
   ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.template', 'templates/groundtruth.j2') | from_yaml | to_nice_yaml(indent=2, width=160) }}"
+    content: "{{ lookup('ansible.builtin.template', 'templates/manifests/groundtruth.j2') | from_yaml | to_nice_yaml(indent=2, width=160) }}"
     dest: "{{ scenarios_directory_paths[scenario.id] }}/groundtruth.yaml"
     force: "{{ scenarios_files_generator.options.overwrite | default(false) }}"
     mode: "0644"
