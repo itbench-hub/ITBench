@@ -1,0 +1,38 @@
+{% for workload in workloads %}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ workload.metadata.name }}
+  namespace: {{ workload.metadata.namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: {{ workload.apiVersion }}
+    kind: {{ workload.kind }}
+    name: {{ workload.metadata.name }}
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+      selectPolicy: Min
+{% endfor %}
