@@ -67,7 +67,6 @@
           podSecurityContext:
             runAsNonRoot: true
             runAsUser: 1654
-          replicas: "{{ configuration.accounting.replicas }}"
           resources:
             requests:
               cpu: 50m
@@ -78,7 +77,6 @@
         ad:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.ad.replicas }}"
           resources:
             requests:
               cpu: 50m
@@ -89,7 +87,6 @@
         cart:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.cart.replicas }}"
           resources:
             requests:
               cpu: 40m
@@ -100,7 +97,6 @@
         checkout:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.checkout.replicas }}"
           resources:
             requests:
               cpu: 50m
@@ -111,7 +107,6 @@
         currency:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.currency.replicas }}"
           resources:
             requests:
               cpu: 25m
@@ -122,7 +117,6 @@
         email:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.email.replicas }}"
           resources:
             requests:
               cpu: 20m
@@ -143,7 +137,6 @@
         fraud-detection:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.fraud_detection.replicas }}"
           resources:
             requests:
               cpu: 75m
@@ -154,7 +147,6 @@
         frontend:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.frontend.replicas }}"
           resources:
             requests:
               cpu: 100m
@@ -165,7 +157,6 @@
         frontend-proxy:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.frontend_proxy.replicas }}"
           resources:
             requests:
               cpu: 25m
@@ -176,7 +167,6 @@
         image-provider:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.image_provider.replicas }}"
           podSecurityContext:
             runAsNonRoot: true
             runAsUser: 101
@@ -190,7 +180,6 @@
         kafka:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.kafka.replicas }}"
           resources:
             requests:
               cpu: 200m
@@ -218,7 +207,6 @@
         payment:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.payment.replicas }}"
           resources:
             requests:
               cpu: 20m
@@ -229,7 +217,6 @@
         postgresql:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.postgres.replicas }}"
           resources:
             requests:
               cpu: 30m
@@ -240,7 +227,6 @@
         product-catalog:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.product_catalog.replicas }}"
           resources:
             requests:
               cpu: 15m
@@ -251,7 +237,6 @@
         quote:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.quote.replicas }}"
           resources:
             requests:
               cpu: 5m
@@ -262,7 +247,6 @@
         recommendation:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.recommendation.replicas }}"
           resources:
             requests:
               cpu: 50m
@@ -273,7 +257,6 @@
         shipping:
           podAnnotations:
             openshift.io/required-scc: restricted-v2
-          replicas: "{{ configuration.shipping.replicas }}"
           resources:
             requests:
               cpu: 1m
@@ -288,7 +271,6 @@
             runAsGroup: 1000
             runAsNonRoot: true
             runAsUser: 999
-          replicas: "{{ configuration.valkey_cart.replicas }}"
           resources:
             requests:
               cpu: 5m
@@ -384,60 +366,35 @@
         enabled: false
     wait: true
 
+- name: Retrieve all deployments
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ helm_releases.otel_demo.namespace }}"
+  register: applications_otel_demo_deployments
+
+- name: Create HorizontalPodAutorscalers
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    template: templates/kubernetes/otel_demo/horizontalpodautoscalers.j2
+    state: present
+  vars:
+    workloads: |-
+      {{
+        applications_otel_demo_deployments.resources |
+        rejectattr('metadata.name', '==', 'load-generator') |
+        rejectattr('metadata.name', '==', 'otel-collector')
+      }}
+
 - name: Create Prometheus Rules
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
     template:
-      path: templates/otel_demo/prometheusrules.j2
+      path: templates/kubernetes/otel_demo/prometheusrules.j2
       variable_end_string: "]]"
       variable_start_string: "[["
     state: present
-
-- name: Create Horizontal Pod Autoscalers
-  kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: "{{ item | regex_replace('_', '-') }}"
-        namespace: "{{ helm_releases.otel_demo.namespace }}"
-      spec:
-        scaleTargetRef:
-          apiVersion: apps/v1
-          kind: Deployment
-          name: "{{ item | regex_replace('_', '-') }}"
-        minReplicas: 1
-        maxReplicas: 10
-        metrics:
-          - type: Resource
-            resource:
-              name: cpu
-              target:
-                type: Utilization
-                averageUtilization: 70
-          - type: Resource
-            resource:
-              name: memory
-              target:
-                type: Utilization
-                averageUtilization: 80
-        behavior:
-          scaleDown:
-            policies:
-              - type: Percent
-                value: 50
-                periodSeconds: 60
-              - type: Pods
-                value: 2
-                periodSeconds: 60
-            selectPolicy: Min
-    state: present
-  loop: "{{ configuration.keys() | list }}"
-  loop_control:
-    label: horizontalpodautoscaler/{{ item | regex_replace('_', '-') }}
-  when:
-    - configuration[item].autoscaling | default(false)
 
 - name: Pausing for 300 seconds to allow for the application to stabilize
   ansible.builtin.pause:

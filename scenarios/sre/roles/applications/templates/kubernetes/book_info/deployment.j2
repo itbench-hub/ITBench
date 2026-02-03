@@ -1,3 +1,4 @@
+{# Delimiters are changed to allow RenovateBot to track dependencies. #}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -7,7 +8,7 @@ metadata:
     app.kubernetes.io/managed-by: ITBench
     app.kubernetes.io/part-of: bookinfo
   name: load-generator-product-page
-  namespace: {{ applications_instances.bookinfo.namespace }}
+  namespace: [[ applications_instances.book_info.namespace ]]
 spec:
   replicas: 3
   selector:
@@ -24,9 +25,9 @@ spec:
     spec:
       containers:
         - name: generator
-          image: {{ container_image }}
+          image: registry.access.redhat.com/ubi10-minimal:10.1-1764604111
           command:
             - /bin/sh
           args:
             - -c
-            - "while true; do curl {{ [applications_bookinfo_gateway_endpoints.http, '/productpage'] | join }}; sleep 5; done"
+            - "while true; do curl [[ [applications_book_info_gateway_endpoints.http, '/productpage'] | join ]]; sleep 5; done"
