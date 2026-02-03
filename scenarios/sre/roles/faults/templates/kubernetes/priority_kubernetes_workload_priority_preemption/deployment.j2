@@ -1,3 +1,4 @@
+{# Delimiters are changed to allow RenovateBot to track dependencies. #}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -5,9 +6,9 @@ metadata:
   labels:
     app.kubernetes.io/name: critical-data-collector
   name: critical-data-collector
-  namespace: {{ injection_task.args.kubernetesObject.metadata.namespace }}
+  namespace: [[ injection_task.args.kubernetesObject.metadata.namespace ]]
 spec:
-  replicas: {{ replicas + 1 }}
+  replicas: [[ replicas + 1 ]]
   selector:
     matchLabels:
       app.kubernetes.io/name: critical-data-collector
@@ -26,8 +27,8 @@ spec:
             - "sleep infinity"
           resources:
             requests:
-              cpu: {{ ((((faults_node.status.allocatable.cpu | int) - 1) / replicas) * 1000) }}m
+              cpu: [[ ((((faults_node.status.allocatable.cpu | int) - 1) / replicas) * 1000) ]]m
               memory: 1Mi
       nodeSelector:
-        "kubernetes.io/hostname": {{ faults_node.metadata.name }}
+        "kubernetes.io/hostname": [[ faults_node.metadata.name ]]
       priorityClassName: application-critical
