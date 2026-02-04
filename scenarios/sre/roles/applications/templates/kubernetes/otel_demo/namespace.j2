@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ applications_helm_releases.otel_demo.namespace }}
+{% if applications_cluster.platform == "openshift" %}
+  annotations:
+    openshift.io/sa.scc.mcs: s0:c30,c10
+    openshift.io/sa.scc.uid-range: 1/2000
+    openshift.io/sa.scc.supplemental-groups: 1/1000
+{% endif %}
+  labels:
+    it-bench/monitoring: "true"

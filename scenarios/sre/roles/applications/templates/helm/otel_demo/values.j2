@@ -1,0 +1,215 @@
+---
+components:
+  accounting:
+{% if applications_cluster.platform == "openshift" %}
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1654
+{% if applications_cluster.platform == "openshift" %}
+  ad:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  cart:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  checkout:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  currency:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  email:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  flagd:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  fraud-detection:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  frontend:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  frontend-proxy:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  image-provider:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 101
+{% if applications_cluster.platform == "openshift" %}
+  kafka:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+  load-generator:
+    envOverrides:
+      - name: LOCUST_BROWSER_TRAFFIC_ENABLED
+        value: |-
+          {{
+            applications_configuration.otel_demo.options.load_generation.browser_traffic |
+            default(false) |
+            string
+          }}
+      - name: LOCUST_SPAWN_RATE
+        value: |-
+          {{
+            applications_configuration.otel_demo.options.load_generation.users_spawn_rate |
+            default(5) |
+            string
+          }}
+      - name: LOCUST_USERS
+        value: |-
+          {{
+            applications_configuration.otel_demo.options.load_generation.users |
+            default(50) |
+            string
+          }}
+{% if applications_cluster.platform == "openshift" %}
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  payment:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  postgresql:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  product-catalog:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  quote:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  recommendation:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  shipping:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+  valkey-cart:
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+    podSecurityContext:
+      runAsGroup: 1000
+      runAsNonRoot: true
+      runAsUser: 999
+opentelemetry-collector:
+  config:
+    connectors:
+      spanmetrics:
+        dimensions:
+          - name: namespace
+            default: {{ applications_helm_releases.otel_demo.namespace }}
+    exporters:
+      clickhouse:
+        username: {{ tools_clickhouse_username }}
+        password: {{ tools_clickhouse_password }}
+        endpoint: {{ tools_clickhouse_endpoint }}:8123
+        logs_table_name: otel_demo_logs
+        traces_table_name: otel_demo_traces
+      opensearch:
+        http:
+          endpoint: http://opensearch-master.opensearch.svc.cluster.local:9200
+      otlp:
+        endpoint: {{ tools_jaeger_collector_otlp_grpc_endpoint }}
+      otlphttp/prometheus:
+        endpoint: {{ tools_prometheus_endpoint }}
+      prometheus:
+        endpoint: 0.0.0.0:8888
+    service:
+      pipelines:
+        logs:
+          exporters:
+            - clickhouse
+            - debug
+        metrics:
+          exporters:
+            - debug
+            - prometheus
+        traces:
+          exporters:
+            - clickhouse
+            - debug
+            - otlp
+            - spanmetrics
+      telemetry:
+        metrics:
+          level: detailed
+          readers:
+            - pull:
+                exporter:
+                  prometheus:
+                    host: 0.0.0.0
+                    port: 8889
+  serviceMonitor:
+    enabled: true
+    metricsEndpoints:
+      - port: metrics
+      - port: telemetry
+{% if applications_cluster.platform == "openshift" %}
+  podAnnotations:
+    openshift.io/required-scc: restricted-v2
+{% endif %}
+  ports:
+    jaeger-compact:
+      enabled: false
+    jaeger-thrift:
+      enabled: false
+    jaeger-grpc:
+      enabled: false
+    metrics:
+      enabled: true
+    telemetry:
+      enabled: true
+      containerPort: 8889
+      servicePort: 8889
+      protocol: TCP
+    zipkin:
+      enabled: false
+grafana:
+  enabled: false
+jaeger:
+  enabled: false
+opensearch:
+  enabled: false
+prometheus:
+  enabled: false
