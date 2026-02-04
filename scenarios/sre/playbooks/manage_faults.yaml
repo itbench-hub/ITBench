@@ -3,14 +3,6 @@
   hosts:
     - environment
   pre_tasks:
-    - name: Ensure scenario id variable is defined
-      ansible.builtin.assert:
-        that: scenario_id is defined
-        fail_msg: scenario_id is not defined. Please run playbook with variable defined via CLI arguments.
-        success_msg: scenario_id is defined.
-      tags:
-        - inject_faults
-
     - name: Import system role
       ansible.builtin.import_role:
         name: system
@@ -20,13 +12,21 @@
         system_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
   tasks:
-    - name: Import scenarios role
-      ansible.builtin.import_role:
-        name: scenarios
+    - name: Import faults role variables from scenario
       tags:
-        - always
-      vars:
-        scenarios_identifier: "{{ scenario_id }}"
+        - inject_faults
+      when:
+        - scenario_id is defined
+      block:
+        - name: Import scenarios role
+          ansible.builtin.import_role:
+            name: scenarios
+          vars:
+            scenarios_identifier: "{{ scenario_id }}"
+
+        - name: Create fault injections variable
+          ansible.builtin.set_fact:
+            faults_injection_tasks: "{{ scenarios_scenario.spec.faults[0].injections }}"
 
     - name: Import faults role
       ansible.builtin.import_role:
@@ -34,4 +34,3 @@
       vars:
         faults_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
-        faults_injection_tasks: "{{ scenarios_spec.faults.injections[0] }}"
