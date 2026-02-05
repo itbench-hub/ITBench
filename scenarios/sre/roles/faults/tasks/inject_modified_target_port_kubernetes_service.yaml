@@ -11,7 +11,7 @@
 - name: Validate that serivce exists
   ansible.builtin.assert:
     that:
-      - faults_service is defined
+      - faults_service.api_found
       - faults_service.resources | ansible.builtin.length == 1
     fail_msg: Unable to find service. Please verify that the service exists.
     success_msg: Found service.
@@ -21,7 +21,7 @@
     faults_port: |-
       {{
         faults_service.resources[0].spec.ports |
-        community.general.json_query("[?targetPort==injection_task.args.targetPort]")
+        selectattr('targetPort', '==', injection_task.args.targetPort)
       }}
 
 - name: Validate that port exists

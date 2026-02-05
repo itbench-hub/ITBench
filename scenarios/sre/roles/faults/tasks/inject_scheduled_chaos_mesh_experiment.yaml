@@ -21,7 +21,7 @@
         }}
     state: present
 
-- name: Retrieve newly created schedule
+- name: Extract experiment information from schedule
   kubernetes.core.k8s_info:
     apiVersion: "{{ injection_task.args.kubernetesObject.apiVersion }}"
     kind: "{{ injection_task.args.kubernetesObject.kind }}"
@@ -30,6 +30,7 @@
     namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
   register: faults_schedule
   until:
+    - faults_schedule.api_found
     - faults_schedule.resources | ansible.builtin.length == 1
     - faults_schedule.resources[0].status.active is defined
     - faults_schedule.resources[0].status.active | ansible.builtin.length == 1
@@ -38,16 +39,12 @@
 
 - name: Wait for experiment to be injected
   kubernetes.core.k8s_info:
-    api_version: "{{ experiment.apiVersion }}"
-    kind: "{{ experiment.kind }}"
+    api_version: "{{ faults_schedule.resources[0].status.active[0].apiVersion }}"
+    kind: "{{ faults_schedule.resources[0].status.active[0].kind }}"
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    name: "{{ experiment.name }}"
-    namespace: "{{ experiment.namespace }}"
+    name: "{{ faults_schedule.resources[0].status.active[0].name }}"
+    namespace: "{{ faults_schedule.resources[0].status.active[0].namespace }}"
     wait: true
     wait_condition:
       status: "True"
       type: AllInjected
-  loop: "{{ faults_schedule.resources[0].status.active }}"
-  loop_control:
-    label: "{{ experiment.kind | lower }}/{{ experiment.name }}"
-    loop_var: experiment

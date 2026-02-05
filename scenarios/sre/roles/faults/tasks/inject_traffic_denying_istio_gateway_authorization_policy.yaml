@@ -11,7 +11,7 @@
 - name: Validate that gateway exists
   ansible.builtin.assert:
     that:
-      - faults_gateway is defined
+      - faults_gateway.api_found
       - faults_gateway.resources | ansible.builtin.length == 1
     fail_msg: Unable to find gateway. Please verify that the gateway exists.
     success_msg: Found gateway.
@@ -20,8 +20,7 @@
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     state: present
-    template:
-      path: templates/kubernetes/traffic_denying_istio_gateway_authorization_policy/authorizationpolicy.j2
+    template: templates/kubernetes/traffic_denying_istio_gateway_authorization_policy/authorizationpolicy.j2
     wait: true
     wait_condition:
       reason: Accepted

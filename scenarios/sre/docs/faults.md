@@ -1426,7 +1426,7 @@ See the scenario ground truth file where this fault is invoked.
             "properties": {
                 "apiVersion": {
                     "enum": [
-                        "gateway.networking.k8s.io"
+                        "gateway.networking.k8s.io/v1"
                     ],
                     "type": "string"
                 },

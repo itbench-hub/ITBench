@@ -11,10 +11,25 @@
 - name: Validate that workload exists
   ansible.builtin.assert:
     that:
-      - faults_workload is defined
+      - faults_workload.api_found
       - faults_workload.resources | ansible.builtin.length == 1
     fail_msg: Unable to find workload. Please verify that the workload exists.
     success_msg: Found workload.
+
+- name: Retrieve container
+  ansible.builtin.set_fact:
+    faults_container: |-
+      {{
+        faults_workload.resources[0].spec.template.spec.containers |
+        selectattr('name', '==', injection_task.args.container.name)
+      }}
+
+- name: Validate that container exists
+  ansible.builtin.assert:
+    that:
+      - faults_container | ansible.builtin.length == 1
+    fail_msg: Unable to find container. Please verify that the container exists for workload.
+    success_msg: Found container.
 
 - name: Create ConfigMap
   kubernetes.core.k8s:
