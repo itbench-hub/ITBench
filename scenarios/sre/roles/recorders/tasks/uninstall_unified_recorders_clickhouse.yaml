@@ -9,13 +9,9 @@
       - app.kubernetes.io/name = clickhouse-unified-recorder
       - app.kubernetes.io/part-of = it-bench
   register: recorders_clickhouse_pods_info
-  until:
-    - recorders_clickhouse_pods_info.resources | length >= 1
-    - (recorders_clickhouse_pods_info.resources[0].status.phase | default('')) == 'Running'
-    - (recorders_clickhouse_pods_info.resources[0].status.containerStatuses | default([])) | length > 0
-    - recorders_clickhouse_pods_info.resources[0].status.containerStatuses[0].ready | default(false)
-  retries: 20
-  delay: 15
+
+# NOTE: The shell command is used over the Ansible module because this recorder
+#       tends to suffer from timeout issues during the export process.
 
 - name: Ensure local directory exists
   ansible.builtin.file:
@@ -26,21 +22,29 @@
     - recorders_clickhouse_pods_info.resources | length == 1
 
 - name: Copy records directory from pod
-  kubernetes.core.k8s_cp:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    local_path: /tmp/observability_information_from_clickhouse
-    namespace: "{{ recorders_clickhouse_pods_info.resources[0].metadata.namespace }}"
-    pod: "{{ recorders_clickhouse_pods_info.resources[0].metadata.name }}"
-    remote_path: /opt/app-root/src/records
-    state: from_pod
+  ansible.builtin.shell: |
+    set -o pipefail
+    kubectl exec \
+      --kubeconfig={{ recorders_cluster.kubeconfig | ansible.builtin.expanduser }} \
+      -n {{ recorders_clickhouse_pods_info.resources[0].metadata.namespace }} \
+      {{ recorders_clickhouse_pods_info.resources[0].metadata.name }} \
+      -c recorder \
+      -- tar cf - -C /opt/app-root/src/records --exclude='lost+found' . | \
+    tar xf - -C /tmp/observability_information_from_clickhouse/
+  args:
+    executable: /bin/bash
+  register: recorders_clickhouse_copy_output
+  changed_when: recorders_clickhouse_copy_output.rc == 0
   when:
     - recorders_clickhouse_pods_info.resources | length == 1
 
 - name: Uninstall ClickHouse unified recorder
   kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: StatefulSet
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    name: clickhouse-unified-recorder
     namespace: "{{ recorders_namespace.name }}"
-    src: files/unified/clickhouse/statefulset.yaml
     state: absent
     wait: true
 
@@ -49,19 +53,6 @@
     api_version: v1
     delete_all: true
     kind: ConfigMap
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    namespace: "{{ recorders_namespace.name }}"
-    label_selectors:
-      - app.kubernetes.io/name = clickhouse-unified-recorder
-      - app.kubernetes.io/part-of = it-bench
-    state: absent
-    wait: true
-
-- name: Delete PersistentVolumeClaims from StatefulSet
-  kubernetes.core.k8s:
-    api_version: v1
-    delete_all: true
-    kind: PersistentVolumeClaim
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     namespace: "{{ recorders_namespace.name }}"
     label_selectors:

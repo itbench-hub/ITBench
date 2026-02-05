@@ -23,9 +23,11 @@
 
 - name: Uninstall Jaeger Traces Recorder
   kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: StatefulSet
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    name: jaeger-traces-recorder
     namespace: "{{ recorders_namespace.name }}"
-    src: files/traces/jaeger/statefulset.yaml
     state: absent
     wait: true
 
