@@ -10,7 +10,7 @@ help: ## Display this help.
 .PHONY: deps
 deps: ## Installs dependencies
 	uv sync
-	uv run ansible-galaxy install -r requirements.yaml
+	uv run ansible-galaxy install -r requirements.yaml --force
 
 .PHONY: pre_commit_hooks
 pre_commit_hooks: ## Installs pre-commit hooks
