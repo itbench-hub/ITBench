@@ -9,21 +9,6 @@
       - app.kubernetes.io/name = clickhouse-unified-recorder
       - app.kubernetes.io/part-of = it-bench
   register: recorders_clickhouse_pods_info
-  until:
-    - recorders_clickhouse_pods_info.resources | length >= 1
-    - (recorders_clickhouse_pods_info.resources[0].status.phase | default('')) == 'Running'
-    - (recorders_clickhouse_pods_info.resources[0].status.containerStatuses | default([])) | length > 0
-    - recorders_clickhouse_pods_info.resources[0].status.containerStatuses[0].ready | default(false)
-  retries: 20
-  delay: 15
-
-- name: Ensure local directory exists
-  ansible.builtin.file:
-    path: /tmp/observability_information_from_clickhouse
-    state: directory
-    mode: "0755"
-  when:
-    - recorders_clickhouse_pods_info.resources | length == 1
 
 - name: Copy records directory from pod
   kubernetes.core.k8s_cp:
@@ -49,19 +34,6 @@
     api_version: v1
     delete_all: true
     kind: ConfigMap
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    namespace: "{{ recorders_namespace.name }}"
-    label_selectors:
-      - app.kubernetes.io/name = clickhouse-unified-recorder
-      - app.kubernetes.io/part-of = it-bench
-    state: absent
-    wait: true
-
-- name: Delete PersistentVolumeClaims from StatefulSet
-  kubernetes.core.k8s:
-    api_version: v1
-    delete_all: true
-    kind: PersistentVolumeClaim
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     namespace: "{{ recorders_namespace.name }}"
     label_selectors:
