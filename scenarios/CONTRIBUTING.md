@@ -21,7 +21,7 @@ This project requires the use of the following tools:
 
 - [Ansible Lint](https://github.com/ansible/ansible-lint)
 - [commitizen](https://github.com/commitizen-tools/commitizen)
-- [detect-secrets](https://github.com/Yelp/detect-secrets)
+- [detect-secrets](https://github.com/IBM/detect-secrets)
 - [pre-commit](https://github.com/pre-commit/pre-commit)
 
 These tools are installed through the process mentioned [here](#environment-set-up-guide).
