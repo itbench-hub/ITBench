@@ -17,13 +17,17 @@ spec:
     spec:
       containers:
         - name: recorder
-          image: {{ container_image }}
+          image: registry.access.redhat.com/ubi10/python-312-minimal:10.1-1770208168
           command:
             - /bin/sh
           args:
             - -c
             - "python3.12 -m pip install -r ~/deps/requirements.txt && python3.12 ~/scripts/gather.py"
-          env: {{ container_environment_variables }}
+          env:
+            - name: KUBERNETES_TOPOLOGY_MONITOR_ENDPOINT
+              value: [[ tools_kubernetes_topology_monitor_endpoint ]]
+            - name: FILENAME_ANNOTATION
+              value: [[ recorders_awx_topology_filename_prefix | default("") ]]
           resources:
             requests:
               cpu: 100m

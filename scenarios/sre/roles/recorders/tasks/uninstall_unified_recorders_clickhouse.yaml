@@ -23,9 +23,11 @@
 
 - name: Uninstall ClickHouse unified recorder
   kubernetes.core.k8s:
+    api_version: apps/v1
+    kind: StatefulSet
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    name: clickhouse-unified-recorder
     namespace: "{{ recorders_namespace.name }}"
-    src: files/unified/clickhouse/statefulset.yaml
     state: absent
     wait: true
 

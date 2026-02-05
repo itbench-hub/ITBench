@@ -15,20 +15,6 @@
     tools_cluster:
       kubeconfig: "{{ recorders_cluster.kubeconfig }}"
 
-- name: Load statefulset information
-  ansible.builtin.set_fact:
-    recorders_unified_clickhouse_statefulset: "{{ lookup('ansible.builtin.file', 'files/unified/clickhouse/statefulset.yaml') | from_yaml }}"
-
-- name: Create ClickHouse-based unified recorder environment list
-  ansible.builtin.set_fact:
-    recorders_clickhouse_env_vars:
-      - name: CLICKHOUSE_ENDPOINT
-        value: "{{ tools_clickhouse_endpoint }}"
-      - name: CLICKHOUSE_USERNAME
-        value: "{{ tools_clickhouse_username }}"
-      - name: CLICKHOUSE_PASSWORD
-        value: "{{ tools_clickhouse_password }}"
-
 - name: Create ConfigMap with Python script
   kubernetes.core.k8s:
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
@@ -43,7 +29,10 @@
   kubernetes.core.k8s:
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     namespace: "{{ recorders_namespace.name }}"
-    template: templates/unified/clickhouse/statefulset.j2
+    template:
+      path: templates/unified/clickhouse/statefulset.j2
+      variable_end_string: "]]"
+      variable_start_string: "[["
     state: present
   register: recorders_clickhouse_workload
   vars:

@@ -21,13 +21,19 @@ spec:
     spec:
       containers:
         - name: recorder
-          image: {{ container_image }}
+          image: registry.access.redhat.com/ubi10/python-312-minimal:10.1-1770208168
           command:
             - /bin/sh
           args:
             - -c
             - "python3.12 -m pip install -r ~/deps/requirements.txt && python3.12 ~/scripts/gather.py && echo 'Script completed, waiting for data extraction...' && sleep infinity"
-          env: {{ container_environment_variables }}
+          env:
+            - name: CLICKHOUSE_ENDPOINT
+              value: [[ tools_clickhouse_endpoint ]]
+            - name: CLICKHOUSE_USERNAME
+              value: [[ tools_clickhouse_username ]]
+            - name: CLICKHOUSE_PASSWORD
+              value: [[ tools_clickhouse_password ]]
           resources:
             requests:
               cpu: 300m
