@@ -10,14 +10,31 @@
       - app.kubernetes.io/part-of = it-bench
   register: recorders_clickhouse_pods_info
 
+# NOTE: The shell command is used over the Ansible module because this recorder
+#       tends to suffer from timeout issues during the export process.
+
+- name: Ensure local directory exists
+  ansible.builtin.file:
+    path: /tmp/observability_information_from_clickhouse
+    state: directory
+    mode: "0755"
+  when:
+    - recorders_clickhouse_pods_info.resources | length == 1
+
 - name: Copy records directory from pod
-  kubernetes.core.k8s_cp:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    local_path: /tmp/observability_information_from_clickhouse
-    namespace: "{{ recorders_clickhouse_pods_info.resources[0].metadata.namespace }}"
-    pod: "{{ recorders_clickhouse_pods_info.resources[0].metadata.name }}"
-    remote_path: /opt/app-root/src/records
-    state: from_pod
+  ansible.builtin.shell: |
+    set -o pipefail
+    kubectl exec \
+      --kubeconfig={{ recorders_cluster.kubeconfig | ansible.builtin.expanduser }} \
+      -n {{ recorders_clickhouse_pods_info.resources[0].metadata.namespace }} \
+      {{ recorders_clickhouse_pods_info.resources[0].metadata.name }} \
+      -c recorder \
+      -- tar cf - -C /opt/app-root/src/records --exclude='lost+found' . | \
+    tar xf - -C /tmp/observability_information_from_clickhouse/
+  args:
+    executable: /bin/bash
+  register: recorders_clickhouse_copy_output
+  changed_when: recorders_clickhouse_copy_output.rc == 0
   when:
     - recorders_clickhouse_pods_info.resources | length == 1
 
