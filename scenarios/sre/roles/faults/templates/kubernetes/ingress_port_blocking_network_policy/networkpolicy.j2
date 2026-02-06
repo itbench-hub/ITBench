@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ injection_task.args.kubernetesObject.metadata.name + "-ingress" }}
+  name: {{ [injection_task.args.kubernetesObject.metadata.name, "ingress"] | ansible.builtin.join("-") }}
   namespace: {{ injection_task.args.kubernetesObject.metadata.namespace }}
 spec:
   podSelector:

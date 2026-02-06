@@ -937,31 +937,18 @@ kubectl -n bookinfo edit deployment reviews-v3
 
 Step 1
 
-- Retrieve and review the configuration of the resource quota(s) in the affected namespace.
-
-```shell
-kubectl -n otel-demo get resourcequota
-```
-
-OR
-
 - Manually edit the manifest(s) and increase the values of the resource quota(s).
 
 ```shell
-kubectl -n otel-demo edit resourcequota otel-demo
+kubectl -n otel-demo edit resourcequota memory
 ```
 
 OR
 
-- Retrieve and review the configuration of the resource quota(s) in the affected namespace.
-
-```shell
-kubectl -n otel-demo get resourcequota
-```
 - Delete the offending resource quota(s) if it is no longer required.
 
 ```shell
-kubectl -n otel-demo delete resourcequota otel-demo
+kubectl -n otel-demo delete resourcequota memory
 ```
 ### Scenario 105
 

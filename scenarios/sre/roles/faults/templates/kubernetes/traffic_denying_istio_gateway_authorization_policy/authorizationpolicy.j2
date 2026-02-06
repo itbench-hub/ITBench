@@ -2,7 +2,7 @@
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
-  name: {{ injection_task.args.kubernetesObject.metadata.name + "deny" }}
+  name: {{ [injection_task.args.kubernetesObject.metadata.name, "deny"] | ansible.builtin.join("-") }}
   namespace: {{ injection_task.args.kubernetesObject.metadata.namespace }}
 spec:
   action: DENY
