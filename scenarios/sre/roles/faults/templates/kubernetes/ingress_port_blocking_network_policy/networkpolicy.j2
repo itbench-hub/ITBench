@@ -2,8 +2,8 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ [faults_workload.resources[0].metadata.name, "ingress"] | join("-") }}
-  namespace: {{ faults_workload.resources[0].metadata.namespace }}
+  name: {{ injection_task.args.kubernetesObject.metadata.name + "-ingress" }}
+  namespace: {{ injection_task.args.kubernetesObject.metadata.namespace }}
 spec:
   podSelector:
     matchLabels: {{ faults_workload.resources[0].spec.template.metadata.labels }}

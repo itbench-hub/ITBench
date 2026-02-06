@@ -2,14 +2,14 @@
 apiVersion: security.istio.io/v1
 kind: AuthorizationPolicy
 metadata:
-  name: {{ faults_gateway.resources[0].metadata.name }} + "-deny"
-  namespace: {{ faults_gateway.resources[0].metadata.name }}
+  name: {{ injection_task.args.kubernetesObject.metadata.name + "deny" }}
+  namespace: {{ injection_task.args.kubernetesObject.metadata.namespace }}
 spec:
   action: DENY
   targetRef:
     group: gateway.networking.k8s.io
     kind: Gateway
-    name: {{ faults_gateway.resources[0].metadata.name }}
+    name: {{ injection_task.args.kubernetesObject.metadata.name }}
   rules:
     - to:
         - operation:
