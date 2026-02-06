@@ -1,16 +1,15 @@
 ---
-- name: Validate scenario library index
-  ansible.utils.validate:
-    data: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/index.json') | from_json }}"
-    criteria: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/schema.json') | from_json }}"
-    engine: ansible.utils.jsonschema
+- name: Load scenarios library index and schema
+  ansible.builtin.set_fact:
+    documentation_scenarios_library: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/index.json') | from_json }}"
+    documentation_scenarios_schema: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/schema.json') | from_json }}"
 
 - name: Generate map for faults based on fault id
   ansible.builtin.set_fact:
     documentation_faults: "{{ (documentation_faults | default({})) | combine({fault.id: fault}) }}"
   loop: "{{ lookup('ansible.builtin.file', 'files/library/faults/index.json') | from_json }}"
   loop_control:
-    label: fault/{{ fault.name }}
+    label: fault/{{ fault.id }}
     loop_var: fault
 
 - name: Generate map for waiters based on waiter id
@@ -18,7 +17,7 @@
     documentation_waiters: "{{ (documentation_waiters | default({})) | combine({waiter.id: waiter}) }}"
   loop: "{{ lookup('ansible.builtin.file', 'files/library/waiters/index.json') | from_json }}"
   loop_control:
-    label: waiter/{{ waiter.name }}
+    label: waiter/{{ waiter.id }}
     loop_var: waiter
 
 - name: Generate list of scenario objects for validation
@@ -51,7 +50,17 @@
           )
         )
       }}
-  loop: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/index.json') | from_json }}"
+  loop: "{{ documentation_scenarios_library }}"
+  loop_control:
+    label: scenario-{{ scenario.id }}
+    loop_var: scenario
+
+- name: Validate scenarios library index
+  ansible.utils.validate:
+    data: "{{ scenario }}"
+    criteria: "{{ documentation_scenarios_schema }}"
+    engine: ansible.utils.jsonschema
+  loop: "{{ documentation_scenarios_library }}"
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
