@@ -4,16 +4,29 @@
     documentation_waiters_library: |
       {{
         (
-          documentation_waiters_library | default([])
+          documentation_waiters_library |
+          ansible.builtin.default([])
         ) +
         [
           (
             waiter |
-            combine({"id": waiter.name | lower | replace(" ", "-")})
+            ansible.builtin.combine(
+              {
+                "id": (
+                  waiter.name |
+                  ansible.builtin.lower |
+                  ansible.builtin.replace(" ", "-")
+                )
+              }
+            )
           )
         ]
       }}
-  loop: "{{ lookup('ansible.builtin.file', 'files/library/waiters/index.json') | from_json }}"
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/waiters/index.json") |
+      ansible.builtin.from_json
+    }}
   loop_control:
     label: waiter/{{ waiter.name }}
     loop_var: waiter
@@ -21,14 +34,28 @@
 - name: Validate unique ids for all waiters
   ansible.builtin.assert:
     that:
-      - (documentation_waiters_library | unique(attribute="id") | length) == (documentation_waiters_library | length)
+      - |-
+        (
+          documentation_waiters_library |
+          ansible.builtin.unique(attribute="id") |
+          ansible.builtin.length
+        ) ==
+        (
+          documentation_waiters_library |
+          ansible.builtin.length
+        )
     fail_msg: Duplicate id discovered in library index. Please ensure all waiters have a unique name or id value.
     success_msg: All waiters in library index have unique ids.
 
 - name: Generate waiters library index
   ansible.builtin.copy:
-    content: "{{ documentation_waiters_library | sort(attribute='name') | to_nice_json }}"
-    dest: "{{ [role_path, 'files', 'library', 'waiters', 'index.json'] | path_join }}"
+    content: |-
+      {{
+        documentation_waiters_library |
+        ansible.builtin.sort(attribute="name") |
+        ansible.builtin.to_nice_json
+      }}
+    dest: "{{ [role_path, 'files', 'library', 'waiters', 'index.json'] | ansible.builtin.path_join }}"
     mode: "0644"
 
 - name: Generate Waiters README
@@ -37,4 +64,8 @@
     dest: "{{ playbook_dir }}/../docs/waiters.md"
     mode: "0644"
   vars:
-    documentation_contents: "{{ lookup('ansible.builtin.file', 'files/library/waiters/index.json') | from_json }}"
+    documentation_contents: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/waiters/index.json") |
+        ansible.builtin.from_json
+      }}

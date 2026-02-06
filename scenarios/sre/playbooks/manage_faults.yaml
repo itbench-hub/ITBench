@@ -26,7 +26,11 @@
 
         - name: Create fault injections variable
           ansible.builtin.set_fact:
-            faults_injection_tasks: "{{ scenarios_scenario.spec.faults[0].injections | default([]) }}"
+            faults_injection_tasks: |-
+              {{
+                scenarios_scenario.spec.faults[0].injections |
+                ansible.builtin.default([])
+              }}
 
     - name: Import faults role
       ansible.builtin.import_role:

@@ -1,21 +1,47 @@
 ---
 - name: Load scenarios library index and schema
   ansible.builtin.set_fact:
-    documentation_scenarios_library: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/index.json') | from_json }}"
-    documentation_scenarios_schema: "{{ lookup('ansible.builtin.file', 'files/library/scenarios/schema.json') | from_json }}"
+    documentation_scenarios_library: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/scenarios/index.json") |
+        ansible.builtin.from_json
+      }}
+    documentation_scenarios_schema: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/scenarios/schema.json") |
+        ansible.builtin.from_json
+      }}
 
 - name: Generate map for faults based on fault id
   ansible.builtin.set_fact:
-    documentation_faults: "{{ (documentation_faults | default({})) | combine({fault.id: fault}) }}"
-  loop: "{{ lookup('ansible.builtin.file', 'files/library/faults/index.json') | from_json }}"
+    documentation_faults: |-
+      {{
+        documentation_faults |
+        ansible.builtin.default({}) |
+        ansible.builtin.combine({fault.id: fault})
+      }}
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/faults/index.json") |
+      ansible.builtin.from_json
+    }}
   loop_control:
     label: fault/{{ fault.id }}
     loop_var: fault
 
 - name: Generate map for waiters based on waiter id
   ansible.builtin.set_fact:
-    documentation_waiters: "{{ (documentation_waiters | default({})) | combine({waiter.id: waiter}) }}"
-  loop: "{{ lookup('ansible.builtin.file', 'files/library/waiters/index.json') | from_json }}"
+    documentation_waiters: |-
+      {{
+        documentation_waiters |
+        ansible.builtin.default({}) |
+        ansible.builtin.combine({waiter.id: waiter})
+      }}
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/waiters/index.json") |
+      ansible.builtin.from_json
+    }}
   loop_control:
     label: waiter/{{ waiter.id }}
     loop_var: waiter
@@ -25,28 +51,30 @@
     documentation_scenario_injections: |-
       {{
         (
-          documentation_scenario_injections | default([])
+          documentation_scenario_injections |
+          ansible.builtin.default([])
         ) +
         (
           [scenario.id] |
-          product(
+          ansible.builtin.product(
             scenario.disruptions |
             community.general.json_query("[*].injections") |
-            flatten
+            ansible.builtin.flatten
           )
         )
       }}
     documentation_scenario_waiters: |-
       {{
         (
-          documentation_scenario_waiters | default([])
+          documentation_scenario_waiters |
+          ansible.builtin.default([])
         ) +
         (
           [scenario.id] |
-          product(
+          ansible.builtin.product(
             scenario.disruptions |
             community.general.json_query("[*].waitFor") |
-            flatten
+            ansible.builtin.flatten
           )
         )
       }}

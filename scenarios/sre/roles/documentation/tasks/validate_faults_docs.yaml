@@ -1,8 +1,16 @@
 ---
 - name: Load faults library index and schema
   ansible.builtin.set_fact:
-    documentation_faults_library: "{{ lookup('ansible.builtin.file', 'files/library/faults/index.json') | from_json }}"
-    documentation_faults_schema: "{{ lookup('ansible.builtin.file', 'files/library/faults/schema.json') | from_json }}"
+    documentation_faults_library: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/faults/index.json") |
+        ansible.builtin.from_json
+      }}
+    documentation_faults_schema: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/faults/schema.json") |
+        ansible.builtin.from_json
+      }}
 
 - name: Validate faults library index
   ansible.utils.validate:

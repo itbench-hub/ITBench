@@ -1,8 +1,16 @@
 ---
 - name: Load waiters library index and schema
   ansible.builtin.set_fact:
-    documentation_waiters_library: "{{ lookup('ansible.builtin.file', 'files/library/waiters/index.json') | from_json }}"
-    documentation_waiters_schema: "{{ lookup('ansible.builtin.file', 'files/library/waiters/schema.json') | from_json }}"
+    documentation_waiters_library: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/waiters/index.json") |
+        ansible.builtin.from_json
+      }}
+    documentation_waiters_schema: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/waiters/schema.json") |
+        ansible.builtin.from_json
+      }}
 
 - name: Validate waiters library index
   ansible.utils.validate:

@@ -1,8 +1,16 @@
 ---
 - name: Load applications library index and schema
   ansible.builtin.set_fact:
-    documentation_applications_library: "{{ lookup('ansible.builtin.file', 'files/library/applications/index.json') | from_json }}"
-    documentation_applications_schema: "{{ lookup('ansible.builtin.file', 'files/library/applications/schema.json') | from_json }}"
+    documentation_applications_library: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/applications/index.json") |
+        ansible.builtin.from_json
+      }}
+    documentation_applications_schema: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/applications/schema.json") |
+        ansible.builtin.from_json
+      }}
 
 - name: Validate applications library index
   ansible.utils.validate:

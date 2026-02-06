@@ -106,7 +106,7 @@ endif
 .PHONY: inject_scenario_fault
 inject_scenario_fault: ## Injects the fault used in a specific scenario
 ifdef SCENARIO_NUMBER
-	uv run ansible-playbook -i inventory.yaml -vvv playbooks/manage_faults.yaml --tags "inject_faults" \
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_faults.yaml --tags "inject_faults" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."

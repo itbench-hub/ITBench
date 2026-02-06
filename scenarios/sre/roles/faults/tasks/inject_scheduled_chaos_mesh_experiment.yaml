@@ -11,7 +11,7 @@
       spec: |-
         {{
           injection_task.args.scheduleSpec |
-          combine(
+          ansible.builtin.combine(
             {
               "concurrencyPolicy": "Forbid",
               "historyLimit": 1,
@@ -23,7 +23,7 @@
 
 - name: Extract experiment information from schedule
   kubernetes.core.k8s_info:
-    apiVersion: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
     kind: "{{ injection_task.args.kubernetesObject.kind }}"
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     name: "{{ injection_task.args.kubernetesObject.metadata.name }}"

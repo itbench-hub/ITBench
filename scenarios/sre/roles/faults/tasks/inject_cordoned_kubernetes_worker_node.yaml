@@ -65,6 +65,7 @@
     namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
   register: faults_patched_workload
   until:
+    - faults_patched_workload.api_found
     - faults_patched_workload.resources | ansible.builtin.length == 1
     - faults_patched_workload.resources[0].status.availableReplicas == faults_patched_workload.resources[0].status.replicas
   delay: 15
