@@ -1,0 +1,65 @@
+---
+- name: Create Kubernetes objects
+  hosts:
+    - environment
+  tasks:
+    - name: Create namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: ingress-port-blocking-network-policy-test
+        state: present
+
+    - name: Create deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: compromised-workload
+            namespace: ingress-port-blocking-network-policy-test
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: compromised-workload
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: compromised-workload
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.1-1769677092
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+                    ports:
+                      - containerPort: 8080
+                        protocol: TCP
+        state: present
+        wait: true
+
+    - name: Create service
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: compromised-workload
+            namespace: ingress-port-blocking-network-policy-test
+          spec:
+            selector:
+              app.kubernetes.io/name: compromised-workload
+            ports:
+              - protocol: TCP
+                port: 8080
+                targetPort: 8080
+        state: present
