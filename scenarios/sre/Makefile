@@ -258,3 +258,19 @@ documentation: ## DEPRECATED: Generates documentation for all incidents
 injection_docs: ## DEPRECATED: Generates documentation for all fault injection
 	@echo "WARNING: 'make injection_docs' is deprecated."
 	@echo "This command will be removed in a future version."
+
+.PHONY: inject_incident_fault
+inject_incident_fault: ## DEPRECATED: Injects the fault used in a specific incident
+	@echo "WARNING: 'make inject_incident_fault is deprecated. Please use 'make inject_scenario_fault' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make inject_scenario_fault'..."
+	@echo ""
+	$(MAKE) inject_scenario_fault $(if $(INCIDENT_NUMBER),SCENARIO_NUMBER=$(INCIDENT_NUMBER))
+
+.PHONY: remove_incident_fault
+remove_incident_fault: ## DEPRECATED: Removes the fault used in a specific incident
+	@echo "WARNING: 'make remove_incident_fault is deprecated. Please use 'make remove_scenario_fault' instead."
+	@echo "This command will be removed in a future version."
+	@echo "Executing 'make remove_scenario_fault'..."
+	@echo ""
+	$(MAKE) remove_scenario_fault $(if $(INCIDENT_NUMBER),SCENARIO_NUMBER=$(INCIDENT_NUMBER))
