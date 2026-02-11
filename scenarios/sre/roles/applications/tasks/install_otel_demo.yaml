@@ -60,6 +60,31 @@
     values: "{{ lookup('ansible.builtin.template', 'templates/helm/otel_demo/values.j2') }}"
     wait: true
 
+- name: Retrieve all pods
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+  register: applications_otel_demo_pods
+
+- name: Wait for pods to reach ready state
+  kubernetes.core.k8s_info:
+    api_version: "{{ pod.apiVersion }}"
+    kind: "{{ pod.kind }}"
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    name: "{{ pod.metadata.name }}"
+    namespace: "{{ pod.metadata.namespace }}"
+    wait: true
+    wait_condition:
+      type: Ready
+      status: "True"
+    wait_timeout: 300
+  loop: "{{ otel_demo_pods.resources }}"
+  loop_control:
+    label: "pod/{{ pod.metadata.name }}"
+    loop_var: pod
+
 - name: Retrieve all deployments
   kubernetes.core.k8s_info:
     api_version: apps/v1
@@ -91,7 +116,3 @@
       variable_end_string: "]]"
       variable_start_string: "[["
     state: present
-
-- name: Pausing for 300 seconds to allow for the application to stabilize
-  ansible.builtin.pause:
-    seconds: 300
