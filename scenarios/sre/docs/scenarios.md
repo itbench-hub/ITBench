@@ -691,7 +691,7 @@ kubectl -n otel-demo delete authorizationpolicy frontend-deny
 
 **Faults Injected:**
 
-- [Unschedueable Kuberntes Workload Pod Anti Affinity Rule](./faults.md#Unschedueable-Kuberntes-Workload-Pod-Anti-Affinity-Rule)
+- [Unschedulable Kubernetes Workload Pod Anti Affinity Rule](./faults.md#Unschedulable-Kubernetes-Workload-Pod-Anti-Affinity-Rule)
 
 **Solution:**
 
@@ -757,7 +757,7 @@ kubectl -n otel-demo edit deployment email
 
 **Faults Injected:**
 
-- [Insufficent Kubernetes Workload Container Resources](./faults.md#Insufficent-Kubernetes-Workload-Container-Resources)
+- [Insufficient Kubernetes Workload Container Resources](./faults.md#Insufficient-Kubernetes-Workload-Container-Resources)
 
 **Solution:**
 
@@ -836,7 +836,7 @@ kubectl -n bookinfo edit namespace bookinfo-deny
 
 **Faults Injected:**
 
-- [Misconfigured Kuberntes Workload Container Readiness Probe](./faults.md#Misconfigured-Kuberntes-Workload-Container-Readiness-Probe)
+- [Misconfigured Kubernetes Workload Container Readiness Probe](./faults.md#Misconfigured-Kubernetes-Workload-Container-Readiness-Probe)
 
 **Solution:**
 
@@ -931,7 +931,7 @@ kubectl -n bookinfo edit deployment reviews-v3
 
 **Faults Injected:**
 
-- [Insufficent Kubernetes Resource Quota](./faults.md#Insufficent-Kubernetes-Resource-Quota)
+- [Insufficient Kubernetes Resource Quota](./faults.md#Insufficient-Kubernetes-Resource-Quota)
 
 **Solution:**
 

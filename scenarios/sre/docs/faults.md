@@ -12,11 +12,11 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Failing Name Resolution Kubernetes Workload DNS Policy](#Failing-Name-Resolution-Kubernetes-Workload-DNS-Policy) | Kubernetes | Deployment, Networking |
 | [Hanging Kubernetes Workload Init Container](#Hanging-Kubernetes-Workload-Init-Container) | Kubernetes | Deployment, Performance |
 | [Ingress Port Blocking Network Policy](#Ingress-Port-Blocking-Network-Policy) | Kubernetes | Deployment, Networking |
-| [Insufficent Kubernetes Resource Quota](#Insufficent-Kubernetes-Resource-Quota) | Kubernetes | Deployment, Performance |
-| [Insufficent Kubernetes Workload Container Resources](#Insufficent-Kubernetes-Workload-Container-Resources) | Kubernetes | Deployment, Performance |
+| [Insufficient Kubernetes Resource Quota](#Insufficient-Kubernetes-Resource-Quota) | Kubernetes | Deployment, Performance |
+| [Insufficient Kubernetes Workload Container Resources](#Insufficient-Kubernetes-Workload-Container-Resources) | Kubernetes | Deployment, Performance |
 | [Invalid Kubernetes Workload Container Command](#Invalid-Kubernetes-Workload-Container-Command) | Kubernetes | Deployment, Performance |
 | [Misconfigured Kubernetes Horizontal Pod Autoscaler](#Misconfigured-Kubernetes-Horizontal-Pod-Autoscaler) | Kubernetes | Deployment, Performance |
-| [Misconfigured Kuberntes Workload Container Readiness Probe](#Misconfigured-Kuberntes-Workload-Container-Readiness-Probe) | Kubernetes | Deployment, Performance |
+| [Misconfigured Kubernetes Workload Container Readiness Probe](#Misconfigured-Kubernetes-Workload-Container-Readiness-Probe) | Kubernetes | Deployment, Performance |
 | [Modified Kubernetes Workload Container Environment Variable](#Modified-Kubernetes-Workload-Container-Environment-Variable) | Kubernetes | Deployment, Performance |
 | [Modified Target Port Kubernetes Service](#Modified-Target-Port-Kubernetes-Service) | Kubernetes | Deployment, Networking |
 | [Nonexistent Kubernetes Workload Container Image](#Nonexistent-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
@@ -28,7 +28,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Strict Mutual TLS Istio Service Mesh Enforcement](#Strict-Mutual-TLS-Istio-Service-Mesh-Enforcement) | Kubernetes | Deployment, Networking |
 | [Traffic Denying Istio Gateway Authorization Policy](#Traffic-Denying-Istio-Gateway-Authorization-Policy) | Kubernetes | Deployment, Networking |
 | [Unassigned Kubernetes Workload Container Resource Limits](#Unassigned-Kubernetes-Workload-Container-Resource-Limits) | Kubernetes | Deployment, Performance |
-| [Unschedueable Kuberntes Workload Pod Anti Affinity Rule](#Unschedueable-Kuberntes-Workload-Pod-Anti-Affinity-Rule) | Kubernetes | Deployment, Performance |
+| [Unschedulable Kubernetes Workload Pod Anti Affinity Rule](#Unschedulable-Kubernetes-Workload-Pod-Anti-Affinity-Rule) | Kubernetes | Deployment, Performance |
 | [Unsupported Architecture Kubernetes Workload Container Image](#Unsupported-Architecture-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
 | [Valkey Workload Changed Password](#Valkey-Workload-Changed-Password) | Kubernetes | Authentication, Deployment |
 | [Valkey Workload Out of Memory](#Valkey-Workload-Out-of-Memory) | Kubernetes | Code, Deployment |
@@ -357,13 +357,13 @@ A fault is a solvable issue injected into an environment to create an incident.
     "type": "object"
 }
 ```
-### Insufficent Kubernetes Resource Quota
+### Insufficient Kubernetes Resource Quota
 
 **Description:** This fault injects a resource quota with hard resource requirements that are underprovisioned for the namespace.
 
 **Expectation:** The new pod(s) for the workload in the faulted namespace will enter the `Pending` state.
 
-**[Implementation](../roles/injections/tasks/inject_insufficent_kubernetes_resource_quota.yaml)**
+**[Implementation](../roles/injections/tasks/inject_insufficient_kubernetes_resource_quota.yaml)**
 
 **Firing Alerts**
 
@@ -424,13 +424,13 @@ A fault is a solvable issue injected into an environment to create an incident.
     "type": "object"
 }
 ```
-### Insufficent Kubernetes Workload Container Resources
+### Insufficient Kubernetes Workload Container Resources
 
 **Description:** This fault injects a insufficient resource configuration into a designated Kubernetes workload's container.
 
 **Expectation:** The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function for long periods.
 
-**[Implementation](../roles/injections/tasks/inject_insufficent_kubernetes_workload_container_resources.yaml)**
+**[Implementation](../roles/injections/tasks/inject_insufficient_kubernetes_workload_container_resources.yaml)**
 
 **Firing Alerts**
 
@@ -643,13 +643,13 @@ A fault is a solvable issue injected into an environment to create an incident.
     "type": "object"
 }
 ```
-### Misconfigured Kuberntes Workload Container Readiness Probe
+### Misconfigured Kubernetes Workload Container Readiness Probe
 
 **Description:** This fault injects a misconfigured readiness probe into a workload container. This probe blocks the pod from starting up.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state due to a `ContainersNotReady` reason for the `Ready` condition.
 
-**[Implementation](../roles/injections/tasks/inject_misconfigured_kuberntes_workload_container_readiness_probe.yaml)**
+**[Implementation](../roles/injections/tasks/inject_misconfigured_kubernetes_workload_container_readiness_probe.yaml)**
 
 **Firing Alerts**
 
@@ -1532,13 +1532,13 @@ See the scenario ground truth file where this fault is invoked.
     "type": "object"
 }
 ```
-### Unschedueable Kuberntes Workload Pod Anti Affinity Rule
+### Unschedulable Kubernetes Workload Pod Anti Affinity Rule
 
 **Description:** This fault injects an Inter-Pod Anti-Affinity which causes Kubernetes to be unable to schedule the pod.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will not start running.
 
-**[Implementation](../roles/injections/tasks/inject_unschedueable_kuberntes_workload_pod_anti_affinity_rule.yaml)**
+**[Implementation](../roles/injections/tasks/inject_unschedulable_kubernetes_workload_pod_anti_affinity_rule.yaml)**
 
 **Firing Alerts**
 
