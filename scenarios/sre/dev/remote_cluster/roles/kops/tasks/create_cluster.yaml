@@ -48,6 +48,71 @@
   register: kops_edit_output
   changed_when: kops_edit_output.rc == 0
 
+- name: Get cluster configuration
+  ansible.builtin.command:
+    argv:
+      - kops
+      - get
+      - cluster
+      - --name
+      - "{{ cluster_name }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - -o
+      - yaml
+  register: kops_cluster_config
+  changed_when: false
+
+- name: Save cluster configuration
+  ansible.builtin.copy:
+    content: "{{ kops_cluster_config.stdout }}"
+    dest: /tmp/{{ cluster_name }}-config.yaml
+    mode: "0644"
+
+- name: Add ebtables hook to cluster configuration
+  ansible.builtin.blockinfile:
+    path: /tmp/{{ cluster_name }}-config.yaml
+    marker: "  # {mark} ANSIBLE MANAGED BLOCK - ebtables"
+    insertafter: "^spec:"
+    block: |2
+        hooks:
+        - name: install-ebtables.service
+          before:
+            - kubelet.service
+          roles:
+            - Master
+            - Node
+          manifest: |
+            [Unit]
+            Description=Install ebtables and load kernel modules
+            Before=kubelet.service
+
+            [Service]
+            Type=oneshot
+            ExecStart=/bin/bash -c 'apt-get update -qq && apt-get install -y ebtables && modprobe ebtable_broute && modprobe ebtable_nat && grep -q ebtable_broute /etc/modules || echo ebtable_broute >> /etc/modules && grep -q ebtable_nat /etc/modules || echo ebtable_nat >> /etc/modules'
+            RemainAfterExit=yes
+
+            [Install]
+            WantedBy=multi-user.target
+
+- name: Apply updated cluster configuration
+  ansible.builtin.command:
+    argv:
+      - kops
+      - replace
+      - -f
+      - /tmp/{{ cluster_name }}-config.yaml
+      - --state
+      - "{{ kops_state_store }}"
+      - --force
+  register: kops_replace_output
+  changed_when: kops_replace_output.rc == 0
+
+- name: Remove cluster configuration file
+  ansible.builtin.file:
+    path: /tmp/{{ cluster_name }}-config.yaml
+    state: absent
+
 - name: Build cluster ({{ cluster_name }})
   ansible.builtin.command:
     argv:
