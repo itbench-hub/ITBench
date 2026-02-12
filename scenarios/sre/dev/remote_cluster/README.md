@@ -40,7 +40,7 @@ sudo dnf install jq
 
 1. Install Python dependencies. (Working directory is `remote_cluster`.)
 ```bash
-python -m pip install -r ../../requirements-dev.txt
+cd ../.. && make deps && cd -
 ```
 
 2. Create the group variables for the development host. The `kops_cluster.yaml` file contains the configuration needed to customize the kops deployment.
@@ -178,7 +178,37 @@ make create_awx_stack
 
 Exports the kubeconfig associated with the clusters orchestrated for the AWX run.
 
-### 3. Delete the clusters
+```bash
+make export_awx_kubeconfigs
+```
+
+### 3. Check cluster status (for debugging)
+
+If cluster creation encounters errors, you can check which clusters are problematic:
+
+```bash
+make check_awx_clusters
+```
+
+This command validates all AWX stack clusters and shows which ones have issues.
+
+To investigate a specific failed cluster:
+
+```bash
+CLUSTER_NAME=awx-exp-runner-head-aws.k8s.local make debug_cluster
+```
+
+This shows detailed validation output, node status, and non-running pods for the specified cluster.
+
+To fix a cluster by removing unjoined nodes:
+
+```bash
+CLUSTER_NAME=awx-exp-runner-rohan-runner-4-aws.k8s.local make fix_cluster
+```
+
+This automatically detects and removes nodes that haven't joined, then waits for kOps to create replacements.
+
+### 4. Delete the clusters
 
 ```bash
 make destroy_awx_stack
