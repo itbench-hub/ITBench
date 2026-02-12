@@ -40,10 +40,34 @@
   ansible.builtin.set_fact:
     faults_node: "{{ faults_worker_nodes.resources | ansible.builtin.random }}"
 
-- name: Create PriorityClasses
+- name: Create PriorityClass (high priority)
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    template: templates/kubernetes/priority_kubernetes_workload_priority_preemption/priorityclasses.j2
+    resource_definition:
+      apiVersion: scheduling.k8s.io/v1
+      kind: PriorityClass
+      metadata:
+        labels:
+          app.kubernetes.io/managed-by: ITBench
+        name: application-critical
+      value: 10000
+      globalDefault: false
+      description: High priorty class for application workloads
+    state: present
+
+- name: Create PriorityClass (lower priority)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: scheduling.k8s.io/v1
+      kind: PriorityClass
+      metadata:
+        labels:
+          app.kubernetes.io/managed-by: ITBench
+        name: application-non-critical
+      value: 1
+      globalDefault: false
+      description: Lower priorty class for application workloads
     state: present
 
 - name: Patch workload with priority class and assign to node
@@ -81,10 +105,41 @@
 - name: Create priority workload
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    template:
-      path: templates/kubernetes/priority_kubernetes_workload_priority_preemption/deployment.j2
-      variable_end_string: "]]"
-      variable_start_string: "[["
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          app.kubernetes.io/name: critical-data-collector
+        name: critical-data-collector
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        replicas: "{{ replicas + 1 }}"
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: critical-data-collector
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: critical-data-collector
+          spec:
+            containers:
+              - name: worker
+                # renovate: datasource=docker depName=registry.access.redhat.com/ubi10-minimal
+                image: registry.access.redhat.com/ubi10-minimal:10.1-1769677092
+                command:
+                  - /bin/sh
+                args:
+                  - -c
+                  - "sleep infinity"
+                resources:
+                  requests:
+                    cpu: "{{ ((((faults_node.status.allocatable.cpu | int) - 1) / replicas) * 1000) }}m"
+                    memory: 1Mi
+            nodeSelector:
+              "kubernetes.io/hostname": "{{ faults_node.metadata.name }}"
+            priorityClassName: application-critical
     state: present
+    wait: true
   vars:
     replicas: 20

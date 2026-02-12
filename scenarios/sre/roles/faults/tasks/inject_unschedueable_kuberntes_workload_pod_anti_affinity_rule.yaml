@@ -19,11 +19,34 @@
 - name: Create DaemonSet
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    template:
-      path: templates/kubernetes/unschedueable_kuberntes_workload_pod_anti_affinity_rule/daemonset.j2
-      variable_end_string: "]]"
-      variable_start_string: "[["
+    resource_definition:
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        labels:
+          app.kubernetes.io/name: application-operator
+        name: application-operator
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: application-operator
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: application-operator
+          spec:
+            containers:
+              - name: worker
+                # renovate: datasource=docker depName=registry.access.redhat.com/ubi10-minimal
+                image: registry.access.redhat.com/ubi10-minimal:10.1-1769677092
+                command:
+                  - /bin/sh
+                args:
+                  - -c
+                  - "sleep infinity"
     state: present
+    wait: true
 
 - name: Update workload containers
   kubernetes.core.k8s:
