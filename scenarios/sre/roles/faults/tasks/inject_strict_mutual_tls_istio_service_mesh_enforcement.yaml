@@ -19,7 +19,15 @@
 - name: Create PeerAuthentication
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    template: templates/kubernetes/strict_mutual_tls_istio_service_mesh_enforcement/peerauthentication.j2
+    resource_definition:
+      apiVersion: security.istio.io/v1
+      kind: PeerAuthentication
+      metadata:
+        name: mtls-strict
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        mtls:
+          mode: STRICT
     state: present
 
 - name: Update workload labels

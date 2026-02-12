@@ -34,7 +34,19 @@
 - name: Create PersistentVolumeClaim
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    template: templates/kubernetes/nonexistent_kubernetes_workload_persistent_volume_claim/persistentvolumeclaim.j2
+    resource_definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 25Mi
+        storageClassName: invalid-class-name
     state: present
 
 - name: Update workload containers

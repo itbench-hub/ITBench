@@ -19,7 +19,15 @@
 - name: Create ResourceQuota
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    template: templates/kubernetes/insufficent_kubernetes_resource_quota/resourcequota.j2
+    resource_definition:
+      apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: memory
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        hard:
+          memory: 1Gi
     state: present
 
 - name: Scale down workload

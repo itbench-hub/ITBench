@@ -19,8 +19,23 @@
 - name: Create authorization policy for gateway
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: security.istio.io/v1
+      kind: AuthorizationPolicy
+      metadata:
+        name: "{{ [faults_gateway.resources[0].metadata.name, 'deny'] | ansible.builtin.join('-') }}"
+        namespace: "{{ faults_gateway.resources[0].metadata.namespace }}"
+      spec:
+        action: DENY
+        targetRef:
+          group: gateway.networking.k8s.io
+          kind: Gateway
+          name: "{{ faults_gateway.resources[0].metadata.name }}"
+        rules:
+          - to:
+              - operation:
+                  methods: "{{ injection_task.args.httpMethods }}"
     state: present
-    template: templates/kubernetes/traffic_denying_istio_gateway_authorization_policy/authorizationpolicy.j2
     wait: true
     wait_condition:
       reason: Accepted
