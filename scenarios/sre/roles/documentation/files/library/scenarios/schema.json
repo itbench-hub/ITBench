@@ -25,6 +25,11 @@
         "disruptions": {
             "items": {
                 "properties": {
+                    "async": {
+                        "default": true,
+                        "description": "Enable faults to be injected asynchronously",
+                        "type": "boolean"
+                    },
                     "injections": {
                         "items": {
                             "properties": {
@@ -68,30 +73,60 @@
                             ],
                             "type": "object"
                         },
+                        "minItems": 1,
                         "type": "array"
                     },
                     "waitFor": {
-                        "items": {
-                            "properties": {
-                                "args": {
+                        "minProperties": 1,
+                        "properties": {
+                            "postInjection": {
+                                "items": {
+                                    "properties": {
+                                        "args": {
+                                            "type": "object"
+                                        },
+                                        "id": {
+                                            "enum": [
+                                                "pause-execution",
+                                                "restart-kubernetes-workload",
+                                                "scale-kubernetes-workload"
+                                            ],
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "args",
+                                        "id"
+                                    ],
                                     "type": "object"
                                 },
-                                "id": {
-                                    "enum": [
-                                        "pause-execution",
-                                        "restart-kubernetes-workload",
-                                        "scale-kubernetes-workload"
-                                    ],
-                                    "type": "string"
-                                }
+                                "type": "array"
                             },
-                            "required": [
-                                "args",
-                                "id"
-                            ],
-                            "type": "object"
+                            "preInjection": {
+                                "items": {
+                                    "properties": {
+                                        "args": {
+                                            "type": "object"
+                                        },
+                                        "id": {
+                                            "enum": [
+                                                "pause-execution",
+                                                "restart-kubernetes-workload",
+                                                "scale-kubernetes-workload"
+                                            ],
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "args",
+                                        "id"
+                                    ],
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            }
                         },
-                        "type": "array"
+                        "type": "object"
                     }
                 },
                 "type": "object"

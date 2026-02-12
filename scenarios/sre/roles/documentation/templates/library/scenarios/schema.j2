@@ -30,8 +30,13 @@ properties:
     items:
       type: object
       properties:
+        async:
+          description: Enable faults to be injected asynchronously
+          default: true
+          type: boolean
         injections:
           type: array
+          minItems: 1
           items:
             type: object
             required:
@@ -44,18 +49,35 @@ properties:
               args:
                 type: object
         waitFor:
-          type: array
-          items:
-            type: object
-            required:
-              - args
-              - id
-            properties:
-              id:
-                type: string
-                enum: {{ documentation_waiters.keys() }}
-              args:
+          type: object
+          minProperties: 1
+          properties:
+            preInjection:
+              type: array
+              items:
                 type: object
+                required:
+                  - args
+                  - id
+                properties:
+                  id:
+                    type: string
+                    enum: {{ documentation_waiters.keys() }}
+                  args:
+                    type: object
+            postInjection:
+              type: array
+              items:
+                type: object
+                required:
+                  - args
+                  - id
+                properties:
+                  id:
+                    type: string
+                    enum: {{ documentation_waiters.keys() }}
+                  args:
+                    type: object
   environment:
     type: object
     required:
