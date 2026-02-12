@@ -1,15 +1,27 @@
 ---
 - name: Include applications role variables for templating
   ansible.builtin.include_vars:
-    file: ../applications/defaults/main/helm_releases.yaml
+    file: |-
+      {{
+        [role_path, "..", "applications", "defaults", "main", "helm_releases.yaml"] |
+        ansible.builtin.path_join
+      }}
 
 - name: Include applications role variables for templating
   ansible.builtin.include_vars:
-    file: ../applications/defaults/main/instances.yaml
+    file: |-
+      {{
+        [role_path, "..", "applications", "defaults", "main", "instances.yaml"] |
+        ansible.builtin.path_join
+      }}
 
 - name: Include tools role variables for templating
   ansible.builtin.include_vars:
-    file: ../tools/defaults/main/helm_releases.yaml
+    file: |-
+      {{
+        [role_path, "..", "tools", "defaults", "main", "helm_releases.yaml"] |
+        ansible.builtin.path_join
+      }}
 
 - name: Create temporary directory for scenario templates
   ansible.builtin.tempfile:
@@ -67,28 +79,6 @@
   loop_control:
     label: waiter/{{ waiter.name }}
     loop_var: waiter
-
-- name: Validate unique ids for all scenarios
-  ansible.builtin.assert:
-    that:
-      - |-
-        (
-          scenarios |
-          ansible.builtin.unique(attribute="id") |
-          ansible.builtin.length
-        ) ==
-        (
-          scenarios |
-          ansible.builtin.length
-        )
-    fail_msg: Duplicate scenario id discovered in library index. Please ensure all scenarios have a unique id.
-    success_msg: All scenarios in library index have unique ids.
-  vars:
-    scenarios: |-
-      {{
-        lookup("ansible.builtin.template", "templates/library/scenarios/index.j2") |
-        ansible.builtin.from_yaml
-      }}
 
 - name: Generate variables for scenario library index templating
   ansible.builtin.set_fact:

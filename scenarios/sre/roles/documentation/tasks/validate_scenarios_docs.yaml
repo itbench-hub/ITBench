@@ -112,3 +112,19 @@
   loop_control:
     label: scenario-{{ group[0] }}/{{ group[1].id }}
     loop_var: group
+
+- name: Validate unique ids for all scenarios
+  ansible.builtin.assert:
+    that:
+      - |-
+        (
+          documentation_scenarios_library |
+          ansible.builtin.unique(attribute="id") |
+          ansible.builtin.length
+        ) ==
+        (
+          documentation_scenarios_library |
+          ansible.builtin.length
+        )
+    fail_msg: Duplicate scenario id discovered in library index. Please ensure all scenarios have a unique id.
+    success_msg: All scenarios in library index have unique ids.

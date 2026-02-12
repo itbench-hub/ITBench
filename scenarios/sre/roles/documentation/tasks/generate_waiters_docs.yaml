@@ -31,22 +31,6 @@
     label: waiter/{{ waiter.name }}
     loop_var: waiter
 
-- name: Validate unique ids for all waiters
-  ansible.builtin.assert:
-    that:
-      - |-
-        (
-          documentation_waiters_library |
-          ansible.builtin.unique(attribute="id") |
-          ansible.builtin.length
-        ) ==
-        (
-          documentation_waiters_library |
-          ansible.builtin.length
-        )
-    fail_msg: Duplicate id discovered in library index. Please ensure all waiters have a unique name or id value.
-    success_msg: All waiters in library index have unique ids.
-
 - name: Generate waiters library index
   ansible.builtin.copy:
     content: |-

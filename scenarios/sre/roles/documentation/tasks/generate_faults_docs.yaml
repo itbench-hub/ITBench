@@ -31,22 +31,6 @@
     label: fault/{{ fault.name }}
     loop_var: fault
 
-- name: Validate unique ids for all faults
-  ansible.builtin.assert:
-    that:
-      - |-
-        (
-          documentation_faults_library |
-          ansible.builtin.unique(attribute="id") |
-          ansible.builtin.length
-        ) ==
-        (
-          documentation_faults_library |
-          ansible.builtin.length
-        )
-    fail_msg: Duplicate id discovered in library index. Please ensure all faults have a unique name or id value.
-    success_msg: All fault in library index have unique ids.
-
 - name: Generate faults library index
   ansible.builtin.copy:
     content: |-

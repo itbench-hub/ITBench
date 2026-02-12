@@ -21,3 +21,19 @@
   loop_control:
     label: application/{{ application.id }}
     loop_var: application
+
+- name: Validate unique ids for all applications
+  ansible.builtin.assert:
+    that:
+      - |-
+        (
+          documentation_applications_library |
+          ansible.builtin.unique(attribute="id") |
+          ansible.builtin.length
+        ) ==
+        (
+          documentation_applications_library |
+          ansible.builtin.length
+        )
+    fail_msg: Duplicate id discovered in library index. Please ensure all applications have a unique name or id value.
+    success_msg: All applications in library index have unique ids.
