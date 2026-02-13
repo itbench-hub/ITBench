@@ -17,9 +17,9 @@
       auths:
         "{{ docker_registry.server }}":
           username: "{{ docker_registry.username }}"
-          password: "{{ docker_registry.password }}"
+          password: "{{ docker_registry.password }}"  # pragma: allowlist secret
           email: "{{ docker_registry.email }}"
-          auth: "{{ (docker_registry.username + ':' + docker_registry.password) | b64encode }}"
+          auth: "{{ (docker_registry.username + ':' + docker_registry.password) | b64encode }}"  # pragma: allowlist secret
 
 - name: Install Kyverno
   kubernetes.core.helm:
@@ -38,8 +38,8 @@
     kubeconfig: /tmp/{{ cluster_name }}.yaml
     kind: Deployment
     namespace: kyverno
-  register: kyverno_deployments
-  until: kyverno_deployments.resources | selectattr('status.availableReplicas', 'defined') | list | length > 0
+  register: kops_kyverno_deployments
+  until: kops_kyverno_deployments.resources | selectattr('status.availableReplicas', 'defined') | list | length > 0
   retries: 30
   delay: 10
 
@@ -51,10 +51,12 @@
     label_selectors:
       - app.kubernetes.io/component=admission-controller
       - app.kubernetes.io/instance=kyverno
-  register: kyverno_webhook_pods
+  register: kops_kyverno_webhook_pods
   until:
-    - kyverno_webhook_pods.resources | length > 0
-    - kyverno_webhook_pods.resources | map(attribute='status.containerStatuses', default=[]) | flatten | selectattr('ready', 'equalto', true) | list | length > 0
+    - kops_kyverno_webhook_pods.resources | length > 0
+    - >-
+      kops_kyverno_webhook_pods.resources | map(attribute='status.containerStatuses', default=[])
+      | flatten | selectattr('ready', 'equalto', true) | list | length > 0
   retries: 30
   delay: 10
 
@@ -81,4 +83,3 @@
   loop:
     - default
     - kube-system
-
