@@ -1,0 +1,84 @@
+---
+- name: Create Docker registry secret in default namespace
+  kubernetes.core.k8s:
+    kubeconfig: /tmp/{{ cluster_name }}.yaml
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: kubernetes.io/dockerconfigjson
+      metadata:
+        name: "regcred"
+        namespace: "default"
+      data:
+        .dockerconfigjson: "{{ dockerconfig | to_json | b64encode }}"
+  vars:
+    dockerconfig:
+      auths:
+        "{{ docker_registry.server }}":
+          username: "{{ docker_registry.username }}"
+          password: "{{ docker_registry.password }}"
+          email: "{{ docker_registry.email }}"
+          auth: "{{ (docker_registry.username + ':' + docker_registry.password) | b64encode }}"
+
+- name: Install Kyverno
+  kubernetes.core.helm:
+    name: kyverno
+    chart_ref: kyverno
+    chart_repo_url: https://kyverno.github.io/kyverno/
+    release_namespace: kyverno
+    create_namespace: true
+    kubeconfig: /tmp/{{ cluster_name }}.yaml
+    update_repo_cache: true
+    values_files:
+      - "{{ role_path }}/files/kyverno_values.yaml"
+
+- name: Wait for Kyverno to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: /tmp/{{ cluster_name }}.yaml
+    kind: Deployment
+    namespace: kyverno
+  register: kyverno_deployments
+  until: kyverno_deployments.resources | selectattr('status.availableReplicas', 'defined') | list | length > 0
+  retries: 30
+  delay: 10
+
+- name: Wait for Kyverno webhook to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: /tmp/{{ cluster_name }}.yaml
+    kind: Pod
+    namespace: kyverno
+    label_selectors:
+      - app.kubernetes.io/component=admission-controller
+      - app.kubernetes.io/instance=kyverno
+  register: kyverno_webhook_pods
+  until:
+    - kyverno_webhook_pods.resources | length > 0
+    - kyverno_webhook_pods.resources | map(attribute='status.containerStatuses', default=[]) | flatten | selectattr('ready', 'equalto', true) | list | length > 0
+  retries: 30
+  delay: 10
+
+- name: Apply Kyverno policy to sync secrets and add imagePullSecrets
+  kubernetes.core.k8s:
+    kubeconfig: /tmp/{{ cluster_name }}.yaml
+    state: present
+    src: "{{ role_path }}/files/add-pull-secret-policy.yaml"
+  register: kyverno_policy_result
+  until: kyverno_policy_result is not failed
+  retries: 5
+  delay: 15
+
+- name: Patch existing service accounts with imagePullSecrets
+  kubernetes.core.k8s:
+    kubeconfig: /tmp/{{ cluster_name }}.yaml
+    state: patched
+    kind: ServiceAccount
+    name: default
+    namespace: "{{ item }}"
+    definition:
+      imagePullSecrets:
+        - name: "regcred"
+  loop:
+    - default
+    - kube-system
+

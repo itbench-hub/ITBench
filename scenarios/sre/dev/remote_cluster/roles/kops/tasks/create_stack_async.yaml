@@ -406,3 +406,14 @@
     mode: cleanup
     jid: "{{ item.ansible_job_id }}"
   loop: "{{ kops_async_validate_results.results }}"
+
+- name: Setup Docker registry credentials
+  ansible.builtin.include_tasks:
+    file: setup_docker_registry.yaml
+  loop: "{{ stack_cluster_names }}"
+  loop_control:
+    loop_var: cluster_name
+  when:
+    - docker_registry is defined
+    - docker_registry.username is defined
+    - docker_registry.password is defined

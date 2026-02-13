@@ -170,8 +170,18 @@
   when:
     - kops_validate_output.rc == 0
 
+- name: Setup Docker registry credentials
+  ansible.builtin.include_tasks:
+    file: setup_docker_registry.yaml
+  when:
+    - kops_validate_output.rc == 0
+    - docker_registry is defined
+    - docker_registry.username is defined
+    - docker_registry.password is defined
+
 - name: Display SSH information
   ansible.builtin.debug:
     msg: "You can now SSH into any of the nodes of your cluster, (most likely) using {{ kops_cluster.ssh.public_key_path | regex_replace('\\.[^.]*$', '') }}."
   when:
     - kops_validate_output.rc == 0
+
