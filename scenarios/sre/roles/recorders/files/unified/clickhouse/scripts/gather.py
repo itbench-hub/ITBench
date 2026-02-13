@@ -980,7 +980,7 @@ def main():
         logger.info("LITE EXPORT (transformed + filtered)")
         logger.info("=" * 50)
 
-        namespaces = ["chaos-mesh", "otel-demo"]
+        namespaces = ["chaos-mesh", "otel-demo", "bookinfo"]
 
         logger.info(f"Fetching events (namespaces: {namespaces})...")
         events_lite_df = streamer.get_events_df(namespaces=namespaces, transform=True)
@@ -1001,6 +1001,11 @@ def main():
         logger.info("\nFetching metrics (namespace: otel-demo)...")
         pod_metrics_lite_df, service_metrics_lite_df = streamer.get_metrics_df(
             namespace="otel-demo", transform=True
+        )
+
+        logger.info("\nFetching metrics (namespace: bookinfo)...")
+        pod_metrics_bookinfo_lite_df, service_metrics_bookinfo_lite_df = streamer.get_metrics_df(
+            namespace="bookinfo", transform=True
         )
 
     except Exception as e:
