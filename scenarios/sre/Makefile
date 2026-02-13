@@ -133,6 +133,12 @@ start_incident: create_environment deploy_recorders inject_scenario_fault ## Sta
 .PHONY: stop_incident
 stop_incident: undeploy_recorders remove_scenario_fault destroy_environment ## Stops an incident by undeploying a stack, applications, faults, and recorders for an incident
 
+.PHONY: test_faults
+test_faults: ## Runs fault injection unit tests
+	@pushd roles/faults
+	uv run molecule test --all --report --command-borders
+	@popd
+
 .PHONY: enable_agent_access
 enable_agent_access: ## Adds access controls for llm agent
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "grant_access"
