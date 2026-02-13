@@ -166,6 +166,28 @@ stack:
     count: 20 # number of scenarios which are going to be run.
 ```
 
+### Optional: Private Docker Registry
+
+If your container images are hosted in a private Docker registry, you can configure the clusters to automatically set up registry access across all namespaces.
+
+Add the following to `group_vars/development/awx_stack.yaml`:
+
+```yaml
+docker_registry:
+  server: "docker.io"
+  username: "your-docker-username"
+  password: "your-docker-token-or-password"
+  email: "your-email@example.com"
+```
+
+When configured, cluster creation will automatically:
+
+1. Create a `regcred` image pull secret in the `default` namespace
+2. Install [Kyverno](https://kyverno.io/) to sync the `regcred` secret to all new namespaces
+3. Mutate all `ServiceAccount` resources to include `regcred` in their `imagePullSecrets`
+
+This step is optional. If `docker_registry` is not defined, the setup is skipped.
+
 ### 1. Create the clusters
 
 Let's say the count value in the above set was set to 20. This creation step leads to the creation of 21 clustes. One Kubernetes cluster referred to as the `head` cluster to which AWX would be installed to and then a cluster per scenario.
