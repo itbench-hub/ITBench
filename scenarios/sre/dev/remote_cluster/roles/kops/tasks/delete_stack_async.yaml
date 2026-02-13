@@ -88,14 +88,14 @@
   loop_control:
     label: "{{ vpc }}"
     loop_var: vpc
-  register: vpc_endpoints_info
+  register: kops_vpc_endpoints_info
 
 - name: Delete all VPC endpoints
   amazon.aws.ec2_vpc_endpoint:
     state: absent
     vpc_endpoint_id: "{{ endpoint.vpc_endpoint_id }}"
     region: "{{ kops_cluster.aws.region }}"
-  loop: "{{ vpc_endpoints_info.results | map(attribute='vpc_endpoints') | flatten | default([]) }}"
+  loop: "{{ kops_vpc_endpoints_info.results | map(attribute='vpc_endpoints') | flatten | default([]) }}"
   loop_control:
     label: "{{ endpoint.vpc_endpoint_id }}"
     loop_var: endpoint
@@ -134,8 +134,8 @@
   when:
     - kops_all_remaining_route_tables is defined
     - not (rt.associations | selectattr('main', 'equalto', true) | list)
-  register: route_table_delete_result
-  until: route_table_delete_result is succeeded or route_table_delete_result.msg is search("does not exist")
+  register: kops_route_table_delete_result
+  until: kops_route_table_delete_result is succeeded or kops_route_table_delete_result.msg is search("does not exist")
   retries: 3
   delay: 10
   ignore_errors: true

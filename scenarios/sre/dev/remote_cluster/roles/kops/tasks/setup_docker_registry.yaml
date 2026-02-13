@@ -17,9 +17,9 @@
       auths:
         "{{ docker_registry.server }}":
           username: "{{ docker_registry.username }}"
-          password: "{{ docker_registry.password }}"  # pragma: allowlist secret
+          password: "{{ docker_registry.password }}" # pragma: allowlist secret
           email: "{{ docker_registry.email }}"
-          auth: "{{ (docker_registry.username + ':' + docker_registry.password) | b64encode }}"  # pragma: allowlist secret
+          auth: "{{ (docker_registry.username + ':' + docker_registry.password) | b64encode }}" # pragma: allowlist secret
 
 - name: Install Kyverno
   kubernetes.core.helm:
@@ -65,8 +65,8 @@
     kubeconfig: /tmp/{{ cluster_name }}.yaml
     state: present
     src: "{{ role_path }}/files/add-pull-secret-policy.yaml"
-  register: kyverno_policy_result
-  until: kyverno_policy_result is not failed
+  register: kops_kyverno_policy_result
+  until: kops_kyverno_policy_result is not failed
   retries: 5
   delay: 15
 
