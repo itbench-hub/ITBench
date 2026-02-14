@@ -958,20 +958,35 @@ def main():
         logger.info("FULL EXPORT (raw)")
         logger.info("=" * 50)
 
-        logger.info("Fetching events (raw)...")
-        events_df = streamer.get_events_df(transform=False)
+        try:
+            logger.info("Fetching events (raw)...")
+            events_df = streamer.get_events_df(transform=False)
+        except Exception as e:
+            logger.error(f"Error fetching events (raw): {e}")
 
-        logger.info("\nFetching K8s objects (raw)...")
-        k8s_objects_df = streamer.get_k8s_objects_df(transform=False)
+        try:
+            logger.info("\nFetching K8s objects (raw)...")
+            k8s_objects_df = streamer.get_k8s_objects_df(transform=False)
+        except Exception as e:
+            logger.error(f"Error fetching K8s objects (raw): {e}")
 
-        logger.info("\nFetching logs (raw)...")
-        logs_df = streamer.get_logs_df(transform=False)
+        try:
+            logger.info("\nFetching logs (raw)...")
+            logs_df = streamer.get_logs_df(transform=False)
+        except Exception as e:
+            logger.error(f"Error fetching logs (raw): {e}")
 
-        logger.info("\nFetching traces (raw)...")
-        traces_df = streamer.get_traces_df(transform=False)
+        try:
+            logger.info("\nFetching traces (raw)...")
+            traces_df = streamer.get_traces_df(transform=False)
+        except Exception as e:
+            logger.error(f"Error fetching traces (raw): {e}")
 
-        logger.info("\nFetching metrics (raw)...")
-        pod_metrics_df, service_metrics_df = streamer.get_metrics_df(transform=False)
+        try:
+            logger.info("\nFetching metrics (raw)...")
+            pod_metrics_df, service_metrics_df = streamer.get_metrics_df(transform=False)
+        except Exception as e:
+            logger.error(f"Error fetching metrics (raw): {e}")
 
         # ===================
         # LITE EXPORT (transformed + filtered)
@@ -982,34 +997,50 @@ def main():
 
         namespaces = ["chaos-mesh", "otel-demo", "bookinfo"]
 
-        logger.info(f"Fetching events (namespaces: {namespaces})...")
-        events_lite_df = streamer.get_events_df(namespaces=namespaces, transform=True)
+        try:
+            logger.info(f"Fetching events (namespaces: {namespaces})...")
+            events_lite_df = streamer.get_events_df(namespaces=namespaces, transform=True)
+        except Exception as e:
+            logger.error(f"Error fetching events (lite): {e}")
 
-        logger.info(f"\nFetching K8s objects (namespaces: {namespaces})...")
-        k8s_objects_lite_df = streamer.get_k8s_objects_df(
-            namespaces=namespaces, transform=True
-        )
+        try:
+            logger.info(f"\nFetching K8s objects (namespaces: {namespaces})...")
+            k8s_objects_lite_df = streamer.get_k8s_objects_df(
+                namespaces=namespaces, transform=True
+            )
+        except Exception as e:
+            logger.error(f"Error fetching K8s objects (lite): {e}")
 
-        logger.info("\nFetching logs (severity: WARN, ERROR, FATAL)...")
-        logs_lite_df = streamer.get_logs_df(
-            severity_levels=["WARN", "ERROR", "FATAL"], transform=True
-        )
+        try:
+            logger.info("\nFetching logs (severity: WARN, ERROR, FATAL)...")
+            logs_lite_df = streamer.get_logs_df(
+                severity_levels=["WARN", "ERROR", "FATAL"], transform=True
+            )
+        except Exception as e:
+            logger.error(f"Error fetching logs (lite): {e}")
 
-        logger.info("\nFetching traces (status: Error)...")
-        traces_lite_df = streamer.get_traces_df(status_codes=["Error"], transform=True)
+        try:
+            logger.info("\nFetching traces (status: Error)...")
+            traces_lite_df = streamer.get_traces_df(status_codes=["Error"], transform=True)
+        except Exception as e:
+            logger.error(f"Error fetching traces (lite): {e}")
 
-        logger.info("\nFetching metrics (namespace: otel-demo)...")
-        pod_metrics_lite_df, service_metrics_lite_df = streamer.get_metrics_df(
-            namespace="otel-demo", transform=True
-        )
+        try:
+            logger.info("\nFetching metrics (namespace: otel-demo)...")
+            pod_metrics_lite_df, service_metrics_lite_df = streamer.get_metrics_df(
+                namespace="otel-demo", transform=True
+            )
+        except Exception as e:
+            logger.error(f"Error fetching metrics for otel-demo (lite): {e}")
 
-        logger.info("\nFetching metrics (namespace: bookinfo)...")
-        pod_metrics_bookinfo_lite_df, service_metrics_bookinfo_lite_df = streamer.get_metrics_df(
-            namespace="bookinfo", transform=True
-        )
+        try:
+            logger.info("\nFetching metrics (namespace: bookinfo)...")
+            pod_metrics_bookinfo_lite_df, service_metrics_bookinfo_lite_df = streamer.get_metrics_df(
+                namespace="bookinfo", transform=True
+            )
+        except Exception as e:
+            logger.error(f"Error fetching metrics for bookinfo (lite): {e}")
 
-    except Exception as e:
-        logger.error(f"Error: {e}")
     finally:
         streamer.close()
 
