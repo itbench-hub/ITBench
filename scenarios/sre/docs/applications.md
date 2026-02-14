@@ -21,7 +21,6 @@ ITBench uses various applications to offer a diverse set of environments for whi
 **Resources:**
 - https://istio.io/latest/docs/examples/bookinfo/
 - https://istio.io/latest/docs/ambient/getting-started/deploy-sample-app/
-
 ### OpenTelemetry Demo
 
 **Aliases:** Astronomy Shop

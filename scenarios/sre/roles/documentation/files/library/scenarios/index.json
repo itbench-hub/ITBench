@@ -130,12 +130,10 @@
                     {
                         "args": {
                             "container": {
-                                "env": [
-                                    {
-                                        "name": "QUOTE_ADDR",
-                                        "value": "quote:0000"
-                                    }
-                                ],
+                                "env": {
+                                    "name": "QUOTE_ADDR",
+                                    "value": "quote:0000"
+                                },
                                 "name": "shipping"
                             },
                             "kubernetesObject": {
@@ -207,8 +205,6 @@
                                 }
                             },
                             "scheduleSpec": {
-                                "concurrencyPolicy": "Forbid",
-                                "historyLimit": 1,
                                 "podChaos": {
                                     "action": "pod-failure",
                                     "mode": "all",
@@ -221,7 +217,6 @@
                                         ]
                                     }
                                 },
-                                "schedule": "* * * * *",
                                 "type": "PodChaos"
                             }
                         },
@@ -426,8 +421,6 @@
                                 }
                             },
                             "scheduleSpec": {
-                                "concurrencyPolicy": "Forbid",
-                                "historyLimit": 1,
                                 "httpChaos": {
                                     "duration": "55s",
                                     "method": "POST",
@@ -435,10 +428,7 @@
                                     "patch": {
                                         "body": {
                                             "type": "JSON",
-                                            "value": {
-                                                "email": "12345",
-                                                "order": "error body"
-                                            }
+                                            "value": "{'email': '12345', 'order': 'error body'}"
                                         }
                                     },
                                     "path": "*",
@@ -453,7 +443,6 @@
                                     },
                                     "target": "Request"
                                 },
-                                "schedule": "* * * * *",
                                 "type": "HTTPChaos"
                             }
                         },
@@ -520,8 +509,6 @@
                                 }
                             },
                             "scheduleSpec": {
-                                "concurrencyPolicy": "Forbid",
-                                "historyLimit": 1,
                                 "httpChaos": {
                                     "abort": true,
                                     "duration": "55s",
@@ -539,7 +526,6 @@
                                     },
                                     "target": "Request"
                                 },
-                                "schedule": "* * * * *",
                                 "type": "HTTPChaos"
                             }
                         },
@@ -689,7 +675,7 @@
                             "text": "Retrieve and review the configuration of the network policy(s) in the affected namespace."
                         },
                         {
-                            "command": "kubectl -n otel-demo edit networkpolicy frontend-deny",
+                            "command": "kubectl -n otel-demo edit networkpolicy frontend-ingress",
                             "text": "Manually edit the manifest(s) and allow access to workload's ports of the network policy(s)."
                         }
                     ]
@@ -701,7 +687,7 @@
                             "text": "Retrieve and review the configuration of the network policy(s) in the affected namespace."
                         },
                         {
-                            "command": "kubectl -n otel-demo edit networkpolicy frontend-deny",
+                            "command": "kubectl -n otel-demo edit networkpolicy frontend-ingress",
                             "text": "Delete the offending network policy(s) if it is no longer required."
                         }
                     ]
@@ -827,7 +813,7 @@
                                 }
                             }
                         },
-                        "id": "invalid-valkey-password"
+                        "id": "valkey-workload-changed-password"
                     }
                 ]
             }
@@ -1168,9 +1154,6 @@
                                 }
                             },
                             "scheduleSpec": {
-                                "concurrencyPolicy": "Forbid",
-                                "historyLimit": 1,
-                                "schedule": "* * * * *",
                                 "stressChaos": {
                                     "duration": "55s",
                                     "mode": "all",
@@ -1410,7 +1393,7 @@
                                 }
                             }
                         },
-                        "id": "unschedueable-kuberntes-workload-pod-anti-affinity-rule"
+                        "id": "unschedulable-kubernetes-workload-pod-anti-affinity-rule"
                     }
                 ]
             }
@@ -1545,7 +1528,7 @@
                                 }
                             }
                         },
-                        "id": "insufficent-kubernetes-workload-container-resources"
+                        "id": "insufficient-kubernetes-workload-container-resources"
                     }
                 ]
             }
@@ -1602,7 +1585,7 @@
                                 "GET"
                             ],
                             "kubernetesObject": {
-                                "apiVersion": "gateway.networking.k8s.io",
+                                "apiVersion": "gateway.networking.k8s.io/v1",
                                 "kind": "Gateway",
                                 "metadata": {
                                     "name": "bookinfo-gateway",
@@ -1728,7 +1711,7 @@
                                 }
                             }
                         },
-                        "id": "misconfigured-kuberntes-workload-container-readiness-probe"
+                        "id": "misconfigured-kubernetes-workload-container-readiness-probe"
                     }
                 ]
             }
@@ -1837,6 +1820,78 @@
         ],
         "category": "sre",
         "complexity": "medium",
+        "description": "This scenario simulates BookInfo's `reviews-v3` service being unable to start due to lack of persistent storage.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "container": {
+                                "name": "reviews"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "reviews-v3",
+                                    "namespace": "bookinfo"
+                                }
+                            }
+                        },
+                        "id": "nonexistent-kubernetes-workload-persistent-volume-claim"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "book-info"
+                }
+            ]
+        },
+        "id": 53,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n bookinfo rollout undo deployment/reviews-v3",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n bookinfo edit persistentvolumeclaim reviews-v3",
+                            "text": "Manually edit the manifest and replace the `storageClassName` with the correct value."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n bookinfo edit deployment reviews-v3",
+                            "text": "Manually edit the manifest and replace the volume claim with an existing persistent volume claim."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment"
+        ]
+    },
+    {
+        "alerts": [
+            "KubePodNotReady"
+        ],
+        "category": "sre",
+        "complexity": "medium",
         "description": "This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.",
         "disruptions": [
             {
@@ -1852,7 +1907,7 @@
                                 }
                             }
                         },
-                        "id": "insufficent-kubernetes-resource-quota"
+                        "id": "insufficient-kubernetes-resource-quota"
                     }
                 ]
             }
@@ -1873,11 +1928,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo get resourcequota",
-                            "text": "Retrieve and review the configuration of the resource quota(s) in the affected namespace."
-                        },
-                        {
-                            "command": "kubectl -n otel-demo edit resourcequota otel-demo",
+                            "command": "kubectl -n otel-demo edit resourcequota memory",
                             "text": "Manually edit the manifest(s) and increase the values of the resource quota(s)."
                         }
                     ]
@@ -1885,11 +1936,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo get resourcequota",
-                            "text": "Retrieve and review the configuration of the resource quota(s) in the affected namespace."
-                        },
-                        {
-                            "command": "kubectl -n otel-demo delete resourcequota otel-demo",
+                            "command": "kubectl -n otel-demo delete resourcequota memory",
                             "text": "Delete the offending resource quota(s) if it is no longer required."
                         }
                     ]

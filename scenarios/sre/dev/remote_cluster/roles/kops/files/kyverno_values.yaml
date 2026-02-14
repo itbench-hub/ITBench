@@ -1,0 +1,71 @@
+---
+excludeKyvernoNamespace: true
+
+admissionController:
+  rbac:
+    clusterRole:
+      extraResources:
+        - apiGroups:
+            - ""
+          resources:
+            - secrets
+          verbs:
+            - get
+            - list
+            - watch
+            - create
+            - update
+            - delete
+
+backgroundController:
+  rbac:
+    clusterRole:
+      extraResources:
+        - apiGroups:
+            - ""
+          resources:
+            - secrets
+          verbs:
+            - get
+            - list
+            - watch
+            - create
+            - update
+            - delete
+
+webhooks:
+  namespaceSelector:
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values:
+          - kube-public
+
+config:
+  # Override the default webhook configuration
+  webhooks:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-public
+            - kyverno
+
+  # Explicitly set resourceFilters without kube-system
+  resourceFilters:
+    - "[*/*,kyverno,*]"
+    - "[Event,*,*]"
+    - "[*/*,kube-public,*]"
+    - "[*/*,kube-node-lease,*]"
+    - "[Node,*,*]"
+    - "[Node/?*,*,*]"
+    - "[APIService,*,*]"
+    - "[APIService/?*,*,*]"
+    - "[TokenReview,*,*]"
+    - "[SubjectAccessReview,*,*]"
+    - "[SelfSubjectAccessReview,*,*]"
+    - "[Binding,*,*]"
+    - "[Pod/binding,*,*]"
+    - "[ReplicaSet,*,*]"
+    - "[ReplicaSet/?*,*,*]"

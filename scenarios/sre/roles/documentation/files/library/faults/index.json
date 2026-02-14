@@ -109,18 +109,6 @@
         "arguments": {
             "jsonSchema": {
                 "properties": {
-                    "httpMethods": {
-                        "items": {
-                            "enum": [
-                                "GET",
-                                "POST",
-                                "DELETE",
-                                "PUT"
-                            ],
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
                     "kubernetesObject": {
                         "properties": {
                             "apiVersion": {
@@ -452,7 +440,7 @@
                             "text": "Retrieve and review the configuration of the network policy(s) in the affected namespace."
                         },
                         {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy {{ args.kubernetesObject.metadata.name }}-deny",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy {{ args.kubernetesObject.metadata.name }}-ingress",
                             "text": "Manually edit the manifest(s) and allow access to workload's ports of the network policy(s)."
                         }
                     ]
@@ -464,7 +452,7 @@
                             "text": "Retrieve and review the configuration of the network policy(s) in the affected namespace."
                         },
                         {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy {{ args.kubernetesObject.metadata.name }}-deny",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit networkpolicy {{ args.kubernetesObject.metadata.name }}-ingress",
                             "text": "Delete the offending network policy(s) if it is no longer required."
                         }
                     ]
@@ -532,8 +520,8 @@
         },
         "description": "This fault injects a resource quota with hard resource requirements that are underprovisioned for the namespace.",
         "expectation": "The new pod(s) for the workload in the faulted namespace will enter the `Pending` state.",
-        "id": "insufficent-kubernetes-resource-quota",
-        "name": "Insufficent Kubernetes Resource Quota",
+        "id": "insufficient-kubernetes-resource-quota",
+        "name": "Insufficient Kubernetes Resource Quota",
         "platform": "Kubernetes",
         "resources": [
             "https://kubernetes.io/docs/concepts/workloads/",
@@ -548,11 +536,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get resourcequota",
-                            "text": "Retrieve and review the configuration of the resource quota(s) in the affected namespace."
-                        },
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit resourcequota {{ args.kubernetesObject.metadata.namespace }}",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit resourcequota memory",
                             "text": "Manually edit the manifest(s) and increase the values of the resource quota(s)."
                         }
                     ]
@@ -560,11 +544,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get resourcequota",
-                            "text": "Retrieve and review the configuration of the resource quota(s) in the affected namespace."
-                        },
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete resourcequota {{ args.kubernetesObject.metadata.namespace }}",
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete resourcequota memory",
                             "text": "Delete the offending resource quota(s) if it is no longer required."
                         }
                     ]
@@ -644,8 +624,8 @@
         },
         "description": "This fault injects a insufficient resource configuration into a designated Kubernetes workload's container.",
         "expectation": "The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function for long periods.",
-        "id": "insufficent-kubernetes-workload-container-resources",
-        "name": "Insufficent Kubernetes Workload Container Resources",
+        "id": "insufficient-kubernetes-workload-container-resources",
+        "name": "Insufficient Kubernetes Workload Container Resources",
         "platform": "Kubernetes",
         "resources": [
             "https://kubernetes.io/docs/concepts/containers/images/",
@@ -782,85 +762,6 @@
     },
     {
         "alerts": {
-            "goldenSignal": [
-                "HighRequestLatency"
-            ]
-        },
-        "arguments": {
-            "jsonSchema": {
-                "properties": {
-                    "kubernetesObject": {
-                        "properties": {
-                            "apiVersion": {
-                                "enum": [
-                                    "apps/v1"
-                                ],
-                                "type": "string"
-                            },
-                            "kind": {
-                                "enum": [
-                                    "Deployment",
-                                    "StatefulSet"
-                                ],
-                                "type": "string"
-                            },
-                            "metadata": {
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "namespace": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "namespace"
-                                ],
-                                "type": "object"
-                            }
-                        },
-                        "required": [
-                            "apiVersion",
-                            "kind",
-                            "metadata"
-                        ],
-                        "type": "object"
-                    }
-                },
-                "required": [
-                    "kubernetesObject"
-                ],
-                "type": "object"
-            }
-        },
-        "description": "This fault changes the password of a Valkey workload.",
-        "expectation": "Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.",
-        "id": "invalid-valkey-password",
-        "name": "Invalid Valkey Password",
-        "platform": "Kubernetes",
-        "resources": [
-            "https://valkey.io/"
-        ],
-        "solutions": {
-            "templates": [
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} exec {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} -- valkey-cli CONFIG SET requirepass ''",
-                            "text": "Change the password back to the original by access the pod directly."
-                        }
-                    ]
-                }
-            ]
-        },
-        "tags": [
-            "Deployment",
-            "Authentication"
-        ]
-    },
-    {
-        "alerts": {
             "application": [
                 "KubeHpaMaxedOut"
             ]
@@ -950,6 +851,17 @@
         "arguments": {
             "jsonSchema": {
                 "properties": {
+                    "container": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    },
                     "kubernetesObject": {
                         "properties": {
                             "apiVersion": {
@@ -997,8 +909,8 @@
         },
         "description": "This fault injects a misconfigured readiness probe into a workload container. This probe blocks the pod from starting up.",
         "expectation": "The faulted pod(s) will enter the `Pending` state due to a `ContainersNotReady` reason for the `Ready` condition.",
-        "id": "misconfigured-kuberntes-workload-container-readiness-probe",
-        "name": "Misconfigured Kuberntes Workload Container Readiness Probe",
+        "id": "misconfigured-kubernetes-workload-container-readiness-probe",
+        "name": "Misconfigured Kubernetes Workload Container Readiness Probe",
         "platform": "Kubernetes",
         "resources": [
             "https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/",
@@ -1038,22 +950,19 @@
                     "container": {
                         "properties": {
                             "env": {
-                                "items": {
-                                    "properties": {
-                                        "name": {
-                                            "type": "string"
-                                        },
-                                        "value": {
-                                            "type": "string"
-                                        }
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
                                     },
-                                    "required": [
-                                        "name",
-                                        "value"
-                                    ],
-                                    "type": "object"
+                                    "value": {
+                                        "type": "string"
+                                    }
                                 },
-                                "type": "array"
+                                "required": [
+                                    "name",
+                                    "value"
+                                ],
+                                "type": "object"
                             },
                             "name": {
                                 "type": "string"
@@ -1422,6 +1331,115 @@
         "tags": [
             "Deployment",
             "Performance"
+        ]
+    },
+    {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "container": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "container"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects a workload with a nonexistent volume.",
+        "expectation": "The faulted pod(s) will enter the `Pending` state. The workload will become unable to function.",
+        "id": "nonexistent-kubernetes-workload-persistent-volume-claim",
+        "name": "Nonexistent Kubernetes Workload Persistent Volume Claim",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/storage/persistent-volumes/",
+            "https://kubernetes.io/docs/concepts/workloads/",
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit persistentvolumeclaim {{ args.kubernetesObject.metadata.name }}",
+                            "text": "Manually edit the manifest and replace the `storageClassName` with the correct value."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                            "text": "Manually edit the manifest and replace the volume claim with an existing persistent volume claim."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment"
         ]
     },
     {
@@ -1837,7 +1855,7 @@
                         "properties": {
                             "apiVersion": {
                                 "enum": [
-                                    "gateway.networking.k8s.io"
+                                    "gateway.networking.k8s.io/v1"
                                 ],
                                 "type": "string"
                             },
@@ -2054,8 +2072,8 @@
         },
         "description": "This fault injects an Inter-Pod Anti-Affinity which causes Kubernetes to be unable to schedule the pod.",
         "expectation": "The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will not start running.",
-        "id": "unschedueable-kuberntes-workload-pod-anti-affinity-rule",
-        "name": "Unschedueable Kuberntes Workload Pod Anti Affinity Rule",
+        "id": "unschedulable-kubernetes-workload-pod-anti-affinity-rule",
+        "name": "Unschedulable Kubernetes Workload Pod Anti Affinity Rule",
         "platform": "Kubernetes",
         "resources": [
             "https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/",
@@ -2196,6 +2214,85 @@
         "tags": [
             "Deployment",
             "Performance"
+        ]
+    },
+    {
+        "alerts": {
+            "goldenSignal": [
+                "HighRequestLatency"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault changes the password of a Valkey workload.",
+        "expectation": "Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.",
+        "id": "valkey-workload-changed-password",
+        "name": "Valkey Workload Changed Password",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://valkey.io/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} exec {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} -- valkey-cli CONFIG SET requirepass ''",
+                            "text": "Change the password back to the original by access the pod directly."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Authentication"
         ]
     },
     {

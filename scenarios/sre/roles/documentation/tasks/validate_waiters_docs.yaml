@@ -1,6 +1,39 @@
 ---
+- name: Load waiters library index and schema
+  ansible.builtin.set_fact:
+    documentation_waiters_library: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/waiters/index.json") |
+        ansible.builtin.from_json
+      }}
+    documentation_waiters_schema: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/waiters/schema.json") |
+        ansible.builtin.from_json
+      }}
+
 - name: Validate waiters library index
   ansible.utils.validate:
-    data: "{{ lookup('ansible.builtin.file', 'files/library/waiters/index.json') | from_json }}"
-    criteria: "{{ lookup('ansible.builtin.file', 'files/library/waiters/schema.json') | from_json }}"
+    data: "{{ waiter }}"
+    criteria: "{{ documentation_waiters_schema }}"
     engine: ansible.utils.jsonschema
+  loop: "{{ documentation_waiters_library }}"
+  loop_control:
+    label: waiter/{{ waiter.id }}
+    loop_var: waiter
+
+- name: Validate unique ids for all waiters
+  ansible.builtin.assert:
+    that:
+      - |-
+        (
+          documentation_waiters_library |
+          ansible.builtin.unique(attribute="id") |
+          ansible.builtin.length
+        ) ==
+        (
+          documentation_waiters_library |
+          ansible.builtin.length
+        )
+    fail_msg: Duplicate id discovered in library index. Please ensure all waiters have a unique name or id value.
+    success_msg: All waiters in library index have unique ids.

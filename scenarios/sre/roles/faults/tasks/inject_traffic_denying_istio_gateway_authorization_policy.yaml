@@ -1,0 +1,43 @@
+---
+- name: Retrieve gateway
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+  register: faults_gateway
+
+- name: Validate that gateway exists
+  ansible.builtin.assert:
+    that:
+      - faults_gateway.api_found
+      - faults_gateway.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find gateway. Please verify that the gateway exists.
+    success_msg: Found gateway.
+
+- name: Create authorization policy for gateway
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: security.istio.io/v1
+      kind: AuthorizationPolicy
+      metadata:
+        name: "{{ [faults_gateway.resources[0].metadata.name, 'deny'] | ansible.builtin.join('-') }}"
+        namespace: "{{ faults_gateway.resources[0].metadata.namespace }}"
+      spec:
+        action: DENY
+        targetRef:
+          group: gateway.networking.k8s.io
+          kind: Gateway
+          name: "{{ faults_gateway.resources[0].metadata.name }}"
+        rules:
+          - to:
+              - operation:
+                  methods: "{{ injection_task.args.httpMethods }}"
+    state: present
+    wait: true
+    wait_condition:
+      reason: Accepted
+      status: "True"
+      type: WaypointAccepted

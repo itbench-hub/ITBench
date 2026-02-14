@@ -1,0 +1,50 @@
+---
+- name: Create schedule
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+      kind: "{{ injection_task.args.kubernetesObject.kind }}"
+      metadata:
+        name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+        namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+      spec: |-
+        {{
+          injection_task.args.scheduleSpec |
+          ansible.builtin.combine(
+            {
+              "concurrencyPolicy": "Forbid",
+              "historyLimit": 1,
+              "schedule": "* * * * *"
+            }
+          )
+        }}
+    state: present
+
+- name: Extract experiment information from schedule
+  kubernetes.core.k8s_info:
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+  register: faults_schedule
+  until:
+    - faults_schedule.api_found
+    - faults_schedule.resources | ansible.builtin.length == 1
+    - faults_schedule.resources[0].status.active is defined
+    - faults_schedule.resources[0].status.active | ansible.builtin.length == 1
+  delay: 10
+  retries: 12
+
+- name: Wait for experiment to be injected
+  kubernetes.core.k8s_info:
+    api_version: "{{ faults_schedule.resources[0].status.active[0].apiVersion }}"
+    kind: "{{ faults_schedule.resources[0].status.active[0].kind }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ faults_schedule.resources[0].status.active[0].name }}"
+    namespace: "{{ faults_schedule.resources[0].status.active[0].namespace }}"
+    wait: true
+    wait_condition:
+      status: "True"
+      type: AllInjected

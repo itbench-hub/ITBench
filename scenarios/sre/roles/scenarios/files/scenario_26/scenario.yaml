@@ -19,8 +19,6 @@ spec:
                 name: email-http-chaos-post-body-tamper
                 namespace: chaos-mesh
             scheduleSpec:
-              concurrencyPolicy: Forbid
-              historyLimit: 1
               httpChaos:
                 duration: 55s
                 method: POST
@@ -28,9 +26,7 @@ spec:
                 patch:
                   body:
                     type: JSON
-                    value:
-                      email: "12345"
-                      order: error body
+                    value: "{'email': '12345', 'order': 'error body'}"
                 path: "*"
                 port: 8080
                 selector:
@@ -39,7 +35,6 @@ spec:
                   namespaces:
                     - otel-demo
                 target: Request
-              schedule: "* * * * *"
               type: HTTPChaos
           id: scheduled-chaos-mesh-experiment
   tools:

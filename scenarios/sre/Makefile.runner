@@ -7,7 +7,6 @@ help: ## Display this help.
 
 .PHONY: group_vars
 group_vars: ## Generates the group variables
-	echo "ansible_python_interpreter: $(shell which python)" > group_vars/all/ansible.yaml
 	cp group_vars/runner/agent.yaml.example group_vars/runner/agent.yaml
 	cp group_vars/runner/credentials.yaml.example group_vars/runner/credentials.yaml
 	cp group_vars/runner/experiments.yaml.example group_vars/runner/experiments.yaml
@@ -16,38 +15,38 @@ group_vars: ## Generates the group variables
 
 .PHONY: deploy_awx_stack
 deploy_awx_stack: ## Deploys AWX to a cluster
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "install_tools"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "install_tools"
 
 .PHONY: configure_awx_pipeline
 configure_awx_pipeline: ## Add job and workflow templates to AWX pipeline
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "configure_pipeline"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "configure_pipeline"
 
 .PHONY: undeploy_awx_stack
 undeploy_awx_stack: ## Undeploys AWX to a cluster
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "uninstall_tools"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "uninstall_tools"
 
 .PHONY: launch_sync_workflow
 launch_sync_workflow: ## Launches the scenario sync workflow
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "sync_scenarios"
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "sync_scenarios"
 
 .PHONY: launch_start_workflow
 launch_start_workflow: ## Launches the workflow equivalent of start_incident on AWX
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
 		--extra-vars "run_phase=start"
 
 .PHONY: launch_stop_workflow
 launch_stop_workflow: ## Launches the workflow equivalent of stop_incident on AWX
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
 		--extra-vars "run_phase=stop"
 
 .PHONY: launch_full_workflow
 launch_full_workflow: ## Launches the scenario full execution workflow
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
 		--extra-vars "run_phase=full"
 
 .PHONY: launch_data_collection_workflow
 launch_data_collection_workflow: ## Launches the data collection execution workflow
-	ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
 		--extra-vars "run_phase=data_collection"
 
 .PHONY: awx_configure_init

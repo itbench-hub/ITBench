@@ -10,7 +10,7 @@ The following scenarios are being open-sourced at this time and their implementa
 | ID | Category | Complexity | Platforms | Tags |
 | --- | --- | --- | --- | --- |
 {% for content in documentation_contents %}
-| [{{ content.id }}](#Scenario-{{ content.id }}) | {{ content.category }} | {{ content.complexity }} | {{ content.platforms | sort | join(', ') }} | {{ content.tags | sort | join(', ') }} |
+| [{{ content.id }}](#Scenario-{{ content.id }}) | {{ content.category }} | {{ content.complexity }} | {{ content.platforms | ansible.builtin.sort | ansible.builtin.join(', ') }} | {{ content.tags | ansible.builtin.sort | ansible.builtin.join(', ') }} |
 {% endfor %}
 
 ## Scenario Statistics
@@ -19,19 +19,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| {{ documentation_contents | community.general.json_query("[*].environment.applications[?id=='book-info']") | select() | length }} | {{ documentation_contents | community.general.json_query("[*].environment.applications[?id=='opentelemetry-demo']") | select() | length }} |
+| {{ documentation_contents | community.general.json_query("[*].environment.applications[?id=='book-info']") | ansible.builtin.select() | ansible.builtin.length }} | {{ documentation_contents | community.general.json_query("[*].environment.applications[?id=='opentelemetry-demo']") | ansible.builtin.select() | ansible.builtin.length }} |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| {{ documentation_contents | community.general.json_query("[?category=='finops']") | length }} | {{ documentation_contents | community.general.json_query("[?category=='sre']") | length }} |
+| {{ documentation_contents | community.general.json_query("[?category=='finops']") | ansible.builtin.length }} | {{ documentation_contents | community.general.json_query("[?category=='sre']") | ansible.builtin.length }} |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| {{ documentation_contents | community.general.json_query("[?complexity=='low']") | length }} | {{ documentation_contents | community.general.json_query("[?complexity=='medium']") | length }} | {{ documentation_contents | community.general.json_query("[?complexity=='high']") | length }} |
+| {{ documentation_contents | community.general.json_query("[?complexity=='low']") | ansible.builtin.length }} | {{ documentation_contents | community.general.json_query("[?complexity=='medium']") | ansible.builtin.length }} | {{ documentation_contents | community.general.json_query("[?complexity=='high']") | ansible.builtin.length }} |
 
 ## Detailed Summary of Scenarios
 
@@ -54,17 +54,17 @@ The following scenarios are being open-sourced at this time and their implementa
 
 {% for disruption in content.disruptions %}
 {% for injection in disruption.injections %}
-- [{{ documentation_faults[injection.id].name }}](./faults.md#{{ documentation_faults[injection.id].name | split | join('-') }})
+- [{{ documentation_faults[injection.id].name }}](./faults.md#{{ documentation_faults[injection.id].name | ansible.builtin.split | ansible.builtin.join('-') }})
 {% endfor %}
 {% endfor %}
 
 **Solution:**
 
-{% for i in range(0, content.solutions | length) %}
+{% for i in range(0, content.solutions | ansible.builtin.length) %}
 Step {{ i + 1 }}
 
-{% for j in range(0, content.solutions[i] | length) %}
-{% for k in range(0, content.solutions[i][j].steps | length) %}
+{% for j in range(0, content.solutions[i] | ansible.builtin.length) %}
+{% for k in range(0, content.solutions[i][j].steps | ansible.builtin.length) %}
 - {{ content.solutions[i][j].steps[k].text }}
 {% if content.solutions[i][j].steps[k].command is defined %}
 
@@ -72,7 +72,7 @@ Step {{ i + 1 }}
 {{ content.solutions[i][j].steps[k].command }}
 ```
 {% endif %}
-{% if j + 1 < (content.solutions[i] | length) %}
+{% if j + 1 < (content.solutions[i] | ansible.builtin.length) %}
 
 OR
 

@@ -1,6 +1,39 @@
 ---
+- name: Load applications library index and schema
+  ansible.builtin.set_fact:
+    documentation_applications_library: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/applications/index.json") |
+        ansible.builtin.from_json
+      }}
+    documentation_applications_schema: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/applications/schema.json") |
+        ansible.builtin.from_json
+      }}
+
 - name: Validate applications library index
   ansible.utils.validate:
-    data: "{{ lookup('ansible.builtin.file', 'files/library/applications/index.json') | from_json }}"
-    criteria: "{{ lookup('ansible.builtin.file', 'files/library/applications/schema.json') | from_json }}"
+    data: "{{ application }}"
+    criteria: "{{ documentation_applications_schema }}"
     engine: ansible.utils.jsonschema
+  loop: "{{ documentation_applications_library }}"
+  loop_control:
+    label: application/{{ application.id }}
+    loop_var: application
+
+- name: Validate unique ids for all applications
+  ansible.builtin.assert:
+    that:
+      - |-
+        (
+          documentation_applications_library |
+          ansible.builtin.unique(attribute="id") |
+          ansible.builtin.length
+        ) ==
+        (
+          documentation_applications_library |
+          ansible.builtin.length
+        )
+    fail_msg: Duplicate id discovered in library index. Please ensure all applications have a unique name or id value.
+    success_msg: All applications in library index have unique ids.

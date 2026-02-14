@@ -40,7 +40,7 @@ sudo dnf install jq
 
 1. Install Python dependencies. (Working directory is `remote_cluster`.)
 ```bash
-python -m pip install -r ../../requirements-dev.txt
+cd ../.. && make deps && cd -
 ```
 
 2. Create the group variables for the development host. The `kops_cluster.yaml` file contains the configuration needed to customize the kops deployment.
@@ -166,6 +166,28 @@ stack:
     count: 20 # number of scenarios which are going to be run.
 ```
 
+### Optional: Private Docker Registry
+
+If your container images are hosted in a private Docker registry, you can configure the clusters to automatically set up registry access across all namespaces.
+
+Add the following to `group_vars/development/awx_stack.yaml`:
+
+```yaml
+docker_registry:
+  server: "docker.io"
+  username: "your-docker-username"
+  password: "your-docker-token-or-password"
+  email: "your-email@example.com"
+```
+
+When configured, cluster creation will automatically:
+
+1. Create a `regcred` image pull secret in the `default` namespace
+2. Install [Kyverno](https://kyverno.io/) to sync the `regcred` secret to all new namespaces
+3. Mutate all `ServiceAccount` resources to include `regcred` in their `imagePullSecrets`
+
+This step is optional. If `docker_registry` is not defined, the setup is skipped.
+
 ### 1. Create the clusters
 
 Let's say the count value in the above set was set to 20. This creation step leads to the creation of 21 clustes. One Kubernetes cluster referred to as the `head` cluster to which AWX would be installed to and then a cluster per scenario.
@@ -178,7 +200,37 @@ make create_awx_stack
 
 Exports the kubeconfig associated with the clusters orchestrated for the AWX run.
 
-### 3. Delete the clusters
+```bash
+make export_awx_kubeconfigs
+```
+
+### 3. Check cluster status (for debugging)
+
+If cluster creation encounters errors, you can check which clusters are problematic:
+
+```bash
+make check_awx_clusters
+```
+
+This command validates all AWX stack clusters and shows which ones have issues.
+
+To investigate a specific failed cluster:
+
+```bash
+CLUSTER_NAME=awx-exp-runner-head-aws.k8s.local make debug_cluster
+```
+
+This shows detailed validation output, node status, and non-running pods for the specified cluster.
+
+To fix a cluster by removing unjoined nodes:
+
+```bash
+CLUSTER_NAME=awx-exp-runner-rohan-runner-4-aws.k8s.local make fix_cluster
+```
+
+This automatically detects and removes nodes that haven't joined, then waits for kOps to create replacements.
+
+### 4. Delete the clusters
 
 ```bash
 make destroy_awx_stack

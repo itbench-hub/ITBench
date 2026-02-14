@@ -1,0 +1,25 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-53
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: reviews-v3
+        namespace: bookinfo
+  solutions:
+    - - steps:
+          - command: kubectl -n bookinfo rollout undo deployment/reviews-v3
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n bookinfo edit persistentvolumeclaim reviews-v3
+            text: Manually edit the manifest and replace the `storageClassName` with the correct value.
+      - steps:
+          - command: kubectl -n bookinfo edit deployment reviews-v3
+            text: Manually edit the manifest and replace the volume claim with an existing persistent volume claim.

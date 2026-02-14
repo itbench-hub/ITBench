@@ -35,6 +35,7 @@ The following scenarios are being open-sourced at this time and their implementa
 | [48](#Scenario-48) | sre | medium | Kubernetes | Deployment, Networking |
 | [49](#Scenario-49) | sre | medium | Kubernetes | Deployment, Performance |
 | [50](#Scenario-50) | sre | medium | Kubernetes | Deployment, Networking |
+| [53](#Scenario-53) | sre | medium | Kubernetes | Deployment |
 | [102](#Scenario-102) | sre | medium | Kubernetes | Deployment, Performance |
 | [105](#Scenario-105) | sre | medium | Kubernetes | Deployment, Performance |
 
@@ -44,19 +45,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 3 | 25 |
+| 4 | 25 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 26 |
+| 2 | 27 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 10 | 17 | 1 |
+| 10 | 18 | 1 |
 
 ## Detailed Summary of Scenarios
 
@@ -351,7 +352,7 @@ OR
 - Manually edit the manifest(s) and allow access to workload's ports of the network policy(s).
 
 ```shell
-kubectl -n otel-demo edit networkpolicy frontend-deny
+kubectl -n otel-demo edit networkpolicy frontend-ingress
 ```
 
 OR
@@ -364,7 +365,7 @@ kubectl -n otel-demo get networkpolicy
 - Delete the offending network policy(s) if it is no longer required.
 
 ```shell
-kubectl -n otel-demo edit networkpolicy frontend-deny
+kubectl -n otel-demo edit networkpolicy frontend-ingress
 ```
 ### Scenario 33
 
@@ -421,7 +422,7 @@ kubectl -n otel-demo edit deployment cart
 
 **Faults Injected:**
 
-- [Invalid Valkey Password](./faults.md#Invalid-Valkey-Password)
+- [Valkey Workload Changed Password](./faults.md#Valkey-Workload-Changed-Password)
 
 **Solution:**
 
@@ -690,7 +691,7 @@ kubectl -n otel-demo delete authorizationpolicy frontend-deny
 
 **Faults Injected:**
 
-- [Unschedueable Kuberntes Workload Pod Anti Affinity Rule](./faults.md#Unschedueable-Kuberntes-Workload-Pod-Anti-Affinity-Rule)
+- [Unschedulable Kubernetes Workload Pod Anti Affinity Rule](./faults.md#Unschedulable-Kubernetes-Workload-Pod-Anti-Affinity-Rule)
 
 **Solution:**
 
@@ -756,7 +757,7 @@ kubectl -n otel-demo edit deployment email
 
 **Faults Injected:**
 
-- [Insufficent Kubernetes Workload Container Resources](./faults.md#Insufficent-Kubernetes-Workload-Container-Resources)
+- [Insufficient Kubernetes Workload Container Resources](./faults.md#Insufficient-Kubernetes-Workload-Container-Resources)
 
 **Solution:**
 
@@ -835,7 +836,7 @@ kubectl -n bookinfo edit namespace bookinfo-deny
 
 **Faults Injected:**
 
-- [Misconfigured Kuberntes Workload Container Readiness Probe](./faults.md#Misconfigured-Kuberntes-Workload-Container-Readiness-Probe)
+- [Misconfigured Kubernetes Workload Container Readiness Probe](./faults.md#Misconfigured-Kubernetes-Workload-Container-Readiness-Probe)
 
 **Solution:**
 
@@ -883,6 +884,43 @@ OR
 ```shell
 kubectl edit namespace bookinfo
 ```
+### Scenario 53
+
+**Description:** This scenario simulates BookInfo's `reviews-v3` service being unable to start due to lack of persistent storage.
+
+**Active Applications:**
+
+- [BookInfo](./applications.md#istio-bookinfo)
+
+**Faults Injected:**
+
+- [Nonexistent Kubernetes Workload Persistent Volume Claim](./faults.md#Nonexistent-Kubernetes-Workload-Persistent-Volume-Claim)
+
+**Solution:**
+
+Step 1
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n bookinfo rollout undo deployment/reviews-v3
+```
+
+OR
+
+- Manually edit the manifest and replace the `storageClassName` with the correct value.
+
+```shell
+kubectl -n bookinfo edit persistentvolumeclaim reviews-v3
+```
+
+OR
+
+- Manually edit the manifest and replace the volume claim with an existing persistent volume claim.
+
+```shell
+kubectl -n bookinfo edit deployment reviews-v3
+```
 ### Scenario 102
 
 **Description:** This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.
@@ -893,37 +931,24 @@ kubectl edit namespace bookinfo
 
 **Faults Injected:**
 
-- [Insufficent Kubernetes Resource Quota](./faults.md#Insufficent-Kubernetes-Resource-Quota)
+- [Insufficient Kubernetes Resource Quota](./faults.md#Insufficient-Kubernetes-Resource-Quota)
 
 **Solution:**
 
 Step 1
 
-- Retrieve and review the configuration of the resource quota(s) in the affected namespace.
-
-```shell
-kubectl -n otel-demo get resourcequota
-```
-
-OR
-
 - Manually edit the manifest(s) and increase the values of the resource quota(s).
 
 ```shell
-kubectl -n otel-demo edit resourcequota otel-demo
+kubectl -n otel-demo edit resourcequota memory
 ```
 
 OR
 
-- Retrieve and review the configuration of the resource quota(s) in the affected namespace.
-
-```shell
-kubectl -n otel-demo get resourcequota
-```
 - Delete the offending resource quota(s) if it is no longer required.
 
 ```shell
-kubectl -n otel-demo delete resourcequota otel-demo
+kubectl -n otel-demo delete resourcequota memory
 ```
 ### Scenario 105
 

@@ -820,7 +820,8 @@ class ClickHouseEventStreamer:
         Returns:
             DataFrame containing service-level metrics.
         """
-        duration_query = f"""
+        # OTel Demo span metrics (from spanmetrics connector)
+        otel_duration_query = f"""
         SELECT
             t.metric_name,
             d.timestamp,
@@ -837,7 +838,7 @@ class ClickHouseEventStreamer:
         ORDER BY d.timestamp ASC
         """
 
-        error_query = f"""
+        otel_error_query = f"""
         SELECT
             t.metric_name,
             d.timestamp,
@@ -855,27 +856,83 @@ class ClickHouseEventStreamer:
         ORDER BY d.timestamp ASC
         """
 
+        # Istio service mesh metrics (from Envoy proxies)
+        istio_duration_query = f"""
+        SELECT
+            t.metric_name,
+            d.timestamp,
+            d.value,
+            t.tags['destination_canonical_service'] as service_name,
+            t.tags['destination_workload_namespace'] as namespace,
+            t.tags['le'] as bucket_le,
+            t.tags
+        FROM `{table_ids['data']}` d
+        JOIN `{table_ids['tags']}` t ON d.id = t.id
+        WHERE t.metric_name = 'istio_request_duration_milliseconds_bucket'
+          AND t.tags['destination_workload_namespace'] = '{namespace}'
+          AND t.tags['destination_canonical_service'] NOT IN ('load-generator')
+        ORDER BY d.timestamp ASC
+        """
+
+        istio_error_query = f"""
+        SELECT
+            t.metric_name,
+            d.timestamp,
+            d.value,
+            t.tags['destination_canonical_service'] as service_name,
+            t.tags['destination_workload_namespace'] as namespace,
+            t.tags['response_code'] as status_code,
+            t.tags
+        FROM `{table_ids['data']}` d
+        JOIN `{table_ids['tags']}` t ON d.id = t.id
+        WHERE t.metric_name = 'istio_requests_total'
+          AND t.tags['destination_workload_namespace'] = '{namespace}'
+          AND t.tags['destination_canonical_service'] NOT IN ('load-generator')
+          AND t.tags['response_code'] NOT LIKE '2%'
+        ORDER BY d.timestamp ASC
+        """
+
         logger.info("Fetching service-level metrics...")
 
         all_service_dfs = []
 
+        # OTel Demo span metrics
         try:
-            duration_df = self.prometheus_client.query_df(duration_query)
+            duration_df = self.prometheus_client.query_df(otel_duration_query)
             if not duration_df.empty:
                 duration_df["metric_type"] = "duration_p95"
                 all_service_dfs.append(duration_df)
-                logger.info(f"  Loaded {len(duration_df)} duration metric points")
+                logger.info(f"  Loaded {len(duration_df)} otel span duration metric points")
         except Exception as e:
-            logger.error(f"  Error fetching duration metrics: {e}")
+            logger.error(f"  Error fetching otel span duration metrics: {e}")
 
         try:
-            error_df = self.prometheus_client.query_df(error_query)
+            error_df = self.prometheus_client.query_df(otel_error_query)
             if not error_df.empty:
                 error_df["metric_type"] = "error_rate"
                 all_service_dfs.append(error_df)
-                logger.info(f"  Loaded {len(error_df)} error metric points")
+                logger.info(f"  Loaded {len(error_df)} otel span error metric points")
         except Exception as e:
-            logger.error(f"  Error fetching error metrics: {e}")
+            logger.error(f"  Error fetching otel span error metrics: {e}")
+
+        # Istio service mesh metrics
+        try:
+            istio_duration_df = self.prometheus_client.query_df(istio_duration_query)
+            if not istio_duration_df.empty:
+                istio_duration_df["metric_type"] = "duration_p95"
+                all_service_dfs.append(istio_duration_df)
+                logger.info(f"  Loaded {len(istio_duration_df)} istio duration metric points")
+        except Exception as e:
+            logger.error(f"  Error fetching istio duration metrics: {e}")
+
+        try:
+            istio_error_df = self.prometheus_client.query_df(istio_error_query)
+            if not istio_error_df.empty:
+                istio_error_df["metric_type"] = "error_rate"
+                all_service_dfs.append(istio_error_df)
+                logger.info(f"  Loaded {len(istio_error_df)} istio error metric points")
+        except Exception as e:
+            logger.error(f"  Error fetching istio error metrics: {e}")
 
         if all_service_dfs:
             service_df = pd.concat(all_service_dfs, ignore_index=True)
@@ -958,20 +1015,45 @@ def main():
         logger.info("FULL EXPORT (raw)")
         logger.info("=" * 50)
 
-        logger.info("Fetching events (raw)...")
-        events_df = streamer.get_events_df(transform=False)
+        try:
+            logger.info("Fetching events (raw)...")
+            events_df = streamer.get_events_df(transform=False)
+        except Exception as e:
+            logger.error(f"Error fetching events (raw): {e}")
 
-        logger.info("\nFetching K8s objects (raw)...")
-        k8s_objects_df = streamer.get_k8s_objects_df(transform=False)
+        try:
+            logger.info("\nFetching K8s objects (raw)...")
+            k8s_objects_df = streamer.get_k8s_objects_df(transform=False)
+        except Exception as e:
+            logger.error(f"Error fetching K8s objects (raw): {e}")
 
-        logger.info("\nFetching logs (raw)...")
-        logs_df = streamer.get_logs_df(transform=False)
+        try:
+            logger.info("\nFetching logs (raw)...")
+            logs_df = streamer.get_logs_df(transform=False)
+        except Exception as e:
+            logger.error(f"Error fetching logs (raw): {e}")
 
-        logger.info("\nFetching traces (raw)...")
-        traces_df = streamer.get_traces_df(transform=False)
+        try:
+            logger.info("\nFetching traces (raw)...")
+            traces_df = streamer.get_traces_df(transform=False)
+        except Exception as e:
+            logger.error(f"Error fetching traces (raw): {e}")
 
-        logger.info("\nFetching metrics (raw)...")
-        pod_metrics_df, service_metrics_df = streamer.get_metrics_df(transform=False)
+        try:
+            logger.info("\nFetching metrics (namespace: otel-demo, raw)...")
+            pod_metrics_df, service_metrics_df = streamer.get_metrics_df(
+                namespace="otel-demo", transform=False
+            )
+        except Exception as e:
+            logger.error(f"Error fetching metrics for otel-demo (raw): {e}")
+
+        try:
+            logger.info("\nFetching metrics (namespace: bookinfo, raw)...")
+            pod_metrics_bookinfo_df, service_metrics_bookinfo_df = streamer.get_metrics_df(
+                namespace="bookinfo", transform=False
+            )
+        except Exception as e:
+            logger.error(f"Error fetching metrics for bookinfo (raw): {e}")
 
         # ===================
         # LITE EXPORT (transformed + filtered)
@@ -980,31 +1062,52 @@ def main():
         logger.info("LITE EXPORT (transformed + filtered)")
         logger.info("=" * 50)
 
-        namespaces = ["chaos-mesh", "otel-demo"]
+        namespaces = ["chaos-mesh", "otel-demo", "bookinfo"]
 
-        logger.info(f"Fetching events (namespaces: {namespaces})...")
-        events_lite_df = streamer.get_events_df(namespaces=namespaces, transform=True)
+        try:
+            logger.info(f"Fetching events (namespaces: {namespaces})...")
+            events_lite_df = streamer.get_events_df(namespaces=namespaces, transform=True)
+        except Exception as e:
+            logger.error(f"Error fetching events (lite): {e}")
 
-        logger.info(f"\nFetching K8s objects (namespaces: {namespaces})...")
-        k8s_objects_lite_df = streamer.get_k8s_objects_df(
-            namespaces=namespaces, transform=True
-        )
+        try:
+            logger.info(f"\nFetching K8s objects (namespaces: {namespaces})...")
+            k8s_objects_lite_df = streamer.get_k8s_objects_df(
+                namespaces=namespaces, transform=True
+            )
+        except Exception as e:
+            logger.error(f"Error fetching K8s objects (lite): {e}")
 
-        logger.info("\nFetching logs (severity: WARN, ERROR, FATAL)...")
-        logs_lite_df = streamer.get_logs_df(
-            severity_levels=["WARN", "ERROR", "FATAL"], transform=True
-        )
+        try:
+            logger.info("\nFetching logs (severity: WARN, ERROR, FATAL)...")
+            logs_lite_df = streamer.get_logs_df(
+                severity_levels=["WARN", "ERROR", "FATAL"], transform=True
+            )
+        except Exception as e:
+            logger.error(f"Error fetching logs (lite): {e}")
 
-        logger.info("\nFetching traces (status: Error)...")
-        traces_lite_df = streamer.get_traces_df(status_codes=["Error"], transform=True)
+        try:
+            logger.info("\nFetching traces (status: Error)...")
+            traces_lite_df = streamer.get_traces_df(status_codes=["Error"], transform=True)
+        except Exception as e:
+            logger.error(f"Error fetching traces (lite): {e}")
 
-        logger.info("\nFetching metrics (namespace: otel-demo)...")
-        pod_metrics_lite_df, service_metrics_lite_df = streamer.get_metrics_df(
-            namespace="otel-demo", transform=True
-        )
+        try:
+            logger.info("\nFetching metrics (namespace: otel-demo)...")
+            pod_metrics_lite_df, service_metrics_lite_df = streamer.get_metrics_df(
+                namespace="otel-demo", transform=True
+            )
+        except Exception as e:
+            logger.error(f"Error fetching metrics for otel-demo (lite): {e}")
 
-    except Exception as e:
-        logger.error(f"Error: {e}")
+        try:
+            logger.info("\nFetching metrics (namespace: bookinfo)...")
+            pod_metrics_bookinfo_lite_df, service_metrics_bookinfo_lite_df = streamer.get_metrics_df(
+                namespace="bookinfo", transform=True
+            )
+        except Exception as e:
+            logger.error(f"Error fetching metrics for bookinfo (lite): {e}")
+
     finally:
         streamer.close()
 
