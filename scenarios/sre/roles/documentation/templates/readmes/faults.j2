@@ -8,7 +8,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | Name | Platform | Tags |
 | --- | --- | --- |
 {% for content in documentation_contents %}
-| [{{ content.name }}](#{{ content.name | split | join('-') }}) | {{ content.platform }} | {{ content.tags | sort | join(', ') }} |
+| [{{ content.name }}](#{{ content.name | ansible.builtin.split | ansible.builtin.join('-') }}) | {{ content.platform }} | {{ content.tags | ansible.builtin.sort | ansible.builtin.join(', ') }} |
 {% endfor %}
 
 ## Detailed Summary of Faults
@@ -20,17 +20,17 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** {{ content.expectation }}
 
-**[Implementation](../roles/injections/tasks/inject_{{ content.id | replace("-", "_") }}.yaml)**
+**[Implementation](../roles/injections/tasks/inject_{{ content.id | ansible.builtin.replace("-", "_") }}.yaml)**
 
 {% if content.alerts is defined %}
 **Firing Alerts**
 {% if content.alerts.applications is defined %}
 
-**Application Alerts:** {{ content.alerts.applications | join(", ") }}
+**Application Alerts:** {{ content.alerts.applications | ansible.builtin.join(", ") }}
 {% endif %}
 {% if content.alerts.goldenSignal is defined %}
 
-**Golden Signal Alerts:** {{ content.alerts.goldenSignal | join(", ") }}
+**Golden Signal Alerts:** {{ content.alerts.goldenSignal | ansible.builtin.join(", ") }}
 {% endif %}
 {% else %}
 See the scenario ground truth file where this fault is invoked.
@@ -43,6 +43,6 @@ See the scenario ground truth file where this fault is invoked.
 
 **Arguments Schema:**
 ```json
-{{ content.arguments.jsonSchema | to_nice_json }}
+{{ content.arguments.jsonSchema | ansible.builtin.to_nice_json }}
 ```
 {% endfor %}

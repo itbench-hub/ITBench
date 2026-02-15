@@ -1,0 +1,22 @@
+---
+- name: Retrieve worker nodes
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Node
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    label_selectors:
+      - "!node-role.kubernetes.io/control-plane"
+  register: faults_worker_nodes
+
+- name: Uncordon all disabled nodes
+  kubernetes.core.k8s_drain:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ node.metadata.name }}"
+    state: uncordon
+  loop: "{{ faults_worker_nodes.resources }}"
+  loop_control:
+    label: node/{{ node.metadata.name }}
+    loop_var: node
+  when:
+    - node.spec.unschedulable is defined
+    - node.spec.unschedulable

@@ -1,0 +1,100 @@
+---
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+  register: faults_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - faults_workload.api_found
+      - faults_workload.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Retrieve container
+  ansible.builtin.set_fact:
+    faults_container: |-
+      {{
+        faults_workload.resources[0].spec.template.spec.containers |
+        ansible.builtin.selectattr('name', '==', injection_task.args.container.name)
+      }}
+
+- name: Validate that container exists
+  ansible.builtin.assert:
+    that:
+      - faults_container | ansible.builtin.length == 1
+    fail_msg: Unable to find container. Please verify that the container exists for workload.
+    success_msg: Found container.
+
+# TODO: We need to add node labels to specific worker nodes so that the
+#       the tool stack is not impacted by these faults.
+
+- name: Retrieve worker nodes
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Node
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    label_selectors:
+      - "!node-role.kubernetes.io/control-plane"
+  register: faults_worker_nodes
+
+- name: Validate that worker nodes exists
+  ansible.builtin.assert:
+    that:
+      - faults_worker_nodes.api_found
+      - faults_worker_nodes.resources | ansible.builtin.length > 0
+    fail_msg: Unable to find worker nodes. Please run this fault on a cluster with worker nodes.
+    success_msg: Found worker nodes.
+
+- name: Select an available worker node randomly
+  ansible.builtin.set_fact:
+    faults_node: "{{ faults_worker_nodes.resources | ansible.builtin.random }}"
+
+- name: Update workload containers
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ faults_container[0].name }}"
+                # renovate: datasource=docker depName=quay.io/it-bench/hello-bench-arm64
+                image: quay.io/it-bench/hello-bench-arm64:1.0.0
+            nodeSelector:
+              "kubernetes.io/hostname": "{{ faults_node.metadata.name }}"
+    state: patched
+  when:
+    - faults_node.status.nodeInfo.architecture == "amd64"
+
+- name: Update workload containers
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ faults_container[0].name }}"
+                # renovate: datasource=docker depName=quay.io/it-bench/hello-bench-amd64
+                image: quay.io/it-bench/hello-bench-amd64:1.0.0
+            nodeSelector:
+              "kubernetes.io/hostname": "{{ faults_node.metadata.name }}"
+    state: patched
+  when:
+    - faults_node.status.nodeInfo.architecture == "arm64"

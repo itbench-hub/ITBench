@@ -4,31 +4,42 @@
     documentation_faults_library: |
       {{
         (
-          documentation_faults_library | default([])
+          documentation_faults_library |
+          ansible.builtin.default([])
         ) +
         [
           (
             fault |
-            combine({"id": fault.name | lower | replace(" ", "-")})
+            ansible.builtin.combine(
+              {
+                "id": (
+                  fault.name |
+                  ansible.builtin.lower |
+                  ansible.builtin.replace(" ", "-")
+                )
+              }
+            )
           )
         ]
       }}
-  loop: "{{ lookup('ansible.builtin.file', 'files/library/faults/index.json') | from_json }}"
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/faults/index.json") |
+      ansible.builtin.from_json
+    }}
   loop_control:
     label: fault/{{ fault.name }}
     loop_var: fault
 
-- name: Validate unique ids for all faults
-  ansible.builtin.assert:
-    that:
-      - (documentation_faults_library | unique(attribute="id") | length) == (documentation_faults_library | length)
-    fail_msg: Duplicate id discovered in library index. Please ensure all faults have a unique name or id value.
-    success_msg: All fault in library index have unique ids.
-
 - name: Generate faults library index
   ansible.builtin.copy:
-    content: "{{ documentation_faults_library | sort(attribute='name') | to_nice_json }}"
-    dest: "{{ [role_path, 'files', 'library', 'faults', 'index.json'] | path_join }}"
+    content: |
+      {{
+        documentation_faults_library |
+        ansible.builtin.sort(attribute="name") |
+        ansible.builtin.to_nice_json
+      }}
+    dest: "{{ [role_path, 'files', 'library', 'faults', 'index.json'] | ansible.builtin.path_join }}"
     mode: "0644"
 
 - name: Generate Faults README
@@ -37,4 +48,8 @@
     dest: "{{ playbook_dir }}/../docs/faults.md"
     mode: "0644"
   vars:
-    documentation_contents: "{{ lookup('ansible.builtin.file', 'files/library/faults/index.json') | from_json }}"
+    documentation_contents: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/faults/index.json") |
+        ansible.builtin.from_json
+      }}

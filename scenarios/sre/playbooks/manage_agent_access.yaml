@@ -24,6 +24,12 @@
       tags:
         - always
 
+    - name: Include instance variables from applications role
+      ansible.builtin.include_vars:
+        file: ../roles/applications/defaults/main/instances.yaml
+      tags:
+        - always
+
     - name: Import agent role
       ansible.builtin.import_role:
         name: agent
@@ -33,6 +39,8 @@
         agent_namespaces:
           - name: "{{ applications_helm_releases.otel_demo.namespace }}"
             access: read-write
-          - name: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+          - name: "{{ applications_instances.bookinfo.namespace }}"
             access: read-write
+          - name: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+            access: read-only
         agent_storage: "{{ storage }}"

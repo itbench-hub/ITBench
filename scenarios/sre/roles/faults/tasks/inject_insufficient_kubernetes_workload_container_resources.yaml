@@ -1,0 +1,55 @@
+---
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+  register: faults_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - faults_workload.api_found
+      - faults_workload.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Retrieve container
+  ansible.builtin.set_fact:
+    faults_container: |-
+      {{
+        faults_workload.resources[0].spec.template.spec.containers |
+        ansible.builtin.selectattr('name', '==', injection_task.args.container.name)
+      }}
+
+- name: Validate that container exists
+  ansible.builtin.assert:
+    that:
+      - faults_container | ansible.builtin.length == 1
+    fail_msg: Unable to find container. Please verify that the container exists for workload.
+    success_msg: Found container.
+
+- name: Update workload containers
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ faults_container[0].name }}"
+                resources:
+                  limits:
+                    cpu: 5m
+                    memory: 5Mi
+                  requests:
+                    cpu: 5m
+                    memory: 5Mi
+    state: patched

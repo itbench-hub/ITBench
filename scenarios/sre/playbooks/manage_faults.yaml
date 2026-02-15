@@ -1,0 +1,40 @@
+---
+- name: Manage SRE and FinOps Scenario Faults
+  hosts:
+    - environment
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+  tasks:
+    - name: Import faults role variables from scenario
+      tags:
+        - inject_faults
+      when:
+        - scenario_id is defined
+      block:
+        - name: Import scenarios role
+          ansible.builtin.import_role:
+            name: scenarios
+          vars:
+            scenarios_identifier: "{{ scenario_id }}"
+
+        - name: Create fault injections variable
+          ansible.builtin.set_fact:
+            faults_injection_tasks: |-
+              {{
+                scenarios_scenario.spec.faults[0].injections |
+                ansible.builtin.default([])
+              }}
+
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"

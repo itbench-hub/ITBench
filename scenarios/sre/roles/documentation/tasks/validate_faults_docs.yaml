@@ -1,6 +1,39 @@
 ---
-- name: Validate fault library index
+- name: Load faults library index and schema
+  ansible.builtin.set_fact:
+    documentation_faults_library: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/faults/index.json") |
+        ansible.builtin.from_json
+      }}
+    documentation_faults_schema: |-
+      {{
+        lookup("ansible.builtin.file", "files/library/faults/schema.json") |
+        ansible.builtin.from_json
+      }}
+
+- name: Validate faults library index
   ansible.utils.validate:
-    data: "{{ lookup('ansible.builtin.file', 'files/library/faults/index.json') | from_json }}"
-    criteria: "{{ lookup('ansible.builtin.file', 'files/library/faults/schema.json') | from_json }}"
+    data: "{{ fault }}"
+    criteria: "{{ documentation_faults_schema }}"
     engine: ansible.utils.jsonschema
+  loop: "{{ documentation_faults_library }}"
+  loop_control:
+    label: fault/{{ fault.id }}
+    loop_var: fault
+
+- name: Validate unique ids for all faults
+  ansible.builtin.assert:
+    that:
+      - |-
+        (
+          documentation_faults_library |
+          ansible.builtin.unique(attribute="id") |
+          ansible.builtin.length
+        ) ==
+        (
+          documentation_faults_library |
+          ansible.builtin.length
+        )
+    fail_msg: Duplicate id discovered in library index. Please ensure all faults have a unique name or id value.
+    success_msg: All fault in library index have unique ids.

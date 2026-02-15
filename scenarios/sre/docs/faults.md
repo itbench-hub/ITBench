@@ -12,24 +12,25 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Failing Name Resolution Kubernetes Workload DNS Policy](#Failing-Name-Resolution-Kubernetes-Workload-DNS-Policy) | Kubernetes | Deployment, Networking |
 | [Hanging Kubernetes Workload Init Container](#Hanging-Kubernetes-Workload-Init-Container) | Kubernetes | Deployment, Performance |
 | [Ingress Port Blocking Network Policy](#Ingress-Port-Blocking-Network-Policy) | Kubernetes | Deployment, Networking |
-| [Insufficent Kubernetes Resource Quota](#Insufficent-Kubernetes-Resource-Quota) | Kubernetes | Deployment, Performance |
-| [Insufficent Kubernetes Workload Container Resources](#Insufficent-Kubernetes-Workload-Container-Resources) | Kubernetes | Deployment, Performance |
+| [Insufficient Kubernetes Resource Quota](#Insufficient-Kubernetes-Resource-Quota) | Kubernetes | Deployment, Performance |
+| [Insufficient Kubernetes Workload Container Resources](#Insufficient-Kubernetes-Workload-Container-Resources) | Kubernetes | Deployment, Performance |
 | [Invalid Kubernetes Workload Container Command](#Invalid-Kubernetes-Workload-Container-Command) | Kubernetes | Deployment, Performance |
-| [Invalid Valkey Password](#Invalid-Valkey-Password) | Kubernetes | Authentication, Deployment |
 | [Misconfigured Kubernetes Horizontal Pod Autoscaler](#Misconfigured-Kubernetes-Horizontal-Pod-Autoscaler) | Kubernetes | Deployment, Performance |
-| [Misconfigured Kuberntes Workload Container Readiness Probe](#Misconfigured-Kuberntes-Workload-Container-Readiness-Probe) | Kubernetes | Deployment, Performance |
+| [Misconfigured Kubernetes Workload Container Readiness Probe](#Misconfigured-Kubernetes-Workload-Container-Readiness-Probe) | Kubernetes | Deployment, Performance |
 | [Modified Kubernetes Workload Container Environment Variable](#Modified-Kubernetes-Workload-Container-Environment-Variable) | Kubernetes | Deployment, Performance |
 | [Modified Target Port Kubernetes Service](#Modified-Target-Port-Kubernetes-Service) | Kubernetes | Deployment, Networking |
 | [Nonexistent Kubernetes Workload Container Image](#Nonexistent-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
 | [Nonexistent Kubernetes Workload Node](#Nonexistent-Kubernetes-Workload-Node) | Kubernetes | Deployment, Performance |
+| [Nonexistent Kubernetes Workload Persistent Volume Claim](#Nonexistent-Kubernetes-Workload-Persistent-Volume-Claim) | Kubernetes | Deployment |
 | [OpenTelemetry Demo Feature Flag](#OpenTelemetry-Demo-Feature-Flag) | Kubernetes | Deployment, Performance |
 | [Priority Kubernetes Workload Priority Preemption](#Priority-Kubernetes-Workload-Priority-Preemption) | Kubernetes | Deployment, Performance |
 | [Scheduled Chaos Mesh Experiment](#Scheduled-Chaos-Mesh-Experiment) | Kubernetes | Deployment, Performance |
 | [Strict Mutual TLS Istio Service Mesh Enforcement](#Strict-Mutual-TLS-Istio-Service-Mesh-Enforcement) | Kubernetes | Deployment, Networking |
 | [Traffic Denying Istio Gateway Authorization Policy](#Traffic-Denying-Istio-Gateway-Authorization-Policy) | Kubernetes | Deployment, Networking |
 | [Unassigned Kubernetes Workload Container Resource Limits](#Unassigned-Kubernetes-Workload-Container-Resource-Limits) | Kubernetes | Deployment, Performance |
-| [Unschedueable Kuberntes Workload Pod Anti Affinity Rule](#Unschedueable-Kuberntes-Workload-Pod-Anti-Affinity-Rule) | Kubernetes | Deployment, Performance |
+| [Unschedulable Kubernetes Workload Pod Anti Affinity Rule](#Unschedulable-Kubernetes-Workload-Pod-Anti-Affinity-Rule) | Kubernetes | Deployment, Performance |
 | [Unsupported Architecture Kubernetes Workload Container Image](#Unsupported-Architecture-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
+| [Valkey Workload Changed Password](#Valkey-Workload-Changed-Password) | Kubernetes | Authentication, Deployment |
 | [Valkey Workload Out of Memory](#Valkey-Workload-Out-of-Memory) | Kubernetes | Code, Deployment |
 
 ## Detailed Summary of Faults
@@ -117,18 +118,6 @@ A fault is a solvable issue injected into an environment to create an incident.
 ```json
 {
     "properties": {
-        "httpMethods": {
-            "items": {
-                "enum": [
-                    "GET",
-                    "POST",
-                    "DELETE",
-                    "PUT"
-                ],
-                "type": "string"
-            },
-            "type": "array"
-        },
         "kubernetesObject": {
             "properties": {
                 "apiVersion": {
@@ -368,13 +357,13 @@ A fault is a solvable issue injected into an environment to create an incident.
     "type": "object"
 }
 ```
-### Insufficent Kubernetes Resource Quota
+### Insufficient Kubernetes Resource Quota
 
 **Description:** This fault injects a resource quota with hard resource requirements that are underprovisioned for the namespace.
 
 **Expectation:** The new pod(s) for the workload in the faulted namespace will enter the `Pending` state.
 
-**[Implementation](../roles/injections/tasks/inject_insufficent_kubernetes_resource_quota.yaml)**
+**[Implementation](../roles/injections/tasks/inject_insufficient_kubernetes_resource_quota.yaml)**
 
 **Firing Alerts**
 
@@ -435,13 +424,13 @@ A fault is a solvable issue injected into an environment to create an incident.
     "type": "object"
 }
 ```
-### Insufficent Kubernetes Workload Container Resources
+### Insufficient Kubernetes Workload Container Resources
 
 **Description:** This fault injects a insufficient resource configuration into a designated Kubernetes workload's container.
 
 **Expectation:** The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function for long periods.
 
-**[Implementation](../roles/injections/tasks/inject_insufficent_kubernetes_workload_container_resources.yaml)**
+**[Implementation](../roles/injections/tasks/inject_insufficient_kubernetes_workload_container_resources.yaml)**
 
 **Firing Alerts**
 
@@ -589,70 +578,6 @@ A fault is a solvable issue injected into an environment to create an incident.
     "type": "object"
 }
 ```
-### Invalid Valkey Password
-
-**Description:** This fault changes the password of a Valkey workload.
-
-**Expectation:** Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.
-
-**[Implementation](../roles/injections/tasks/inject_invalid_valkey_password.yaml)**
-
-**Firing Alerts**
-
-**Golden Signal Alerts:** HighRequestLatency
-
-**Resources:**
-- https://valkey.io/
-
-**Arguments Schema:**
-```json
-{
-    "properties": {
-        "kubernetesObject": {
-            "properties": {
-                "apiVersion": {
-                    "enum": [
-                        "apps/v1"
-                    ],
-                    "type": "string"
-                },
-                "kind": {
-                    "enum": [
-                        "Deployment",
-                        "StatefulSet"
-                    ],
-                    "type": "string"
-                },
-                "metadata": {
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "namespace": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "namespace"
-                    ],
-                    "type": "object"
-                }
-            },
-            "required": [
-                "apiVersion",
-                "kind",
-                "metadata"
-            ],
-            "type": "object"
-        }
-    },
-    "required": [
-        "kubernetesObject"
-    ],
-    "type": "object"
-}
-```
 ### Misconfigured Kubernetes Horizontal Pod Autoscaler
 
 **Description:** This fault injects a configuration into a horizontal pod autoscaler that causes it to react to low resource usage
@@ -718,13 +643,13 @@ A fault is a solvable issue injected into an environment to create an incident.
     "type": "object"
 }
 ```
-### Misconfigured Kuberntes Workload Container Readiness Probe
+### Misconfigured Kubernetes Workload Container Readiness Probe
 
 **Description:** This fault injects a misconfigured readiness probe into a workload container. This probe blocks the pod from starting up.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state due to a `ContainersNotReady` reason for the `Ready` condition.
 
-**[Implementation](../roles/injections/tasks/inject_misconfigured_kuberntes_workload_container_readiness_probe.yaml)**
+**[Implementation](../roles/injections/tasks/inject_misconfigured_kubernetes_workload_container_readiness_probe.yaml)**
 
 **Firing Alerts**
 
@@ -738,6 +663,17 @@ A fault is a solvable issue injected into an environment to create an incident.
 ```json
 {
     "properties": {
+        "container": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "type": "object"
+        },
         "kubernetesObject": {
             "properties": {
                 "apiVersion": {
@@ -805,22 +741,19 @@ See the scenario ground truth file where this fault is invoked.
         "container": {
             "properties": {
                 "env": {
-                    "items": {
-                        "properties": {
-                            "name": {
-                                "type": "string"
-                            },
-                            "value": {
-                                "type": "string"
-                            }
+                    "properties": {
+                        "name": {
+                            "type": "string"
                         },
-                        "required": [
-                            "name",
-                            "value"
-                        ],
-                        "type": "object"
+                        "value": {
+                            "type": "string"
+                        }
                     },
-                    "type": "array"
+                    "required": [
+                        "name",
+                        "value"
+                    ],
+                    "type": "object"
                 },
                 "name": {
                     "type": "string"
@@ -1087,6 +1020,83 @@ See the scenario ground truth file where this fault is invoked.
     },
     "required": [
         "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
+### Nonexistent Kubernetes Workload Persistent Volume Claim
+
+**Description:** This fault injects a workload with a nonexistent volume.
+
+**Expectation:** The faulted pod(s) will enter the `Pending` state. The workload will become unable to function.
+
+**[Implementation](../roles/injections/tasks/inject_nonexistent_kubernetes_workload_persistent_volume_claim.yaml)**
+
+**Firing Alerts**
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+- https://kubernetes.io/docs/concepts/workloads/
+- https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+- https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "container": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "type": "object"
+        },
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject",
+        "container"
     ],
     "type": "object"
 }
@@ -1416,7 +1426,7 @@ See the scenario ground truth file where this fault is invoked.
             "properties": {
                 "apiVersion": {
                     "enum": [
-                        "gateway.networking.k8s.io"
+                        "gateway.networking.k8s.io/v1"
                     ],
                     "type": "string"
                 },
@@ -1522,13 +1532,13 @@ See the scenario ground truth file where this fault is invoked.
     "type": "object"
 }
 ```
-### Unschedueable Kuberntes Workload Pod Anti Affinity Rule
+### Unschedulable Kubernetes Workload Pod Anti Affinity Rule
 
 **Description:** This fault injects an Inter-Pod Anti-Affinity which causes Kubernetes to be unable to schedule the pod.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will not start running.
 
-**[Implementation](../roles/injections/tasks/inject_unschedueable_kuberntes_workload_pod_anti_affinity_rule.yaml)**
+**[Implementation](../roles/injections/tasks/inject_unschedulable_kubernetes_workload_pod_anti_affinity_rule.yaml)**
 
 **Firing Alerts**
 
@@ -1660,6 +1670,70 @@ See the scenario ground truth file where this fault is invoked.
     "required": [
         "kubernetesObject",
         "container"
+    ],
+    "type": "object"
+}
+```
+### Valkey Workload Changed Password
+
+**Description:** This fault changes the password of a Valkey workload.
+
+**Expectation:** Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.
+
+**[Implementation](../roles/injections/tasks/inject_valkey_workload_changed_password.yaml)**
+
+**Firing Alerts**
+
+**Golden Signal Alerts:** HighRequestLatency
+
+**Resources:**
+- https://valkey.io/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
     ],
     "type": "object"
 }

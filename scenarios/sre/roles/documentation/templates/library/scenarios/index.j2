@@ -56,8 +56,8 @@
       - args:
           container:
             env:
-              - name: QUOTE_ADDR
-                value: quote:0000
+              name: QUOTE_ADDR
+              value: quote:0000
             name: shipping
           kubernetesObject:
             apiVersion: apps/v1
@@ -88,9 +88,6 @@
               name: otel-demo-product-catalog-network-delay
               namespace: {{ tools_helm_releases.chaos_mesh.namespace }}
           scheduleSpec:
-            schedule: "* * * * *"
-            historyLimit: 1
-            concurrencyPolicy: Forbid
             type: PodChaos
             podChaos:
               action: pod-failure
@@ -171,9 +168,6 @@
               name: email-http-chaos-post-body-tamper
               namespace: {{ tools_helm_releases.chaos_mesh.namespace }}
           scheduleSpec:
-            schedule: "* * * * *"
-            historyLimit: 1
-            concurrencyPolicy: Forbid
             type: HTTPChaos
             httpChaos:
               mode: all
@@ -189,7 +183,7 @@
               patch:
                 body:
                   type: JSON
-                  value: {{ {"email": "12345", "order": "error body"} | to_json }}
+                  value: "{'email': '12345', 'order': 'error body'}"
               duration: "55s"
         id: scheduled-chaos-mesh-experiment
   environment:
@@ -214,9 +208,6 @@
               name: quote-http-chaos-abort
               namespace: {{ tools_helm_releases.chaos_mesh.namespace }}
           scheduleSpec:
-            schedule: "* * * * *"
-            historyLimit: 1
-            concurrencyPolicy: Forbid
             type: HTTPChaos
             httpChaos:
               mode: all
@@ -330,16 +321,16 @@
             metadata:
               name: valkey-cart
               namespace: {{ applications_helm_releases.otel_demo.namespace }}
-        id: invalid-valkey-password
+        id: valkey-workload-changed-password
   environment:
     applications:
       - id: opentelemetry-demo
   id: 34
-  platforms: {{ [documentation_faults["invalid-valkey-password"].platform] }}
+  platforms: {{ [documentation_faults["valkey-workload-changed-password"].platform] }}
   solutionTemplates:
     - disruptionIndex: 0
       injectionIndex: 0
-  tags: {{ documentation_faults["invalid-valkey-password"].tags }}
+  tags: {{ documentation_faults["valkey-workload-changed-password"].tags }}
 
 # Scenario 37 is an outlier. This scenario is to test if an agent will react to the autoscaled
 # resources. It should not in this case because all autoscaled resources are within the normal
@@ -468,9 +459,6 @@
               name: cart-stress-chaos-memory
               namespace: {{ tools_helm_releases.chaos_mesh.namespace }}
           scheduleSpec:
-            schedule: "* * * * *"
-            historyLimit: 1
-            concurrencyPolicy: Forbid
             type: StressChaos
             stressChaos:
               mode: all
@@ -495,7 +483,7 @@
           documentation_faults["unassigned-kubernetes-workload-container-resource-limits"].platform,
           documentation_faults["scheduled-chaos-mesh-experiment"].platform
         ] |
-        unique
+        ansible.builtin.unique
     }}
   solutionTemplates:
     - disruptionIndex: 0
@@ -508,8 +496,8 @@
         documentation_faults["unassigned-kubernetes-workload-container-resource-limits"].tags,
         documentation_faults["scheduled-chaos-mesh-experiment"].tags
       ] |
-      flatten |
-      unique
+      ansible.builtin.flatten |
+      ansible.builtin.unique
     }}
 - category: sre
   complexity: medium
@@ -567,16 +555,16 @@
             metadata:
               name: payment
               namespace: {{ applications_helm_releases.otel_demo.namespace }}
-        id: unschedueable-kuberntes-workload-pod-anti-affinity-rule
+        id: unschedulable-kubernetes-workload-pod-anti-affinity-rule
   environment:
     applications:
       - id: opentelemetry-demo
   id: 44
-  platforms: {{ [documentation_faults["unschedueable-kuberntes-workload-pod-anti-affinity-rule"].platform] }}
+  platforms: {{ [documentation_faults["unschedulable-kubernetes-workload-pod-anti-affinity-rule"].platform] }}
   solutionTemplates:
     - disruptionIndex: 0
       injectionIndex: 0
-  tags: {{ documentation_faults["unschedueable-kuberntes-workload-pod-anti-affinity-rule"].tags }}
+  tags: {{ documentation_faults["unschedulable-kubernetes-workload-pod-anti-affinity-rule"].tags }}
 - category: sre
   complexity: medium
   description: This scenario simulates new pods of OpenTelemetry Demo's `email` service being unable to execute.
@@ -613,16 +601,16 @@
             metadata:
               name: postgresql
               namespace: {{ applications_helm_releases.otel_demo.namespace }}
-        id: insufficent-kubernetes-workload-container-resources
+        id: insufficient-kubernetes-workload-container-resources
   environment:
     applications:
       - id: opentelemetry-demo
   id: 46
-  platforms: {{ [documentation_faults["insufficent-kubernetes-workload-container-resources"].platform] }}
+  platforms: {{ [documentation_faults["insufficient-kubernetes-workload-container-resources"].platform] }}
   solutionTemplates:
     - disruptionIndex: 0
       injectionIndex: 0
-  tags: {{ documentation_faults["insufficent-kubernetes-workload-container-resources"].tags }}
+  tags: {{ documentation_faults["insufficient-kubernetes-workload-container-resources"].tags }}
 - category: sre
   complexity: medium
   description: This scenario simulates BookInfo's `gateway` service unable to receive GET HTTP requests.
@@ -632,7 +620,7 @@
           httpMethods:
             - GET
           kubernetesObject:
-            apiVersion: gateway.networking.k8s.io
+            apiVersion: gateway.networking.k8s.io/v1
             kind: Gateway
             metadata:
               name: bookinfo-gateway
@@ -682,16 +670,16 @@
             metadata:
               name: frontend
               namespace: {{ applications_helm_releases.otel_demo.namespace }}
-        id: misconfigured-kuberntes-workload-container-readiness-probe
+        id: misconfigured-kubernetes-workload-container-readiness-probe
   environment:
     applications:
       - id: opentelemetry-demo
   id: 49
-  platforms: {{ [documentation_faults["misconfigured-kuberntes-workload-container-readiness-probe"].platform] }}
+  platforms: {{ [documentation_faults["misconfigured-kubernetes-workload-container-readiness-probe"].platform] }}
   solutionTemplates:
     - disruptionIndex: 0
       injectionIndex: 0
-  tags: {{ documentation_faults["misconfigured-kuberntes-workload-container-readiness-probe"].tags }}
+  tags: {{ documentation_faults["misconfigured-kubernetes-workload-container-readiness-probe"].tags }}
 - category: sre
   complexity: medium
   description: This scenario simulates BookInfo's `productpage-v1` service being unable to communicate with other services.
@@ -716,6 +704,30 @@
   tags: {{ documentation_faults["strict-mutual-tls-istio-service-mesh-enforcement"].tags }}
 - category: sre
   complexity: medium
+  description: This scenario simulates BookInfo's `reviews-v3` service being unable to start due to lack of persistent storage.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: reviews
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: reviews-v3
+              namespace: {{ applications_instances.bookinfo.namespace }}
+        id: nonexistent-kubernetes-workload-persistent-volume-claim
+  environment:
+    applications:
+      - id: book-info
+  id: 53
+  platforms: {{ [documentation_faults["nonexistent-kubernetes-workload-persistent-volume-claim"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["nonexistent-kubernetes-workload-persistent-volume-claim"].tags }}
+- category: sre
+  complexity: medium
   description: This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.
   disruptions:
     - injections:
@@ -726,16 +738,16 @@
             metadata:
               name: ad
               namespace: {{ applications_helm_releases.otel_demo.namespace }}
-        id: insufficent-kubernetes-resource-quota
+        id: insufficient-kubernetes-resource-quota
   environment:
     applications:
       - id: opentelemetry-demo
   id: 102
-  platforms: {{ [documentation_faults["insufficent-kubernetes-resource-quota"].platform] }}
+  platforms: {{ [documentation_faults["insufficient-kubernetes-resource-quota"].platform] }}
   solutionTemplates:
     - disruptionIndex: 0
       injectionIndex: 0
-  tags: {{ documentation_faults["insufficent-kubernetes-resource-quota"].tags }}
+  tags: {{ documentation_faults["insufficient-kubernetes-resource-quota"].tags }}
 - category: sre
   complexity: medium
   description: This scenario simulates OpenTelemetry Demo's `product-catalog` service having a malformed command.
