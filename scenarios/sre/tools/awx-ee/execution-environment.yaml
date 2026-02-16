@@ -14,10 +14,12 @@ dependencies:
   galaxy: requirements.yml
   python: requirements.txt
   python_interpreter:
-    package_system: python3.12
-    python_path: /usr/bin/python3.12
+    package_system: python3.13
+    python_path: /usr/bin/python3.13
   system: bindep.txt
 additional_build_steps:
+  prepend_base:
+    - RUN microdnf install -y epel-release
   append_base:
     - RUN $PYCMD -m pip install -U pip
   append_builder:
@@ -31,3 +33,6 @@ additional_build_steps:
     - COPY --from=quay.io/ansible/receptor:devel /usr/bin/receptor /usr/bin/receptor
     - RUN mkdir -p /var/run/receptor
     - RUN git lfs install --system
+    - RUN alternatives --install /usr/bin/python python /usr/bin/python3.13
+    - RUN alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13
+    - RUN alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3.13
