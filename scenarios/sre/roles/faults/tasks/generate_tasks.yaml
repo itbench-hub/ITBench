@@ -32,7 +32,11 @@
 
 - name: Create faults library index-task map file
   ansible.builtin.copy:
-    content: "{{ faults_library_map | ansible.builtin.to_nice_json }}"
+    content: |
+      {{
+        faults_library_map |
+        ansible.builtin.to_nice_json
+      }}
     dest: "{{ [role_path, 'files', 'library', 'map.json'] | ansible.builtin.path_join }}"
     mode: "0644"
 
@@ -50,7 +54,7 @@
 
 - name: Create fault injection tasks files
   ansible.builtin.copy:
-    content: |-
+    content: |
       ---
       - name: Print message
         ansible.builtin.debug:

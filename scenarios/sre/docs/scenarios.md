@@ -428,10 +428,10 @@ kubectl -n otel-demo edit deployment cart
 
 Step 1
 
-- Change the password back to the original by access the pod directly.
+- Change the password back to the original by modifying the value of `valkey-password` in the secrete.
 
 ```shell
-kubectl -n otel-demo exec deployment/valkey-cart -- valkey-cli CONFIG SET requirepass ''
+kubectl -n otel-demo edit secret valkey-credentials
 ```
 ### Scenario 37
 
