@@ -32,9 +32,38 @@
                 ansible.builtin.default([])
               }}
 
+        - name: Create waiter variables
+          ansible.builtin.set_fact:
+            waiters_pre_injection_tasks: |-
+              {{
+                scenarios_scenario.spec.faults[0].waitFor.preInjection |
+                ansible.builtin.default([])
+              }}
+            waiters_post_injection_tasks: |-
+              {{
+                scenarios_scenario.spec.faults[0].waitFor.postInjection |
+                ansible.builtin.default([])
+              }}
+
+    - name: Import waiters role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        waiters_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        waiters_tasks: "{{ waiters_pre_injection_tasks | ansible.builtin.default([]) }}"
+
     - name: Import faults role
       ansible.builtin.import_role:
         name: faults
       vars:
         faults_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import waiters role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        waiters_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        waiters_tasks: "{{ waiters_post_injection_tasks | ansible.builtin.default([]) }}"

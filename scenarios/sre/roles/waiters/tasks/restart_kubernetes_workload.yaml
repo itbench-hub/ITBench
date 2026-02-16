@@ -10,7 +10,7 @@
 
 - name: Verify the workload exists
   ansible.builtin.assert:
-    that: waiters_workload.resources | length == 1
+    that: waiters_workload.resources | ansible.builtin.length == 1
     fail_msg: Unable to find workload. Please ensure that workload exists.
     success_msg: Workload verified.
 
@@ -22,7 +22,7 @@
       - "{{ waiters_workload.resources[0].metadata.namespace }}"
       - rollout
       - restart
-      - "{{ waiters_workload.resources[0].kind | lower }}"
+      - "{{ waiters_workload.resources[0].kind | ansible.builtin.lower }}"
       - "{{ waiters_workload.resources[0].metadata.name }}"
       - --kubeconfig={{ waiters_cluster.kubeconfig | ansible.builtin.expanduser }}
   register: waiters_rollout_restart_result

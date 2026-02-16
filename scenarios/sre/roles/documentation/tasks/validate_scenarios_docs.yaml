@@ -58,7 +58,7 @@
           [scenario.id] |
           ansible.builtin.product(
             scenario.disruptions |
-            community.general.json_query("[*].injections") |
+            map(attribute='injections') |
             ansible.builtin.flatten
           )
         )
@@ -72,9 +72,18 @@
         (
           [scenario.id] |
           ansible.builtin.product(
-            scenario.disruptions |
-            community.general.json_query("[*].waitFor") |
-            ansible.builtin.flatten
+            (
+              scenario.disruptions |
+              ansible.builtin.selectattr('waitFor.postInjection', 'defined') |
+              map(attribute='waitFor.postInjection') |
+              ansible.builtin.flatten
+            ) +
+            (
+              scenario.disruptions |
+              ansible.builtin.selectattr('waitFor.preInjection', 'defined') |
+              map(attribute='waitFor.preInjection') |
+              ansible.builtin.flatten
+            )
           )
         )
       }}

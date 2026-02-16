@@ -1,7 +1,11 @@
 ---
 - name: Load waiters library index
   ansible.builtin.set_fact:
-    waiters_library_index: "{{ lookup('ansible.builtin.file', index_file_path) | from_json }}"
+    waiters_library_index: |-
+      {{
+        lookup('ansible.builtin.file', index_file_path) |
+        ansible.builtin.from_json
+      }}
   vars:
     index_file_path: "{{ playbook_dir }}/../roles/documentation/files/library/waiters/index.json"
 
@@ -9,10 +13,9 @@
   ansible.builtin.set_fact:
     waiters_library_map: |-
       {{
-        (
-          waiters_library_map | default({})
-        ) |
-        combine(
+        waiters_library_map |
+        ansible.builtin.default({}) |
+        ansible.builtin.combine(
           {
             waiter.id: {
               "taskFile": task_file
@@ -25,30 +28,38 @@
     label: waiter/{{ waiter.id }}
     loop_var: waiter
   vars:
-    task_file: "{{ waiter.id | replace('-', '_') }}.yaml"
+    task_file: "{{ waiter.id | ansible.builtin.replace('-', '_') }}.yaml"
 
 - name: Create waiters library index-task map file
   ansible.builtin.copy:
-    content: "{{ waiters_library_map | to_nice_json }}"
-    dest: "{{ [role_path, 'files', 'library', 'map.json'] | path_join }}"
+    content: |
+      {{
+        waiters_library_map |
+        ansible.builtin.to_nice_json
+      }}
+    dest: "{{ [role_path, 'files', 'library', 'map.json'] | ansible.builtin.path_join }}"
     mode: "0644"
 
 - name: Create waiters roles meta argument specs file
   ansible.builtin.copy:
-    content: "{{ waiters_argument_specs | to_nice_yaml(indent=2) }}"
-    dest: "{{ [role_path, 'meta', 'argument_specs.yaml'] | path_join }}"
+    content: "{{ waiters_argument_specs | ansible.builtin.to_nice_yaml(indent=2) }}"
+    dest: "{{ [role_path, 'meta', 'argument_specs.yaml'] | ansible.builtin.path_join }}"
     mode: "0644"
   vars:
-    waiters_argument_specs: "{{ lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') | from_yaml }}"
+    waiters_argument_specs: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') |
+        ansible.builtin.from_yaml
+      }}
 
 - name: Create waiter tasks files
   ansible.builtin.copy:
-    content: |-
+    content: |
       ---
       - name: Print message
         ansible.builtin.debug:
           msg: This waiter ({{ waiter.id }}) is unimplemented.
-    dest: "{{ [role_path, 'tasks', task_file_name] | path_join }}"
+    dest: "{{ [role_path, 'tasks', task_file_name] | ansible.builtin.path_join }}"
     force: false
     mode: "0644"
   loop: "{{ waiters_library_index }}"
@@ -56,4 +67,4 @@
     label: waiter/{{ waiter.id }}
     loop_var: waiter
   vars:
-    task_file_name: "{{ waiter.id | replace('-', '_') }}.yaml"
+    task_file_name: "{{ waiter.id | ansible.builtin.replace('-', '_') }}.yaml"

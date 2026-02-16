@@ -14,24 +14,24 @@
               name: flagd-config
               namespace: {{ applications_helm_releases.otel_demo.namespace }}
         id: opentelemetry-demo-feature-flag
-    - injections: []
       waitFor:
-        - args:
-            kubernetesObject:
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: flagd-config
-                namespace: {{ applications_helm_releases.otel_demo.namespace }}
-          id: restart-kubernetes-workload
-        - args:
-            kubernetesObject:
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: load-generator
-                namespace: {{ applications_helm_releases.otel_demo.namespace }}
-          id: restart-kubernetes-workload
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: flagd-config
+                  namespace: {{ applications_helm_releases.otel_demo.namespace }}
+            id: restart-kubernetes-workload
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: load-generator
+                  namespace: {{ applications_helm_releases.otel_demo.namespace }}
+            id: restart-kubernetes-workload
   environment:
     applications:
       - id: opentelemetry-demo
@@ -57,24 +57,24 @@
               name: flagd-config
               namespace: {{ applications_helm_releases.otel_demo.namespace }}
         id: opentelemetry-demo-feature-flag
-    - injections: []
       waitFor:
-        - args:
-            kubernetesObject:
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: flagd-config
-                namespace: {{ applications_helm_releases.otel_demo.namespace }}
-          id: restart-kubernetes-workload
-        - args:
-            kubernetesObject:
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: ad
-                namespace: {{ applications_helm_releases.otel_demo.namespace }}
-          id: restart-kubernetes-workload
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: flagd-config
+                  namespace: {{ applications_helm_releases.otel_demo.namespace }}
+            id: restart-kubernetes-workload
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: ad
+                  namespace: {{ applications_helm_releases.otel_demo.namespace }}
+            id: restart-kubernetes-workload
   environment:
     applications:
       - id: opentelemetry-demo
