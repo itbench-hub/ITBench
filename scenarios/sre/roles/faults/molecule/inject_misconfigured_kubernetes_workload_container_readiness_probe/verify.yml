@@ -1,0 +1,29 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: compromised-workload
+        namespace: misconfigured-k8s-container-readiness-probe-test
+      register: test_deployment
+
+    - name: Validate that readiness probe was added
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.containers[0].readinessProbe is defined
+        fail_msg: Readiness probe not found. Fault injection failed.
+        success_msg: Readiness probe found.
+
+    - name: Validate readiness probe configuration
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.containers[0].readinessProbe.httpGet is defined
+          - test_deployment.resources[0].spec.template.spec.containers[0].readinessProbe.httpGet.port == 40
+          - test_deployment.resources[0].spec.template.spec.containers[0].readinessProbe.httpGet.path == '/ready'
+        fail_msg: Readiness probe misconfiguration not applied. Fault injection failed.
+        success_msg: Readiness probe misconfigured correctly.
