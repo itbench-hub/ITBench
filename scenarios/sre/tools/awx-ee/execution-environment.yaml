@@ -26,13 +26,10 @@ additional_build_steps:
     # https://stackoverflow.com/questions/63994247/how-to-install-kubectl-and-helm-using-dockerfile
     # Multi-line seems to fail; hence
     - RUN ARCH=$(uname -m) && case "$ARCH" in x86_64) echo "export KUBECTL_ARCH=amd64" >> /etc/environment && echo "export HELM_ARCH=amd64" >> /etc/environment && echo "export AWS_ARCH=x86_64" >> /etc/environment;; aarch64) echo "export KUBECTL_ARCH=arm64" >> /etc/environment && echo "export HELM_ARCH=arm64" >> /etc/environment && echo "export AWS_ARCH=aarch64" >> /etc/environment;; esac
-    - RUN . /etc/environment && curl -L "https://dl.k8s.io/release/v1.33.0/bin/linux/${KUBECTL_ARCH}/kubectl" -o kubectl && chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl
-    - RUN . /etc/environment && curl -L "https://get.helm.sh/helm-v3.16.3-linux-${HELM_ARCH}.tar.gz" -o helm.tar.gz && tar -xvf helm.tar.gz && mv ./linux-${HELM_ARCH}/helm /usr/local/bin/helm
+    - RUN . /etc/environment && curl -L "https://dl.k8s.io/release/v1.35.0/bin/linux/${KUBECTL_ARCH}/kubectl" -o kubectl && chmod +x ./kubectl && mv ./kubectl /usr/local/bin/kubectl
+    - RUN . /etc/environment && curl -L "https://get.helm.sh/helm-v3.18.6-linux-${HELM_ARCH}.tar.gz" -o helm.tar.gz && tar -xvf helm.tar.gz && mv ./linux-${HELM_ARCH}/helm /usr/local/bin/helm
     - RUN . /etc/environment && curl -L "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" -o awscli-exe.zip && unzip awscli-exe.zip && ./aws/install && rm awscli-exe.zip && rm -rf aws
   append_final:
     - COPY --from=quay.io/ansible/receptor:devel /usr/bin/receptor /usr/bin/receptor
     - RUN mkdir -p /var/run/receptor
     - RUN git lfs install --system
-    - RUN alternatives --install /usr/bin/python python /usr/bin/python3.13
-    - RUN alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13
-    - RUN alternatives --install /usr/bin/pip3 pip3 /usr/bin/pip3.13
