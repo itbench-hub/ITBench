@@ -1,0 +1,29 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: compromised-workload
+        namespace: modified-kubernetes-workload-container-environment-variable-test
+      register: test_deployment
+
+    - name: Retrieve environment variable
+      ansible.builtin.set_fact:
+        server_port_env: |-
+          {{
+            test_deployment.resources[0].spec.template.spec.containers[0].env |
+            ansible.builtin.selectattr('name', '==', 'SERVER_PORT')
+          }}
+
+    - name: Validate that environment variable was modified
+      ansible.builtin.assert:
+        that:
+          - server_port_env | ansible.builtin.length == 1
+          - server_port_env[0].value == "9999"
+        fail_msg: Environment variable was not modified. Fault injection failed.
+        success_msg: Environment variable was modified.

@@ -1,0 +1,48 @@
+---
+- name: Create Kubernetes objects
+  hosts:
+    - environment
+  tasks:
+    - name: Create namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: modified-kubernetes-workload-container-environment-variable-test
+        state: present
+
+    - name: Create deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: compromised-workload
+            namespace: modified-kubernetes-workload-container-environment-variable-test
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: compromised-workload
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: compromised-workload
+              spec:
+                containers:
+                  - name: server
+                    # renovate: datasource=docker depName=registry.access.redhat.com/ubi10-minimal
+                    image: registry.access.redhat.com/ubi10-minimal:10.1-1769677092
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+                    env:
+                      - name: SERVER_PORT
+                        value: "8080"
+        state: present
+        wait: true
