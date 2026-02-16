@@ -1,0 +1,31 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve pods
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Pod
+        namespace: valkey-workload-changed-password-test
+        label_selectors:
+          - app.kubernetes.io/name=compromised-workload
+      register: test_pods
+
+    - name: Verify password was changed by attempting connection with new password
+      kubernetes.core.k8s_exec:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        namespace: "{{ test_pods.resources[0].metadata.namespace }}"
+        pod: "{{ test_pods.resources[0].metadata.name }}"
+        command: valkey-cli -a "invalid_password" PING
+      register: password_check
+      failed_when: false
+
+    - name: Validate that new password is set
+      ansible.builtin.assert:
+        that:
+          - password_check.rc == 0
+          - password_check.stdout is ansible.builtin.search('PONG')
+        fail_msg: Password was not changed successfully. Fault injection failed.
+        success_msg: Password was changed successfully.

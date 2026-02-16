@@ -1,0 +1,13 @@
+---
+- name: Cleanup test resources
+  hosts:
+    - environment
+  tasks:
+    - name: Delete test namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Namespace
+        name: unschedulable-k8s-pod-anti-affinity-rule-test
+        state: absent
+        wait: true

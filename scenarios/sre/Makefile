@@ -103,8 +103,8 @@ else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_recorders.yaml --tags "uninstall_recorders"
 endif
 
-.PHONY: inject_scenario_fault
-inject_scenario_fault: ## Injects the fault used in a specific scenario
+.PHONY: inject-scenario-faults
+inject-scenario-faults: ## Injects the fault used in a specific scenario
 ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_faults.yaml --tags "inject_faults" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
@@ -112,8 +112,8 @@ else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif
 
-.PHONY: remove_scenario_fault
-remove_scenario_fault: ## Removes resources used during fault injection
+.PHONY: remove-fault-resources
+remove-fault-resources: ## Removes resources used during fault injection
 ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_faults.yaml --tags "remove_faults" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
@@ -128,13 +128,13 @@ create_environment: deploy_tools deploy_applications ## Deploys tools and applic
 destroy_environment: undeploy_applications undeploy_tools ## Undeploys tools and applications to cluster
 
 .PHONY: start_incident
-start_incident: create_environment deploy_recorders inject_scenario_fault ## Starts an incident by deploying a stack, applications, faults, and recorders for an incident
+start_incident: create_environment deploy_recorders inject-scenario-faults ## Starts an incident by deploying a stack, applications, faults, and recorders for an incident
 
 .PHONY: stop_incident
-stop_incident: undeploy_recorders remove_scenario_fault destroy_environment ## Stops an incident by undeploying a stack, applications, faults, and recorders for an incident
+stop_incident: undeploy_recorders remove-fault-resources destroy_environment ## Stops an incident by undeploying a stack, applications, faults, and recorders for an incident
 
-.PHONY: test_faults
-test_faults: ## Runs fault injection unit tests
+.PHONY: test-unit-faults
+test-unit-faults: ## Runs fault injection unit tests
 	cd roles/faults && uv run molecule test --all --report --command-borders
 
 .PHONY: enable_agent_access
@@ -265,16 +265,16 @@ injection_docs: ## DEPRECATED: Generates documentation for all fault injection
 
 .PHONY: inject_incident_fault
 inject_incident_fault: ## DEPRECATED: Injects the fault used in a specific incident
-	@echo "WARNING: 'make inject_incident_fault is deprecated. Please use 'make inject_scenario_fault' instead."
+	@echo "WARNING: 'make inject_incident_fault is deprecated. Please use 'make inject-scenario-faults' instead."
 	@echo "This command will be removed in a future version."
-	@echo "Executing 'make inject_scenario_fault'..."
+	@echo "Executing 'make inject-scenario-faults'..."
 	@echo ""
-	$(MAKE) inject_scenario_fault $(if $(INCIDENT_NUMBER),SCENARIO_NUMBER=$(INCIDENT_NUMBER))
+	$(MAKE) inject-scenario-faults $(if $(INCIDENT_NUMBER),SCENARIO_NUMBER=$(INCIDENT_NUMBER))
 
 .PHONY: remove_incident_fault
 remove_incident_fault: ## DEPRECATED: Removes the fault used in a specific incident
-	@echo "WARNING: 'make remove_incident_fault is deprecated. Please use 'make remove_scenario_fault' instead."
+	@echo "WARNING: 'make remove_incident_fault is deprecated. Please use 'make remove-fault-resources' instead."
 	@echo "This command will be removed in a future version."
-	@echo "Executing 'make remove_scenario_fault'..."
+	@echo "Executing 'make remove-fault-resources'..."
 	@echo ""
-	$(MAKE) remove_scenario_fault $(if $(INCIDENT_NUMBER),SCENARIO_NUMBER=$(INCIDENT_NUMBER))
+	$(MAKE) remove-fault-resources $(if $(INCIDENT_NUMBER),SCENARIO_NUMBER=$(INCIDENT_NUMBER))

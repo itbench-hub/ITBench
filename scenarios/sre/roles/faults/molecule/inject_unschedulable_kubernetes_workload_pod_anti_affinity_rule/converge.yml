@@ -10,16 +10,11 @@
         faults_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
         faults_injection_tasks:
-          - id: modified-kubernetes-workload-container-environment-variable
+          - id: unschedulable-kubernetes-workload-pod-anti-affinity-rule
             args:
               kubernetesObject:
                 apiVersion: apps/v1
                 kind: Deployment
                 metadata:
                   name: compromised-workload
-                  namespace: modified-k8s-workload-container-env-variable-test
-              container:
-                name: server
-                env:
-                  name: SERVER_PORT
-                  value: "9999"
+                  namespace: unschedulable-k8s-pod-anti-affinity-rule-test

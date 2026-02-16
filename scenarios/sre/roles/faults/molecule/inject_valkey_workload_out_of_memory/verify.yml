@@ -1,0 +1,57 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: compromised-workload
+        namespace: valkey-workload-out-of-memory-test
+      register: test_deployment
+
+    - name: Validate that ConfigMap was created
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: ConfigMap
+        name: valkey-storage-script
+        namespace: valkey-workload-out-of-memory-test
+      register: test_configmap
+
+    - name: Validate ConfigMap exists
+      ansible.builtin.assert:
+        that:
+          - test_configmap.resources | ansible.builtin.length == 1
+        fail_msg: ConfigMap not found. Fault injection failed.
+        success_msg: ConfigMap found.
+
+    - name: Validate that container command was modified
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.containers[0].command is defined
+          - test_deployment.resources[0].spec.template.spec.containers[0].command | ansible.builtin.length > 0
+        fail_msg: Container command not modified. Fault injection failed.
+        success_msg: Container command modified.
+
+    - name: Validate that volume mount was added
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.containers[0].volumeMounts is defined
+          - test_deployment.resources[0].spec.template.spec.containers[0].volumeMounts |
+            ansible.builtin.selectattr('name', '==', 'scripts') |
+            ansible.builtin.length == 1
+        fail_msg: Volume mount not added. Fault injection failed.
+        success_msg: Volume mount added.
+
+    - name: Validate that volume was added
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.volumes is defined
+          - test_deployment.resources[0].spec.template.spec.volumes |
+            ansible.builtin.selectattr('name', '==', 'scripts') |
+            ansible.builtin.length == 1
+        fail_msg: Volume not added. Fault injection failed.
+        success_msg: Volume added.

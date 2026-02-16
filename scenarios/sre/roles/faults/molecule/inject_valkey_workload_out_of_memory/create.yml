@@ -10,7 +10,7 @@
           apiVersion: v1
           kind: Namespace
           metadata:
-            name: modified-k8s-workload-container-env-variable-test
+            name: valkey-workload-out-of-memory-test
         state: present
 
     - name: Create deployment
@@ -21,7 +21,7 @@
           kind: Deployment
           metadata:
             name: compromised-workload
-            namespace: modified-k8s-workload-container-env-variable-test
+            namespace: valkey-workload-out-of-memory-test
           spec:
             replicas: 1
             selector:
@@ -33,16 +33,15 @@
                   app.kubernetes.io/name: compromised-workload
               spec:
                 containers:
-                  - name: server
-                    # renovate: datasource=docker depName=registry.access.redhat.com/ubi10-minimal
-                    image: registry.access.redhat.com/ubi10-minimal:10.1-1769677092
-                    command:
-                      - /bin/sh
-                    args:
-                      - -c
-                      - "sleep infinity"
-                    env:
-                      - name: SERVER_PORT
-                        value: "8080"
+                  - name: valkey
+                    image: docker.io/valkey/valkey:9.0.1-alpine3.23
+                    ports:
+                      - containerPort: 6379
+                        name: valkey
+                    resources:
+                      limits:
+                        memory: 128Mi
+                      requests:
+                        memory: 64Mi
         state: present
         wait: true
