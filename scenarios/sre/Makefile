@@ -135,9 +135,7 @@ stop_incident: undeploy_recorders remove_scenario_fault destroy_environment ## S
 
 .PHONY: test_faults
 test_faults: ## Runs fault injection unit tests
-	@pushd roles/faults
-	uv run molecule test --all --report --command-borders
-	@popd
+	cd roles/faults && uv run molecule test --all --report --command-borders
 
 .PHONY: enable_agent_access
 enable_agent_access: ## Adds access controls for llm agent
