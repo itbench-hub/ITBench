@@ -31,7 +31,7 @@ The playbook run is configured using variables defined in `group_vars`.
 
 ## Required Software
 
-- [Python3](https://www.python.org/downloads/) (v3.13.Z)
+- [Python3](https://www.python.org/downloads/) (v3.12+)
 - [Helm](https://helm.sh/docs/intro/install/) (v3.16+)
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [OpenShift CLI](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/cli_tools/openshift-cli-oc) (Required Only for OpenShift)
@@ -44,7 +44,7 @@ The playbook run is configured using variables defined in `group_vars`.
 ```bash
 brew install helm@3
 brew install kubectl
-brew install python@3.13
+brew install python@3.14
 brew install openshift-cli
 brew install uv
 ```

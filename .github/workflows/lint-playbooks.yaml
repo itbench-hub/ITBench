@@ -1,0 +1,24 @@
+name: Lint ITBench playbooks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-playbooks:
+    name: Lint playbooks and roles
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: astral-sh/setup-uv@v7.3.0
+        with:
+          working-directory: scenarios/sre
+      - name: Install project dependencies
+        run: |
+          make -C scenarios/sre deps
+      - name: Run ansible-lint
+        uses: ansible/ansible-lint@v26.1.1
+        with:
+          setup_python: "false"
+          requirements_file: scenarios/sre/requirements.yaml
