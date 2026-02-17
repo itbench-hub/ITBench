@@ -4,23 +4,23 @@
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-.PHONY: group_vars
-group_vars: ## Generates the group variables
+.PHONY: group-vars
+group-vars: ## Generates the group variables
 	mkdir group_vars/all
 	echo "ansible_python_interpreter: $(shell uv python find)" > group_vars/all/ansible.yaml
 	cp group_vars/development/awx_stack.yaml.example group_vars/development/awx_stack.yaml
 	cp group_vars/development/kops_cluster.yaml.example group_vars/development/kops_cluster.yaml
 
-.PHONY: create_kops_cluster
-create_kops_cluster: ## Creates a single cluster created by kops
+.PHONY: create-kops-cluster
+create-kops-cluster: ## Creates a single cluster created by kops
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "create_cluster"
 
-.PHONY: list_kops_clusters
-list_kops_clusters: ## Lists all active clusters created by kops
+.PHONY: list-kops-clusters
+list-kops-clusters: ## Lists all active clusters created by kops
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "list_clusters"
 
-.PHONY: export_kops_kubeconfig
-export_kops_kubeconfig: ## Exports the kubeconfig of a single cluster created by kops
+.PHONY: export-kops-kubeconfig
+export-kops-kubeconfig: ## Exports the kubeconfig of a single cluster created by kops
 ifdef CLUSTER_NAME
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "export_cluster" \
 		--extra-vars "kops_full_cluster_name_override=$(CLUSTER_NAME)"
@@ -28,8 +28,8 @@ else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "export_cluster"
 endif
 
-.PHONY: destroy_kops_cluster
-destroy_kops_cluster: ## Deletes a single cluster created by kops
+.PHONY: destroy-kops-cluster
+destroy-kops-cluster: ## Deletes a single cluster created by kops
 ifdef CLUSTER_NAME
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "delete_cluster" \
 		--extra-vars "kops_full_cluster_name_override=$(CLUSTER_NAME)"
@@ -37,20 +37,20 @@ else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "delete_cluster"
 endif
 
-.PHONY: create_awx_stack
-create_awx_stack: ## Creates an AWX stack created by kops
+.PHONY: create-awx-stack
+create-awx-stack: ## Creates an AWX stack created by kops
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "create_stack"
 
-.PHONY: export_awx_kubeconfigs
-export_awx_kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
+.PHONY: export-awx-kubeconfigs
+export-awx-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "export_stack"
 
-.PHONY: destroy_awx_stack
-destroy_awx_stack: ## Destroy an AWX stack created by kops
+.PHONY: destroy-awx-stack
+destroy-awx-stack: ## Destroy an AWX stack created by kops
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "delete_stack"
 
-.PHONY: check_awx_clusters
-check_awx_clusters: ## Check which AWX clusters have validation errors
+.PHONY: check-awx-clusters
+check-awx-clusters: ## Check which AWX clusters have validation errors
 	@echo "Reading configuration..."
 	@BUCKET=$$(grep 'bucket_name:' group_vars/development/kops_cluster.yaml | awk '{print $$2}' | tr -d '"'); \
 	PREFIX=$$(grep 'name_prefix:' group_vars/development/awx_stack.yaml | head -1 | awk '{print $$2}'); \
@@ -64,11 +64,11 @@ check_awx_clusters: ## Check which AWX clusters have validation errors
 			&& echo "✓ OK" || echo "✗ FAILED"; \
 	done
 
-.PHONY: debug_cluster
-debug_cluster: ## Debug a failed cluster (usage: CLUSTER_NAME=my-cluster.k8s.local make debug_cluster)
+.PHONY: debug-cluster
+debug-cluster: ## Debug a failed cluster (usage: CLUSTER_NAME=my-cluster.k8s.local make debug-cluster)
 	@if [ -z "$(CLUSTER_NAME)" ]; then \
 		echo "Error: CLUSTER_NAME is required"; \
-		echo "Usage: CLUSTER_NAME=my-cluster.k8s.local make debug_cluster"; \
+		echo "Usage: CLUSTER_NAME=my-cluster.k8s.local make debug-cluster"; \
 		exit 1; \
 	fi
 	@BUCKET=$$(grep 'bucket_name:' group_vars/development/kops_cluster.yaml | awk '{print $$2}' | tr -d '"'); \
@@ -84,11 +84,11 @@ debug_cluster: ## Debug a failed cluster (usage: CLUSTER_NAME=my-cluster.k8s.loc
 	echo "=== Non-Running Pods ==="; \
 	kubectl get pods --all-namespaces --kubeconfig=/tmp/debug-$(CLUSTER_NAME).yaml 2>&1 | grep -v "Running\|Completed" || echo "All pods are running"
 
-.PHONY: fix_cluster
-fix_cluster: ## Attempt to fix a cluster by removing unjoined nodes (usage: CLUSTER_NAME=my-cluster.k8s.local make fix_cluster)
+.PHONY: fix-cluster
+fix-cluster: ## Attempt to fix a cluster by removing unjoined nodes (usage: CLUSTER_NAME=my-cluster.k8s.local make fix-cluster)
 	@if [ -z "$(CLUSTER_NAME)" ]; then \
 		echo "Error: CLUSTER_NAME is required"; \
-		echo "Usage: CLUSTER_NAME=my-cluster.k8s.local make fix_cluster"; \
+		echo "Usage: CLUSTER_NAME=my-cluster.k8s.local make fix-cluster"; \
 		exit 1; \
 	fi
 	@BUCKET=$$(grep 'bucket_name:' group_vars/development/kops_cluster.yaml | awk '{print $$2}' | tr -d '"'); \
@@ -112,35 +112,3 @@ fix_cluster: ## Attempt to fix a cluster by removing unjoined nodes (usage: CLUS
 	echo ""; \
 	echo "=== Validating cluster ==="; \
 	kops validate cluster --name=$(CLUSTER_NAME) --state=s3://$$BUCKET --wait=5m || echo "Cluster still has issues, may need more time"
-
-.PHONY: create
-create: ## DEPRECATED: Use 'make create_kops_cluster' instead. Creates a single cluster
-	@echo "WARNING: 'make create' is deprecated. Please use 'make create_kops_cluster' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make create_kops_cluster'..."
-	@echo ""
-	$(MAKE) create_kops_cluster
-
-.PHONY: list_clusters
-list_clusters: ## DEPRECATED: Use 'make list_kops_cluster' instead. List all active clusters created by kOps
-	@echo "WARNING: 'make list_clusters' is deprecated. Please use 'make list_kops_clusters' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make list_kops_clusters'..."
-	@echo ""
-	$(MAKE) list_kops_clusters
-
-.PHONY: get_kcfg
-get_kcfg: ## DEPRECATED: Use 'make export_kops_kubeconfig' instead.
-	@echo "WARNING: 'make create' is deprecated. Please use 'make export_kops_kubeconfig' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make export_kops_kubeconfig'..."
-	@echo ""
-	$(MAKE) export_kops_kubeconfig $(if $(CLUSTER_NAME),CLUSTER_NAME=$(CLUSTER_NAME))
-
-.PHONY: delete
-delete: ## DEPRECATED: Use 'make destroy_kops_cluster' instead. Deletes a single cluster
-	@echo "WARNING: 'make delete' is deprecated. Please use 'make destroy_kops_cluster' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make destroy_kops_cluster'..."
-	@echo ""
-	$(MAKE) destroy_kops_cluster $(if $(CLUSTER_NAME),CLUSTER_NAME=$(CLUSTER_NAME))

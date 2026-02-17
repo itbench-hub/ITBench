@@ -9,40 +9,40 @@ deps: ## Installs dependencies
 	uv sync
 	uv run ansible-galaxy install -r requirements.yaml --force
 
-.PHONY: pre_commit_hooks
-pre_commit_hooks: ## Installs pre-commit hooks
+.PHONY: pre-commit-hooks
+pre-commit-hooks: ## Installs pre-commit hooks
 	uv run pre-commit install
 	uv run pre-commit install --hook-type commit-msg --hook-type pre-push
 
-.PHONY: group_vars
-group_vars: ## Generates the group variables
+.PHONY: group-vars
+group-vars: ## Generates the group variables
 	echo "ansible_python_interpreter: $(shell uv python find)" > group_vars/all/ansible.yaml
 	cp group_vars/all/storage.yaml.example group_vars/all/storage.yaml
 	cp group_vars/environment/applications.yaml.example group_vars/environment/applications.yaml
 	cp group_vars/environment/cluster.yaml.example group_vars/environment/cluster.yaml
 	cp group_vars/environment/tools.yaml.example group_vars/environment/tools.yaml
 
-.PHONY: generate_docs
-generate_docs: ## Generates library indexes, schemas, and other related documentation
+.PHONY: generate-docs
+generate-docs: ## Generates library indexes, schemas, and other related documentation
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_documentation.yaml --tags "generate_docs"
 
-.PHONY: validate_docs
-validate_docs: ## Validates library indexes
+.PHONY: validate-docs
+validate-docs: ## Validates library indexes
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_documentation.yaml --tags "validate_docs"
 
-.PHONY: generate_scenario_files
-generate_scenario_files: ## Generates scenario related files using library indexes
+.PHONY: generate-scenario-files
+generate-scenario-files: ## Generates scenario related files using library indexes
 	uv run ansible-playbook -i inventory.yaml playbooks/generate_scenario_files.yaml --tags "generate_files"
 	uv run ansible-lint roles/scenarios/files roles/scenarios/meta roles/waiters/meta roles/faults/meta --fix
 
-.PHONY: regenerate_scenario_files
-regenerate_scenario_files: ## Overwrites scenario related files using library indexes
+.PHONY: regenerate-scenario-files
+regenerate-scenario-files: ## Overwrites scenario related files using library indexes
 	uv run ansible-playbook -i inventory.yaml playbooks/generate_scenario_files.yaml --tags "generate_files" \
 		--extra-vars "overwrite_files=true"
 	uv run ansible-lint roles/scenarios/files roles/scenarios/meta roles/waiters/meta roles/faults/meta --fix
 
-.PHONY: deploy_tools
-deploy_tools: ## Deploys the observability and fault tools to cluster
+.PHONY: deploy-tools
+deploy-tools: ## Deploys the observability and fault tools to cluster
 ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "install_tools" \
 		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
@@ -50,8 +50,8 @@ else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "install_tools"
 endif
 
-.PHONY: undeploy_tools
-undeploy_tools: ## Undeploys the observability and fault tools from cluster
+.PHONY: undeploy-tools
+undeploy-tools: ## Undeploys the observability and fault tools from cluster
 ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools" \
 		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
@@ -59,16 +59,13 @@ else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools"
 endif
 
-.PHONY: reinit_tools
-reinit_tools: undeploy_tools deploy_tools ## Re-initialize observability and fault tools on the cluster
-
-.PHONY: remove_tools_crds
-remove_tools_crds: ## Removes all the observability and fault tools custom resource definitions from cluster
+.PHONY: remove-tools-crds
+remove-tools-crds: ## Removes all the observability and fault tools custom resource definitions from cluster
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools" \
 		--extra-vars "remove_crds=true"
 
-.PHONY: deploy_applications
-deploy_applications: ## Deploys the applications to cluster
+.PHONY: deploy-applications
+deploy-applications: ## Deploys the applications to cluster
 ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "install_applications" \
 		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
@@ -76,8 +73,8 @@ else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "install_applications"
 endif
 
-.PHONY: undeploy_applications
-undeploy_applications: ## Undeploys the applications to cluster
+.PHONY: undeploy-applications
+undeploy-applications: ## Undeploys the applications to cluster
 ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "uninstall_applications" \
 		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
@@ -85,8 +82,8 @@ else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "uninstall_applications"
 endif
 
-.PHONY: deploy_recorders
-deploy_recorders: ## Deploys the data recorders to cluster
+.PHONY: deploy-recorders
+deploy-recorders: ## Deploys the data recorders to cluster
 ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_recorders.yaml --tags "install_recorders" \
 		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
@@ -94,8 +91,8 @@ else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_recorders.yaml --tags "install_recorders"
 endif
 
-.PHONY: undeploy_recorders
-undeploy_recorders: ## Undeploys the data recorders to cluster
+.PHONY: undeploy-recorders
+undeploy-recorders: ## Undeploys the data recorders to cluster
 ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_recorders.yaml --tags "uninstall_recorders" \
 		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
@@ -121,17 +118,17 @@ else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif
 
-.PHONY: create_environment
-create_environment: deploy_tools deploy_applications ## Deploys tools and applications to cluster
+.PHONY: create-environment
+create-environment: deploy-tools deploy-applications ## Deploys tools and applications to cluster
 
-.PHONY: destroy_environment
-destroy_environment: undeploy_applications undeploy_tools ## Undeploys tools and applications to cluster
+.PHONY: destroy-environment
+destroy-environment: undeploy-applications undeploy-tools ## Undeploys tools and applications to cluster
 
-.PHONY: start_incident
-start_incident: create_environment deploy_recorders inject-scenario-faults ## Starts an incident by deploying a stack, applications, faults, and recorders for an incident
+.PHONY: start-incident
+start-incident: create-environment deploy-recorders inject-scenario-faults ## Starts an incident by deploying a stack, applications, faults, and recorders for an incident
 
-.PHONY: stop_incident
-stop_incident: undeploy_recorders remove-fault-resources destroy_environment ## Stops an incident by undeploying a stack, applications, faults, and recorders for an incident
+.PHONY: stop-incident
+stop-incident: undeploy-recorders remove-fault-resources destroy-environment ## Stops an incident by undeploying a stack, applications, faults, and recorders for an incident
 
 .PHONY: test-unit-faults
 test-unit-faults: ## Runs fault injection unit tests
@@ -141,144 +138,26 @@ test-unit-faults: ## Runs fault injection unit tests
 test-unit-waiters: ## Runs waiter unit tests
 	cd roles/waiters && uv run molecule test --all --report --command-borders
 
-.PHONY: enable_agent_access
-enable_agent_access: ## Adds access controls for llm agent
+.PHONY: enable-agent-access
+enable-agent-access: ## Adds access controls for llm agent
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "grant_access"
 
-.PHONY: disable_agent_access
-disable_agent_access: ## Removes access controls for llm agent
+.PHONY: disable-agent-access
+disable-agent-access: ## Removes access controls for llm agent
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "revoke_access"
 
-.PHONY: generate_agent_bundle
-generate_agent_bundle: ## Generates a bundle for an LLM Agent to interface with
+.PHONY: generate-agent-bundle
+generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with
 	ANSIBLE_STDOUT_CALLBACK=ansible.posix.json uv run ansible-playbook -i inventory.yaml playbooks/generate_agent_bundle.yaml | jq -r '.plays[].tasks[] | select(.task.name == "Print agent bundle") | .hosts.localhost.msg'
 
-.PHONY: generate_leaderboard_bundle_status
-generate_leaderboard_bundle_status: ## Generates a bundle status for Leaderboard to interface with
+.PHONY: generate-leaderboard-bundle-status
+generate-leaderboard-bundle-status: ## Generates a bundle status for Leaderboard to interface with
 	uv run ansible-playbook -i inventory.yaml playbooks/generate_leaderboard_bundle_status.yaml
 
-.PHONY: generate_leaderboard_bundle
-generate_leaderboard_bundle: ## Generates a bundle of scenarios for the Leaderboard to interface
+.PHONY: generate-leaderboard-bundle
+generate-leaderboard-bundle: ## Generates a bundle of scenarios for the Leaderboard to interface
 	uv run ansible-playbook -i inventory.yaml playbooks/generate_leaderboard_bundle.yaml
 
-PHONY: fetch_alerts
-fetch_alerts: ## Checks the Prometheus for firing alerts
+PHONY: fetch-alerts
+fetch-alerts: ## Checks the Prometheus for firing alerts
 	ansible-runner run ./ -p check_for_specific_alerts_in_firing_state.yaml
-
-.PHONY: deploy_observability_stack
-deploy_observability_stack: ## DEPRECATED: Deploys the observability tools to cluster
-	@echo "WARNING: 'make deploy_observability_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make deploy_tools'..."
-	@echo ""
-	$(MAKE) deploy_tools $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
-
-.PHONY: undeploy_observability_stack
-undeploy_observability_stack: ## DEPRECATED: Undeploys observability tools to cluster
-	@echo "WARNING: 'make undeploy_observability_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make undeploy_environment_tools'..."
-	@echo ""
-	$(MAKE) undeploy_tools $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
-
-.PHONY: deploy_finops_stack
-deploy_finops_stack: ## DEPRECATED: Deploys the finops tools to cluster
-	@echo "WARNING: 'make deploy_finops_stack' is deprecated. Please use 'make deploy_environment_tools' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make deploy_environment_tools'..."
-	@echo ""
-	$(MAKE) deploy_tools $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
-
-.PHONY: undeploy_finops_stack
-undeploy_finops_stack: ## DEPRECATED: Undeploys finops tools to cluster
-	@echo "WARNING: 'make undeploy_finops_stack' is deprecated. Please use 'make undeploy_environment_tools' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make undeploy_environment_tools'..."
-	@echo ""
-	$(MAKE) undeploy_tools $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
-
-.PHONY: deploy_astronomy_shop
-deploy_astronomy_shop: ## DEPRECATED: Deploys the Astronomy Shop application
-	@echo "WARNING: 'make deploy_astronomy_shop' is deprecated. Please use 'make deploy_applications' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make deploy_applications'..."
-	@echo ""
-	$(MAKE) deploy_applications $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
-
-.PHONY: undeploy_astronomy_shop
-undeploy_astronomy_shop: ## DEPRECATED: Undeploys the Astronomy Shop application
-	@echo "WARNING: 'make undeploy_astronomy_shop' is deprecated. Please use 'make undeploy_applications' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make undeploy_applications'..."
-	@echo ""
-	$(MAKE) undeploy_applications $(if $(SCENARIO_NUMBER),SCENARIO_NUMBER=$(SCENARIO_NUMBER))
-
-.PHONY: deploy_hotel_reservation
-deploy_hotel_reservation: ## DEPRECATED: Deploys the Hotel Reservation application
-	@echo "WARNING: Hotel Reservation has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
-	@echo "This command will be removed in a future version."
-
-.PHONY: undeploy_hotel_reservation
-undeploy_hotel_reservation: ## DEPRECATED: Undeploys the Hotel Reservation application
-	@echo "WARNING: Hotel Reservation has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
-	@echo "This command will be removed in a future version."
-
-.PHONY: deploy_elasticsearch
-deploy_elasticsearch: ## DEPRECATED: Deploys the Elasticsearch cluster
-	@echo "WARNING: Elasticsearch has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
-	@echo "This command will be removed in a future version."
-
-.PHONY: undeploy_elasticsearch
-undeploy_elasticsearch: ## DEPRECATED: Undeploys the Elasticsearch cluster
-	@echo "WARNING: Elasticsearch has been removed. Please use a pre-release version of ITBench to run scenarios with this application."
-	@echo "This command will be removed in a future version."
-
-.SILENT: bundle_info
-bundle_info:
-	@echo "WARNING: 'make bundle_info is deprecated. Please use 'make generate_agent_bundle' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make generate_agent_bundle'..."
-	@echo ""
-	$(MAKE) generate_agent_bundle
-
-.SILENT: bundle_status
-bundle_status:
-	@echo "WARNING: 'make bundle_status is deprecated. Please use 'make generate_leaderboard_bundle_status' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make generate_leaderboard_bundle_status'..."
-	@echo ""
-	$(MAKE) generate_leaderboard_bundle_status
-
-.PHONY: check_alerts
-check_alerts:
-	@echo "WARNING: 'make check_alerts' is deprecated. Please use 'make deploy_recorders' instead."
-	@echo "This command will be removed in a future version."
-
-.PHONY: documentation
-documentation: ## DEPRECATED: Generates documentation for all incidents
-	@echo "WARNING: 'make documentation is deprecated. Please use 'make docs' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make docs'..."
-	@echo ""
-	$(MAKE) docs
-
-.PHONY: injection_docs
-injection_docs: ## DEPRECATED: Generates documentation for all fault injection
-	@echo "WARNING: 'make injection_docs' is deprecated."
-	@echo "This command will be removed in a future version."
-
-.PHONY: inject_incident_fault
-inject_incident_fault: ## DEPRECATED: Injects the fault used in a specific incident
-	@echo "WARNING: 'make inject_incident_fault is deprecated. Please use 'make inject-scenario-faults' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make inject-scenario-faults'..."
-	@echo ""
-	$(MAKE) inject-scenario-faults $(if $(INCIDENT_NUMBER),SCENARIO_NUMBER=$(INCIDENT_NUMBER))
-
-.PHONY: remove_incident_fault
-remove_incident_fault: ## DEPRECATED: Removes the fault used in a specific incident
-	@echo "WARNING: 'make remove_incident_fault is deprecated. Please use 'make remove-fault-resources' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make remove-fault-resources'..."
-	@echo ""
-	$(MAKE) remove-fault-resources $(if $(INCIDENT_NUMBER),SCENARIO_NUMBER=$(INCIDENT_NUMBER))
