@@ -35,9 +35,23 @@
           vars:
             scenarios_identifier: "{{ scenario_id }}"
 
-        - name: Create fault injections variable
+        - name: Create application installation variable
           ansible.builtin.set_fact:
             applications_configuration: "{{ scenarios_scenario.spec.applications }}"
+
+    - name: Create role variables
+      tags:
+        - install_applications
+      when:
+        - scenario_id is undefined
+      block:
+        - name: Create application installation variable
+          ansible.builtin.set_fact:
+            applications_configuration:
+              bookInfo:
+                enabled: "{{ applications.book_info | ansible.builtin.default(true) }}"
+              opentelemetryDemo:
+                enabled: "{{ applications.otel_demo | ansible.builtin.default(true) }}"
 
     - name: Import applications role
       ansible.builtin.import_role:
