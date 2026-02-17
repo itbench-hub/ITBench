@@ -12,6 +12,23 @@
         ansible.builtin.from_json
       }}
 
+- name: Generate map for applications based on application id
+  ansible.builtin.set_fact:
+    documentation_applications: |-
+      {{
+        documentation_applications |
+        ansible.builtin.default({}) |
+        ansible.builtin.combine({application.id: application})
+      }}
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/applications/index.json") |
+      ansible.builtin.from_json
+    }}
+  loop_control:
+    label: application/{{ application.id }}
+    loop_var: application
+
 - name: Generate map for faults based on fault id
   ansible.builtin.set_fact:
     documentation_faults: |-
@@ -48,6 +65,17 @@
 
 - name: Generate list of scenario objects for validation
   ansible.builtin.set_fact:
+    documentation_scenario_applications: |-
+      {{
+        (
+          documentation_scenario_applications |
+          ansible.builtin.default([])
+        ) +
+        (
+          [scenario.id] |
+          ansible.builtin.product(scenario.environment.applications)
+        )
+      }}
     documentation_scenario_injections: |-
       {{
         (
@@ -101,6 +129,18 @@
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
+
+- name: Validate scenario applications arguments
+  ansible.utils.validate:
+    data: "{{ group[1].args }}"
+    criteria: "{{ documentation_applications[group[1].id].arguments.jsonSchema }}"
+    engine: ansible.utils.jsonschema
+  loop: "{{ documentation_scenario_applications }}"
+  loop_control:
+    label: scenario-{{ group[0] }}/{{ group[1].id }}
+    loop_var: group
+  when:
+    - group[1].args is defined
 
 - name: Validate scenario fault injection arguments
   ansible.utils.validate:

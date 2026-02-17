@@ -96,17 +96,54 @@
 - name: Create HorizontalPodAutorscalers
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    template: templates/kubernetes/otel_demo/horizontalpodautoscalers.j2
+    resource_definition:
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: "{{ workload.metadata.name }}"
+        namespace: "{{ workload.metadata.namespace }}"
+      spec:
+        scaleTargetRef:
+          apiVersion: "{{ workload.apiVersion }}"
+          kind: "{{ workload.kind }}"
+          name: "{{ workload.metadata.name }}"
+        minReplicas: 1
+        maxReplicas: 10
+        metrics:
+          - type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 70
+          - type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 80
+        behavior:
+          scaleDown:
+            policies:
+              - type: Percent
+                value: 50
+                periodSeconds: 60
+              - type: Pods
+                value: 2
+                periodSeconds: 60
+            selectPolicy: Min
     state: present
-  vars:
-    workloads: |-
+  loop: |-
       {{
         applications_otel_demo_deployments.resources |
-        rejectattr('metadata.name', '==', 'load-generator') |
-        rejectattr('metadata.name', '==', 'otel-collector')
+        ansible.builtin.rejectattr('metadata.name', '==', 'load-generator') |
+        ansible.builtin.rejectattr('metadata.name', '==', 'otel-collector')
       }}
+  loop_control:
+    label: deployment/{{ workload.metadata.name }}
+    loop_var: workload
   when:
-    - applications_configuration.otel_demo.options.autoscaling.enabled | default(false)
+    - applications_configuration.opentelemtryDemo.options.autoscaling.kubernetes | ansible.builtin.default(false)
 
 - name: Create PrometheusRules
   kubernetes.core.k8s:

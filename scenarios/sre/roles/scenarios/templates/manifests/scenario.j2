@@ -2,26 +2,29 @@
 apiVersion: itbench.io/v2
 kind: Scenario
 metadata:
-  name: {{ ["scenario", scenario.id] | join("-") }}
+  name: {{ ["scenario", scenario.id] | ansible.builtin.join("-") }}
 spec:
   applications:
 {% for application in scenario.environment.applications %}
 {% if application.id == "book-info" %}
-    - bookInfo:
-        enabled: true
-        options: {}
+    bookInfo:
+      enabled: true
+{% if application.args is defined %}
+      options: {{ application.args }}
+{% endif %}
 {% elif application.id == "opentelemetry-demo" %}
-    - otelDemo:
-        enabled: true
-        options:
-          autoscaling: {{ scenario.category == "finops" }}
+    opentelemetryDemo:
+      enabled: true
+{% if application.args is defined %}
+      options: {{ application.args }}
+{% endif %}
 {% endif %}
 {% endfor %}
   faults: {{ scenario.disruptions }}
   tools:
     chaosEngineering:
       chaosMesh:
-        enabled: {{ chaos_mesh_fault_count > 0 }}
+        enabled: {{ enable_chaos_mesh }}
     costMonitoring:
       opencost:
         enabled: {{ scenario.category == "finops" }}

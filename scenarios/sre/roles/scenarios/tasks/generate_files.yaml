@@ -75,18 +75,23 @@
     label: scenario-{{ scenario.id }}
     loop_var: scenario
   vars:
-    chaos_mesh_fault_count: |-
+    enable_chaos_mesh: |-
       {{
         scenario.disruptions |
-        community.general.json_query("[*].injections[?id=='scheduled-chaos-mesh-experiment']") |
+        map(attribute="injections") |
         ansible.builtin.flatten |
-        ansible.builtin.select() |
-        ansible.builtin.length
+        ansible.builtin.selectattr("id", "==", "scheduled-chaos-mesh-experiment") |
+        ansible.builtin.length > 0
       }}
 
 - name: Generate scenario ground truths
   ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.template', 'templates/manifests/groundtruth.j2') | from_yaml | to_nice_yaml(indent=2, width=160) }}"
+    content: |
+      {{
+        lookup('ansible.builtin.template', 'templates/manifests/groundtruth.j2') |
+        ansible.builtin.from_yaml |
+        ansible.builtin.to_nice_yaml(indent=2, width=160)
+      }}
     dest: "{{ scenarios_directory_paths[scenario.id] }}/groundtruth.yaml"
     force: "{{ scenarios_files_generator.options.overwrite | ansible.builtin.default(false) }}"
     mode: "0644"
