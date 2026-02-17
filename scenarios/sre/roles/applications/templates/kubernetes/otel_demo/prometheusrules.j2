@@ -4,7 +4,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: otel-demo-alerting-rules
-  namespace: [[ applications_helm_releases.otel_demo.namespace ]]
+  namespace: [[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]
 spec:
   groups:
     - name: opentelemetrydemo.workloads
@@ -13,7 +13,7 @@ spec:
           expr: |
             sum by (namespace) (
               kube_pod_status_phase{
-                namespace="[[ applications_helm_releases.otel_demo.namespace ]]",
+                namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]",
                 phase="Failed"
               }
             ) > 0
@@ -32,7 +32,7 @@ spec:
                 rate(
                   traces_span_metrics_duration_milliseconds_bucket{
                     service_name=~"frontend|frontend-proxy",
-                    namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                    namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
                   }[2m]
                 )
               ) by(le, service_name, namespace)
@@ -50,7 +50,7 @@ spec:
                 traces_span_metrics_calls_total{
                   service_name=~"frontend|frontend-proxy",
                   status_code="STATUS_CODE_ERROR",
-                  namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                  namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
                 }[2m]
               )
             ) by (service_name, namespace)
@@ -70,7 +70,7 @@ spec:
                 rate(
                   traces_span_metrics_duration_milliseconds_bucket{
                     service_name!~"flagd|load-generator|frontend*",
-                    namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                    namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
                   }[2m]
                 )
               ) by(le, service_name, namespace)
@@ -88,7 +88,7 @@ spec:
                 traces_span_metrics_calls_total{
                   service_name!~"flagd|load-generator|frontend|frontend-proxy",
                   status_code="STATUS_CODE_ERROR",
-                  namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                  namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
                 }[2m]
               )
             ) by (service_name, namespace)
@@ -103,7 +103,7 @@ spec:
             sum by (job) (
               rate(
                 kafka_consumer_connection_close_rate{
-                  namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                  namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
                 }[2m]
               )
             ) > 0
@@ -121,7 +121,7 @@ spec:
                 traces_span_metrics_calls_total{
                   service_name!~"flagd|load-generator",
                   status_code=~"STATUS_CODE_UNSET|STATUS_CODE_OK",
-                  namespace="[[ applications_helm_releases.otel_demo.namespace ]]"
+                  namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
                 }[10m]
               )
             ) by (service_name, namespace)

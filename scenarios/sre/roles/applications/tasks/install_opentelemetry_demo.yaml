@@ -50,11 +50,11 @@
 
 - name: Install OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
-    chart_ref: oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-demo
-    chart_version: 0.38.6
+    chart_ref: "{{ applications_managers.opentelemetry_demo.helm.chart.reference }}"
+    chart_version: "{{ applications_managers.opentelemetry_demo.helm.chart.version }}"
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    release_name: "{{ applications_helm_releases.otel_demo.name }}"
-    release_namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+    release_name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
+    release_namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
     release_state: present
     timeout: 10m0s
     values: "{{ lookup('ansible.builtin.template', 'templates/helm/otel_demo/values.j2') }}"
@@ -65,7 +65,7 @@
     api_version: v1
     kind: Pod
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+    namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
   register: applications_otel_demo_pods
 
 - name: Wait for pods to reach ready state
@@ -90,7 +90,7 @@
     api_version: apps/v1
     kind: Deployment
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    namespace: "{{ applications_helm_releases.otel_demo.namespace }}"
+    namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
   register: applications_otel_demo_deployments
 
 - name: Create HorizontalPodAutorscalers
