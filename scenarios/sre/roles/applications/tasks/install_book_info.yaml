@@ -12,7 +12,7 @@
     repo: "{{ applications_managers.book_info.git.repository }}"
     version: "{{ applications_managers.book_info.git.tag }}"
 
-- name: Create the release namespace
+- name: Create Namespace
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
     resource_definition:
@@ -22,8 +22,6 @@
         name: "{{ applications_managers.book_info.kubernetes.namespace }}"
         labels:
           it-bench/monitoring: "true"
-          pod-security.kubernetes.io/enforce: restricted
-          pod-security.kubernetes.io/enforce-version: latest
     state: present
 
 - name: Create BookInfo Kubernetes objects

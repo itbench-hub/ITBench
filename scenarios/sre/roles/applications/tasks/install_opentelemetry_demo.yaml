@@ -47,6 +47,7 @@
   vars:
     tools_cluster:
       kubeconfig: "{{ applications_cluster.kubeconfig }}"
+      platform: "{{ applications_cluster.platform }}"
 
 - name: Install OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
@@ -57,7 +58,11 @@
     release_namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
     release_state: present
     timeout: 10m0s
-    values: "{{ lookup('ansible.builtin.template', 'templates/helm/otel_demo/values.j2') }}"
+    values: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/helm/otel_demo/values.j2') |
+        ansible.builtin.from_yaml
+      }}
     wait: true
 
 - name: Retrieve all pods
@@ -137,7 +142,7 @@
       {{
         applications_otel_demo_deployments.resources |
         ansible.builtin.rejectattr('metadata.name', '==', 'load-generator') |
-        ansible.builtin.rejectattr('metadata.name', '==', 'otel-collector')
+        ansible.builtin.rejectattr('metadata.name', '==', 'opentelemetry-collector')
       }}
   loop_control:
     label: deployment/{{ workload.metadata.name }}

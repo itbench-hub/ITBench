@@ -88,8 +88,11 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/istio.yaml scenarios/sre/group_vars/environment/tools.yaml
-          mv scenarios/sre/tests/files/bookinfo.yaml scenarios/sre/group_vars/environment/applications.yaml
+          cat <<EOF > scenarios/sre/group_vars/environment/applications.yaml
+          ---
+          applications:
+            book_info: true
+          EOF
       - name: Install tools
         run: |
           make -C scenarios/sre deploy-tools
@@ -444,7 +447,11 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/otel-demo.yaml scenarios/sre/group_vars/environment/applications.yaml
+          cat <<EOF > scenarios/sre/group_vars/environment/applications.yaml
+          ---
+          applications:
+            otel_demo: true
+          EOF
       - name: Install tools
         run: |
           SCENARIO_NUMBER=1 make -C scenarios/sre deploy-tools

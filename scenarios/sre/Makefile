@@ -64,8 +64,8 @@ remove-tools-crds: ## Removes all the observability and fault tools custom resou
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools" \
 		--extra-vars "remove_crds=true"
 
-.PHONY: deploy_applications
-deploy_applications: ## Deploys the applications to cluster
+.PHONY: deploy-applications
+deploy-applications: ## Deploys the applications to cluster
 ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "install_applications" \
 		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
@@ -73,8 +73,8 @@ else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "install_applications"
 endif
 
-.PHONY: undeploy_applications
-undeploy_applications: ## Undeploys the applications to cluster
+.PHONY: undeploy-applications
+undeploy-applications: ## Undeploys the applications to cluster
 ifdef SCENARIO_NUMBER
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_applications.yaml --tags "uninstall_applications" \
 		--extra-vars "incident_id=$(SCENARIO_NUMBER)"
