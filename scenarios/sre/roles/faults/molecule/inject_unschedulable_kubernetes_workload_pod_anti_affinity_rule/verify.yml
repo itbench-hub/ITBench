@@ -1,0 +1,43 @@
+---
+- name: Verify fault injection
+  hosts:
+    - environment
+  tasks:
+    - name: Get DaemonSet
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: DaemonSet
+        name: application-operator
+        namespace: unschedulable-k8s-pod-anti-affinity-rule-test
+      register: test_daemonset
+
+    - name: Verify that DaemonSet was created
+      ansible.builtin.assert:
+        that:
+          - test_daemonset.resources | ansible.builtin.length == 1
+        fail_msg: DaemonSet was not created. Fault injection failed.
+        success_msg: DaemonSet was created.
+
+    - name: Validate that DaemonSet was labeled correctly
+      ansible.builtin.assert:
+        that:
+          - test_daemonset.resources[0].metadata.labels['app.kubernetes.io/name'] == 'application-operator'
+        fail_msg: DaemonSet was not labeled correctly. Fault injection failed.
+        success_msg: DaemonSet was labeled correctly.
+
+    - name: Get Deployment
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: compromised-workload
+        namespace: unschedulable-k8s-pod-anti-affinity-rule-test
+      register: test_deployment
+
+    - name: Validate that workload cannot schedule pods
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].status.availableReplicas < test_deployment.resources[0].status.replicas
+        fail_msg: Workload successfully scheduled pods. Fault injection failed.
+        success_msg: Workload cannot schedule pods.

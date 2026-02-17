@@ -1,0 +1,77 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve PriorityClass (high priority)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: scheduling.k8s.io/v1
+        kind: PriorityClass
+        name: application-critical
+      register: high_priority_class
+
+    - name: Validate high priority PriorityClass exists
+      ansible.builtin.assert:
+        that:
+          - high_priority_class.resources | ansible.builtin.length == 1
+          - high_priority_class.resources[0].value == 10000
+        fail_msg: High priority PriorityClass not found. Fault injection failed.
+        success_msg: High priority PriorityClass found.
+
+    - name: Retrieve PriorityClass (low priority)
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: scheduling.k8s.io/v1
+        kind: PriorityClass
+        name: application-non-critical
+      register: low_priority_class
+
+    - name: Validate low priority PriorityClass exists
+      ansible.builtin.assert:
+        that:
+          - low_priority_class.resources | ansible.builtin.length == 1
+          - low_priority_class.resources[0].value == 1
+        fail_msg: Low priority PriorityClass not found. Fault injection failed.
+        success_msg: Low priority PriorityClass found.
+
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: compromised-workload
+        namespace: priority-k8s-workload-priority-preemption-test
+      register: test_deployment
+
+    - name: Validate workload has low priority class
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.priorityClassName == 'application-non-critical'
+        fail_msg: Workload does not have low priority class. Fault injection failed.
+        success_msg: Workload has low priority class.
+
+    - name: Validate workload has nodeSelector
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.nodeSelector is defined
+          - test_deployment.resources[0].spec.template.spec.nodeSelector['kubernetes.io/hostname'] is defined
+        fail_msg: Workload does not have nodeSelector. Fault injection failed.
+        success_msg: Workload has nodeSelector.
+
+    - name: Retrieve critical-data-collector deployment
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: critical-data-collector
+        namespace: priority-k8s-workload-priority-preemption-test
+      register: critical_deployment
+
+    - name: Validate critical deployment exists
+      ansible.builtin.assert:
+        that:
+          - critical_deployment.resources | ansible.builtin.length == 1
+          - critical_deployment.resources[0].spec.template.spec.priorityClassName == 'application-critical'
+        fail_msg: Critical deployment not found or misconfigured. Fault injection failed.
+        success_msg: Critical deployment found with high priority.

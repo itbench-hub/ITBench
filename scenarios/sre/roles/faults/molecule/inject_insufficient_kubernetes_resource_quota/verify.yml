@@ -1,0 +1,43 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve resource quota
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: ResourceQuota
+        name: memory
+        namespace: insufficient-kubernetes-resource-quota-test
+      register: test_resource_quota
+
+    - name: Validate that resource quota was created
+      ansible.builtin.assert:
+        that:
+          - test_resource_quota.resources | ansible.builtin.length == 1
+        fail_msg: Resource quota not found. Fault injection failed.
+        success_msg: Resource quota found.
+
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: compromised-workload
+        namespace: insufficient-kubernetes-resource-quota-test
+      register: test_deployment
+
+    - name: Validate that workload was scaled down and back up
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.replicas == 2
+        fail_msg: Workload was not scaled correctly. Fault injection failed.
+        success_msg: Workload was scaled correctly.
+
+    - name: Validate that pods cannot be scheduled due to resource quota
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].status.availableReplicas is undefined
+        fail_msg: All pods were scheduled successfully. Fault injection failed.
+        success_msg: Pods could not be schedules successfully.

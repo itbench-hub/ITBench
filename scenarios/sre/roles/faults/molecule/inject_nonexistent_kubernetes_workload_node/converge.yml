@@ -1,0 +1,20 @@
+---
+- name: Run fault injection test
+  hosts:
+    - environment
+  tasks:
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        faults_injection_tasks:
+          - id: nonexistent-kubernetes-workload-node
+            args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: compromised-workload
+                  namespace: nonexistent-kubernetes-workload-node-test

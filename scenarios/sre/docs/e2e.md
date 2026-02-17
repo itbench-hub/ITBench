@@ -51,7 +51,7 @@ Below is an explanantion of each group variable and a [configuration reference](
 Install AWX on the selected cluster:
 
 ```bash
-make -f Makefile.runner deploy_awx_stack
+make -f Makefile.runner deploy-awx-stack
 ```
 
 **Verify deployment** by checking that all pods are running:
@@ -96,7 +96,7 @@ KUBECONFIG=<path_to_kubeconfig> kubectl get secret awx-deployment-admin-password
 Set up job templates and workflows for your test scenarios:
 
 ```bash
-make -f Makefile.runner configure_awx_pipeline
+make -f Makefile.runner configure-awx-pipeline
 ```
 
 ### Step 7: Configure AWX Pipeline
@@ -112,7 +112,7 @@ make -f Makefile.runner launch_init_workflow
 In order to run the scenarios for X trials (defined in `experiments.yaml`) on the runner clusters, run the following command:
 
 ```bash
-make -f Makefile.runner launch_full_workflow
+make -f Makefile.runner launch-full-workflow
 ```
 
 ### Step 9: Monitor Execution
@@ -130,7 +130,7 @@ make -f Makefile.runner launch_deinit_workflow
 Then, run the following command to uninstall AWX from the head cluster:
 
 ```bash
-make -f Makefile.runner undeploy_awx_stack
+make -f Makefile.runner undeploy-awx-stack
 ```
 
 ## Configuration Reference

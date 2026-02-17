@@ -2225,6 +2225,17 @@
         "arguments": {
             "jsonSchema": {
                 "properties": {
+                    "container": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    },
                     "kubernetesObject": {
                         "properties": {
                             "apiVersion": {
@@ -2265,7 +2276,8 @@
                     }
                 },
                 "required": [
-                    "kubernetesObject"
+                    "kubernetesObject",
+                    "container"
                 ],
                 "type": "object"
             }
@@ -2283,8 +2295,8 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} exec {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} -- valkey-cli CONFIG SET requirepass ''",
-                            "text": "Change the password back to the original by access the pod directly."
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit secret valkey-credentials",
+                            "text": "Change the password back to the original by modifying the value of `valkey-password` in the secrete."
                         }
                     ]
                 }

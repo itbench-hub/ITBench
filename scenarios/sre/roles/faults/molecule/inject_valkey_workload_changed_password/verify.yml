@@ -1,0 +1,56 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve Secret
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Secret
+        name: valkey-credentials
+        namespace: valkey-workload-changed-password-test
+      register: test_secret
+
+    - name: Validate Secret exists
+      ansible.builtin.assert:
+        that:
+          - test_secret.resources | ansible.builtin.length == 1
+          - test_secret.resources[0].data['valkey-password'] is defined
+        fail_msg: Secret not found. Fault injection failed.
+        success_msg: Secret found.
+
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: compromised-workload
+        namespace: valkey-workload-changed-password-test
+      register: test_deployment
+
+    - name: Validate container command was updated
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.containers[0].command is defined
+          - test_deployment.resources[0].spec.template.spec.containers[0].command[0] == 'valkey-server'
+        fail_msg: Container command not updated. Fault injection failed.
+        success_msg: Container command updated.
+
+    - name: Validate container args include password flag
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.containers[0].args is defined
+          - "'--requirepass' in test_deployment.resources[0].spec.template.spec.containers[0].args"
+        fail_msg: Container args do not include password flag. Fault injection failed.
+        success_msg: Container args include password flag.
+
+    - name: Validate environment variable is configured
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.containers[0].env is defined
+          - test_deployment.resources[0].spec.template.spec.containers[0].env |
+            ansible.builtin.selectattr('name', '==', 'VALKEY_PASSWORD') |
+            ansible.builtin.length == 1
+        fail_msg: Environment variable not configured. Fault injection failed.
+        success_msg: Environment variable configured.

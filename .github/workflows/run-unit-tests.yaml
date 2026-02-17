@@ -1,0 +1,69 @@
+name: Run ITBench Unit Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scenarios/sre/roles/faults/**
+      - scenarios/sre/roles/waiters/**
+
+concurrency:
+  group: ci-unit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sre-faults:
+    name: SRE Fault Injection Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: astral-sh/setup-uv@v7.3.0
+        with:
+          working-directory: scenarios/sre
+      - uses: actions/setup-go@v6.2.0
+        with:
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
+      - name: Install project dependencies
+        run: |
+          make -C scenarios/sre deps
+      - name: Create group vars
+        run: |
+          make -C scenarios/sre group-vars
+      - name: Create Kind cluster
+        run: |
+          make -C scenarios/sre/dev/local_cluster create-simple-cluster
+      - name: Run unit tests
+        run: |
+          make -C scenarios/sre test-unit-faults
+      - name: Destroy Kind cluster
+        run: |
+          make -C scenarios/sre/dev/local_cluster destroy-simple-cluster
+  sre-waiters:
+    name: SRE Waiters Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: astral-sh/setup-uv@v7.3.0
+        with:
+          working-directory: scenarios/sre
+      - uses: actions/setup-go@v6.2.0
+        with:
+          go-version-file: scenarios/sre/dev/local_cluster/go.mod
+          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
+      - name: Install project dependencies
+        run: |
+          make -C scenarios/sre deps
+      - name: Create group vars
+        run: |
+          make -C scenarios/sre group-vars
+      - name: Create Kind cluster
+        run: |
+          make -C scenarios/sre/dev/local_cluster create-simple-cluster
+      - name: Run unit tests
+        run: |
+          make -C scenarios/sre test-unit-waiters
+      - name: Destroy Kind cluster
+        run: |
+          make -C scenarios/sre/dev/local_cluster destroy-simple-cluster

@@ -864,6 +864,9 @@
                 "injections": [
                     {
                         "args": {
+                            "container": {
+                                "name": "valkey-cart"
+                            },
                             "kubernetesObject": {
                                 "apiVersion": "apps/v1",
                                 "kind": "Deployment",
@@ -894,8 +897,8 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo exec deployment/valkey-cart -- valkey-cli CONFIG SET requirepass ''",
-                            "text": "Change the password back to the original by access the pod directly."
+                            "command": "kubectl -n otel-demo edit secret valkey-credentials",
+                            "text": "Change the password back to the original by modifying the value of `valkey-password` in the secrete."
                         }
                     ]
                 }

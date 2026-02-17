@@ -1,0 +1,15 @@
+---
+- name: Destroy Kubernetes objects
+  hosts:
+    - environment
+  tasks:
+    - name: Delete namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: unsupported-architecture-k8s-container-image-test
+        state: absent
+        wait: true

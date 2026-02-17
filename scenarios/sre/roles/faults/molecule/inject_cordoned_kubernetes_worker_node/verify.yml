@@ -1,0 +1,52 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve worker nodes
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Node
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        label_selectors:
+          - "!node-role.kubernetes.io/control-plane"
+      register: worker_nodes
+
+    - name: Retrieve cordoned node
+      ansible.builtin.set_fact:
+        cordoned_node: |-
+          {{
+            worker_nodes.resources |
+            ansible.builtin.selectattr('spec.unschedulable', 'defined') |
+            ansible.builtin.selectattr('spec.unschedulable', '==', true)
+          }}
+
+    - name: Validate that node was cordoned
+      ansible.builtin.assert:
+        that:
+          - cordoned_node | ansible.builtin.length == 1
+        fail_msg: Unable to find cordoned node. Fault injection failed.
+        success_msg: Found cordoned node.
+
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: compromised-workload
+        namespace: cordoned-kubernetes-worker-node-test
+      register: test_deployment
+
+    - name: Validate that workload was assigned to node
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.template.spec.nodeSelector["kubernetes.io/hostname"] == cordoned_node[0].metadata.name
+        fail_msg: Workload not assigned to node. Fault injection failed.
+        success_msg: Workload assigned.
+
+    - name: Validate that workload has not completed redeployment
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].status.availableReplicas < test_deployment.resources[0].status.replicas
+        fail_msg: Workload successfully deployed new pod. Fault injection failed.
+        success_msg: Workload's new pod was not successfully deployed.

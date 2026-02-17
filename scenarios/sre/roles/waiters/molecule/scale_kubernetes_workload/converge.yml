@@ -1,0 +1,21 @@
+---
+- name: Run waiter tasks
+  hosts:
+    - environment
+  tasks:
+    - name: Import waiters role
+      ansible.builtin.import_role:
+        name: waiters
+      vars:
+        waiters_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        waiters_tasks:
+          - id: scale-kubernetes-workload
+            args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: test-workload
+                  namespace: scale-kubernetes-workload-test
+              replicas: 5

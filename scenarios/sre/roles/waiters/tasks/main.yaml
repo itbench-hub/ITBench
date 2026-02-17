@@ -1,21 +1,25 @@
 ---
-- name: Load waiters library index map
-  ansible.builtin.set_fact:
-    waiters_library_map: |-
-      {{
-        lookup('ansible.builtin.file', 'files/library/map.json') |
-        ansible.builtin.from_json
-      }}
+- name: Execute wait tasks
+  tags:
+    - inject_faults
+  block:
+    - name: Load waiters library index map
+      ansible.builtin.set_fact:
+        waiters_library_map: |-
+          {{
+            lookup('ansible.builtin.file', 'files/library/map.json') |
+            ansible.builtin.from_json
+          }}
 
-- name: Include wait tasks
-  ansible.builtin.include_tasks:
-    file: "{{ waiters_library_map[waiter_task.id].taskFile }}"
-    apply:
-      tags:
-        - fault_injection
-      vars:
-        waiter_args: "{{ waiter_task.args }}"
-  loop: "{{ waiters_tasks }}"
-  loop_control:
-    label: task/{{ waiter_task.id }}
-    loop_var: waiter_task
+    - name: Include wait tasks
+      ansible.builtin.include_tasks:
+        file: "{{ waiters_library_map[waiter_task.id].taskFile }}"
+        apply:
+          tags:
+            - inject_faults
+          vars:
+            waiter_args: "{{ waiter_task.args }}"
+      loop: "{{ waiters_tasks }}"
+      loop_control:
+        label: task/{{ waiter_task.id }}
+        loop_var: waiter_task

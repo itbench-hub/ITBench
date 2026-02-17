@@ -1,0 +1,20 @@
+---
+- name: Run waiter tasks
+  hosts:
+    - environment
+  tasks:
+    - name: Import waiters role
+      ansible.builtin.import_role:
+        name: waiters
+      vars:
+        waiters_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        waiters_tasks:
+          - id: restart-kubernetes-workload
+            args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: test-workload
+                  namespace: restart-kubernetes-workload-test

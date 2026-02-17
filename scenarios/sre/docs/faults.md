@@ -1693,6 +1693,17 @@ See the scenario ground truth file where this fault is invoked.
 ```json
 {
     "properties": {
+        "container": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "type": "object"
+        },
         "kubernetesObject": {
             "properties": {
                 "apiVersion": {
@@ -1733,7 +1744,8 @@ See the scenario ground truth file where this fault is invoked.
         }
     },
     "required": [
-        "kubernetesObject"
+        "kubernetesObject",
+        "container"
     ],
     "type": "object"
 }

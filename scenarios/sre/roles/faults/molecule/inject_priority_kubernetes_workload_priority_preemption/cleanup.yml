@@ -1,0 +1,12 @@
+---
+- name: Cleanup cluster-scoped resources
+  hosts:
+    - environment
+  tasks:
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+        tasks_from: remove_cluster_scoped_objects.yaml
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"

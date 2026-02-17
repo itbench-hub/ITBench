@@ -5,78 +5,46 @@
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-.PHONY: group_vars
-group_vars: ## Generates the group variables
+.PHONY: group-vars
+group-vars: ## Generates the group variables
 	cp group_vars/runner/agent.yaml.example group_vars/runner/agent.yaml
 	cp group_vars/runner/credentials.yaml.example group_vars/runner/credentials.yaml
 	cp group_vars/runner/experiments.yaml.example group_vars/runner/experiments.yaml
 	cp group_vars/runner/github.yaml.example group_vars/runner/github.yaml
 	cp group_vars/runner/stack.yaml.example group_vars/runner/stack.yaml
 
-.PHONY: deploy_awx_stack
-deploy_awx_stack: ## Deploys AWX to a cluster
+.PHONY: deploy-awx-stack
+deploy-awx-stack: ## Deploys AWX to a cluster
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "install_tools"
 
-.PHONY: configure_awx_pipeline
-configure_awx_pipeline: ## Add job and workflow templates to AWX pipeline
+.PHONY: configure-awx-pipeline
+configure-awx-pipeline: ## Add job and workflow templates to AWX pipeline
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "configure_pipeline"
 
-.PHONY: undeploy_awx_stack
-undeploy_awx_stack: ## Undeploys AWX to a cluster
+.PHONY: undeploy-awx-stack
+undeploy-awx-stack: ## Undeploys AWX to a cluster
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "uninstall_tools"
 
-.PHONY: launch_sync_workflow
-launch_sync_workflow: ## Launches the scenario sync workflow
+.PHONY: launch-sync-workflow
+launch-sync-workflow: ## Launches the scenario sync workflow
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "sync_scenarios"
 
-.PHONY: launch_start_workflow
-launch_start_workflow: ## Launches the workflow equivalent of start_incident on AWX
+.PHONY: launch-start-workflow
+launch-start-workflow: ## Launches the workflow equivalent of start_incident on AWX
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
 		--extra-vars "run_phase=start"
 
-.PHONY: launch_stop_workflow
-launch_stop_workflow: ## Launches the workflow equivalent of stop_incident on AWX
+.PHONY: launch-stop-workflow
+launch-stop-workflow: ## Launches the workflow equivalent of stop_incident on AWX
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
 		--extra-vars "run_phase=stop"
 
-.PHONY: launch_full_workflow
-launch_full_workflow: ## Launches the scenario full execution workflow
+.PHONY: launch-full-workflow
+launch-full-workflow: ## Launches the scenario full execution workflow
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
 		--extra-vars "run_phase=full"
 
-.PHONY: launch_data_collection_workflow
-launch_data_collection_workflow: ## Launches the data collection execution workflow
+.PHONY: launch-data-collection-workflow
+launch-data-collection-workflow: ## Launches the data collection execution workflow
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx.yaml --tags "launch_workflows" \
 		--extra-vars "run_phase=data_collection"
-
-.PHONY: awx_configure_init
-awx_configure_init:
-	@echo "WARNING: 'make awx_configure_init' is deprecated. Please use 'make deploy_awx_stack' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make deploy_awx_stack'..."
-	@echo ""
-	$(MAKE) deploy_awx_stack
-
-.PHONY: awx_configure_deinit
-awx_configure_deinit:
-	@echo "WARNING: 'make awx_configure_deinit' is deprecated. Please use 'make undeploy_awx_stack' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make undeploy_awx_stack'..."
-	@echo ""
-	$(MAKE) undeploy_awx_stack
-
-.PHONY: e2e_awx_init_stage_one
-e2e_awx_init_stage_one: ## DEPRECATED: Given an incident number, run_uuid intitialize the scenario run leveraging an AWX node
-	@echo "WARNING: 'make e2e_awx_init_stage_one' is deprecated. Please use 'make launch_start_workflow' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make launch_start_workflow'..."
-	@echo ""
-	$(MAKE) launch_start_workflow
-
-.PHONY: e2e_awx_stage_three
-e2e_awx_stage_three: ## DEPRECATED: Given an incident number, run_uuid end the scenario run leveraging an AWX node
-	@echo "WARNING: 'make e2e_awx_stage_three' is deprecated. Please use 'make launch_stop_workflow' instead."
-	@echo "This command will be removed in a future version."
-	@echo "Executing 'make launch_stop_workflow'..."
-	@echo ""
-	$(MAKE) launch_stop_workflow
