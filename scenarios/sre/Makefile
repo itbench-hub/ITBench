@@ -137,6 +137,10 @@ stop_incident: undeploy_recorders remove-fault-resources destroy_environment ## 
 test-unit-faults: ## Runs fault injection unit tests
 	cd roles/faults && uv run molecule test --all --report --command-borders
 
+.PHONY: test-unit-waiters
+test-unit-waiters: ## Runs waiter unit tests
+	cd roles/waiters && uv run molecule test --all --report --command-borders
+
 .PHONY: enable_agent_access
 enable_agent_access: ## Adds access controls for llm agent
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "grant_access"

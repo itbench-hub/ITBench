@@ -1,0 +1,23 @@
+---
+- name: Verify that wait task succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: test-workload
+        namespace: scale-kubernetes-workload-test
+      register: test_deployment
+
+    - name: Validate that workload was scaled to 5 replicas
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].spec.replicas == 5
+          - test_deployment.resources[0].status.replicas == 5
+          - test_deployment.resources[0].status.availableReplicas == 5
+          - test_deployment.resources[0].status.readyReplicas == 5
+        fail_msg: Workload was not scaled correctly. Waiter failed.
+        success_msg: Workload successfully scaled.

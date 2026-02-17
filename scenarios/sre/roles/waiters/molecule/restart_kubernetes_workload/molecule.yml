@@ -1,0 +1,27 @@
+---
+dependency:
+  name: galaxy
+
+ansible:
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../inventory.yaml
+        - --tags=inject_faults,untagged
+  playbooks:
+    create: create.yml
+    converge: converge.yml
+    destroy: destroy.yml
+    verify: verify.yml
+
+scenario:
+  name: restart_kubernetes_workload
+  test_sequence:
+    - syntax
+    - create
+    - converge
+    - verify
+    - destroy

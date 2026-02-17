@@ -1,0 +1,38 @@
+---
+- name: Verify that wait task succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Wait for rollout to complete
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - restart-kubernetes-workload-test
+          - rollout
+          - status
+          - deployment
+          - test-workload
+          - --kubeconfig={{ cluster.kubeconfig | ansible.builtin.expanduser }}
+          - --timeout=60s
+      register: rollout_status
+      changed_when: false
+
+    - name: Retrieve workload after restart
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: test-workload
+        namespace: restart-kubernetes-workload-test
+      register: test_deployment
+
+    - name: Validate that workload was restarted
+      ansible.builtin.assert:
+        that:
+          - test_deployment.resources[0].metadata.generation == 2
+          - test_deployment.resources[0].status.replicas == 2
+          - test_deployment.resources[0].status.availableReplicas == 2
+          - test_deployment.resources[0].status.readyReplicas == 2
+        fail_msg: Workload was not restarted correctly. Waiter failed.
+        success_msg: Workload successfully restarted.
