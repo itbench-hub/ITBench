@@ -1,38 +1,35 @@
 ---
-- name: Delete RoleBinding
+- name: Delete all RoleBindings for agent access
   kubernetes.core.k8s:
     api_version: rbac.authorization.k8s.io/v1
     delete_all: true
     kind: RoleBinding
     kubeconfig: "{{ agent_cluster.kubeconfig }}"
     label_selectors:
-      - app.kubernetes.io/component = access-provider
-      - app.kubernetes.io/part-of = it-bench
+      - app.kubernetes.io/component = agent-access-provider
+      - app.kubernetes.io/managed-by = ITBench
     state: absent
     wait: true
 
-- name: Delete Role
+- name: Delete all Roles for agent access
   kubernetes.core.k8s:
     api_version: rbac.authorization.k8s.io/v1
     delete_all: true
     kind: Role
     kubeconfig: "{{ agent_cluster.kubeconfig }}"
     label_selectors:
-      - app.kubernetes.io/component = access-provider
-      - app.kubernetes.io/part-of = it-bench
+      - app.kubernetes.io/component = agent-access-provider
+      - app.kubernetes.io/managed-by = ITBench
     state: absent
     wait: true
 
-- name: Delete service account
+- name: Delete Namespace
   kubernetes.core.k8s:
     kubeconfig: "{{ agent_cluster.kubeconfig }}"
-    src: files/serviceaccount.yaml
-    state: absent
-    wait: true
-
-- name: Delete namespace
-  kubernetes.core.k8s:
-    kubeconfig: "{{ agent_cluster.kubeconfig }}"
-    src: files/namespace.yaml
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ agent_managers.access_provider.kubernetes.namespace }}"
     state: absent
     wait: true

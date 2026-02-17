@@ -111,12 +111,7 @@ endif
 
 .PHONY: remove-fault-resources
 remove-fault-resources: ## Removes resources used during fault injection
-ifdef SCENARIO_NUMBER
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_faults.yaml --tags "remove_faults" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
-	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
-endif
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_faults.yaml --tags "remove_faults"
 
 .PHONY: create-environment
 create-environment: deploy-tools deploy-applications ## Deploys tools and applications to cluster
@@ -140,7 +135,12 @@ test-unit-waiters: ## Runs waiter unit tests
 
 .PHONY: enable-agent-access
 enable-agent-access: ## Adds access controls for llm agent
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "grant_access"
+ifdef SCENARIO_NUMBER
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "grant_access" \
+		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+else
+	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
+endif
 
 .PHONY: disable-agent-access
 disable-agent-access: ## Removes access controls for llm agent

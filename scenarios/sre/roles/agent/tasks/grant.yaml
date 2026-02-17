@@ -1,0 +1,238 @@
+---
+- name: Retrieve namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+  register: agent_namespaces
+
+- name: Validate that all requesting namespaces exist
+  ansible.builtin.assert:
+    that:
+      -
+        (
+          agent_access_request.namespaces |
+          ansible.builtin.intersect(existing_namespaces) |
+          ansible.builtin.length
+        ) ==
+        (
+          agent_access_request.namespaces |
+          ansible.builtin.length
+        )
+    fail_msg: Requested namespaces do not exist. Please ensure all namespaces exist before requesting access.
+    success_msg: All requested namespaces found.
+  vars:
+    existing_namespaces: "{{ agent_namespaces.resources | map(attribute='metadata.name') }}"
+
+- name: Create Namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ agent_managers.access_provider.kubernetes.namespace }}"
+    state: present
+
+- name: Create ServiceAccount
+  kubernetes.core.k8s:
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: agent
+        namespace: "{{ agent_managers.access_provider.kubernetes.namespace }}"
+    state: present
+
+- name: Create Role in each requested namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        labels:
+          app.kubernetes.io/component: agent-access-provider
+          app.kubernetes.io/managed-by: ITBench
+        name: agent-read-write-access
+        namespace: "{{ ns }}"
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - pods
+            - services
+            - configmaps
+            - secrets
+            - endpoints
+            - persistentvolumeclaims
+            - nodes
+            - namespaces
+            - events
+            - persistentvolumes
+            - pods/exec
+            - pods/attach
+            - pods/portforward
+            - pods/log
+            - resourcequotas
+          verbs: "*"
+        - apiGroups:
+            - apps
+          resources:
+            - deployments
+            - replicasets
+            - daemonsets
+            - statefulsets
+          verbs: "*"
+        - apiGroups:
+            - batch
+          resources:
+            - jobs
+            - cronjobs
+          verbs: "*"
+        - apiGroups:
+            - autoscaling
+          resources:
+            - horizontalpodautoscalers
+          verbs:
+            - "*"
+        - apiGroups:
+            - rbac.authorization.k8s.io
+          resources:
+            - roles
+            - rolebindings
+          verbs: "*"
+        - apiGroups:
+            - policy
+          resources:
+            - poddisruptionbudgets
+          verbs: "*"
+        - apiGroups:
+            - networking.k8s.io
+          resources:
+            - networkpolicies
+            - ingresses
+          verbs: "*"
+    state: present
+  loop: "{{ agent_access_request.namespaces }}"
+  loop_control:
+    label: namespace/{{ ns }}
+    loop_var: ns
+
+- name: Create RoleBinding in each requested namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        label:
+          app.kubernetes.io/component: agent-access-provider
+          app.kubernetes.io/managed-by: ITBench
+        name: agent-read-write-access
+        namespace: "{{ ns }}"
+      subjects:
+        - kind: ServiceAccount
+          name: agent
+          namespace: "{{ agent_managers.access_provider.kubernetes.namespace }}"
+      roleRef:
+        kind: Role
+        name: agent-read-write-access
+        apiGroup: rbac.authorization.k8s.io
+    state: present
+  loop: "{{ agent_access_request.namespaces }}"
+  loop_control:
+    label: namespace/{{ ns }}
+    loop_var: ns
+
+- name: Create TokenRequest
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - "{{ agent_managers.access_provider.kubernetes.namespace }}"
+      - create
+      - token
+      - agent
+      - --duration
+      - 18h
+      - -o
+      - json
+      - --kubeconfig={{ agent_cluster.kubeconfig | ansible.builtin.expanduser }}
+  register: agent_token_creation_output
+  changed_when: agent_token_creation_output.rc == 0
+
+- name: Parse kubeconfig to find current context
+  ansible.builtin.set_fact:
+    agent_current_cluster: |-
+      {{
+        kubeconfig.clusters |
+        ansible.builtin.selectattr("name", "==", kubeconfig["current-context"])
+      }}
+  vars:
+    kubeconfig: |-
+      {{
+        lookup("ansible.builtin.file", agent_cluster.kubeconfig) |
+        ansible.builtin.from_yaml
+      }}
+
+- name: Create temporary file for restricted kubeconfig
+  ansible.builtin.tempfile:
+    prefix: restricted-kubeconfig
+  register: agent_temporary_kubeconfig
+
+- name: Create restricted kubeconfig file in temporary directory
+  ansible.builtin.copy:
+    content: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/kubernetes/kubeconfig.j2') |
+        ansible.builtin.from_yaml |
+        ansible.builtin.to_nice_yaml(indent=2)
+      }}
+    dest: "{{ agent_temporary_kubeconfig.path }}"
+    mode: "0644"
+  vars:
+    clusters:
+      - cluster:
+          server: "{{ agent_current_cluster.cluster['server'] }}"
+          certificate-authority-data: "{{ agent_current_cluster.cluster['certificate-authority-data'] }}"
+        name: "{{ agent_current_cluster.name }}"
+    contexts:
+      - context:
+          cluster: "{{ agent_current_cluster.name }}"
+          user: agent
+        name: "{{ agent_current_cluster.name }}"
+    users:
+      - name: agent
+        user:
+          token: |-
+            {{
+              (
+                agent_token_creation_output.stdout |
+                ansible.builtin.from_json
+              ).status.token
+            }}
+
+- name: Copy restricted kubeconfig into local directory
+  ansible.builtin.copy:
+    dest: "{{ agent_storage.local.directory }}/kubeconfig"
+    mode: "0644"
+    src: "{{ agent_temporary_kubeconfig.path }}"
+  when:
+    - agent_storage.local is defined
+
+- name: Upload restricted kubeconfig to S3 bucket
+  amazon.aws.s3_object:
+    endpoint_url: "{{ agent_storage.s3.endpoint }}"
+    bucket: "{{ agent_storage.s3.bucket }}"
+    object: "{{ agent_storage.s3.directory }}/kubeconfig"
+    src: "{{ agent_temporary_kubeconfig.path }}"
+    mode: put
+  when:
+    - agent_storage.s3 is defined
+
+- name: Delete the temporary kubeconfig
+  ansible.builtin.file:
+    path: "{{ agent_temporary_kubeconfig.path }}"
+    state: absent
