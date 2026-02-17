@@ -1,0 +1,31 @@
+---
+- name: Destroy Kubernetes objects
+  hosts:
+    - environment
+  tasks:
+    - name: Delete accessible namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: accesible-namespace
+        state: absent
+        wait: true
+
+    - name: Delete non-accessible namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: nonaccessible-namespace
+        state: absent
+        wait: true
+
+    - name: Delete temporary kubeconfig directory
+      ansible.builtin.file:
+        path: "{{ restricted_kubeconfig_path | ansible.builtin.dirname }}"
+        state: absent

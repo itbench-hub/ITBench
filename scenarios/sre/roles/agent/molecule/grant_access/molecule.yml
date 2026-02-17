@@ -1,0 +1,29 @@
+---
+dependency:
+  name: galaxy
+
+ansible:
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../inventory.yaml
+        - --tags=grant_access,untagged
+  playbooks:
+    cleanup: cleanup.yml
+    create: create.yml
+    converge: converge.yml
+    destroy: destroy.yml
+    verify: verify.yml
+
+scenario:
+  name: grant_access
+  test_sequence:
+    - syntax
+    - create
+    - converge
+    - verify
+    - cleanup
+    - destroy

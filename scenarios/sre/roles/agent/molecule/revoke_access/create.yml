@@ -1,0 +1,69 @@
+---
+- name: Create Kubernetes objects and grant access
+  hosts:
+    - environment
+  tasks:
+    - name: Create Namespace (accessible to agent)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: accesible-namespace
+        state: present
+
+    - name: Create test deployment in allowed namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-app
+            namespace: accesible-namespace
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: test-app
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: test-app
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.1-1770180557
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+        state: present
+        wait: true
+
+    - name: Create temporary directory for kubeconfig storage
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: molecule-agent-test-
+      register: agent_test_storage_dir
+
+    - name: Grant agent access to namespace
+      ansible.builtin.import_role:
+        name: agent
+        tasks_from: grant.yaml
+      vars:
+        agent_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        agent_access_request:
+          namespaces:
+            - accesible-namespace
+        agent_storage:
+          local:
+            directory: "{{ agent_test_storage_dir.path }}"
+
+    - name: Store restricted kubeconfig path for later use
+      ansible.builtin.set_fact:
+        restricted_kubeconfig_path: "{{ agent_test_storage_dir.path }}/kubeconfig"
+        cacheable: true

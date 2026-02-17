@@ -1,0 +1,84 @@
+---
+- name: Create Kubernetes objects
+  hosts:
+    - environment
+  tasks:
+    - name: Create Namespace (accessible to agent)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: accesible-namespace
+        state: present
+
+    - name: Create Namespace (not accesible to agent)
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: nonaccessible-namespace
+        state: present
+
+    - name: Create test deployment in allowed namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-app
+            namespace: accesible-namespace
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: test-app
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: test-app
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.1-1770180557
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+        state: present
+        wait: true
+
+    - name: Create test deployment in restricted namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-app
+            namespace: nonaccessible-namespace
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: test-app
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: test-app
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.1-1770180557
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+        state: present
+        wait: true

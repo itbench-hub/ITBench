@@ -1,0 +1,68 @@
+---
+- name: Verify that access was revoked correctly
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve pods in allowed namespace
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ restricted_kubeconfig_path }}"
+        api_version: v1
+        kind: Pod
+        namespace: accesible-namespace
+      register: allowed_pods_result
+      failed_when: false
+
+    - name: Validate that access was denied after revocation
+      ansible.builtin.assert:
+        that:
+          - allowed_pods_result is ansible.builtin.failed
+        fail_msg: Pods are still accessible to agent. Revoke failed.
+        success_msg: Pods are not accessible to agent
+
+    - name: Retrieve Role
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: rbac.authorization.k8s.io/v1
+        kind: Role
+        name: agent-read-write-access
+        namespace: accesible-namespace
+      register: test_role
+
+    - name: Validate Role was deleted
+      ansible.builtin.assert:
+        that:
+          - test_role.resources | ansible.builtin.length == 0
+        fail_msg: RoleBinding was not deleted. Revoke failed.
+        success_msg: RoleBinding was successfully deleted.
+
+    - name: Retrieve RoleBinding
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        name: agent-read-write-access
+        namespace: accesible-namespace
+      register: test_role_binding
+
+    - name: Validate RoleBinding was deleted
+      ansible.builtin.assert:
+        that:
+          - test_role_binding.resources | ansible.builtin.length == 0
+        fail_msg: RoleBinding was not deleted. Revoke failed.
+        success_msg: RoleBinding was successfully deleted.
+
+    - name: Verify ServiceAccount was deleted
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: ServiceAccount
+        name: agent
+        namespace: agent-access-manager
+      register: test_service_account
+
+    - name: Validate ServiceAccount was removed (namespace deleted)
+      ansible.builtin.assert:
+        that:
+          - test_role_binding.resources | ansible.builtin.length == 0
+        fail_msg: ServiceAccount was not deleted. Revoke failed.
+        success_msg: ServiceAccount was successfully deleted.

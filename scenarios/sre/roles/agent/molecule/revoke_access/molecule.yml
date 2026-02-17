@@ -1,0 +1,27 @@
+---
+dependency:
+  name: galaxy
+
+ansible:
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../inventory.yaml
+        - --tags=revoke_access,untagged
+  playbooks:
+    create: create.yml
+    converge: converge.yml
+    destroy: destroy.yml
+    verify: verify.yml
+
+scenario:
+  name: revoke_access
+  test_sequence:
+    - syntax
+    - create
+    - converge
+    - verify
+    - destroy

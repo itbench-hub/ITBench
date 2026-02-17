@@ -1,0 +1,28 @@
+---
+- name: Run agent grant access tasks
+  hosts:
+    - environment
+  tasks:
+    - name: Create temporary directory for kubeconfig storage
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: molecule-agent-test-
+      register: agent_test_storage_dir
+
+    - name: Import agent role to grant access
+      ansible.builtin.import_role:
+        name: agent
+      vars:
+        agent_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        agent_access_request:
+          namespaces:
+            - accesible-namespace
+        agent_storage:
+          local:
+            directory: "{{ agent_test_storage_dir.path }}"
+
+    - name: Store restricted kubeconfig path for verification
+      ansible.builtin.set_fact:
+        restricted_kubeconfig_path: "{{ agent_test_storage_dir.path }}/kubeconfig"
+        cacheable: true
