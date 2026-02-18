@@ -106,7 +106,7 @@ Step 1
 - Disable the feature flag (adHighCpu) by manually editing the contents of the ConfigMap
 
 ```shell
-kubectl -n otel-demo edit configmap flagd
+kubectl -n otel-demo edit configmap flagd-config
 ```
 - Restart all of the Deployment workloads.
 
