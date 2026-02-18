@@ -20,45 +20,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  agent-access:
-    name: Agent Access Smoke Tests
-    needs:
-      - chaos-mesh
-      - otel-demo
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
-      - uses: actions/setup-go@v6.2.0
-        with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.18.6
-      - name: Create Kind cluster
-        run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C scenarios/sre/dev/local_cluster run-service-provider &
-      - name: Install project dependencies
-        run: |
-          make -C scenarios/sre deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-      - name: Create environment
-        run: |
-          SCENARIO_NUMBER=26 make -C scenarios/sre create-environment
-      - name: Test access granting
-        run: |
-          make -C scenarios/sre enable-agent-access
-      - name: Test access revoking
-        run: |
-          make -C scenarios/sre disable-agent-access
   bookinfo:
     name: Istio Book Info Smoke Tests
     needs:

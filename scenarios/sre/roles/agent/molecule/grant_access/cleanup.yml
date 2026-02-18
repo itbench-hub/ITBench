@@ -1,0 +1,12 @@
+---
+- name: Remove agent objects
+  hosts:
+    - environment
+  tasks:
+    - name: Import agents role
+      ansible.builtin.import_role:
+        name: agent
+        tasks_from: revoke.yaml
+      vars:
+        agent_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"

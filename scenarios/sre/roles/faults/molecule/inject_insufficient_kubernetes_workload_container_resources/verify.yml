@@ -10,14 +10,14 @@
         kind: Deployment
         name: compromised-workload
         namespace: insufficient-kubernetes-workload-container-resources-test
-      register: test_deployment
+      register: faults_deployment
 
     - name: Validate that container resources were updated
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.containers[0].resources.limits.cpu == "5m"
-          - test_deployment.resources[0].spec.template.spec.containers[0].resources.limits.memory == "5Mi"
-          - test_deployment.resources[0].spec.template.spec.containers[0].resources.requests.cpu == "5m"
-          - test_deployment.resources[0].spec.template.spec.containers[0].resources.requests.memory == "5Mi"
+          - faults_deployment.resources[0].spec.template.spec.containers[0].resources.limits.cpu == "5m"
+          - faults_deployment.resources[0].spec.template.spec.containers[0].resources.limits.memory == "5Mi"
+          - faults_deployment.resources[0].spec.template.spec.containers[0].resources.requests.cpu == "5m"
+          - faults_deployment.resources[0].spec.template.spec.containers[0].resources.requests.memory == "5Mi"
         fail_msg: Container resources were not updated correctly. Fault injection failed.
         success_msg: Container resources were updated.

@@ -1,0 +1,86 @@
+---
+- name: Create Kubernetes objects and directory
+  hosts:
+    - environment
+  tasks:
+    - name: Create directory
+      ansible.builtin.file:
+        mode: "0755"
+        path: "{{ working_directory }}"
+        state: directory
+
+    - name: Create Namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ name }}"
+        state: present
+      loop:
+        - application
+        - observability
+      loop_control:
+        label: namespace/{{ name }}
+        loop_var: name
+
+    - name: Create Deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-app
+            namespace: application
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: test-app
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: test-app
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.1-1770180557
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+        state: present
+        wait: true
+
+    - name: Create Deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-tool
+            namespace: observability
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: test-tool
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: test-tool
+              spec:
+                containers:
+                  - name: observer
+                    image: registry.access.redhat.com/ubi10-minimal:10.1-1770180557
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+        state: present
+        wait: true

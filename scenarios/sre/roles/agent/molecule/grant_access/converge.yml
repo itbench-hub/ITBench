@@ -1,0 +1,17 @@
+---
+- name: Run agent grant access tasks
+  hosts:
+    - environment
+  tasks:
+    - name: Import agent role to grant access
+      ansible.builtin.import_role:
+        name: agent
+      vars:
+        agent_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        agent_access_request:
+          namespaces:
+            - application
+        agent_storage:
+          local:
+            directory: "{{ working_directory }}"

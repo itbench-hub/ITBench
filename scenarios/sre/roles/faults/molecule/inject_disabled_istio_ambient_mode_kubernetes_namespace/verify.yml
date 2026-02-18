@@ -9,11 +9,11 @@
         kind: Namespace
         kubeconfig: "{{ cluster.kubeconfig }}"
         name: disabled-istio-ambient-mode-kubernetes-namespace-test
-      register: test_namespace
+      register: faults_namespace
 
     - name: Validate that label was applied to namespace
       ansible.builtin.assert:
         that:
-          - test_namespace.resources[0].metadata.labels["istio.io/dataplane-mode"] == "none"
+          - faults_namespace.resources[0].metadata.labels["istio.io/dataplane-mode"] == "none"
         fail_msg: Label not found. Fault injection failed.
         success_msg: Namespace label found.

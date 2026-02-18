@@ -1,0 +1,26 @@
+---
+- name: Destroy Kubernetes objects and directory
+  hosts:
+    - environment
+  tasks:
+    - name: Destroy Namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ name }}"
+        state: absent
+        wait: true
+      loop:
+        - application
+        - observability
+      loop_control:
+        label: namespace/{{ name }}
+        loop_var: name
+
+    - name: Delete test directory
+      ansible.builtin.file:
+        path: "{{ working_directory }}"
+        state: absent

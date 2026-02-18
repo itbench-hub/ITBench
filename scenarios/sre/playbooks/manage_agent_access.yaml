@@ -12,23 +12,42 @@
         system_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
   tasks:
-    - name: Include Helm Release variables from tools role
-      ansible.builtin.include_vars:
-        file: ../roles/tools/defaults/main/helm_releases.yaml
+    - name: Import role variables from scenario
       tags:
-        - always
+        - grant_access
+      when:
+        - scenario_id is defined
+      block:
+        - name: Import scenarios role
+          ansible.builtin.import_role:
+            name: scenarios
+          vars:
+            scenarios_identifier: "{{ scenario_id }}"
 
-    - name: Include Helm Release variables from applications role
-      ansible.builtin.include_vars:
-        file: ../roles/applications/defaults/main/helm_releases.yaml
-      tags:
-        - always
-
-    - name: Include instance variables from applications role
-      ansible.builtin.include_vars:
-        file: ../roles/applications/defaults/main/instances.yaml
-      tags:
-        - always
+        - name: Create fault injections variable
+          ansible.builtin.set_fact:
+            agent_access_request:
+              namespaces: |-
+                {{
+                  (
+                    (
+                      scenarios_scenario.spec.faults |
+                      map(attribute='injections') |
+                      ansible.builtin.flatten |
+                      ansible.builtin.selectattr('args.kubernetesObject.metadata.namespace', 'defined') |
+                      map(attribute='args.kubernetesObject.metadata.namespace')
+                    ) +
+                    (
+                      scenarios_scenario.spec.faults |
+                      map(attribute='injections') |
+                      ansible.builtin.flatten |
+                      ansible.builtin.selectattr('args.kubernetesObject.kind', 'defined') |
+                      ansible.builtin.selectattr('args.kubernetesObject.kind', '==', 'Namespace') |
+                      map(attribute='args.kubernetesObject.metadata.name')
+                    )
+                  ) |
+                  ansible.builtin.unique
+                }}
 
     - name: Import agent role
       ansible.builtin.import_role:
@@ -36,11 +55,4 @@
       vars:
         agent_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
-        agent_namespaces:
-          - name: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
-            access: read-write
-          - name: "{{ applications_instances.bookinfo.namespace }}"
-            access: read-write
-          - name: "{{ tools_helm_releases.chaos_mesh.namespace }}"
-            access: read-only
         agent_storage: "{{ storage }}"

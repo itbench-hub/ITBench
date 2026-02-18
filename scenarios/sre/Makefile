@@ -111,12 +111,7 @@ endif
 
 .PHONY: remove-fault-resources
 remove-fault-resources: ## Removes resources used during fault injection
-ifdef SCENARIO_NUMBER
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_faults.yaml --tags "remove_faults" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
-	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
-endif
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_faults.yaml --tags "remove_faults"
 
 .PHONY: create-environment
 create-environment: deploy-tools deploy-applications ## Deploys tools and applications to cluster
@@ -130,6 +125,23 @@ start-incident: create-environment deploy-recorders inject-scenario-faults ## St
 .PHONY: stop-incident
 stop-incident: undeploy-recorders remove-fault-resources destroy-environment ## Stops an incident by undeploying a stack, applications, faults, and recorders for an incident
 
+.PHONY: enable-agent-access
+enable-agent-access: ## Adds access controls for llm agent
+ifdef SCENARIO_NUMBER
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "grant_access" \
+		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+else
+	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
+endif
+
+.PHONY: disable-agent-access
+disable-agent-access: ## Removes access controls for llm agent
+	uv run ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "revoke_access"
+
+.PHONY: test-unit-agent
+test-unit-agent: ## Runs agent access unit tests
+	cd roles/agent && uv run molecule test --all --report --command-borders
+
 .PHONY: test-unit-faults
 test-unit-faults: ## Runs fault injection unit tests
 	cd roles/faults && uv run molecule test --all --report --command-borders
@@ -137,14 +149,6 @@ test-unit-faults: ## Runs fault injection unit tests
 .PHONY: test-unit-waiters
 test-unit-waiters: ## Runs waiter unit tests
 	cd roles/waiters && uv run molecule test --all --report --command-borders
-
-.PHONY: enable-agent-access
-enable-agent-access: ## Adds access controls for llm agent
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "grant_access"
-
-.PHONY: disable-agent-access
-disable-agent-access: ## Removes access controls for llm agent
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_agent_access.yaml --tags "revoke_access"
 
 .PHONY: generate-agent-bundle
 generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with

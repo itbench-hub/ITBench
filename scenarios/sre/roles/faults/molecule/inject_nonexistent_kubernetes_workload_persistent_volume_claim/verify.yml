@@ -10,19 +10,19 @@
         kind: PersistentVolumeClaim
         name: compromised-workload
         namespace: nonexistent-kubernetes-workload-persistent-volume-claim-test
-      register: test_pvc
+      register: faults_persistent_volume_claim
 
     - name: Validate that PVC was created
       ansible.builtin.assert:
         that:
-          - test_pvc.resources | ansible.builtin.length == 1
+          - faults_persistent_volume_claim.resources | ansible.builtin.length == 1
         fail_msg: PersistentVolumeClaim was not created. Fault injection failed.
         success_msg: PersistentVolumeClaim was created.
 
     - name: Validate that PVC uses invalid storage class
       ansible.builtin.assert:
         that:
-          - test_pvc.resources[0].spec.storageClassName == "invalid-class-name"
+          - faults_persistent_volume_claim.resources[0].spec.storageClassName == "invalid-class-name"
         fail_msg: PVC does not use invalid storage class. Fault injection failed.
         success_msg: PVC uses invalid storage class.
 
@@ -33,19 +33,19 @@
         kind: Deployment
         name: compromised-workload
         namespace: nonexistent-kubernetes-workload-persistent-volume-claim-test
-      register: test_deployment
+      register: faults_deployment
 
     - name: Validate that workload has volume mount
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.containers[0].volumeMounts is defined
-          - test_deployment.resources[0].spec.template.spec.volumes is defined
+          - faults_deployment.resources[0].spec.template.spec.containers[0].volumeMounts is defined
+          - faults_deployment.resources[0].spec.template.spec.volumes is defined
         fail_msg: Workload does not have volume mount. Fault injection failed.
         success_msg: Workload has volume mount.
 
     - name: Validate that workload cannot schedule pods
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].status.availableReplicas < test_deployment.resources[0].status.replicas
+          - faults_deployment.resources[0].status.availableReplicas < faults_deployment.resources[0].status.replicas
         fail_msg: Workload successfully scheduled pods. Fault injection failed.
         success_msg: Workload cannot schedule pods.
