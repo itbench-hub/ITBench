@@ -12,61 +12,51 @@
         system_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
 
-    - name: Import variables for incident
+    - name: Import cluster role
       ansible.builtin.import_role:
-        name: incidents
+        name: cluster
       tags:
         - always
       vars:
-        incidents_file:
-          id: "{{ incident_id }}"
-      when:
-        - incident_id is defined
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: "{{ system_oc_exists }}"
   tasks:
-    - name: Import leaderboard role
-      ansible.builtin.import_role:
-        name: leaderboard
-      vars:
-        leaderboard_status:
-          status: progressing
-        leaderboard_storage: "{{ storage }}"
-
-    - name: Attempt to perform tasks in application role
+    - name: Import role variables from scenario
+      tags:
+        - install_applications
+      when:
+        - scenario_id is defined
       block:
-        - name: Import applications role
+        - name: Import scenarios role
           ansible.builtin.import_role:
-            name: applications
+            name: scenarios
           vars:
-            applications_cluster:
-              kubeconfig: "{{ cluster.kubeconfig }}"
-            applications_required:
-              bookinfo:
-                enabled: "{{ incidents_applications.bookinfo.enabled | default(applications.bookinfo) }}"
-              otel_demo:
-                configuration: "{{ incidents_applications.otel_demo.configuration | default({}) }}"
-                enabled: "{{ incidents_applications.otel_demo.enabled | default(applications.otel_demo) }}"
+            scenarios_identifier: "{{ scenario_id }}"
 
-        - name: Import leaderboard role
-          ansible.builtin.import_role:
-            name: leaderboard
-          vars:
-            leaderboard_status:
-              status: succeeded
-            leaderboard_storage: "{{ storage }}"
-      rescue:
-        - name: Import leaderboard role
-          ansible.builtin.import_role:
-            name: leaderboard
-          vars:
-            leaderboard_status:
-              failed_task:
-                name: "{{ ansible_failed_task.name }}"
-                result: "{{ ansible_failed_result }}"
-              status: failed
-            leaderboard_storage: "{{ storage }}"
+        - name: Create application installation variable
+          ansible.builtin.set_fact:
+            applications_configuration: "{{ scenarios_scenario.spec.applications }}"
 
-        - name: Fail playbook
-          ansible.builtin.fail:
-            msg: Playbook failed to complete successfully. Please check log for more info.
-          tags:
-            - always
+    - name: Create role variables
+      tags:
+        - install_applications
+      when:
+        - scenario_id is undefined
+      block:
+        - name: Create application installation variable
+          ansible.builtin.set_fact:
+            applications_configuration:
+              bookInfo:
+                enabled: "{{ applications.book_info | ansible.builtin.default(false) }}"
+              opentelemetryDemo:
+                enabled: "{{ applications.otel_demo | ansible.builtin.default(false) }}"
+
+    - name: Import applications role
+      ansible.builtin.import_role:
+        name: applications
+      vars:
+        applications_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"

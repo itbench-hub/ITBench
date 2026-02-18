@@ -795,7 +795,7 @@ Step 1
 - Manually edit the manifest and replace the invalid rule with the correct value.
 
 ```shell
-kubectl -n bookinfo edit authorizationpolicy bookinfo-gateway-deny
+kubectl -n book-info edit authorizationpolicy bookinfo-gateway-deny
 ```
 
 OR
@@ -803,7 +803,7 @@ OR
 - Delete the faulty authorization policy.
 
 ```shell
-kubectl -n bookinfo delete authorizationpolicy bookinfo-gateway-deny
+kubectl -n book-info delete authorizationpolicy bookinfo-gateway-deny
 ```
 ### Scenario 48
 
@@ -824,7 +824,7 @@ Step 1
 - Manually edit the manifest and replace the invalid label with the correct value.
 
 ```shell
-kubectl -n bookinfo edit namespace bookinfo-deny
+kubectl -n book-info edit namespace book-info-deny
 ```
 ### Scenario 49
 
@@ -874,7 +874,7 @@ Step 1
 - Manually edit the manifest and to add the required Istio ambient mode labels to the workload.
 
 ```shell
-kubectl -n bookinfo edit deployment productpage-v1
+kubectl -n book-info edit deployment productpage-v1
 ```
 
 OR
@@ -882,7 +882,7 @@ OR
 - Manually edit the namespace manifest and to add the required Istio ambient mode labels to the workload.
 
 ```shell
-kubectl edit namespace bookinfo
+kubectl edit namespace book-info
 ```
 ### Scenario 53
 
@@ -903,7 +903,7 @@ Step 1
 - Revert the last change done to the manifest.
 
 ```shell
-kubectl -n bookinfo rollout undo deployment/reviews-v3
+kubectl -n book-info rollout undo deployment/reviews-v3
 ```
 
 OR
@@ -911,7 +911,7 @@ OR
 - Manually edit the manifest and replace the `storageClassName` with the correct value.
 
 ```shell
-kubectl -n bookinfo edit persistentvolumeclaim reviews-v3
+kubectl -n book-info edit persistentvolumeclaim reviews-v3
 ```
 
 OR
@@ -919,7 +919,7 @@ OR
 - Manually edit the manifest and replace the volume claim with an existing persistent volume claim.
 
 ```shell
-kubectl -n bookinfo edit deployment reviews-v3
+kubectl -n book-info edit deployment reviews-v3
 ```
 ### Scenario 102
 

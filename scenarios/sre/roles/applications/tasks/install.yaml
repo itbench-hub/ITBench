@@ -1,29 +1,12 @@
 ---
-- name: Include Helm Release variables from Observability Tools role
-  ansible.builtin.include_vars:
-    file: ../tools/defaults/main/helm_releases.yaml
-
 - name: Import Book Info installation tasks
   ansible.builtin.import_tasks:
-    file: install_bookinfo.yaml
+    file: install_book_info.yaml
   when:
-    - applications_required.bookinfo is defined
-    - applications_required.bookinfo.enabled
+    - applications_configuration.bookInfo.enabled | ansible.builtin.default(false)
 
 - name: Import OpenTelemetry Demo installation tasks
   ansible.builtin.import_tasks:
-    file: install_otel_demo.yaml
-  vars:
-    configuration: |
-      {{
-        applications_configurations.otel_demo |
-        combine((applications_required.otel_demo.configuration | default({})), recursive=true)
-      }}
-    helm_releases:
-      collectors: "{{ tools_helm_releases.opentelemetry_collectors }}"
-      opensearch: "{{ tools_helm_releases.opensearch }}"
-      otel_demo: "{{ applications_helm_releases.otel_demo }}"
-      prometheus: "{{ tools_helm_releases.prometheus }}"
+    file: install_opentelemetry_demo.yaml
   when:
-    - applications_required.otel_demo is defined
-    - applications_required.otel_demo.enabled
+    - applications_configuration.opentelemetryDemo.enabled | ansible.builtin.default(false)

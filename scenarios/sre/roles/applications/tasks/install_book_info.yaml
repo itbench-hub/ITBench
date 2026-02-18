@@ -1,0 +1,257 @@
+---
+- name: Create temporary directory for Git checkout
+  ansible.builtin.tempfile:
+    prefix: book_info
+    state: directory
+  register: applications_temporary_directory
+
+- name: Checkout Istio repository using Git
+  ansible.builtin.git:
+    depth: 1
+    dest: "{{ applications_temporary_directory.path }}"
+    repo: "{{ applications_managers.book_info.git.repository }}"
+    version: "{{ applications_managers.book_info.git.tag }}"
+
+- name: Create Namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ applications_managers.book_info.kubernetes.namespace }}"
+        labels:
+          it-bench/monitoring: "true"
+    state: present
+
+- name: Create BookInfo Kubernetes objects
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+    state: present
+    src: "{{ applications_temporary_directory.path }}/{{ manifest_file_path }}"
+  loop:
+    - samples/bookinfo/platform/kube/bookinfo.yaml
+    - samples/bookinfo/platform/kube/bookinfo-versions.yaml
+    - samples/bookinfo/gateway-api/bookinfo-gateway.yaml
+  loop_control:
+    label: manifest/{{ manifest_file_path | ansible.builtin.basename }}
+    loop_var: manifest_file_path
+
+- name: Create Prometheus Pod Monitor for Gateway
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: PodMonitor
+      metadata:
+        name: bookinfo-gateway
+        namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+      spec:
+        selector:
+          matchLabels:
+            gateway.networking.k8s.io/gateway-name: bookinfo-gateway
+        podMetricsEndpoints:
+          - interval: 30s
+            port: metrics
+    state: present
+
+- name: Create Prometheus Pod Monitor for Product Page
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: PodMonitor
+      metadata:
+        name: productpage-v1
+        namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+      spec:
+        selector:
+          matchLabels:
+            app: productpage
+            version: v1
+        podMetricsEndpoints:
+          - interval: 30s
+            portNumber: 9080
+        fallbackScrapeProtocol: PrometheusText1.0.0
+    state: present
+
+- name: Wait for Kubernetes Gateway to be programmed
+  kubernetes.core.k8s_info:
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    name: bookinfo-gateway
+    namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+    wait: true
+    wait_condition:
+      reason: Programmed
+      status: "True"
+      type: Programmed
+
+- name: Retrieve all deployments
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+  register: applications_book_info_deployments
+
+- name: Label all pods managed by deployments with Istio Ambient Plane label
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ deployment.apiVersion }}"
+      kind: "{{ deployment.kind }}"
+      metadata:
+        name: "{{ deployment.metadata.name }}"
+        namespace: "{{ deployment.metadata.namespace }}"
+      spec:
+        template:
+          metadata:
+            labels:
+              "istio.io/dataplane-mode": "ambient"
+    state: patched
+  loop: "{{ applications_book_info_deployments.resources }}"
+  loop_control:
+    label: deployment/{{ deployment.metadata.name }}
+    loop_var: deployment
+
+- name: Create HorizontalPodAutorscalers
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: "{{ workload.metadata.name }}"
+        namespace: "{{ workload.metadata.namespace }}"
+      spec:
+        scaleTargetRef:
+          apiVersion: "{{ workload.apiVersion }}"
+          kind: "{{ workload.kind }}"
+          name: "{{ workload.metadata.name }}"
+        minReplicas: 1
+        maxReplicas: 10
+        metrics:
+          - type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 60
+          - type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 70
+        behavior:
+          scaleDown:
+            policies:
+              - type: Percent
+                value: 50
+                periodSeconds: 60
+              - type: Pods
+                value: 2
+                periodSeconds: 60
+            selectPolicy: Min
+    state: present
+  loop: "{{ applications_book_info_deployments.resources }}"
+  loop_control:
+    label: deployment/{{ workload.metadata.name }}
+    loop_var: workload
+  when:
+    - applications_configuration.bookInfo.options.autoscaling.kubernetes.hpa | ansible.builtin.default(false)
+
+- name: Delete the temporary directory
+  ansible.builtin.file:
+    path: "{{ applications_temporary_directory.path }}"
+    state: absent
+
+- name: Retrieve Kubernetes Gateway address
+  kubernetes.core.k8s_info:
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    name: bookinfo-gateway
+    namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+  register: applications_gateway
+  until:
+    - applications_gateway.resources | ansible.builtin.length == 1
+    - applications_gateway.resources[0].status.addresses is defined
+    - applications_gateway.resources[0].status.addresses | ansible.builtin.length > 0
+  delay: 15
+  retries: 20
+
+- name: Extract ip address information
+  ansible.builtin.set_fact:
+    applications_book_info_gateway_endpoints:
+      http: http://{{ applications_gateway.resources[0].status.addresses[0].value }}:80
+  when:
+    - applications_gateway.resources[0].status.addresses[0].type == "IPAddress"
+
+- name: Extract hostname address information
+  ansible.builtin.set_fact:
+    applications_book_info_gateway_endpoints:
+      http: http://{{ applications_gateway.resources[0].status.addresses[0].value }}
+  when:
+    - applications_gateway.resources[0].status.addresses[0].type == "Hostname"
+
+- name: Create simple load generator
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          app.kubernetes.io/component: load-generator
+          app.kubernetes.io/managed-by: ITBench
+          app.kubernetes.io/part-of: bookinfo
+        name: load-generator-product-page
+        namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+      spec:
+        replicas: 3
+        selector:
+          matchLabels:
+            app.kubernetes.io/component: load-generator
+            app.kubernetes.io/managed-by: ITBench
+            app.kubernetes.io/part-of: bookinfo
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/component: load-generator
+              app.kubernetes.io/managed-by: ITBench
+              app.kubernetes.io/part-of: bookinfo
+          spec:
+            containers:
+              - name: generator
+                image: registry.access.redhat.com/ubi10-minimal:10.1-1764604111
+                command:
+                  - /bin/sh
+                args:
+                  - -c
+                  - "while true; do curl {{ [applications_book_info_gateway_endpoints.http, '/productpage'] | ansible.builtin.join }}; sleep 5; done"
+    state: present
+
+- name: Create Common PrometheusRules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    template:
+      path: templates/kubernetes/common/prometheusrules.j2
+      variable_end_string: "]]"
+      variable_start_string: "[["
+    state: present
+  vars:
+    application_namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+    group_name: bookinfo
+
+- name: Create Book Info PrometheusRules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    template:
+      path: templates/kubernetes/book_info/prometheusrules.j2
+      variable_end_string: "]]"
+      variable_start_string: "[["
+    state: present

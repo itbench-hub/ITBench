@@ -1,9 +1,10 @@
+{# Delimiters are changed to keep Prometheus templating. #}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: bookinfo-alerting-rules
-  namespace: [[ applications_instances.bookinfo.namespace ]]
+  namespace: [[ applications_managers.book_info.kubernetes.namespace ]]
 spec:
   groups:
     - name: bookinfo.productpage.goldensignal
@@ -14,7 +15,7 @@ spec:
               rate(
                 request_result_total{
                   response_code!~"20*",
-                  namespace="[[ applications_instances.bookinfo.namespace ]]"
+                  namespace="[[ applications_managers.book_info.kubernetes.namespace ]]"
                 }[5m]
               )
             ) by (destination_app, response_code, namespace)
@@ -31,7 +32,7 @@ spec:
             sum (
               rate(
                 request_result_total{
-                  namespace="[[ applications_instances.bookinfo.namespace ]]"
+                  namespace="[[ applications_managers.book_info.kubernetes.namespace ]]"
                 }[5m]
               )
             ) by (destination_app, namespace)
@@ -50,7 +51,7 @@ spec:
               sum (
                 rate(
                   istio_request_duration_milliseconds_bucket{
-                    source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"
+                    source_workload_namespace="[[ applications_managers.book_info.kubernetes.namespace ]]"
                   }[5m]
                 )
               ) by(le, destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace)
@@ -67,7 +68,7 @@ spec:
               rate(
                 istio_requests_total{
                   response_code!~"20*",
-                  source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"
+                  source_workload_namespace="[[ applications_managers.book_info.kubernetes.namespace ]]"
                 }[5m]
               )
             ) by (destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace, response_code)
@@ -84,7 +85,7 @@ spec:
             sum (
               rate(
                 istio_requests_total{
-                  source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"
+                  source_workload_namespace="[[ applications_managers.book_info.kubernetes.namespace ]]"
                 }[5m]
               )
             ) by (destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace)
@@ -102,7 +103,7 @@ spec:
               rate(
                 istio_tcp_connections_opened_total{
                   source_canonical_service!~"load-generator*",
-                  source_workload_namespace="[[ applications_instances.bookinfo.namespace ]]"
+                  source_workload_namespace="[[ applications_managers.book_info.kubernetes.namespace ]]"
                 }[5m]
               )
             ) by (destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace)

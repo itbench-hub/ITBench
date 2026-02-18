@@ -41,7 +41,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will not start running.
 
-**[Implementation](../roles/injections/tasks/inject_cordoned_kubernetes_worker_node.yaml)**
+**[Implementation](../roles/faults/tasks/inject_cordoned_kubernetes_worker_node.yaml)**
 
 **Firing Alerts**
 
@@ -106,7 +106,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** No traffic will be routed through the service mesh. This would all the requests to not be processed with the various policies configured in Istio.
 
-**[Implementation](../roles/injections/tasks/inject_disabled_istio_ambient_mode_kubernetes_namespace.yaml)**
+**[Implementation](../roles/faults/tasks/inject_disabled_istio_ambient_mode_kubernetes_namespace.yaml)**
 
 **Firing Alerts**
 
@@ -164,7 +164,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** All outgoing requests made by the workload will failed due to being unable to resolve the DNS name.
 
-**[Implementation](../roles/injections/tasks/inject_failing_name_resolution_kubernetes_workload_dns_policy.yaml)**
+**[Implementation](../roles/faults/tasks/inject_failing_name_resolution_kubernetes_workload_dns_policy.yaml)**
 
 **Firing Alerts**
 
@@ -230,7 +230,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** The faulted pod will enter the `Pending` state. All containers will be in the `Waiting` state. The hanging init container will be in the `Running` state.
 
-**[Implementation](../roles/injections/tasks/inject_hanging_kubernetes_workload_init_container.yaml)**
+**[Implementation](../roles/faults/tasks/inject_hanging_kubernetes_workload_init_container.yaml)**
 
 **Firing Alerts**
 
@@ -295,7 +295,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** Other workloads will be unable to communicate with the faulted pod(s) on the correct port. This usually results in increased latency and errors in applications.
 
-**[Implementation](../roles/injections/tasks/inject_ingress_port_blocking_network_policy.yaml)**
+**[Implementation](../roles/faults/tasks/inject_ingress_port_blocking_network_policy.yaml)**
 
 **Firing Alerts**
 
@@ -363,7 +363,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** The new pod(s) for the workload in the faulted namespace will enter the `Pending` state.
 
-**[Implementation](../roles/injections/tasks/inject_insufficient_kubernetes_resource_quota.yaml)**
+**[Implementation](../roles/faults/tasks/inject_insufficient_kubernetes_resource_quota.yaml)**
 
 **Firing Alerts**
 
@@ -430,7 +430,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function for long periods.
 
-**[Implementation](../roles/injections/tasks/inject_insufficient_kubernetes_workload_container_resources.yaml)**
+**[Implementation](../roles/faults/tasks/inject_insufficient_kubernetes_workload_container_resources.yaml)**
 
 **Firing Alerts**
 
@@ -507,7 +507,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function.
 
-**[Implementation](../roles/injections/tasks/inject_invalid_kubernetes_workload_container_command.yaml)**
+**[Implementation](../roles/faults/tasks/inject_invalid_kubernetes_workload_container_command.yaml)**
 
 **Firing Alerts**
 
@@ -584,7 +584,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** The faulted autoscaler will take scale up or down actions more aggressively (often more than required).
 
-**[Implementation](../roles/injections/tasks/inject_misconfigured_kubernetes_horizontal_pod_autoscaler.yaml)**
+**[Implementation](../roles/faults/tasks/inject_misconfigured_kubernetes_horizontal_pod_autoscaler.yaml)**
 
 **Firing Alerts**
 
@@ -649,7 +649,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state due to a `ContainersNotReady` reason for the `Ready` condition.
 
-**[Implementation](../roles/injections/tasks/inject_misconfigured_kubernetes_workload_container_readiness_probe.yaml)**
+**[Implementation](../roles/faults/tasks/inject_misconfigured_kubernetes_workload_container_readiness_probe.yaml)**
 
 **Firing Alerts**
 
@@ -725,7 +725,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 **Expectation:** Varies based on the effect/purpose of the environment variable.
 
-**[Implementation](../roles/injections/tasks/inject_modified_kubernetes_workload_container_environment_variable.yaml)**
+**[Implementation](../roles/faults/tasks/inject_modified_kubernetes_workload_container_environment_variable.yaml)**
 
 See the scenario ground truth file where this fault is invoked.
 
@@ -817,7 +817,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** Other workloads will be unable to communicate with the faulted pod(s) on the correct port. This usually results in increased latency and errors in applications.
 
-**[Implementation](../roles/injections/tasks/inject_modified_target_port_kubernetes_service.yaml)**
+**[Implementation](../roles/faults/tasks/inject_modified_target_port_kubernetes_service.yaml)**
 
 **Firing Alerts**
 
@@ -887,7 +887,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state due to an `ImagePullBackOff` error. The workload will become unable to function.
 
-**[Implementation](../roles/injections/tasks/inject_nonexistent_kubernetes_workload_container_image.yaml)**
+**[Implementation](../roles/faults/tasks/inject_nonexistent_kubernetes_workload_container_image.yaml)**
 
 **Firing Alerts**
 
@@ -964,7 +964,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state. The workload will become unable to function.
 
-**[Implementation](../roles/injections/tasks/inject_nonexistent_kubernetes_workload_node.yaml)**
+**[Implementation](../roles/faults/tasks/inject_nonexistent_kubernetes_workload_node.yaml)**
 
 **Firing Alerts**
 
@@ -1030,7 +1030,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state. The workload will become unable to function.
 
-**[Implementation](../roles/injections/tasks/inject_nonexistent_kubernetes_workload_persistent_volume_claim.yaml)**
+**[Implementation](../roles/faults/tasks/inject_nonexistent_kubernetes_workload_persistent_volume_claim.yaml)**
 
 **Firing Alerts**
 
@@ -1107,7 +1107,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** The effects of the faults are listed [here](https://opentelemetry.io/docs/demo/feature-flags/#implemented-feature-flags).
 
-**[Implementation](../roles/injections/tasks/inject_opentelemetry_demo_feature_flag.yaml)**
+**[Implementation](../roles/faults/tasks/inject_opentelemetry_demo_feature_flag.yaml)**
 
 See the scenario ground truth file where this fault is invoked.
 
@@ -1189,7 +1189,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will not start running.
 
-**[Implementation](../roles/injections/tasks/inject_priority_kubernetes_workload_priority_preemption.yaml)**
+**[Implementation](../roles/faults/tasks/inject_priority_kubernetes_workload_priority_preemption.yaml)**
 
 **Firing Alerts**
 
@@ -1255,7 +1255,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** Varies based on the Chaos Mesh experiment used.
 
-**[Implementation](../roles/injections/tasks/inject_scheduled_chaos_mesh_experiment.yaml)**
+**[Implementation](../roles/faults/tasks/inject_scheduled_chaos_mesh_experiment.yaml)**
 
 See the scenario ground truth file where this fault is invoked.
 
@@ -1329,7 +1329,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** The faulted pod will be unable to succesfully make requests to other pods, causing the error rate to increase.
 
-**[Implementation](../roles/injections/tasks/inject_strict_mutual_tls_istio_service_mesh_enforcement.yaml)**
+**[Implementation](../roles/faults/tasks/inject_strict_mutual_tls_istio_service_mesh_enforcement.yaml)**
 
 **Firing Alerts**
 
@@ -1397,7 +1397,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** All HTTP requests of the specified methods will be blocked, resulting in a 403 status code in the response.
 
-**[Implementation](../roles/injections/tasks/inject_traffic_denying_istio_gateway_authorization_policy.yaml)**
+**[Implementation](../roles/faults/tasks/inject_traffic_denying_istio_gateway_authorization_policy.yaml)**
 
 **Firing Alerts**
 
@@ -1473,7 +1473,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** The new pod will run normally. However, without resource limits, the pod will consume resources endless. This state can be combined with other faults to produce resource usage scenarios.
 
-**[Implementation](../roles/injections/tasks/inject_unassigned_kubernetes_workload_container_resource_limits.yaml)**
+**[Implementation](../roles/faults/tasks/inject_unassigned_kubernetes_workload_container_resource_limits.yaml)**
 
 See the scenario ground truth file where this fault is invoked.
 
@@ -1538,7 +1538,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will not start running.
 
-**[Implementation](../roles/injections/tasks/inject_unschedulable_kubernetes_workload_pod_anti_affinity_rule.yaml)**
+**[Implementation](../roles/faults/tasks/inject_unschedulable_kubernetes_workload_pod_anti_affinity_rule.yaml)**
 
 **Firing Alerts**
 
@@ -1603,7 +1603,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** The faulted pod(s) will enter the `Pending` state due to an `ImagePullBackOff` error. The workload will become unable to function.
 
-**[Implementation](../roles/injections/tasks/inject_unsupported_architecture_kubernetes_workload_container_image.yaml)**
+**[Implementation](../roles/faults/tasks/inject_unsupported_architecture_kubernetes_workload_container_image.yaml)**
 
 **Firing Alerts**
 
@@ -1680,7 +1680,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.
 
-**[Implementation](../roles/injections/tasks/inject_valkey_workload_changed_password.yaml)**
+**[Implementation](../roles/faults/tasks/inject_valkey_workload_changed_password.yaml)**
 
 **Firing Alerts**
 
@@ -1756,7 +1756,7 @@ See the scenario ground truth file where this fault is invoked.
 
 **Expectation:** The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to function.
 
-**[Implementation](../roles/injections/tasks/inject_valkey_workload_out_of_memory.yaml)**
+**[Implementation](../roles/faults/tasks/inject_valkey_workload_out_of_memory.yaml)**
 
 **Firing Alerts**
 

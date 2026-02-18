@@ -55,10 +55,10 @@ jobs:
           SCENARIO_NUMBER=26 make -C scenarios/sre create-environment
       - name: Test access granting
         run: |
-          make -C scenarios/sre enable_agent_access
+          make -C scenarios/sre enable-agent-access
       - name: Test access revoking
         run: |
-          make -C scenarios/sre disable_agent_access
+          make -C scenarios/sre disable-agent-access
   bookinfo:
     name: Istio Book Info Smoke Tests
     needs:
@@ -88,14 +88,17 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/istio.yaml scenarios/sre/group_vars/environment/tools.yaml
-          mv scenarios/sre/tests/files/bookinfo.yaml scenarios/sre/group_vars/environment/applications.yaml
+          cat <<EOF > scenarios/sre/group_vars/environment/applications.yaml
+          ---
+          applications:
+            book_info: true
+          EOF
       - name: Install tools
         run: |
           make -C scenarios/sre deploy-tools
       - name: Run installation smoke test
         run: |
-          make -C scenarios/sre deploy_applications
+          make -C scenarios/sre deploy-applications
       - name: Run uninstallation smoke test
         run: |
           make -C scenarios/sre undeploy-applications
@@ -248,10 +251,10 @@ jobs:
           make -C scenarios/sre deploy-tools
       - name: Run data recorder installation smoke test
         run: |
-          make -C scenarios/sre deploy_recorders
+          make -C scenarios/sre deploy-recorders
       - name: Run data recorder uninstallation smoke test
         run: |
-          make -C scenarios/sre undeploy_recorders
+          make -C scenarios/sre undeploy-recorders
       - name: Run uninstallation smoke test
         run: |
           make -C scenarios/sre undeploy-tools
@@ -325,10 +328,10 @@ jobs:
           make -C scenarios/sre deploy-tools
       - name: Run data recorder installation smoke test
         run: |
-          make -C scenarios/sre deploy_recorders
+          make -C scenarios/sre deploy-recorders
       - name: Run data recorder uninstallation smoke test
         run: |
-          make -C scenarios/sre undeploy_recorders
+          make -C scenarios/sre undeploy-recorders
       - name: Run uninstallation smoke test
         run: |
           make -C scenarios/sre undeploy-tools
@@ -444,13 +447,17 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/otel-demo.yaml scenarios/sre/group_vars/environment/applications.yaml
+          cat <<EOF > scenarios/sre/group_vars/environment/applications.yaml
+          ---
+          applications:
+            otel_demo: true
+          EOF
       - name: Install tools
         run: |
           SCENARIO_NUMBER=1 make -C scenarios/sre deploy-tools
       - name: Run installation smoke test
         run: |
-          make -C scenarios/sre deploy_applications
+          make -C scenarios/sre deploy-applications
       - name: Run uninstallation smoke test
         run: |
           make -C scenarios/sre undeploy-applications
@@ -487,10 +494,10 @@ jobs:
           make -C scenarios/sre deploy-tools
       - name: Run data recorder installation smoke test
         run: |
-          make -C scenarios/sre deploy_recorders
+          make -C scenarios/sre deploy-recorders
       - name: Run data recorder uninstallation smoke test
         run: |
-          make -C scenarios/sre undeploy_recorders
+          make -C scenarios/sre undeploy-recorders
       - name: Run uninstallation smoke test
         run: |
           make -C scenarios/sre undeploy-tools

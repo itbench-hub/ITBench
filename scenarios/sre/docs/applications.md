@@ -21,6 +21,33 @@ ITBench uses various applications to offer a diverse set of environments for whi
 **Resources:**
 - https://istio.io/latest/docs/examples/bookinfo/
 - https://istio.io/latest/docs/ambient/getting-started/deploy-sample-app/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "autoscaling": {
+            "properties": {
+                "minProperties": 1,
+                "properties": {
+                    "kubernetes": {
+                        "properties": {
+                            "hpa": {
+                                "default": false,
+                                "description": "Enables autoscaling through Kubernetes Horizontal Pod Autoscaler. Defaults to false.",
+                                "type": "boolean"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "type": "object"
+}
+```
 ### OpenTelemetry Demo
 
 **Aliases:** Astronomy Shop
@@ -32,3 +59,50 @@ ITBench uses various applications to offer a diverse set of environments for whi
 **Resources:**
 - https://opentelemetry.io/docs/demo/
 - https://opentelemetry.io/docs/demo/architecture/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "autoscaling": {
+            "properties": {
+                "properties": {
+                    "kubernetes": {
+                        "properties": {
+                            "hpa": {
+                                "default": false,
+                                "description": "Enables autoscaling through Kubernetes Horizontal Pod Autoscaler. Defaults to false.",
+                                "type": "boolean"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "loadGeneration": {
+            "minProperties": 1,
+            "properties": {
+                "browserTraffic": {
+                    "default": false,
+                    "description": "Enables additional load generation through simulated Chrome browsers. Defaults to false.",
+                    "type": "boolean"
+                },
+                "userSpawnRate": {
+                    "default": 5,
+                    "description": "Per second user creation rate. Defaults to 5.",
+                    "type": "integer"
+                },
+                "users": {
+                    "default": 50,
+                    "description": "Initial number of simulated users. Defaults to 50.",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "type": "object"
+}
+```

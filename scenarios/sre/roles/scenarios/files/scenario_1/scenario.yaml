@@ -5,10 +5,8 @@ metadata:
   name: scenario-1
 spec:
   applications:
-    - otelDemo:
-        enabled: true
-        options:
-          autoscaling: false
+    opentelemetryDemo:
+      enabled: true
   faults:
     - injections:
         - args:
@@ -22,24 +20,24 @@ spec:
                 name: flagd-config
                 namespace: otel-demo
           id: opentelemetry-demo-feature-flag
-    - injections: []
       waitFor:
-        - args:
-            kubernetesObject:
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: flagd-config
-                namespace: otel-demo
-          id: restart-kubernetes-workload
-        - args:
-            kubernetesObject:
-              apiVersion: apps/v1
-              kind: Deployment
-              metadata:
-                name: load-generator
-                namespace: otel-demo
-          id: restart-kubernetes-workload
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: flagd
+                  namespace: otel-demo
+            id: restart-kubernetes-workload
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: load-generator
+                  namespace: otel-demo
+            id: restart-kubernetes-workload
   tools:
     chaosEngineering:
       chaosMesh:

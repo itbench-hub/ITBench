@@ -1,0 +1,19 @@
+---
+- name: Uninstall OpenTelemetry Demo (Astronomy Shop)
+  kubernetes.core.helm:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    release_name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
+    release_namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+    release_state: absent
+    wait: true
+
+- name: Delete Namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: v1
+      kind: Namespace
+      metadata:
+        name: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+    state: absent
+    wait: true
