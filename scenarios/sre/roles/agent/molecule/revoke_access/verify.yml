@@ -41,8 +41,8 @@
       ansible.builtin.assert:
         that:
           - agent_role.resources | ansible.builtin.length == 0
-        fail_msg: RoleBinding was not deleted. Revoke failed.
-        success_msg: RoleBinding was successfully deleted.
+        fail_msg: Role was not deleted. Revoke failed.
+        success_msg: Role was successfully deleted.
 
     - name: Retrieve RoleBinding
       kubernetes.core.k8s_info:
@@ -51,12 +51,12 @@
         kind: RoleBinding
         name: agent-read-write-access
         namespace: application
-      register: agent_rolebinding
+      register: agent_role_binding
 
     - name: Validate RoleBinding was deleted
       ansible.builtin.assert:
         that:
-          - agent_rolebinding.resources | ansible.builtin.length == 0
+          - agent_role_binding.resources | ansible.builtin.length == 0
         fail_msg: RoleBinding was not deleted. Revoke failed.
         success_msg: RoleBinding was successfully deleted.
 
@@ -67,11 +67,11 @@
         kind: ServiceAccount
         name: agent
         namespace: agent-access-manager
-      register: agent_serviceaccount
+      register: agent_service_account
 
     - name: Validate ServiceAccount was deleted
       ansible.builtin.assert:
         that:
-          - agent_serviceaccount.resources | ansible.builtin.length == 0
+          - agent_service_account.resources | ansible.builtin.length == 0
         fail_msg: ServiceAccount was not deleted. Revoke failed.
         success_msg: ServiceAccount was successfully deleted.

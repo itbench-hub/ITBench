@@ -6,20 +6,20 @@
     kind: "{{ injection_task.args.kubernetesObject.kind }}"
     name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
     namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
-  register: faults_configmap
+  register: faults_config_map
 
 - name: Validate that valid configmap exists
   ansible.builtin.assert:
     that:
-      - faults_configmap is defined
-      - faults_configmap.resources | ansible.builtin.length == 1
+      - faults_config_map is defined
+      - faults_config_map.resources | ansible.builtin.length == 1
     fail_msg: Unable to find configmap. Please verify that the configmap exists.
     success_msg: Found configmap.
 
 - name: Validate that flagd data exists
   ansible.builtin.assert:
     that:
-      - faults_configmap.resources[0].data["demo.flagd.json"] is defined
+      - faults_config_map.resources[0].data["demo.flagd.json"] is defined
     fail_msg: Unable to find data. Please verify that the flagd data exists.
     success_msg: Found data.
 
@@ -27,15 +27,15 @@
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
-      apiVersion: "{{ faults_configmap.resources[0].apiVersion }}"
-      kind: "{{ faults_configmap.resources[0].kind }}"
+      apiVersion: "{{ faults_config_map.resources[0].apiVersion }}"
+      kind: "{{ faults_config_map.resources[0].kind }}"
       metadata:
-        name: "{{ faults_configmap.resources[0].metadata.name }}"
-        namespace: "{{ faults_configmap.resources[0].metadata.namespace }}"
+        name: "{{ faults_config_map.resources[0].metadata.name }}"
+        namespace: "{{ faults_config_map.resources[0].metadata.namespace }}"
       data:
         "demo.flagd.json": |-
           {{
-            faults_configmap.resources[0].data["demo.flagd.json"] |
+            faults_config_map.resources[0].data["demo.flagd.json"] |
             ansible.builtin.from_json |
             ansible.builtin.combine(
               {

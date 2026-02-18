@@ -1,27 +1,55 @@
 ---
-- name: Delete all RoleBindings for agent access
-  kubernetes.core.k8s:
+- name: Retrieve all agent access related RoleBindings
+  kubernetes.core.k8s_info:
     api_version: rbac.authorization.k8s.io/v1
-    delete_all: true
     kind: RoleBinding
     kubeconfig: "{{ agent_cluster.kubeconfig }}"
     label_selectors:
       - app.kubernetes.io/component = agent-access-provider
       - app.kubernetes.io/managed-by = ITBench
+  register: agent_access_role_bindings
+
+- name: Delete all agent access related RoleBindings
+  kubernetes.core.k8s:
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ role_binding.apiVersion }}"
+      kind: "{{ role_binding.kind }}"
+      metadata:
+        name: "{{ role_binding.metadata.name }}"
+        namespace: "{{ role_binding.metadata.namespace }}"
     state: absent
     wait: true
+  loop: "{{ agent_access_role_bindings.resources }}"
+  loop_control:
+    label: rolebinding/{{ role_binding.metadata.name }}
+    loop_var: role_binding
 
-- name: Delete all Roles for agent access
-  kubernetes.core.k8s:
+- name: Retrieve all agent access related Role
+  kubernetes.core.k8s_info:
     api_version: rbac.authorization.k8s.io/v1
-    delete_all: true
     kind: Role
     kubeconfig: "{{ agent_cluster.kubeconfig }}"
     label_selectors:
       - app.kubernetes.io/component = agent-access-provider
       - app.kubernetes.io/managed-by = ITBench
+  register: agent_access_roles
+
+- name: Delete all agent access related Role
+  kubernetes.core.k8s:
+    kubeconfig: "{{ agent_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ role.apiVersion }}"
+      kind: "{{ role.kind }}"
+      metadata:
+        name: "{{ role.metadata.name }}"
+        namespace: "{{ role.metadata.namespace }}"
     state: absent
     wait: true
+  loop: "{{ agent_access_roles.resources }}"
+  loop_control:
+    label: role/{{ role.metadata.name }}
+    loop_var: role
 
 - name: Delete Namespace
   kubernetes.core.k8s:

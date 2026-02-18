@@ -10,19 +10,19 @@
         kind: PersistentVolumeClaim
         name: compromised-workload
         namespace: nonexistent-kubernetes-workload-persistent-volume-claim-test
-      register: faults_persistentvolumeclaim
+      register: faults_persistent_volume_claim
 
     - name: Validate that PVC was created
       ansible.builtin.assert:
         that:
-          - faults_persistentvolumeclaim.resources | ansible.builtin.length == 1
+          - faults_persistent_volume_claim.resources | ansible.builtin.length == 1
         fail_msg: PersistentVolumeClaim was not created. Fault injection failed.
         success_msg: PersistentVolumeClaim was created.
 
     - name: Validate that PVC uses invalid storage class
       ansible.builtin.assert:
         that:
-          - faults_persistentvolumeclaim.resources[0].spec.storageClassName == "invalid-class-name"
+          - faults_persistent_volume_claim.resources[0].spec.storageClassName == "invalid-class-name"
         fail_msg: PVC does not use invalid storage class. Fault injection failed.
         success_msg: PVC uses invalid storage class.
 

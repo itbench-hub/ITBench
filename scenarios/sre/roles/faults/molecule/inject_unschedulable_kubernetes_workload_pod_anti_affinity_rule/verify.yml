@@ -10,19 +10,19 @@
         kind: DaemonSet
         name: application-operator
         namespace: unschedulable-k8s-pod-anti-affinity-rule-test
-      register: faults_daemonset
+      register: faults_daemon_set
 
     - name: Verify that DaemonSet was created
       ansible.builtin.assert:
         that:
-          - faults_daemonset.resources | ansible.builtin.length == 1
+          - faults_daemon_set.resources | ansible.builtin.length == 1
         fail_msg: DaemonSet was not created. Fault injection failed.
         success_msg: DaemonSet was created.
 
     - name: Validate that DaemonSet was labeled correctly
       ansible.builtin.assert:
         that:
-          - faults_daemonset.resources[0].metadata.labels['app.kubernetes.io/name'] == 'application-operator'
+          - faults_daemon_set.resources[0].metadata.labels['app.kubernetes.io/name'] == 'application-operator'
         fail_msg: DaemonSet was not labeled correctly. Fault injection failed.
         success_msg: DaemonSet was labeled correctly.
 
