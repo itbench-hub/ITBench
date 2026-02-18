@@ -30,33 +30,30 @@
         success_msg: Pods are accessible to agent.
 
     - name: Retrieve pods in observability namespace
-      kubernetes.core.k8s_info:
-        kubeconfig: "{{ agent_restricted_kubeconfig_path }}"
-        api_version: v1
-        kind: Pod
-        namespace: observability
+      ansible.builtin.command:
+        cmd: kubectl -n observability get pods --kubeconfig={{ agent_restricted_kubeconfig_path }}
+      changed_when: false
+      failed_when: agent_observability_pods_list_result.rc == 0
       register: agent_observability_pods_list_result
-      failed_when: false
 
     - name: Validate that pods were not accessible
       ansible.builtin.assert:
         that:
-          - agent_observability_pods_list_result is ansible.builtin.failed
+          - agent_observability_pods_list_result.rc != 0
         fail_msg: Pods are accessible to agent. Invalid kubeconfig generated.
         success_msg: Pods are not accesible to agent.
 
-    - name: Retrieve all namespaces
-      kubernetes.core.k8s_info:
-        kubeconfig: "{{ agent_restricted_kubeconfig_path }}"
-        api_version: v1
-        kind: Namespace
+    - name: Retrieve pods in observability namespace
+      ansible.builtin.command:
+        cmd: kubectl get namespaces --kubeconfig={{ agent_restricted_kubeconfig_path }}
+      changed_when: false
+      failed_when: agent_namespace_list_result.rc == 0
       register: agent_namespace_list_result
-      failed_when: false
 
     - name: Validate that namespaces were not accesible
       ansible.builtin.assert:
         that:
-          - agent_namespace_list_result is ansible.builtin.failed
+          - agent_namespace_list_result.rc != 0
         fail_msg: Namespaces are accesible to agent. Invalid kubeconfig generated.
         success_msg: Namespaces are not accesible to agent.
 
