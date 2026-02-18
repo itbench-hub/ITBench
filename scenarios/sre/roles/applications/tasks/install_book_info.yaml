@@ -162,7 +162,7 @@
     label: deployment/{{ workload.metadata.name }}
     loop_var: workload
   when:
-    - applications_configuration.bookInfo.options.autoscaling.kubernetes | ansible.builtin.default(false)
+    - applications_configuration.bookInfo.options.autoscaling.kubernetes.hpa | ansible.builtin.default(false)
 
 - name: Delete the temporary directory
   ansible.builtin.file:
@@ -235,7 +235,19 @@
                   - "while true; do curl {{ [applications_book_info_gateway_endpoints.http, '/productpage'] | ansible.builtin.join }}; sleep 5; done"
     state: present
 
-- name: Create PrometheusRules
+- name: Create Common PrometheusRules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    template:
+      path: templates/kubernetes/common/prometheusrules.j2
+      variable_end_string: "]]"
+      variable_start_string: "[["
+    state: present
+  vars:
+    application_namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+    group_name: bookinfo
+
+- name: Create Book Info PrometheusRules
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
     template:

@@ -1,0 +1,24 @@
+{# Delimiters are changed to keep Prometheus templating. #}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: common-alerting-rules
+  namespace: [[ application_namespace ]]
+spec:
+  groups:
+    - name: [[ group_name ]].workloads
+      rules:
+        - alert: FailedPodsDetected
+          expr: |
+            sum by (namespace) (
+              kube_pod_status_phase{
+                namespace="[[ application_namespace ]]",
+                phase="Failed"
+              }
+            ) > 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            description: "Pods in failed state in namespace {{ $labels.namespace }} is above 0 (current: {{ $value }})"

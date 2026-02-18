@@ -31,9 +31,14 @@ ITBench uses various applications to offer a diverse set of environments for whi
                 "minProperties": 1,
                 "properties": {
                     "kubernetes": {
-                        "default": false,
-                        "description": "Enables autoscaling through Kubernetes Horizontal Pod Autoscaler. Defaults to false.",
-                        "type": "boolean"
+                        "properties": {
+                            "hpa": {
+                                "default": false,
+                                "description": "Enables autoscaling through Kubernetes Horizontal Pod Autoscaler. Defaults to false.",
+                                "type": "boolean"
+                            }
+                        },
+                        "type": "object"
                     }
                 },
                 "type": "object"
@@ -61,12 +66,16 @@ ITBench uses various applications to offer a diverse set of environments for whi
     "properties": {
         "autoscaling": {
             "properties": {
-                "minProperties": 1,
                 "properties": {
                     "kubernetes": {
-                        "default": false,
-                        "description": "Enables autoscaling through Kubernetes Horizontal Pod Autoscaler. Defaults to false.",
-                        "type": "boolean"
+                        "properties": {
+                            "hpa": {
+                                "default": false,
+                                "description": "Enables autoscaling through Kubernetes Horizontal Pod Autoscaler. Defaults to false.",
+                                "type": "boolean"
+                            }
+                        },
+                        "type": "object"
                     }
                 },
                 "type": "object"

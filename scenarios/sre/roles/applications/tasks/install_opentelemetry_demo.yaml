@@ -148,9 +148,21 @@
     label: deployment/{{ workload.metadata.name }}
     loop_var: workload
   when:
-    - applications_configuration.opentelemetryDemo.options.autoscaling.kubernetes | ansible.builtin.default(false)
+    - applications_configuration.opentelemetryDemo.options.autoscaling.kubernetes.hpa | ansible.builtin.default(false)
 
-- name: Create PrometheusRules
+- name: Create Common PrometheusRules
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    template:
+      path: templates/kubernetes/common/prometheusrules.j2
+      variable_end_string: "]]"
+      variable_start_string: "[["
+    state: present
+  vars:
+    application_namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+    group_name: opentelemetrydemo
+
+- name: Create OpenTelemetry Demo PrometheusRules
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
     template:
