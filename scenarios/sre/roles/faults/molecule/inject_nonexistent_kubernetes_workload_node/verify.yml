@@ -10,26 +10,26 @@
         kind: Deployment
         name: compromised-workload
         namespace: nonexistent-kubernetes-workload-node-test
-      register: test_deployment
+      register: faults_deployment
 
     - name: Validate that node selector was added
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.nodeSelector is defined
-          - test_deployment.resources[0].spec.template.spec.nodeSelector["kubernetes.io/hostname"] is defined
+          - faults_deployment.resources[0].spec.template.spec.nodeSelector is defined
+          - faults_deployment.resources[0].spec.template.spec.nodeSelector["kubernetes.io/hostname"] is defined
         fail_msg: Node selector was not added. Fault injection failed.
         success_msg: Node selector was added.
 
     - name: Validate that node selector points to nonexistent node
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.nodeSelector["kubernetes.io/hostname"] is ansible.builtin.match("invalid-node-.*")
+          - faults_deployment.resources[0].spec.template.spec.nodeSelector["kubernetes.io/hostname"] is ansible.builtin.match("invalid-node-.*")
         fail_msg: Node selector does not point to nonexistent node. Fault injection failed.
         success_msg: Node selector points to nonexistent node.
 
     - name: Validate that workload cannot schedule pods
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].status.availableReplicas < test_deployment.resources[0].status.replicas
+          - faults_deployment.resources[0].status.availableReplicas < faults_deployment.resources[0].status.replicas
         fail_msg: Workload successfully scheduled pods. Fault injection failed.
         success_msg: Workload cannot schedule pods.

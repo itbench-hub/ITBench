@@ -10,11 +10,11 @@
         kind: Deployment
         name: compromised-workload
         namespace: failing-name-resolution-kubernetes-workload-dns-policy-test
-      register: test_deployment
+      register: faults_deployment
 
     - name: Validate that dns policy was changed
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.dnsPolicy == "Default"
+          - faults_deployment.resources[0].spec.template.spec.dnsPolicy == "Default"
         fail_msg: DNS policy is unchanged. Fault injection failed.
         success_msg: DNS policy is changed.

@@ -10,26 +10,26 @@
         kind: Deployment
         name: compromised-workload
         namespace: unsupported-architecture-k8s-container-image-test
-      register: test_deployment
+      register: faults_deployment
 
     - name: Validate that container image was updated to architecture-specific image
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.containers[0].image is ansible.builtin.match("quay.io/it-bench/hello-bench-(arm64|amd64):.*")
+          - faults_deployment.resources[0].spec.template.spec.containers[0].image is ansible.builtin.match("quay.io/it-bench/hello-bench-(arm64|amd64):.*")
         fail_msg: Container image was not updated to architecture-specific image. Fault injection failed.
         success_msg: Container image was updated to architecture-specific image.
 
     - name: Validate that node selector was added
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.nodeSelector is defined
-          - test_deployment.resources[0].spec.template.spec.nodeSelector["kubernetes.io/hostname"] is defined
+          - faults_deployment.resources[0].spec.template.spec.nodeSelector is defined
+          - faults_deployment.resources[0].spec.template.spec.nodeSelector["kubernetes.io/hostname"] is defined
         fail_msg: Node selector was not added. Fault injection failed.
         success_msg: Node selector was added.
 
     - name: Validate that workload cannot schedule pods
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].status.availableReplicas < test_deployment.resources[0].status.replicas
+          - faults_deployment.resources[0].status.availableReplicas < faults_deployment.resources[0].status.replicas
         fail_msg: Workload successfully scheduled pods. Fault injection failed.
         success_msg: Workload cannot schedule pods.

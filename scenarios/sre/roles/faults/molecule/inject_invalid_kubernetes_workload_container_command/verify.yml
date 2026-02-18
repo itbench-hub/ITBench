@@ -10,11 +10,11 @@
         kind: Deployment
         name: compromised-workload
         namespace: invalid-kubernetes-workload-container-command-test
-      register: test_deployment
+      register: faults_deployment
 
     - name: Validate that container command was updated
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.containers[0].command[0] == "invalid-command"
+          - faults_deployment.resources[0].spec.template.spec.containers[0].command[0] == "invalid-command"
         fail_msg: Container command was not updated. Fault injection failed.
         success_msg: Container command was updated.

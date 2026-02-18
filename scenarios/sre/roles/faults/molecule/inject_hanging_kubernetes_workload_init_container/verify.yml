@@ -10,13 +10,13 @@
         kind: Deployment
         name: compromised-workload
         namespace: hanging-kubernetes-workload-init-container-test
-      register: test_deployment
+      register: faults_deployment
 
     - name: Validate that init container was added
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.initContainers is defined
-          - test_deployment.resources[0].spec.template.spec.initContainers | ansible.builtin.length == 1
+          - faults_deployment.resources[0].spec.template.spec.initContainers is defined
+          - faults_deployment.resources[0].spec.template.spec.initContainers | ansible.builtin.length == 1
         fail_msg: Init container not found. Fault injection failed.
         success_msg: Init container found.
 
@@ -28,12 +28,12 @@
         namespace: hanging-kubernetes-workload-init-container-test
         label_selectors:
           - app.kubernetes.io/name=compromised-workload
-      register: test_pods
+      register: faults_pods
 
     - name: Validate that pods are stuck in init phase
       ansible.builtin.assert:
         that:
-          - test_pods.resources | ansible.builtin.length == 2
-          - test_pods.resources | ansible.builtin.selectattr('status.phase', '==', 'Pending') | ansible.builtin.length == 1
+          - faults_pods.resources | ansible.builtin.length == 2
+          - faults_pods.resources | ansible.builtin.selectattr('status.phase', '==', 'Pending') | ansible.builtin.length == 1
         fail_msg: Stuck pods not found. Fault injection failed.
         success_msg: Stuck pods found.

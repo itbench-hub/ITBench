@@ -10,11 +10,11 @@
         kind: Deployment
         name: compromised-workload
         namespace: unassigned-k8-container-resource-limits-test
-      register: test_deployment
+      register: faults_deployment
 
     - name: Validate that resource limits were removed
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.containers[0].resources.limits is not defined
+          - faults_deployment.resources[0].spec.template.spec.containers[0].resources.limits is not defined
         fail_msg: Resource limits were not removed. Fault injection failed.
         success_msg: Resource limits were removed.

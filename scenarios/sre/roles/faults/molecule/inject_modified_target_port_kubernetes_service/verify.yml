@@ -10,11 +10,11 @@
         kind: Service
         name: compromised-workload
         namespace: modified-target-port-kubernetes-service-test
-      register: test_service
+      register: faults_service
 
     - name: Validate that service target port was modified
       ansible.builtin.assert:
         that:
-          - test_service.resources[0].spec.ports[0].targetPort != 8080
+          - faults_service.resources[0].spec.ports[0].targetPort != 8080
         fail_msg: Service target port was not modified. Fault injection failed.
         success_msg: Service target port was modified.

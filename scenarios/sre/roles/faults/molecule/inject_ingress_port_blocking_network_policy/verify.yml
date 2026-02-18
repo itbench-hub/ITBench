@@ -10,27 +10,27 @@
         kind: NetworkPolicy
         name: compromised-workload-ingress
         namespace: ingress-port-blocking-network-policy-test
-      register: test_network_policy
+      register: faults_network_policy
 
     - name: Validate that network policy was created
       ansible.builtin.assert:
         that:
-          - test_network_policy.resources | ansible.builtin.length == 1
+          - faults_network_policy.resources | ansible.builtin.length == 1
         fail_msg: Network policy not found. Fault injection failed.
         success_msg: Network policy found.
 
     - name: Validate that network policy blocks ingress
       ansible.builtin.assert:
         that:
-          - test_network_policy.resources[0].spec.policyTypes | ansible.builtin.length == 1
-          - test_network_policy.resources[0].spec.policyTypes[0] == 'Ingress'
-          - test_network_policy.resources[0].spec.ingress[0].ports is undefined
+          - faults_network_policy.resources[0].spec.policyTypes | ansible.builtin.length == 1
+          - faults_network_policy.resources[0].spec.policyTypes[0] == 'Ingress'
+          - faults_network_policy.resources[0].spec.ingress[0].ports is undefined
         fail_msg: Network policy does not block ingress. Fault injection failed.
         success_msg: Network policy blocks ingress traffic.
 
     - name: Validate that network policy targets correct pods
       ansible.builtin.assert:
         that:
-          - test_network_policy.resources[0].spec.podSelector.matchLabels['app.kubernetes.io/name'] == 'compromised-workload'
+          - faults_network_policy.resources[0].spec.podSelector.matchLabels['app.kubernetes.io/name'] == 'compromised-workload'
         fail_msg: Network policy does not target correct pods. Fault injection failed.
         success_msg: Network policy targets correct pods.

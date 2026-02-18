@@ -10,11 +10,11 @@
         kind: Deployment
         name: compromised-workload
         namespace: nonexistent-kubernetes-workload-container-image-test
-      register: test_deployment
+      register: faults_deployment
 
     - name: Validate that container image was updated
       ansible.builtin.assert:
         that:
-          - test_deployment.resources[0].spec.template.spec.containers[0].image == "quay.io/it-bench/hello-bench-invalid:1.0.0"
+          - faults_deployment.resources[0].spec.template.spec.containers[0].image == "quay.io/it-bench/hello-bench-invalid:1.0.0"
         fail_msg: Container image was not updated. Fault injection failed.
         success_msg: Container image was updated.
