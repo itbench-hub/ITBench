@@ -33,7 +33,7 @@
                                     "apiVersion": "apps/v1",
                                     "kind": "Deployment",
                                     "metadata": {
-                                        "name": "flagd-config",
+                                        "name": "flagd",
                                         "namespace": "otel-demo"
                                     }
                                 }
@@ -107,7 +107,7 @@
                                 "apiVersion": "v1",
                                 "kind": "ConfigMap",
                                 "metadata": {
-                                    "name": "flagd-config",
+                                    "name": "flagd",
                                     "namespace": "otel-demo"
                                 }
                             }
@@ -163,7 +163,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "command": "kubectl -n otel-demo edit configmap flagd",
                             "text": "Disable the feature flag (adHighCpu) by manually editing the contents of the ConfigMap"
                         },
                         {
@@ -1662,7 +1662,7 @@
                                 "kind": "Gateway",
                                 "metadata": {
                                     "name": "bookinfo-gateway",
-                                    "namespace": "bookinfo"
+                                    "namespace": "book-info"
                                 }
                             }
                         },
@@ -1687,7 +1687,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n bookinfo edit authorizationpolicy bookinfo-gateway-deny",
+                            "command": "kubectl -n book-info edit authorizationpolicy bookinfo-gateway-deny",
                             "text": "Manually edit the manifest and replace the invalid rule with the correct value."
                         }
                     ]
@@ -1695,7 +1695,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n bookinfo delete authorizationpolicy bookinfo-gateway-deny",
+                            "command": "kubectl -n book-info delete authorizationpolicy bookinfo-gateway-deny",
                             "text": "Delete the faulty authorization policy."
                         }
                     ]
@@ -1723,7 +1723,7 @@
                                 "apiVersion": "v1",
                                 "kind": "Namespace",
                                 "metadata": {
-                                    "name": "bookinfo"
+                                    "name": "book-info"
                                 }
                             }
                         },
@@ -1748,7 +1748,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n bookinfo edit namespace bookinfo-deny",
+                            "command": "kubectl -n book-info edit namespace book-info-deny",
                             "text": "Manually edit the manifest and replace the invalid label with the correct value."
                         }
                     ]
@@ -1842,7 +1842,7 @@
                                 "kind": "Deployment",
                                 "metadata": {
                                     "name": "productpage-v1",
-                                    "namespace": "bookinfo"
+                                    "namespace": "book-info"
                                 }
                             }
                         },
@@ -1867,7 +1867,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n bookinfo edit deployment productpage-v1",
+                            "command": "kubectl -n book-info edit deployment productpage-v1",
                             "text": "Manually edit the manifest and to add the required Istio ambient mode labels to the workload."
                         }
                     ]
@@ -1875,7 +1875,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl edit namespace bookinfo",
+                            "command": "kubectl edit namespace book-info",
                             "text": "Manually edit the namespace manifest and to add the required Istio ambient mode labels to the workload."
                         }
                     ]
@@ -1907,7 +1907,7 @@
                                 "kind": "Deployment",
                                 "metadata": {
                                     "name": "reviews-v3",
-                                    "namespace": "bookinfo"
+                                    "namespace": "book-info"
                                 }
                             }
                         },
@@ -1932,7 +1932,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n bookinfo rollout undo deployment/reviews-v3",
+                            "command": "kubectl -n book-info rollout undo deployment/reviews-v3",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -1940,7 +1940,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n bookinfo edit persistentvolumeclaim reviews-v3",
+                            "command": "kubectl -n book-info edit persistentvolumeclaim reviews-v3",
                             "text": "Manually edit the manifest and replace the `storageClassName` with the correct value."
                         }
                     ]
@@ -1948,7 +1948,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n bookinfo edit deployment reviews-v3",
+                            "command": "kubectl -n book-info edit deployment reviews-v3",
                             "text": "Manually edit the manifest and replace the volume claim with an existing persistent volume claim."
                         }
                     ]
