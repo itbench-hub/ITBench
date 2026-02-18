@@ -133,7 +133,7 @@
       apiVersion: rbac.authorization.k8s.io/v1
       kind: RoleBinding
       metadata:
-        label:
+        labels:
           app.kubernetes.io/component: agent-access-provider
           app.kubernetes.io/managed-by: ITBench
         name: agent-read-write-access
@@ -183,6 +183,13 @@
         ansible.builtin.from_yaml
       }}
 
+- name: Validate that there is only one context
+  ansible.builtin.assert:
+    that:
+      - agent_current_cluster | ansible.builtin.length == 1
+    fail_msg: More than one context discovered. Please ensure kubeconfig is properly formatted.
+    success_msg: Context discovered.
+
 - name: Create temporary file for restricted kubeconfig
   ansible.builtin.tempfile:
     prefix: restricted-kubeconfig
@@ -199,26 +206,14 @@
     dest: "{{ agent_temporary_kubeconfig.path }}"
     mode: "0644"
   vars:
-    clusters:
-      - cluster:
-          server: "{{ agent_current_cluster.cluster['server'] }}"
-          certificate-authority-data: "{{ agent_current_cluster.cluster['certificate-authority-data'] }}"
-        name: "{{ agent_current_cluster.name }}"
-    contexts:
-      - context:
-          cluster: "{{ agent_current_cluster.name }}"
-          user: agent
-        name: "{{ agent_current_cluster.name }}"
-    users:
-      - name: agent
-        user:
-          token: |-
-            {{
-              (
-                agent_token_creation_output.stdout |
-                ansible.builtin.from_json
-              ).status.token
-            }}
+    cluster: "{{ agent_current_cluster | first }}"
+    service_account_token: |-
+      {{
+        (
+          agent_token_creation_output.stdout |
+          ansible.builtin.from_json
+        ).status.token
+      }}
 
 - name: Copy restricted kubeconfig into local directory
   ansible.builtin.copy:
