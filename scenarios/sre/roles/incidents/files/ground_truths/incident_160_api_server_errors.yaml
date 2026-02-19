@@ -1,0 +1,164 @@
+---
+# Ground Truth for Incident 51: Service High Error Rate Due to Load Surge
+# Based on ITN-2025-00160 incident pattern - adapted for ITBench otel-demo application
+metadata:
+  version: "v1"
+
+fault:
+  - entity:
+      name: load-generator
+      group_id: load-generator-pod-1
+      kind: Pod
+    condition: "Load generator configured with excessive request rate overwhelming frontend-proxy"
+    category: Client Behavior
+    fault_mechanism: custom-api-request-surge
+
+  - entity:
+      name: frontend-proxy
+      group_id: frontend-proxy-pod-1
+      kind: Pod
+    condition: "Service overwhelmed by request volume, returning errors"
+    category: Resource Saturation
+    fault_mechanism: none
+    note: "Service under heavy load - cascading failures to downstream services"
+
+  - entity:
+      name: frontend
+      group_id: frontend-pod-1
+      kind: Pod
+    condition: "Frontend service experiencing high latency due to backend pressure"
+    category: Resource Saturation
+    fault_mechanism: chaos-mesh-StressChaos
+
+alerts:
+  # Using existing ITBench alerts from otel-demo.yaml
+  - id: RequestErrorRate
+    group_id: frontend-proxy-service-1
+    metadata:
+      description: "Request error rate in frontend-proxy service is above threshold"
+      severity: warning
+
+  - id: RequestErrorRate
+    group_id: frontend-service-1
+    metadata:
+      description: "Request error rate in frontend service is above threshold due to cascading failures"
+      severity: warning
+
+  - id: RequestLatency
+    group_id: frontend-proxy-service-1
+    metadata:
+      description: "P95 latency in frontend-proxy service exceeds 1500ms threshold"
+      severity: warning
+
+  - id: RequestLatency
+    group_id: frontend-service-1
+    metadata:
+      description: "P95 latency in frontend service exceeds 1500ms threshold"
+      severity: warning
+
+  - id: PendingPodsDetected
+    group_id: frontend-proxy-pod-1
+    metadata:
+      description: "Pods stuck in Pending state if cluster cannot schedule under load"
+      severity: critical
+
+groups:
+  - id: load-generator-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - load-generator-.*
+    root_cause: true
+    reason: "Generates excessive requests causing service overload"
+
+  - id: load-generator-service-1
+    kind: Service
+    namespace: otel-demo
+    filter:
+      - load-generator\b
+
+  - id: frontend-proxy-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - frontend-proxy-.*
+
+  - id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+    filter:
+      - frontend-proxy\b
+
+  - id: frontend-pod-1
+    kind: Pod
+    namespace: otel-demo
+    filter:
+      - frontend-.*
+
+  - id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+    filter:
+      - frontend\b
+
+aliases:
+  - - load-generator-pod-1
+    - load-generator-service-1
+  - - frontend-proxy-pod-1
+    - frontend-proxy-service-1
+  - - frontend-pod-1
+    - frontend-service-1
+
+propagations:
+  # Scenario A: Excessive requests → Service overload
+  - source: load-generator-pod-1
+    target: load-generator-service-1
+    condition: "Load generator configured with high request rate"
+    effect: "Generates excessive HTTP requests to frontend-proxy"
+
+  - source: load-generator-service-1
+    target: frontend-proxy-service-1
+    condition: "Request rate exceeds frontend-proxy capacity"
+    effect: "Frontend-proxy returns HTTP errors, latency increases"
+
+  # Scenario B: Cascading failures to frontend
+  - source: frontend-proxy-service-1
+    target: frontend-service-1
+    condition: "Frontend-proxy overwhelmed passes pressure to frontend"
+    effect: "Frontend service error rate increases, latency degrades"
+
+  # Scenario C: Resource pressure
+  - source: frontend-pod-1
+    target: frontend-pod-1
+    condition: "Memory/CPU pressure under load"
+    effect: "Pod may be OOM killed or throttled"
+
+recommended_actions:
+  - solution:
+      id: reduce_load_generator_rate
+      actions:
+        - "Reduce load generator request rate to sustainable level"
+        - "Verify load generator configuration in flagd-config ConfigMap"
+      timing: "Immediate"
+
+  - solution:
+      id: scale_frontend_services
+      actions:
+        - "Scale frontend-proxy and frontend deployments"
+        - "Increase resource limits if needed"
+      timing: "If load is legitimate"
+
+  - solution:
+      id: investigate_traffic_source
+      actions:
+        - "Check load generator configuration"
+        - "Verify if traffic spike is intentional or misconfiguration"
+      timing: "Post-incident investigation"
+
+  - solution:
+      id: implement_rate_limiting
+      actions:
+        - "Configure rate limiting at ingress level"
+        - "Set up autoscaling policies"
+      timing: "Long-term improvement"
+

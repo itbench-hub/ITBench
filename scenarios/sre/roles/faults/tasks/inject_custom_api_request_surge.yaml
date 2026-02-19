@@ -1,0 +1,28 @@
+---
+# Inject fault: api-request-surge
+# Simulates runaway controller making excessive API requests
+# Based on ITN-2025-00160 incident
+
+- name: Set script content for template
+  ansible.builtin.set_fact:
+    api_request_surge_script_content: "{{ lookup('ansible.builtin.file', 'files/api_request_surge/generate-api-load.sh') }}"
+
+- name: Create API request surge resources
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    template: templates/api_request_surge/resources.j2
+    state: present
+
+- name: Wait for Deployment to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: api-request-surge
+    namespace: "{{ spec.namespace.name }}"
+    wait: true
+    wait_condition:
+      type: Available
+      status: "True"
+    wait_timeout: 60
+  register: deployment_info

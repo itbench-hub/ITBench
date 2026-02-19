@@ -1,0 +1,47 @@
+---
+# Remove fault: api-request-surge
+# Stops the API request load generator
+
+- name: Delete API request surge Deployment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    name: api-request-surge
+    namespace: "{{ spec.namespace.name }}"
+    state: absent
+    wait: true
+
+- name: Delete ConfigMap with load generation script
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: ConfigMap
+    name: api-surge-script
+    namespace: "{{ spec.namespace.name }}"
+    state: absent
+
+- name: Delete ClusterRoleBinding
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    name: api-load-generator
+    state: absent
+
+- name: Delete ClusterRole
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    name: api-load-generator
+    state: absent
+
+- name: Delete ServiceAccount
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: ServiceAccount
+    name: api-load-generator
+    namespace: "{{ spec.namespace.name }}"
+    state: absent

@@ -1,0 +1,35 @@
+---
+# ITN-2025-00160 variant: API Server Error Rate - Runaway controller (API request surge)
+# One fault group: excessive API requests triggering rate limiting / alert misconfiguration
+# Based on Slack channel C09528B6JAD.json
+
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 51
+    name: API Server Error Rate Spike - API Request Surge
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        otel_demo:
+          enabled: true
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+          - prometheus
+          - grafana
+
+    faults:
+      - custom:
+          name: api-request-surge
+          api_request_surge:
+            namespace:
+              name: "{{ applications_helm_releases.otel_demo.namespace }}"
+            load_profile:
+              requests_per_second: 1000
+              duration: 600  # 10 minutes
+            parallelism: 20

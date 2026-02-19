@@ -1,0 +1,35 @@
+---
+# Inject fault: signing-request-surge
+# Simulates OCP payload release causing surge in signing requests
+# Based on ITN-2025-00221 incident
+# Deploys load generator in the application namespace (no separate namespace).
+
+- name: Set script content for template
+  ansible.builtin.set_fact:
+    signing_request_surge_script_content: "{{ lookup('ansible.builtin.file', 'files/signing_request_surge/generate-load.sh') }}"
+
+- name: Create signing request surge resources
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    template: templates/signing_request_surge/resources.j2
+    state: present
+
+- name: Store Job name and namespace for later cleanup
+  ansible.builtin.set_fact:
+    faults_signing_surge_job_name: "signing-request-surge-{{ ansible_date_time.epoch }}"
+    faults_signing_surge_namespace: "{{ spec.target_service.namespace }}"
+
+- name: Wait for Job to start
+  kubernetes.core.k8s_info:
+    api_version: batch/v1
+    kind: Job
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: "{{ faults_signing_surge_job_name }}"
+    namespace: "{{ faults_signing_surge_namespace }}"
+    wait: true
+    wait_condition:
+      type: Complete
+      status: "False"
+    wait_timeout: 30
+  register: job_info
+  ignore_errors: true

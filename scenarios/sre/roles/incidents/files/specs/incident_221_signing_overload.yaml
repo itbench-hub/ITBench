@@ -1,0 +1,89 @@
+---
+# ITN-2025-00221: Konflux Releases Blocked - Signing Service Overload
+# Based on Slack channel C09DG4PJNG6.json
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: High
+    id: 52
+    name: Signing Service Resource Exhaustion with Message Queue Backlog
+    platform: kubernetes
+  spec:
+    environment:
+      applications:
+        # Requires signing service deployment (RADAS-like)
+        # Requires message queue (UMB-like)
+        # Requires pipeline workload (Tekton-like)
+        signing_service:
+          enabled: true
+          configuration:
+            replicas: 20  # Baseline - insufficient for peak load
+            cpu: "2"
+            memory: "4Gi"
+            namespace: signing-service
+        message_queue:
+          enabled: true
+          configuration:
+            broker_replicas: 3
+            namespace: messaging-infrastructure
+        pipeline_workload:
+          enabled: true
+          configuration:
+            namespace: ci-pipelines
+            concurrent_pipelines: 100
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+          - prometheus
+          - grafana
+    
+    # Fault injection sequence
+    faults:
+      # Primary fault: Prevent RADAS from scaling by capping namespace resources
+      - custom:
+          name: misconfigured-resource-quota
+          misconfigured_resource_quota:
+            namespace:
+              name: signing-service
+            workloads:
+              - kind: Deployment
+                name: signing-service
+      
+      # Secondary fault: Slow down message queue consumer to amplify backlog
+      # Note: This uses existing ITBench fault type
+      - custom:
+          name: modify-environment-variables
+          modify_environment_variables:
+            workload:
+              kind: Deployment
+              name: message-queue-consumer
+              namespace: messaging-infrastructure
+              container:
+                name: consumer
+                env:
+                  - name: CONSUMER_PREFETCH_COUNT
+                    value: "1"  # Reduce from default (slow processing)
+                  - name: CONSUMER_PROCESSING_DELAY_MS
+                    value: "5000"  # Add 5s delay per message
+            restart_policy: safe
+      
+      # Tertiary fault: Generate load surge simulating OCP payload release
+      # Note: This requires NEW fault type - see inject_custom_signing_request_surge.yaml
+      # Context: OCP released two streams simultaneously, creating exceptional load
+      - custom:
+          name: signing-request-surge
+          signing_request_surge:
+            target_service:
+              name: signing-service
+              namespace: signing-service
+              endpoint: "/v1/sign"
+            load_profile:
+              baseline_rps: 100  # requests per second
+              surge_multiplier: 10  # 10x surge (2 OCP streams × 5x parallel pipelines)
+              surge_duration: 240  # 4 hours (14400 seconds)
+              ramp_up_time: 30  # 30 seconds to reach peak
+            request_pattern:
+              method: POST
+              payload_size_kb: 50  # Simulating container image manifest

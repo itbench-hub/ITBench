@@ -1,0 +1,28 @@
+---
+# Remove fault: signing-request-surge
+# Stops the signing request load generator (deployed in application namespace)
+
+- name: Delete signing request surge Job
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: batch/v1
+    kind: Job
+    name: "{{ faults_signing_surge_job_name }}"
+    namespace: "{{ faults_signing_surge_namespace }}"
+    state: absent
+    wait: true
+  when:
+    - faults_signing_surge_job_name is defined
+    - faults_signing_surge_namespace is defined
+
+- name: Delete ConfigMap with load generation script
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: ConfigMap
+    name: signing-surge-script
+    namespace: "{{ spec.target_service.namespace }}"
+    state: absent
+  when:
+    - spec is defined
+    - spec.target_service is defined

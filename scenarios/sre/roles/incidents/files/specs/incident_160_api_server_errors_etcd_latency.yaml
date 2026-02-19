@@ -1,0 +1,42 @@
+---
+# ITN-2025-00160 variant: API Server Error Rate - etcd I/O latency causing 5XX
+# One fault group: chaos_mesh IOChaos on etcd
+# Based on Slack channel C09528B6JAD.json
+
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 53
+    name: API Server Error Rate Spike - etcd Latency
+    platform: kubernetes
+  spec:
+    environment:
+      applications: {}
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+          - prometheus
+          - grafana
+
+    faults:
+      - chaos_mesh:
+          schedule:
+            name: etcd-io-latency
+            spec:
+              schedule: "@every 15m"
+              type: IOChaos
+              ioChaos:
+                action: latency
+                mode: all
+                selector:
+                  namespaces:
+                    - kube-system
+                  labelSelectors:
+                    component: etcd
+                delay: "200ms"
+                percent: 50
+                volumePath: /var/lib/etcd
+                duration: "5m"
