@@ -1,0 +1,63 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: signing-surge-script
+  namespace: {{ spec.target_service.namespace }}
+data:
+  generate-load.sh: |
+{{ signing_request_surge_script_content | indent(width=4) }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: signing-request-surge-{{ ansible_date_time.epoch }}
+  namespace: {{ spec.target_service.namespace }}
+  labels:
+    target-service: "{{ spec.target_service.name }}"
+spec:
+  parallelism: 10
+  completions: 10
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        target-service: "{{ spec.target_service.name }}"
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: load-generator
+          image: registry.access.redhat.com/ubi10-minimal:10.1-1764604111
+          command: ["/bin/sh", "-c", "microdnf install -y curl bash && bash /scripts/generate-load.sh"]
+          env:
+            - name: ENDPOINT
+              value: "{{ spec.target_service.endpoint }}"
+            - name: SERVICE_URL
+              value: "http://{{ spec.target_service.name }}.{{ spec.target_service.namespace }}.svc.cluster.local"
+            - name: BASELINE_RPS
+              value: "{{ spec.load_profile.baseline_rps }}"
+            - name: SURGE_MULTIPLIER
+              value: "{{ spec.load_profile.surge_multiplier }}"
+            - name: SURGE_DURATION
+              value: "{{ spec.load_profile.surge_duration }}"
+            - name: RAMP_UP_TIME
+              value: "{{ spec.load_profile.ramp_up_time }}"
+            - name: PAYLOAD_SIZE_KB
+              value: "{{ spec.request_pattern.payload_size_kb }}"
+            - name: METHOD
+              value: "{{ spec.request_pattern.method }}"
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+      volumes:
+        - name: script
+          configMap:
+            name: signing-surge-script
+            defaultMode: 0755
