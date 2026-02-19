@@ -1,0 +1,42 @@
+---
+# ITN-2025-00160 variant: API Server Error Rate - API Server memory pressure causing 503
+# One fault group: chaos_mesh StressChaos on kube-apiserver
+# Based on Slack channel C09528B6JAD.json
+
+metadata:
+  version: "v1"
+scenario:
+  metadata:
+    complexity: Medium
+    id: 54
+    name: API Server Error Rate Spike - API Server Memory Stress
+    platform: kubernetes
+  spec:
+    environment:
+      applications: {}
+      tools:
+        category: sre
+        selected:
+          - kubernetes-topology-monitor
+          - prometheus
+          - grafana
+
+    faults:
+      - chaos_mesh:
+          schedule:
+            name: api-server-memory-stress
+            spec:
+              schedule: "@every 30m"
+              type: StressChaos
+              stressChaos:
+                mode: one
+                selector:
+                  namespaces:
+                    - kube-system
+                  labelSelectors:
+                    component: kube-apiserver
+                stressors:
+                  memory:
+                    workers: 4
+                    size: "6GB"
+                duration: "5m"
