@@ -15,6 +15,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Insufficient Kubernetes Resource Quota](#Insufficient-Kubernetes-Resource-Quota) | Kubernetes | Deployment, Performance |
 | [Insufficient Kubernetes Workload Container Resources](#Insufficient-Kubernetes-Workload-Container-Resources) | Kubernetes | Deployment, Performance |
 | [Invalid Kubernetes Workload Container Command](#Invalid-Kubernetes-Workload-Container-Command) | Kubernetes | Deployment, Performance |
+| [Kubernetes API Server Request Surge](#Kubernetes-API-Server-Request-Surge) | Kubernetes | Deployment, Performance |
 | [Misconfigured Kubernetes Horizontal Pod Autoscaler](#Misconfigured-Kubernetes-Horizontal-Pod-Autoscaler) | Kubernetes | Deployment, Performance |
 | [Misconfigured Kubernetes Workload Container Readiness Probe](#Misconfigured-Kubernetes-Workload-Container-Readiness-Probe) | Kubernetes | Deployment, Performance |
 | [Modified Kubernetes Workload Container Environment Variable](#Modified-Kubernetes-Workload-Container-Environment-Variable) | Kubernetes | Deployment, Performance |
@@ -574,6 +575,87 @@ A fault is a solvable issue injected into an environment to create an incident.
     "required": [
         "kubernetesObject",
         "container"
+    ],
+    "type": "object"
+}
+```
+### Kubernetes API Server Request Surge
+
+**Description:** This fault injects a workload which causes a surge in requests to the API server, causing performance degredation.
+
+**Expectation:** Workloads will be to experience high latency and new workloads may not be able to be scheduled.
+
+**[Implementation](../roles/faults/tasks/inject_kubernetes_api_server_request_surge.yaml)**
+
+**Firing Alerts**
+
+**Golden Signal Alerts:** HighRequestLatency
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/overview/components/
+- https://kubernetes.io/docs/concepts/architecture/#kube-apiserver
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Namespace"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        },
+        "loadGenerator": {
+            "properties": {
+                "options": {
+                    "properties": {
+                        "requestsPerSecond": {
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "requestsPerSecond"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "options"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject",
+        "loadGenerator"
     ],
     "type": "object"
 }

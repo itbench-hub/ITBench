@@ -132,7 +132,7 @@
                 namespaces:
                   - {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
                 labelSelectors:
-                  "app.kubernetes.io/component": "checkout"
+                  "app.kubernetes.io/component": checkout
         id: scheduled-chaos-mesh-experiment
   environment:
     applications:
@@ -215,7 +215,7 @@
                 namespaces:
                   - {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
                 labelSelectors:
-                  "app.kubernetes.io/component": "email"
+                  "app.kubernetes.io/component": email
               patch:
                 body:
                   type: JSON
@@ -251,7 +251,7 @@
                 namespaces:
                   - {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
                 labelSelectors:
-                  "app.kubernetes.io/component": "quote"
+                  "app.kubernetes.io/component": quote
               target: Request
               port: 8080
               method: POST
@@ -749,6 +749,30 @@
       injectionIndex: 0
   tags: {{ documentation_faults["strict-mutual-tls-istio-service-mesh-enforcement"].tags }}
 - category: sre
+  complexity: low
+  description: This scenario simulates Kubernetes API server a surge in request during OpenTelemetry Demo's execution.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+          loadGenerator:
+            options:
+              requestsPerSecond: 1000
+        id: kubernetes-api-server-request-surge
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 51
+  platforms: {{ [documentation_faults["kubernetes-api-server-request-surge"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["kubernetes-api-server-request-surge"].tags }}
+- category: sre
   complexity: medium
   description: This scenario simulates BookInfo's `reviews-v3` service being unable to start due to lack of persistent storage.
   disruptions:
@@ -772,6 +796,78 @@
     - disruptionIndex: 0
       injectionIndex: 0
   tags: {{ documentation_faults["nonexistent-kubernetes-workload-persistent-volume-claim"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates Kubernetes API server being stressed during OpenTelemetry Demo's execution.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: chaos-mesh.org/v1alpha1
+            kind: Schedule
+            metadata:
+              name: api-server-memory-stress
+              namespace: {{ tools_helm_releases.chaos_mesh.namespace }}
+          scheduleSpec:
+            type: StressChaos
+            stressChaos:
+              mode: one
+              selector:
+                namespaces:
+                  - kube-system
+                labelSelectors:
+                  component: kube-apiserver
+              stressors:
+                memory:
+                  workers: 4
+                  size: 6GB
+              duration: 55s
+        id: scheduled-chaos-mesh-experiment
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 54
+  platforms: {{ [documentation_faults["scheduled-chaos-mesh-experiment"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["scheduled-chaos-mesh-experiment"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates Kubernetes API server experiencing latency during OpenTelemetry Demo's execution.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: chaos-mesh.org/v1alpha1
+            kind: Schedule
+            metadata:
+              name: api-server-memory-stress
+              namespace: {{ tools_helm_releases.chaos_mesh.namespace }}
+          scheduleSpec:
+            type: IOChaos
+            ioChaos:
+              action: latency
+              mode: all
+              selector:
+                namespaces:
+                  - kube-system
+                labelSelectors:
+                  component: etcd
+              delay: 200ms
+              percent: 50
+              volumePath: /var/lib/etcd
+              duration: 5m
+        id: scheduled-chaos-mesh-experiment
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 55
+  platforms: {{ [documentation_faults["scheduled-chaos-mesh-experiment"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["scheduled-chaos-mesh-experiment"].tags }}
 - category: sre
   complexity: medium
   description: This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.

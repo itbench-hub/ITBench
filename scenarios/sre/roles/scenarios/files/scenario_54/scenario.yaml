@@ -1,0 +1,45 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-54
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: api-server-memory-stress
+                namespace: chaos-mesh
+            scheduleSpec:
+              stressChaos:
+                duration: 55s
+                mode: one
+                selector:
+                  labelSelectors:
+                    component: kube-apiserver
+                  namespaces:
+                    - kube-system
+                stressors:
+                  memory:
+                    size: 6GB
+                    workers: 4
+              type: StressChaos
+          id: scheduled-chaos-mesh-experiment
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: true
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

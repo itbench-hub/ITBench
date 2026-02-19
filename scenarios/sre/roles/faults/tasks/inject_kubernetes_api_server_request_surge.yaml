@@ -1,0 +1,174 @@
+---
+- name: Retrieve namespace
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+  register: faults_namespace
+
+- name: Validate that namespace exists
+  ansible.builtin.assert:
+    that:
+      - faults_namespace.api_found
+      - faults_namespace.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find namespace. Please verify that the namespace exists.
+    success_msg: Found namespace.
+
+- name: Create ServiceAccount
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: workload-scanner
+        namespace: "{{ faults_namespace.resources[0].metadata.name }}"
+    state: present
+  register: faults_service_account
+
+- name: Create ClusterRole
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ITBench
+        name: workload-scanner
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - pods
+            - services
+            - nodes
+            - namespaces
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - apps
+          resources:
+            - deployments
+            - replicasets
+            - statefulsets
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - batch
+          resources:
+            - jobs
+            - cronjobs
+          verbs:
+            - get
+            - list
+            - watch
+    state: present
+  register: faults_role
+
+- name: Create ClusterRoleBinding
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ITBench
+        name: workload-scanner
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: "{{ faults_role.result.kind }}"
+        name: "{{ faults_role.result.metadata.name }}"
+      subjects:
+        - kind: "{{ faults_service_account.result.kind }}"
+          name: "{{ faults_service_account.result.metadata.name }}"
+          namespace: "{{ faults_namespace.resources[0].metadata.name }}"
+    state: present
+
+- name: Create ConfigMap
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: generator-script
+        namespace: "{{ faults_namespace.resources[0].metadata.name }}"
+      data:
+        deps: "{{ lookup('ansible.builtin.file', 'files/scripts/kubernetes_api_server_request_surge/requirements.txt') }}"
+        script: "{{ lookup('ansible.builtin.file', 'files/scripts/kubernetes_api_server_request_surge/generate_load.py') }}"
+    state: present
+  register: faults_config_map
+
+- name: Create Deployment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: workload-scanner
+        namespace: "{{ faults_namespace.resources[0].metadata.name }}"
+      spec:
+        replicas: 5
+        selector:
+          matchLabels:
+            "app.kubernetes.io/name": workload-scanner
+        template:
+          metadata:
+            labels:
+              "app.kubernetes.io/name": workload-scanner
+          spec:
+            containers:
+              - name: load-generator
+                image: registry.access.redhat.com/ubi10/python-312-minimal:10.1-1770208168
+                env:
+                  - name: RPS
+                    value: |-
+                      {{
+                        injection_task.args.loadGenerator.options.requestsPerSecond |
+                        ansible.builtin.string
+                      }}
+                  - name: DURATION
+                    value: "{{ (60 * 60) | ansible.builtin.string }}"
+                command:
+                  - /bin/sh
+                args:
+                  - -c
+                  - "python3.12 -m pip install -r ~/deps/requirements.txt && python3.12 ~/scripts/generate_load.py"
+                volumeMounts:
+                  - name: dependencies
+                    mountPath: /opt/app-root/src/deps
+                    readOnly: true
+                  - name: scripts
+                    mountPath: /opt/app-root/src/scripts
+                    readOnly: true
+                resources:
+                  requests:
+                    cpu: 50m
+                    memory: 64Mi
+                  limits:
+                    cpu: 200m
+                    memory: 128Mi
+            serviceAccountName: "{{ faults_service_account.result.metadata.name }}"
+            volumes:
+              - name: scripts
+                configMap:
+                  name: "{{ faults_config_map.result.metadata.name }}"
+                  items:
+                    - key: script
+                      path: generate_load.py
+              - name: dependencies
+                configMap:
+                  name: "{{ faults_config_map.result.metadata.name }}"
+                  items:
+                    - key: deps
+                      path: requirements.txt
+    state: present
+    wait: true

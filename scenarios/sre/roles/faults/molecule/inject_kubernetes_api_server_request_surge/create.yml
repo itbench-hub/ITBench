@@ -1,0 +1,14 @@
+---
+- name: Create Kubernetes objects
+  hosts:
+    - environment
+  tasks:
+    - name: Create namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: kubernetes-api-server-request-surge-test
+        state: present

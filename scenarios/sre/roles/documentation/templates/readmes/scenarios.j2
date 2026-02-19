@@ -19,19 +19,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| {{ documentation_contents | community.general.json_query("[*].environment.applications[?id=='book-info']") | ansible.builtin.select() | ansible.builtin.length }} | {{ documentation_contents | community.general.json_query("[*].environment.applications[?id=='opentelemetry-demo']") | ansible.builtin.select() | ansible.builtin.length }} |
+| {{ documentation_contents | map(attribute='environment.applications') | ansible.builtin.flatten | ansible.builtin.selectattr('id', '==', 'book-info') | ansible.builtin.length }} | {{ documentation_contents | map(attribute='environment.applications') | ansible.builtin.flatten | ansible.builtin.selectattr('id', '==', 'opentelemetry-demo') | ansible.builtin.length }} |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| {{ documentation_contents | community.general.json_query("[?category=='finops']") | ansible.builtin.length }} | {{ documentation_contents | community.general.json_query("[?category=='sre']") | ansible.builtin.length }} |
+| {{ documentation_contents | ansible.builtin.selectattr("category", "==", "finops") | ansible.builtin.length }} | {{ documentation_contents | ansible.builtin.selectattr("category", "==", "sre") | ansible.builtin.length }} |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| {{ documentation_contents | community.general.json_query("[?complexity=='low']") | ansible.builtin.length }} | {{ documentation_contents | community.general.json_query("[?complexity=='medium']") | ansible.builtin.length }} | {{ documentation_contents | community.general.json_query("[?complexity=='high']") | ansible.builtin.length }} |
+| {{ documentation_contents | ansible.builtin.selectattr("complexity", "==", "low") | ansible.builtin.length }} | {{ documentation_contents | ansible.builtin.selectattr("complexity", "==", "medium") | ansible.builtin.length }} | {{ documentation_contents | ansible.builtin.selectattr("complexity", "==", "high") | ansible.builtin.length }} |
 
 ## Detailed Summary of Scenarios
 
