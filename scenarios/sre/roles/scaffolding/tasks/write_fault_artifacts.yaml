@@ -1,0 +1,52 @@
+---
+# Write fault skeleton to index and create stub injection task file.
+#
+# Requires registered vars from collect_fault_inputs:
+#   scaffolding_fault_name_input
+#   scaffolding_fault_description_input
+#   scaffolding_fault_expectation_input
+#   scaffolding_fault_id
+#   scaffolding_fault_tags
+#   scaffolding_faults_index
+
+- name: Build skeleton fault entry
+  ansible.builtin.set_fact:
+    scaffolding_skeleton_fault:
+      alerts: "TODO"
+      arguments: "TODO"
+      description: "{{ scaffolding_fault_description_input.user_input }}"
+      expectation: "{{ scaffolding_fault_expectation_input.user_input }}"
+      id: "{{ scaffolding_fault_id }}"
+      name: "{{ scaffolding_fault_name_input.user_input }}"
+      platform: "Kubernetes"
+      resources: "TODO"
+      solutions: "TODO"
+      tags: "{{ scaffolding_fault_tags }}"
+
+- name: Append skeleton fault to faults index
+  ansible.builtin.copy:
+    content: "{{ (scaffolding_faults_index + [scaffolding_skeleton_fault]) | to_nice_json(indent=4) }}\n"
+    dest: "{{ scaffolding_faults_index_path }}"
+    mode: "0644"
+
+- name: Create stub injection task file
+  ansible.builtin.copy:
+    content: |
+      ---
+      # TODO: LLM-generated injection task for {{ scaffolding_fault_name_input.user_input }}
+      - name: Print message
+        ansible.builtin.debug:
+          msg: This fault injection ({{ scaffolding_fault_id }}) is unimplemented.
+    dest: "{{ scaffolding_faults_tasks_dir }}/inject_{{ scaffolding_fault_id | replace('-', '_') }}.yaml"
+    force: false
+    mode: "0644"
+
+- name: Print fault summary
+  ansible.builtin.debug:
+    msg:
+      - "Fault:"
+      - "  Name: {{ scaffolding_fault_name_input.user_input }}"
+      - "  ID: {{ scaffolding_fault_id }}"
+      - "  Tags: {{ scaffolding_fault_tags | join(', ') }}"
+      - "  Added to: {{ scaffolding_faults_index_path }}"
+      - "  Injection task: {{ scaffolding_faults_tasks_dir }}/inject_{{ scaffolding_fault_id | replace('-', '_') }}.yaml"

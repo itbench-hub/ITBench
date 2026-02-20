@@ -1,0 +1,18 @@
+---
+# Collect scenario tags from user input.
+#
+# Requests:
+#   scaffolding_scenario_tags_input
+#
+# Sets:
+#   scaffolding_scenario_tags
+
+- name: Enter scenario tags
+  ansible.builtin.pause:
+    prompt: >-
+      Scenario tags (comma-separated, e.g., Deployment, Performance, Networking)
+  register: scaffolding_scenario_tags_input
+
+- name: Parse scenario tags
+  ansible.builtin.set_fact:
+    scaffolding_scenario_tags: "{{ scaffolding_scenario_tags_input.user_input.split(',') | map('trim') | reject('equalto', '') | list }}"
