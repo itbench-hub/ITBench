@@ -1,108 +1,28 @@
 ---
-- name: Retrive all instances of Chaos Mesh Schedule
+- name: Retrieve Chaos Mesh Schedule Custom Resource Definition
   kubernetes.core.k8s_info:
-    api_version: chaos-mesh.org/v1alpha1
-    kind: Schedule
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-  register: tools_chaos_mesh_schedules
+    name: schedules.chaos-mesh.org
+  register: tools_custom_resource_definition
+
+- name: Import faults role
+  ansible.builtin.import_role:
+    name: faults
+    tasks_from: remove_chaos_mesh_schedules.yaml
+  vars:
+    faults_cluster:
+      kubeconfig: "{{ tools_cluster.kubeconfig }}"
   when:
-    - tools_crds.resources | selectattr('metadata.name', '==', 'schedules.chaos-mesh.org') | length == 1
-
-- name: Add pause annotation to schedules
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: "{{ schedule.apiVersion }}"
-      kind: "{{ schedule.kind }}"
-      metadata:
-        annotations: |
-          {{
-            schedule.metadata.annotations |
-            combine({'experiment.chaos-mesh.org/pause': 'true'})
-          }}
-        name: "{{ schedule.metadata.name }}"
-        namespace: "{{ schedule.metadata.namespace }}"
-    state: patched
-  loop: "{{ tools_chaos_mesh_schedules.resources | default([]) }}"
-  loop_control:
-    label: schedule/{{ schedule.metadata.name }}
-    loop_var: schedule
-
-- name: Wait for scheduled experiement(s) to pause
-  kubernetes.core.k8s_info:
-    api_version: "{{ schedule.apiVersion }}"
-    kind: "{{ schedule.spec.type }}"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    label_selectors:
-      - managed-by={{ schedule.metadata.name }}
-    wait: true
-    wait_condition:
-      type: Paused
-      status: "True"
-  loop: "{{ tools_chaos_mesh_schedules.resources | default([]) }}"
-  loop_control:
-    label: schedule/{{ schedule.metadata.name }}
-    loop_var: schedule
-
-- name: Get all experiment instances
-  kubernetes.core.k8s_info:
-    api_version: chaos-mesh.org/v1alpha1
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    kind: "{{ crd.spec.names.kind }}"
-  loop: "{{ tools_crds.resources | selectattr('spec.group', '==', 'chaos-mesh.org') }}"
-  loop_control:
-    label: "customresourcedefinition/{{ crd.metadata.name }}"
-    loop_var: crd
-  register: tools_chaos_mesh_experiements
-  when:
-    - crd.metadata.name != "schedules.chaos-mesh.org"
-
-- name: Delete all experiments
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: "{{ experiement.apiVersion }}"
-      kind: "{{ experiement.kind }}"
-      metadata:
-        annotations: |
-          {{
-            experiement.metadata.annotations |
-            combine({'chaos-mesh.chaos-mesh.org/cleanFinalizer': 'forced'})
-          }}
-        name: "{{ experiement.metadata.name }}"
-        namespace: "{{ experiement.metadata.namespace }}"
-    state: patched
-  loop: |
-    {{
-      (tools_chaos_mesh_experiements.results | default([])) |
-      community.general.json_query('[*].resources') |
-      flatten
-    }}
-  loop_control:
-    label: "{{ experiement.kind }}/{{ experiment.metadata.name }}"
-    loop_var: experiment
-
-- name: Delete Chaos Mesh schedules
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: chaos-mesh.org/v1alpha1
-      kind: Schedule
-      metadata:
-        name: "{{ spec.schedule.name }}"
-        namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
-    state: absent
-    wait: true
-  loop: "{{ tools_chaos_mesh_schedules.resources | default([]) }}"
-  loop_control:
-    label: schedule/{{ schedule.metadata.name }}
-    loop_var: schedule
+    - tools_custom_resource_definition.api_found
+    - tools_custom_resource_definition.resources | ansible.builtin.length == 1
 
 - name: Uninstall Chaos Mesh
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.chaos_mesh.name }}"
-    release_namespace: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+    release_name: "{{ tools_managers.chaos_mesh.helm.release.name }}"
+    release_namespace: "{{ tools_managers.chaos_mesh.kubernetes.namespace }}"
     release_state: absent
     wait: true
 
@@ -113,25 +33,35 @@
       api_version: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_helm_releases.chaos_mesh.namespace }}"
+        name: "{{ tools_managers.chaos_mesh.kubernetes.namespace }}"
     state: absent
     wait: true
 
-- name: Delete SCC for Chaos Mesh
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: security.openshift.io/v1
-      kind: SecurityContextConstraints
-      metadata:
-        name: it-bench-chaos-daemon-restricted
-    state: absent
-    wait: true
+- name: Remove OpenShift related objects
   when:
     - tools_cluster.platform == "openshift"
+  block:
+    - name: Retrieve Chaos Mesh related SecurityContextConstraints
+      kubernetes.core.k8s_info:
+        api_version: security.openshift.io/v1
+        kind: SecurityContextConstraints
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        label_selectors:
+          - app.kubernetes.io/component = chaos-mesh
+          - app.kubernetes.io/managed-by = ITBench
+      register: tools_security_context_constraints
 
-- name: Append Chaos Mesh related CRDs to list
-  ansible.builtin.set_fact:
-    tools_custom_resource_definitions: "{{ tools_custom_resource_definitions + crds }}"
-  vars:
-    crds: "{{ tools_crds.resources | selectattr('spec.group', '==', 'chaos-mesh.org') }}"
+    - name: Delete SCC for Chaos Mesh
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: "{{ security_context_constraint.apiVersion }}"
+          kind: "{{ security_context_constraint.kind }}"
+          metadata:
+            name: "{{ security_context_constraint.metadata.name }}"
+        state: absent
+        wait: true
+      loop: "{{ tools_security_context_constraints.resources }}"
+      loop_control:
+        label: securitycontextconstrains/{{ security_context_constraint.metadata.name }}
+        loop_var: security_context_constraint

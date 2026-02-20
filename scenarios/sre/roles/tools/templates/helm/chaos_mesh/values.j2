@@ -1,0 +1,23 @@
+---
+controllerManager:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: node-role.itbench.io/sandbox
+            operator: DoesNotExist
+chaosDaemon:
+{% if tools_cluster.platform == "openshift" %}
+  podAnnotations:
+    openshift.io/required-scc: it-bench-chaos-daemon-restricted
+  runtime: crio
+  socketPath: /var/run/crio/crio.sock
+{% else %}
+  runtime: containerd
+  socketPath: /run/containerd/containerd.sock
+{% endif %}
+dashboard:
+  create: false
+dnsServer:
+  create: false
