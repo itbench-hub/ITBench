@@ -6,19 +6,23 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_helm_releases.kubernetes_metrics_server.namespace }}"
+        name: "{{ tools_managers.kubernetes_metrics_server.kubernetes.namespace }}"
         labels:
-          it-bench/monitoring: "true"
+          "pod-security.kubernetes.io/enforce": baseline
+          "pod-security.kubernetes.io/enforce-version": v1.35
+          "pod-security.kubernetes.io/warn": restricted
+          "pod-security.kubernetes.io/warn-version": v1.35
+          "prometheus.itbench.io/monitor": "true"
     state: present
 
 - name: Install Kubernetes Metrics Server
   kubernetes.core.helm:
-    chart_ref: metrics-server
-    chart_repo_url: https://kubernetes-sigs.github.io/metrics-server/
-    chart_version: 3.13.0
+    chart_ref: "{{ tools_managers.kubernetes_metrics_server.helm.chart.reference }}"
+    chart_repo_url: "{{ tools_managers.kubernetes_metrics_server.helm.chart.respository }}"
+    chart_version: "{{ tools_managers.kubernetes_metrics_server.helm.chart.version }}"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.kubernetes_metrics_server.name }}"
-    release_namespace: "{{ tools_helm_releases.kubernetes_metrics_server.namespace }}"
+    release_name: "{{ tools_managers.kubernetes_metrics_server.helm.release.name }}"
+    release_namespace: "{{ tools_managers.kubernetes_metrics_server.kubernetes.namespace }}"
     release_state: present
     timeout: 10m0s
     values:
@@ -27,5 +31,5 @@
       tls:
         type: helm
       serviceMonitor:
-        enabled: "{{ tools_installation_plan.prometheus.enabled | default(true) }}"
+        enabled: true
     wait: true

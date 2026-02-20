@@ -167,17 +167,15 @@
             port: ztunnel-stats
     state: present
 
-- name: Handle OpenShift specific tasks
+- name: Enable Host Routing
+  kubernetes.core.k8s_json_patch:
+    api_version: network.operator.openshift.io/v1
+    kind: EgressRouter
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    name: cluster
+    patch:
+      - op: replace
+        path: /spec/defaultNetwork/ovnKubernetesConfig/gatewayConfig/routingViaHost
+        value: true
   when:
     - tools_cluster.platform == "openshift"
-  block:
-    - name: Enable Routing via Host feature
-      kubernetes.core.k8s_json_patch:
-        api_version: network.operator.openshift.io/v1
-        kind: EgressRouter
-        kubeconfig: "{{ faults_cluster.kubeconfig }}"
-        name: cluster
-        patch:
-          - op: replace
-            path: /spec/defaultNetwork/ovnKubernetesConfig/gatewayConfig/routingViaHost
-            value: true

@@ -2,18 +2,18 @@
 - name: Uninstall Kubernetes Metrics Server
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.kubernetes_metrics_server.name }}"
-    release_namespace: "{{ tools_helm_releases.kubernetes_metrics_server.namespace }}"
+    release_name: "{{ tools_managers.kubernetes_metrics_server.helm.release.name }}"
+    release_namespace: "{{ tools_managers.kubernetes_metrics_server.kubernetes.namespace }}"
     release_state: absent
     wait: true
 
-- name: Delete the release namespace
+- name: Delete Kubernetes Metrics Server namespace
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       api_version: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_helm_releases.kubernetes_metrics_server.namespace }}"
+        name: "{{ tools_managers.kubernetes_metrics_server.kubernetes.namespace }}"
     state: absent
     wait: true
