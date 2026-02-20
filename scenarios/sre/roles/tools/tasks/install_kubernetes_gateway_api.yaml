@@ -1,37 +1,230 @@
 ---
-# NOTE: When using Cloud Provider Kind, it installs its own copy of the
-#       Kubernetes Gateway API crds. In that case, this step is unnecessary and
-#       can cause errors if the version installed here does not match the
-#       version installed by the tool. Istio requires the crds as well. For
-#       ease of use, the crds are "installed" here regardless.
-
 # NOTE: `kubectl` is used in place of the `kubernetes.core` module because
 #       the server side configuration the yaml files are still downloaded
 #       and rendered on the client side. Depending on the file, sometimes
 #       there are rendering issues.
 
-- name: Add Kubernetes Gateway API CRDs
+- name: Apply Kubernetes Gateway Custom Resource Definitions
   ansible.builtin.command:
     argv:
       - kubectl
       - apply
       - --server-side
       - -f
-      - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml
+      - |-
+        {{
+          [
+            tools_managers.kubernetes_gateway.git.repository.removesuffix(".git"),
+            "download",
+            tools_managers.kubernetes_gateway.git.tag,
+            standard-install.yaml
+          ] |
+          ansible.buitlin.join('/')
+        }}
       - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
   register: tools_kubernetes_gateway_crds_apply
   changed_when: tools_kubernetes_gateway_crds_apply.rc == 0
-  when:
-    - tools_cluster.platform == "kubernetes"
 
-- name: Create Kubernetes Gateway instance namespace
+- name: Create Kubernetes Gateway Namespace
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_instances.kubernetes_gateways.namespace }}"
+        name: "{{ tools_managers.kubernetes_gateway.kubernetes.namespace }}"
         labels:
-          it-bench/monitoring: "true"
+          "pod-security.kubernetes.io/enforce": baseline
+          "pod-security.kubernetes.io/enforce-version": v1.35
+          "pod-security.kubernetes.io/warn": restricted
+          "pod-security.kubernetes.io/warn-version": v1.35
+          "prometheus.itbench.io/monitor": "true"
+    state: present
+
+- name: Create Istio implemented Gateway
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: Gateway
+      metadata:
+        name: istio-main
+        namespace: "{{ tools_managers.kubernetes_gateway.kubernetes.namespace }}"
+      spec:
+        gatewayClassName: istio
+        listeners:
+          - name: http
+            port: 80
+            protocol: HTTP
+            allowedRoutes:
+              namespaces:
+                from: Selector
+                selector:
+                  matchLabels:
+                    "itbench.io/gateway-access": shared
+    state: present
+    wait: true
+    wait_condition:
+      reason: Programmed
+      status: "True"
+      type: Programmed
+  register: tools_istio_kubenetes_gateway
+
+- name: Create PodMonitor for Istio Kubernetes Gateway
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: PodMonitor
+      metadata:
+        name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+        namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+      spec:
+        selector:
+          matchLabels:
+            "gateway.networking.k8s.io/gateway-name": "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+        podMetricsEndpoints:
+          - interval: 30s
+            port: metrics
+    state: present
+
+- name: Create HTTPRoute for Clickhouse
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_managers.clickhouse_operator.instances.main.name }}"
+        namespace: "{{ tools_managers.clickhouse_operator.instances.main.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        rules:
+          - backendRefs:
+              - name: clickhouse-{{ tools_managers.clickhouse_operator.instances.main.name }}
+                port: 8123
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /clickhouse/{{ tools_managers.clickhouse_operator.instances.main.name }}/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+              - type: URLRewrite
+                urlRewrite:
+                  path:
+                    type: ReplacePrefixMatch
+                    replacePrefixMatch: /
+    state: present
+
+- name: Create HTTPRoute for Jaeger
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_managers.opentelemetry_operator.instances.jaeger.name }}"
+        namespace: "{{ tools_managers.opentelemetry_operator.instances.jaeger.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_managers.opentelemetry_operator.instances.jaeger.name }}-collector"
+                port: 16686
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /jaeger/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+    state: present
+
+- name: Create HTTPRoute for Kubernetes Topology Monitor
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_managers.kubernetes_topology_monitor.chart.release.name }}"
+        namespace: "{{ tools_managers.kubernetes_topology_monitor.chart.release.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        rules:
+          - backendRefs:
+              - name: topology-monitor-svc
+                port: 8080
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+              - type: URLRewrite
+                urlRewrite:
+                  path:
+                    type: ReplacePrefixMatch
+                    replacePrefixMatch: /
+    state: present
+  when:
+    - tools_configuration.sre.enabled | ansible.builtin.default(false)
+
+- name: Create HTTPRoute for OpenCost
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_managers.opencost.chart.release.name }}"
+        namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_managers.opencost.chart.release.name }}"
+                port: 9090
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+    state: present
+  when:
+    - tools_configuration.finops.enabled | ansible.builtin.default(false)
+
+- name: Create HTTPRoute for Promtheus
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_managers.prometheus.chart.release.name }}"
+        namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_managers.prometheus.chart.release.name }}-kube-prometheus-prometheus"
+                port: 9090
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /prometheus/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
     state: present

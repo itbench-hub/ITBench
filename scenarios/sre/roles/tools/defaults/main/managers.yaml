@@ -19,7 +19,9 @@ tools_managers:
       release:
         name: clickhouse-operator
     instances:
-      - namespace: clickhouse
+      main:
+        name: main
+        namespace: clickhouse-installations
     kubernetes:
       namespace: clickhouse-operator
   istio_base:
@@ -69,7 +71,7 @@ tools_managers:
   kubernetes_gateway:
     git:
       # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
-      repository: https://github.com/kubernetes-sigs/gateway-api
+      repository: https://github.com/kubernetes-sigs/gateway-api.git
       tag: v1.4.0
     kubernetes:
       namespace: kube-gateways
@@ -118,7 +120,15 @@ tools_managers:
       release:
         name: opentelemetry-operator
     instances:
-      - namespace: opentelemetry-collectors
+      istio:
+        name: istio
+        namespace: opentelemetry-collectors
+      jaeger:
+        name: jaeger
+        namespace: opentelemetry-collectors
+      kubernetes_events:
+        name: kubernetes-events
+        namespace: opentelemetry-collectors
     kubernetes:
       namespace: opentelemetry-operator
   prometheus:
