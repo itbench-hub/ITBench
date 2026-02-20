@@ -1,0 +1,29 @@
+---
+dependency:
+  name: galaxy
+
+ansible:
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../inventory.yaml
+        - --tags=inject_faults,untagged
+  playbooks:
+    cleanup: cleanup.yml
+    create: create.yml
+    converge: converge.yml
+    destroy: destroy.yml
+    verify: verify.yml
+
+scenario:
+  name: inject_kubernetes_api_server_request_surge
+  test_sequence:
+    - syntax
+    - create
+    - converge
+    - verify
+    - cleanup
+    - destroy

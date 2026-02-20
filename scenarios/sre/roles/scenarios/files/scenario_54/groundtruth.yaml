@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-54
+spec:
+  alerts: []
+  entities:
+    - apiVersion: chaos-mesh.org/v1alpha1
+      kind: Schedule
+      metadata:
+        name: api-server-memory-stress
+        namespace: chaos-mesh
+  solutions:
+    - - steps:
+          - command: kubectl -n chaos-mesh annotate schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'
+            text: Annotate the schedule to pause the active experiment.
+          - command: kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'
+            text: Retrieve the associated experiment managed by the schedule.
+          - text: Delete the retrieved experiement after it has entered the `Paused` state.
+          - command: kubectl -n chaos-mesh delete schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'
+            text: Delete the schedule.
