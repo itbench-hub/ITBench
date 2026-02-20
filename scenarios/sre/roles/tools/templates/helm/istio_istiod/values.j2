@@ -1,18 +1,23 @@
 ---
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: node-role.itbench.io/sandbox
+          operator: DoesNotExist
 {% if tools_cluster.platform == "openshift" %}
 global:
   platform: openshift
 {% endif %}
 meshConfig:
   enablePrometheusMerge: false
-  enableTracing: {{ tools_installation_plan.jaeger.enabled }}
+  enableTracing: true
   extensionProviders:
-{% if tools_installation_plan.jaeger.enabled %}
     - name: jaeger
       opentelemetry:
         port: 4317
         service: {{ tools_instances.opentelemetry_collectors.names.jaeger }}-collector.{{ tools_instances.opentelemetry_collectors.namespace }}.svc.cluster.local
-{% endif %}
     - name: opentelemetry
       envoyOtelAls:
         port: 4317
