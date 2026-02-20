@@ -1,0 +1,143 @@
+---
+# Collect scenario inputs from user.
+#
+# Requires (play-level facts from pre_tasks):
+#   applications_managers
+#
+# Requests:
+#   scaffolding_scenario_application_input
+#   scaffolding_scenario_description_input
+#   scaffolding_scenario_category_input
+#   scaffolding_scenario_complexity_input
+#
+# Sets:
+#   scaffolding_available_applications
+#   scaffolding_available_categories
+#   scaffolding_available_complexities
+#   scaffolding_application_docs
+#   scaffolding_resolved_application
+#   scaffolding_resolved_category
+#   scaffolding_resolved_complexity
+
+- name: Load scenarios schema
+  ansible.builtin.set_fact:
+    scaffolding_scenarios_schema: "{{ lookup('ansible.builtin.file', scaffolding_scenarios_schema_path) | from_json }}"
+
+- name: Build available options from schema
+  ansible.builtin.set_fact:
+    scaffolding_available_applications: "{{ scaffolding_scenarios_schema.properties.environment.properties.applications['items'].properties.id.enum }}"
+    scaffolding_available_categories: "{{ scaffolding_scenarios_schema.properties.category.enum }}"
+    scaffolding_available_complexities: "{{ scaffolding_scenarios_schema.properties.complexity.enum }}"
+
+- name: Build application docs map from managers
+  ansible.builtin.set_fact:
+    scaffolding_application_docs: >-
+      {{ dict(applications_managers | dict2items
+        | selectattr('value.documentation', 'defined')
+        | map(attribute='key') | map('replace', '_', '-')
+        | zip(applications_managers | dict2items
+          | selectattr('value.documentation', 'defined')
+          | map(attribute='value.documentation'))
+      ) }}
+
+- name: Select scenario application
+  ansible.builtin.pause:
+    prompt: |-
+      Select target application:
+      {% for app in scaffolding_available_applications %}
+        {{ loop.index }}. {{ app }}
+      {%- if app in scaffolding_application_docs %}
+       (docs: {{ scaffolding_application_docs[app] }})
+      {%- endif %}
+      {% endfor %}
+      Enter application name (or number)
+  register: scaffolding_scenario_application_input
+
+- name: Resolve application selection
+  ansible.builtin.set_fact:
+    scaffolding_resolved_application: >-
+      {%- set input = scaffolding_scenario_application_input.user_input | trim -%}
+      {%- if input | int > 0 and input | int <= scaffolding_available_applications | length -%}
+        {{ scaffolding_available_applications[input | int - 1] }}
+      {%- else -%}
+        {{ input }}
+      {%- endif -%}
+
+- name: Validate selected application
+  ansible.builtin.assert:
+    that:
+      - scaffolding_resolved_application in scaffolding_available_applications
+    fail_msg: >-
+      '{{ scaffolding_resolved_application }}' is not a valid application.
+      Choose from: {{ scaffolding_available_applications | join(', ') }}
+    success_msg: "Selected application: {{ scaffolding_resolved_application }}"
+
+- name: Show application architecture reference
+  ansible.builtin.debug:
+    msg: >-
+      Architecture reference for {{ scaffolding_resolved_application }}:
+      {{ scaffolding_application_docs[scaffolding_resolved_application] | default('No docs available') }}
+  when: scaffolding_resolved_application in scaffolding_application_docs
+
+- name: Enter scenario description
+  ansible.builtin.pause:
+    prompt: >-
+      Scenario description
+      (see {{ scaffolding_application_docs[scaffolding_resolved_application] | default('application docs') }}
+      for available services).
+      Example: 'Simulates a deleted ConfigMap affecting the ad service'
+  register: scaffolding_scenario_description_input
+
+- name: Select scenario category
+  ansible.builtin.pause:
+    prompt: |-
+      Select scenario category:
+      {% for cat in scaffolding_available_categories %}
+        {{ loop.index }}. {{ cat }}
+      {% endfor %}
+      Enter category (or number)
+  register: scaffolding_scenario_category_input
+
+- name: Resolve category selection
+  ansible.builtin.set_fact:
+    scaffolding_resolved_category: >-
+      {%- set input = scaffolding_scenario_category_input.user_input | trim -%}
+      {%- if input | int > 0 and input | int <= scaffolding_available_categories | length -%}
+        {{ scaffolding_available_categories[input | int - 1] }}
+      {%- else -%}
+        {{ input }}
+      {%- endif -%}
+
+- name: Validate category
+  ansible.builtin.assert:
+    that:
+      - scaffolding_resolved_category in scaffolding_available_categories
+    fail_msg: "'{{ scaffolding_resolved_category }}' is not valid. Choose from: {{ scaffolding_available_categories | join(', ') }}"
+    success_msg: "Selected category: {{ scaffolding_resolved_category }}"
+
+- name: Select scenario complexity
+  ansible.builtin.pause:
+    prompt: |-
+      Select scenario complexity:
+      {% for level in scaffolding_available_complexities %}
+        {{ loop.index }}. {{ level }}
+      {% endfor %}
+      Enter complexity (or number)
+  register: scaffolding_scenario_complexity_input
+
+- name: Resolve complexity selection
+  ansible.builtin.set_fact:
+    scaffolding_resolved_complexity: >-
+      {%- set input = scaffolding_scenario_complexity_input.user_input | trim -%}
+      {%- if input | int > 0 and input | int <= scaffolding_available_complexities | length -%}
+        {{ scaffolding_available_complexities[input | int - 1] }}
+      {%- else -%}
+        {{ input }}
+      {%- endif -%}
+
+- name: Validate complexity
+  ansible.builtin.assert:
+    that:
+      - scaffolding_resolved_complexity in scaffolding_available_complexities
+    fail_msg: "'{{ scaffolding_resolved_complexity }}' is not valid. Choose from: {{ scaffolding_available_complexities | join(', ') }}"
+    success_msg: "Selected complexity: {{ scaffolding_resolved_complexity }}"

@@ -1,0 +1,132 @@
+---
+# Collect fault inputs from user.
+#
+# Requests:
+#   scaffolding_fault_name_input
+#   scaffolding_fault_description_input
+#   scaffolding_fault_expectation_input
+#   scaffolding_fault_tag_input
+#
+# Sets:
+#   scaffolding_faults_schema
+#   scaffolding_available_tags
+#   scaffolding_fault_id
+#   scaffolding_fault_tags
+#   scaffolding_faults_index
+
+- name: Load faults schema
+  ansible.builtin.set_fact:
+    scaffolding_faults_schema: "{{ lookup('ansible.builtin.file', scaffolding_faults_schema_path) | from_json }}"
+
+- name: Build available tags list from schema
+  ansible.builtin.set_fact:
+    scaffolding_available_tags: "{{ scaffolding_faults_schema.properties.tags['items'].enum }}"
+
+- name: Build tag lookup map for case-insensitive matching
+  ansible.builtin.set_fact:
+    scaffolding_tags_lookup: >-
+      {{
+        dict(scaffolding_available_tags | map('lower') | zip(scaffolding_available_tags))
+      }}
+
+- name: Enter fault name
+  ansible.builtin.pause:
+    prompt: >-
+      Fault name (e.g., 'Deleted Kubernetes ConfigMap')
+  register: scaffolding_fault_name_input
+
+- name: Enter fault description
+  ansible.builtin.pause:
+    prompt: >-
+      Fault description (e.g., 'Deletes a ConfigMap used by a workload')
+  register: scaffolding_fault_description_input
+
+- name: Enter fault expectation
+  ansible.builtin.pause:
+    prompt: >-
+      Fault expectation - what happens when injected
+      (e.g., 'The workload will fail to start due to missing configuration')
+  register: scaffolding_fault_expectation_input
+
+- name: Enter fault tag
+  ansible.builtin.pause:
+    prompt: |-
+      Select a fault tag:
+      {% for tag in scaffolding_available_tags %}
+        {{ loop.index }}. {{ tag }}
+      {% endfor %}
+        {{ scaffolding_available_tags | length + 1 }}. Other
+      Enter tag name (or number)
+  register: scaffolding_fault_tag_input
+
+- name: Resolve tag selection
+  ansible.builtin.set_fact:
+    scaffolding_resolved_tag: >-
+      {%- set input = scaffolding_fault_tag_input.user_input | trim -%}
+      {%- if input | int > 0 and input | int <= scaffolding_available_tags | length -%}
+        {{ scaffolding_available_tags[input | int - 1] }}
+      {%- elif input | int == scaffolding_available_tags | length + 1 -%}
+        __OTHER__
+      {%- elif input | lower in scaffolding_tags_lookup -%}
+        {{ scaffolding_tags_lookup[input | lower] }}
+      {%- else -%}
+        {{ input }}
+      {%- endif -%}
+
+- name: Enter custom tag
+  ansible.builtin.pause:
+    prompt: >-
+      Enter custom tag name
+  register: scaffolding_fault_custom_tag_input
+  when: scaffolding_resolved_tag == '__OTHER__'
+
+- name: Add custom tag to faults schema
+  when: scaffolding_resolved_tag == '__OTHER__'
+  block:
+    - name: Update available tags with custom tag
+      ansible.builtin.set_fact:
+        scaffolding_available_tags: "{{ (scaffolding_available_tags + [scaffolding_fault_custom_tag_input.user_input | trim]) | sort | unique }}"
+
+    - name: Write updated faults schema
+      ansible.builtin.copy:
+        content: >
+          {{ scaffolding_faults_schema | combine({
+            'properties': {
+              'tags': {
+                'items': {
+                  'enum': scaffolding_available_tags
+                }
+              }
+            }
+          }, recursive=true) | to_nice_json(indent=4, sort_keys=False) }}
+        dest: "{{ scaffolding_faults_schema_path }}"
+        mode: "0644"
+
+- name: Set final tag
+  ansible.builtin.set_fact:
+    scaffolding_fault_tags:
+      - "{{ scaffolding_fault_custom_tag_input.user_input | trim if scaffolding_resolved_tag == '__OTHER__' else scaffolding_resolved_tag }}"
+
+- name: Validate tag against schema
+  ansible.builtin.assert:
+    that:
+      - scaffolding_fault_tags[0] in scaffolding_available_tags
+    fail_msg: >-
+      '{{ scaffolding_fault_tags[0] }}' is not a valid tag.
+      Choose from: {{ scaffolding_available_tags | join(', ') }}
+    success_msg: "Tag '{{ scaffolding_fault_tags[0] }}' is valid."
+
+- name: Derive fault ID
+  ansible.builtin.set_fact:
+    scaffolding_fault_id: "{{ scaffolding_fault_name_input.user_input | trim | lower | regex_replace('[^a-z0-9 ]', '') | regex_replace(' +', '-') }}"
+
+- name: Load existing faults index
+  ansible.builtin.set_fact:
+    scaffolding_faults_index: "{{ lookup('ansible.builtin.file', scaffolding_faults_index_path) | from_json }}"
+
+- name: Check fault ID does not already exist
+  ansible.builtin.assert:
+    that:
+      - scaffolding_fault_id not in (scaffolding_faults_index | map(attribute='id') | list)
+    fail_msg: "Fault ID '{{ scaffolding_fault_id }}' already exists in faults index."
+    success_msg: "Fault ID '{{ scaffolding_fault_id }}' is available."

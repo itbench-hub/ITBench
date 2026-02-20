@@ -1,0 +1,43 @@
+---
+- name: Scaffold New Fault
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  pre_tasks:
+    - name: Import applications role
+      ansible.builtin.include_role:
+        name: applications
+        tasks_from: load_defaults
+  tasks:
+    - name: Collect fault inputs
+      ansible.builtin.include_role:
+        name: scaffolding
+        tasks_from: collect_fault_inputs
+
+    - name: Collect scenario inputs
+      ansible.builtin.include_role:
+        name: scaffolding
+        tasks_from: collect_scenario_inputs
+
+    - name: Write fault artifacts
+      ansible.builtin.include_role:
+        name: scaffolding
+        tasks_from: write_fault_artifacts
+
+    - name: Write scenario artifacts
+      ansible.builtin.include_role:
+        name: scaffolding
+        tasks_from: write_scenario_artifacts
+      vars:
+        scaffolding_fault_id: "{{ scaffolding_fault_id }}"
+        scaffolding_tags: "{{ scaffolding_fault_tags }}"
+
+    - name: Generate new scenario files
+      ansible.builtin.include_role:
+        name: scaffolding
+        tasks_from: generate_new_scenario_files
+
+    - name: Update faults metadata
+      ansible.builtin.include_role:
+        name: faults
+        tasks_from: generate_tasks
