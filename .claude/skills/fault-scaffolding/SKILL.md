@@ -145,6 +145,8 @@ Create entry matching the schema (required fields: arguments, description, expec
 
 **File 2**: `scenarios/sre/roles/faults/tasks/inject_<fault-id>.yaml`
 
+**IMPORTANT**: File naming convention uses **underscores only** (e.g., `inject_my_fault_name.yaml`), not hyphens.
+
 Create stub injection task:
 ```yaml
 ---
@@ -198,6 +200,10 @@ grep -A 15 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/manage
 - Documentation URL
 - Helm chart details (if applicable)
 
+**Application Preference:**
+- **Prefer OpenTelemetry Demo** (`opentelemetry_demo` / Astronomy Shop) for most scenarios - it's richer, more comprehensive, and better maintained
+- Use BookInfo (`book_info`) only if the fault specifically requires its simpler architecture
+
 **Brainstorm questions:**
 1. Which application best represents this incident scenario?
 2. What Kubernetes resources would be affected? (Deployment, Service, ConfigMap, NetworkPolicy, etc.)
@@ -232,12 +238,73 @@ grep -A 20 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/manage
 ### 3.4 Fetch service architecture from documentation (REQUIRED)
 Using the documentation URL from step 3.3:
 1. Navigate to the application's documentation URL
-2. Look for:
-   - Architecture diagrams
-   - Service listings
-   - Component documentation
+2. **Study the architecture diagram** - This is critical for:
+   - Understanding service dependencies and relationships
+   - Identifying which services communicate with each other
+   - Planning fault propagation paths for scenarios
+3. Look for:
+   - Architecture diagrams (most important!)
+   - Service listings and descriptions
+   - Component documentation and roles
    - Deployment guides
 3. Identify available services and their roles
+
+### 3.4.1 Optional: Ground in Real Deployment
+
+**Ask the user:**
+> Would you like to deploy the application to a live cluster to get actual deployment names, service names, and resource details? This ensures accuracy but requires a running Kubernetes cluster.
+
+**If YES:**
+
+1. **Ask for kubeconfig path:**
+   ```
+   What is the path to your kubeconfig file? (e.g., ~/.kube/config)
+   ```
+
+2. **Set kubeconfig and deploy (outputs will be shown):**
+   ```bash
+   # Set the kubeconfig
+   export KUBECONFIG=<path-from-user>
+
+   # Navigate to scenarios directory
+   cd scenarios/sre
+
+   # Deploy tools - outputs will be displayed
+   make deploy-tools
+
+   # Deploy applications - outputs will be displayed
+   make deploy-applications
+   ```
+
+   **Note**: Both commands will display their complete output including:
+   - Ansible playbook task execution
+   - Kubernetes resource creation status
+   - Any warnings or errors
+
+3. **Query live cluster for actual resource names:**
+   ```bash
+   # Get the namespace from step 3.3
+   NAMESPACE=<namespace>
+
+   # Get actual deployments
+   kubectl get deployments -n $NAMESPACE -o jsonpath='{.items[*].metadata.name}'
+
+   # Get actual services
+   kubectl get services -n $NAMESPACE -o jsonpath='{.items[*].metadata.name}'
+
+   # Get actual pods (with labels)
+   kubectl get pods -n $NAMESPACE --show-labels
+
+   # Get actual configmaps
+   kubectl get configmaps -n $NAMESPACE -o jsonpath='{.items[*].metadata.name}'
+
+   # Get container names from a deployment
+   kubectl get deployment <deployment-name> -n $NAMESPACE -o jsonpath='{.spec.template.spec.containers[*].name}'
+   ```
+
+4. **Use these actual names** when implementing the fault in Step 4
+
+**If NO:** Continue with documentation-based discovery
 
 ### 3.5 Identify target service
 **Consider:**
@@ -251,6 +318,17 @@ Create the injection task file following patterns from existing faults.
 
 ### File Location
 `scenarios/sre/roles/faults/tasks/inject_<fault-id>.yaml`
+
+### Important Guidelines
+
+**CRITICAL - Resource Naming:**
+- **DO NOT** create new resources with names that reveal the fault mechanism
+- **DO NOT** use names like `fault-injector`, `chaos-config`, `memory-leak-pod`, `high-cpu-workload`
+- **DO** use neutral, application-appropriate names that blend in with existing resources
+- **GOOD**: `app-config`, `sidecar-processor`, `cache-helper`, `data-processor`
+- **BAD**: `fault-config`, `crash-trigger`, `latency-injector`
+
+**Rationale**: The agent solving scenarios should diagnose the issue based on symptoms and observability, not by discovering obviously-named fault injection resources.
 
 ### Standard Pattern
 
@@ -523,6 +601,7 @@ done | sort -n
 - Create faults without checking for similar existing ones
 - Forget the `app.kubernetes.io/managed-by: ITBench` label
 - Use hardcoded namespace/service names in fault index (use Jinja2 templates)
+- **Create resources with obvious fault-revealing names** (e.g., `fault-injector`, `chaos-config`, `crash-trigger`)
 
 ✅ **Do:**
 - Start with incident description
@@ -531,6 +610,7 @@ done | sort -n
 - Test in a real cluster before finalizing
 - Follow consistent Ansible patterns
 - Use Jinja2 templates in solutions for reusability
+- **Use neutral, application-appropriate names for any new resources** (e.g., `app-config`, `cache-helper`, `data-processor`)
 
 # Automatic Transition to Scenario Creation
 
