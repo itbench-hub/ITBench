@@ -1,0 +1,171 @@
+---
+# This fault injects a malformed ConfigMap (truncated JSON) into any Kubernetes workload
+# and adds an initContainer that validates the configuration during pod startup.
+# The initContainer crashes when parsing the invalid JSON, preventing the pod from starting.
+# Simulates the Cloudflare incident where malformed config files caused application crashes.
+
+- name: Retrieve workload
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+  register: faults_workload
+
+- name: Validate that workload exists
+  ansible.builtin.assert:
+    that:
+      - faults_workload.api_found
+      - faults_workload.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find workload. Please verify that the workload exists.
+    success_msg: Found workload.
+
+- name: Generate configuration data
+  ansible.builtin.set_fact:
+    faults_config: |-
+      {
+        "configuration_items": [
+          {% for i in range(1, 150) %}
+          {
+            "id": "config_item_{{ i }}",
+            "name": "Configuration Item {{ i }}",
+            "description": "{{ 'Configuration item with extensive metadata and nested structures that simulate complex application configuration files. ' * 10 }}",
+            "enabled": true,
+            "weight": {{ i * 0.01 }},
+            "category": "application_config",
+            "metadata": {
+              "created": "2025-11-18T00:00:00Z",
+              "updated": "2025-11-18T12:00:00Z",
+              "owner": "application-config-manager",
+              "version": "{{ i }}.0.0",
+              "tags": ["config", "application", "settings", "runtime", "parameters"],
+              "config": {
+                "threshold": {{ i }},
+                "timeout_ms": {{ i * 100 }},
+                "max_retries": 5,
+                "priority": "high",
+                "parameters": {
+                  "param_1": 0.001,
+                  "param_2": 128,
+                  "param_3": 100,
+                  "param_4": 256,
+                  "param_5": [512, 256, 128],
+                  "param_6": 0.3,
+                  "additional_data": "{{ 'A' * 100 }}"
+                },
+                "data_array": [{% for j in range(50) %}{{ j * 0.1 }}{{ "," if not loop.last else "" }}{% endfor %}]
+              }
+            },
+            "rules": [
+              {% for k in range(5) %}
+              {
+                "rule_id": "rule_{{ i }}_{{ k }}",
+                "condition": "condition_{{ k }} == true AND parameter_{{ k }} > threshold",
+                "action": "apply_config",
+                "parameters": "{{ 'Configuration parameter data that adds to the overall size of the configuration file. ' * 5 }}"
+              }{{ "," if not loop.last else "" }}
+              {% endfor %}
+            ]
+          }{{ "," if not loop.last else "" }}
+          {% endfor %}
+        ]
+      }
+
+- name: Create new ConfigMap
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ injection_task.args.configMapName }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: ITBench
+      data:
+        config.json: "{{ faults_config[:faults_config|length - 500] }}"
+    state: present
+
+- name: Scale workload to zero to terminate all running pods
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        replicas: 0
+    state: patched
+
+- name: Wait for all pods to terminate
+  ansible.builtin.pause:
+    seconds: 10
+
+- name: Patch workload to mount partial ConfigMap
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_workload.resources[0].apiVersion }}"
+      kind: "{{ faults_workload.resources[0].kind }}"
+      metadata:
+        name: "{{ faults_workload.resources[0].metadata.name }}"
+        namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+      spec:
+        replicas: 1
+        template:
+          spec:
+            volumes:
+              - name: config
+                configMap:
+                  name: "{{ injection_task.args.configMapName }}"
+            initContainers:
+              - name: validate-config
+                image: python:3.12-alpine
+                command:
+                  - python
+                  - -c
+                  - |
+                    import json
+                    import sys
+                    try:
+                        with open('/etc/app-config/config.json', 'r') as f:
+                            data = json.load(f)
+                        items_count = len(data.get('configuration_items', []))
+                        print(f"Config loaded successfully with {items_count} configuration items")
+                        sys.exit(0)
+                    except json.JSONDecodeError as e:
+                        print(f"FATAL: Failed to parse configuration file: {e}")
+                        sys.exit(1)
+                    except Exception as e:
+                        print(f"FATAL: Unexpected error loading configuration: {e}")
+                        sys.exit(1)
+                volumeMounts:
+                  - name: config
+                    mountPath: /etc/app-config
+                    readOnly: true
+            containers:
+              - name: "{{ faults_workload.resources[0].spec.template.spec.containers[0].name }}"
+                volumeMounts:
+                  - name: config
+                    mountPath: /etc/app-config
+                    readOnly: true
+    state: patched
+
+- name: Wait for workload to update and pods to crash
+  kubernetes.core.k8s_info:
+    api_version: "{{ faults_workload.resources[0].apiVersion }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    kind: "{{ faults_workload.resources[0].kind }}"
+    name: "{{ faults_workload.resources[0].metadata.name }}"
+    namespace: "{{ faults_workload.resources[0].metadata.namespace }}"
+  register: faults_patched_workload
+  until:
+    - faults_patched_workload.api_found
+    - faults_patched_workload.resources | ansible.builtin.length == 1
+    - faults_patched_workload.resources[0].status.updatedReplicas is defined
+    - faults_patched_workload.resources[0].status.updatedReplicas >= 1
+  delay: 15
+  retries: 20

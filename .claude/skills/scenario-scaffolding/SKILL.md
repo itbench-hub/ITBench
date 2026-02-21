@@ -24,7 +24,7 @@ This skill auto-activates when:
 
 Before starting scenario scaffolding:
 - ✅ Fault mechanism is **fully implemented** (Ansible task + fault index complete)
-- ✅ You know the **target application** (OpenTelemetry Demo or BookInfo)
+- ✅ You know the **target application** (**prefer OpenTelemetry Demo** over BookInfo)
 - ✅ You know the **specific service/component** to target
 
 # Workflow
@@ -38,6 +38,10 @@ Before starting scenario scaffolding:
 # Extract all application keys from managers.yaml
 grep -E "^  [a-z_]+:" scenarios/sre/roles/applications/defaults/main/managers.yaml | sed 's/://g' | awk '{print $1}'
 ```
+
+**Application Preference:**
+- **Prefer OpenTelemetry Demo** (`opentelemetry_demo` / Astronomy Shop) for most scenarios - it's richer, more comprehensive, and better maintained
+- Use BookInfo (`book_info`) only if the fault specifically requires its simpler architecture
 
 ### 1.2 Get Application Metadata
 ```bash
@@ -64,11 +68,67 @@ grep -r "kind: Service" scenarios/sre/roles/applications/templates/kubernetes/ |
 grep -r "kind: StatefulSet" scenarios/sre/roles/applications/templates/kubernetes/ | grep "$NAMESPACE" | grep -oP 'name: \K[a-z0-9-]+'
 ```
 
+### 1.3.1 Optional: Ground in Real Deployment
+
+**Ask the user:**
+> Would you like to deploy the application to a live cluster to get actual deployment names, service names, and resource details? This ensures accuracy but requires a running Kubernetes cluster.
+
+**If YES:**
+
+1. **Ask for kubeconfig path:**
+   ```
+   What is the path to your kubeconfig file? (e.g., ~/.kube/config)
+   ```
+
+2. **Set kubeconfig and deploy (outputs will be shown):**
+   ```bash
+   # Set the kubeconfig
+   export KUBECONFIG=<path-from-user>
+
+   # Navigate to scenarios directory
+   cd scenarios/sre
+
+   # Deploy tools - outputs will be displayed
+   make deploy-tools
+
+   # Deploy applications - outputs will be displayed
+   make deploy-applications
+   ```
+
+   **Note**: Both commands will display their complete output including:
+   - Ansible playbook task execution
+   - Kubernetes resource creation status
+   - Any warnings or errors
+
+3. **Query live cluster for actual resource names:**
+   ```bash
+   # Get actual deployments
+   kubectl get deployments -n <namespace> -o jsonpath='{.items[*].metadata.name}'
+
+   # Get actual services
+   kubectl get services -n <namespace> -o jsonpath='{.items[*].metadata.name}'
+
+   # Get actual pods (with labels)
+   kubectl get pods -n <namespace> --show-labels
+
+   # Get actual configmaps
+   kubectl get configmaps -n <namespace> -o jsonpath='{.items[*].metadata.name}'
+   ```
+
+4. **Use these actual names** in your scenario instead of guessing from manifests
+
+**If NO:** Continue with manifest-based discovery from Step 1.3
+
 ### 1.4 Verify from Documentation
 Consult the documentation URL from step 1.2 to understand:
-- Service architecture
-- Component roles
-- Dependencies between services
+- **Service architecture diagram** - Shows how services connect and depend on each other
+- Component roles and responsibilities
+- Dependencies between services (who calls whom)
+
+**IMPORTANT**: Study the architecture diagram carefully - it's essential for:
+- Understanding service dependencies (used in propagations)
+- Identifying which downstream services will be affected
+- Predicting which alerts will fire based on service relationships
 
 **Select the service** that best demonstrates the fault mechanism.
 
@@ -104,7 +164,7 @@ Then construct the scenario entry:
   "environment": {
     "applications": [
       {
-        "id": "<application-id-from-step-1>"  // e.g., "opentelemetry-demo", "book-info"
+        "id": "<application-id-from-step-1>"  // Prefer "opentelemetry-demo" over "book-info"
       }
     ]
   },
@@ -538,12 +598,17 @@ aliases:
 
 ### 3.5 Defining Propagations
 
-**Propagations** describe how faults spread.
+**Propagations** describe how faults spread through the system.
+
+**IMPORTANT**: Use the **architecture diagram** from the application's documentation to:
+1. Identify which services depend on the affected service
+2. Map the propagation path (root cause → affected services → downstream services)
+3. Understand the call chain and service relationships
 
 **Required fields**:
 - `source`: Group ID where propagation starts
 - `target`: Group ID where propagation ends
-- `condition`: What causes the propagation
+- `condition`: What causes the propagation (based on architecture)
 - `effect`: What observable impact results
 
 **Discover propagation patterns:**
@@ -568,6 +633,11 @@ propagations:
 ### 3.6 Predicting Alerts
 
 **IMPORTANT**: Always read alert definitions from actual source files to get up-to-date alert rules.
+
+**Use the Architecture Diagram**:
+- Review the application's architecture diagram from documentation
+- Identify which services are affected by the fault (directly and indirectly)
+- Map fault symptoms to services in the diagram to predict which alerts will fire
 
 **Alert Sources:**
 
@@ -723,7 +793,7 @@ This validates and generates:
 
 ```bash
 # Get all scenarios for a specific application
-APP_ID="opentelemetry-demo"  # or "book-info"
+APP_ID="opentelemetry-demo"  # Prefer opentelemetry-demo over book-info
 jq --arg app "$APP_ID" '.[] | select(.environment.applications[].id == $app) | {id, description}' \
   scenarios/sre/roles/documentation/files/library/scenarios/index.json
 
@@ -790,6 +860,7 @@ propagations:
 - Skip alert prediction
 - Use `entities` format (use `groups` instead)
 - Leave `faultId` in final scenario (it's a scaffolding hint)
+- **Use obvious fault-revealing names for injected resources** (e.g., `malformed-config`, `fault-injector`, `crash-trigger`, `chaos-configmap`)
 
 ✅ **Do:**
 - Mark the actual fault injection point as root cause
@@ -799,6 +870,7 @@ propagations:
 - Use regex filters for pod groups
 - Test scenario generation with `make regenerate-scenario-files`
 - Remove `faultId` after using it to build disruptions
+- **Use non-obvious names for injected resources** (e.g., `app-config`, `recommendation-features`, `sidecar-processor`, `cache-helper`) - **Rationale**: Agents should diagnose issues based on symptoms and observability, not by discovering obviously-named fault injection resources
 
 # Reference Examples
 
@@ -832,12 +904,13 @@ cat scenarios/sre/roles/scenarios/files/scenario_40/groundtruth_v1.yaml  # Code 
 
 # Tips
 
-1. **Start with the fault mechanism** - What resource is being modified?
-2. **Identify the root cause group** - The resource directly affected by the fault
-3. **Map dependencies** - What services call the affected service?
-4. **Predict observables** - What alerts will fire? What symptoms appear?
-5. **Define propagation chain** - How does the fault spread through the system?
-6. **Test generation** - Always run `make regenerate-scenario-files` to validate
+1. **Start with the architecture diagram** - Review the application's architecture diagram from documentation to understand service relationships
+2. **Identify the fault mechanism** - What resource is being modified?
+3. **Identify the root cause group** - The resource directly affected by the fault
+4. **Map dependencies using the diagram** - Follow the architecture to see which services call the affected service
+5. **Predict observables** - Use the diagram to identify which services will be impacted and what alerts will fire
+6. **Define propagation chain** - Trace the fault spread through the architecture (root cause → dependencies → downstream effects)
+7. **Test generation** - Always run `make regenerate-scenario-files` to validate
 
 # Next Steps
 
