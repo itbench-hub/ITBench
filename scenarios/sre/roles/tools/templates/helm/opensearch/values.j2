@@ -1,0 +1,27 @@
+---
+replicas: 1
+config:
+  opensearch.yml: |
+    cluster.name: opensearch-cluster
+    # Bind to all interfaces because we don't know what IP address will be assigned
+    network.host: 0.0.0.0
+    plugins.security.disabled: true
+extraEnvs:
+  - name: OPENSEARCH_INITIAL_ADMIN_PASSWORD
+    value: "Opensearch@admin@password@1234"
+persistence:
+  enabled: true
+  enableInitChown: false
+{% if tools_cluster.platform == "openshift" %}
+podAnnotations:
+  openshift.io/required-scc: restricted-v2
+{% endif %}
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: "RuntimeDefault"
+rbac:
+  create: {{ tools_cluster.platform == "openshift" }}
+  automountServiceAccountToken: true
+securityContext:
+  allowPrivilegeEscalation: false

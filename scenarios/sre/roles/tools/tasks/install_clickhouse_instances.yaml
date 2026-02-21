@@ -2,23 +2,8 @@
 - name: Create Namespace for Clickhouse Operator managed instances
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        annotations:
-          openshift.io/sa.scc.mcs: s0:c30,c10
-          openshift.io/sa.scc.uid-range: 100/100
-          openshift.io/sa.scc.supplemental-groups: 101/100
-        labels:
-          "itbench.io/gateway-access": shared
-          "pod-security.kubernetes.io/enforce": baseline
-          "pod-security.kubernetes.io/enforce-version": v1.35
-          "pod-security.kubernetes.io/warn": restricted
-          "pod-security.kubernetes.io/warn-version": v1.35
-          "prometheus.itbench.io/monitor": "true"
-        name: "{{ tools_managers.clickhouse_operator.instances.main.namespace }}"
     state: present
+    template: templates/kubernetes/clickhouse/namespace.j2
 
 - name: Create Secret for Clickhouse installation default user
   kubernetes.core.k8s:
