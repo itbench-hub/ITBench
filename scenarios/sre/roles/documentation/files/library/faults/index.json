@@ -2616,5 +2616,109 @@
       "Deployment",
       "Performance"
     ]
+  },
+  {
+    "alerts": {
+      "goldenSignal": [
+        "HighRequestErrorRate"
+      ]
+    },
+    "arguments": {
+      "jsonSchema": {
+        "properties": {
+          "kubernetesObject": {
+            "properties": {
+              "apiVersion": {
+                "enum": [
+                  "v1"
+                ],
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "Service"
+                ],
+                "type": "string"
+              },
+              "metadata": {
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "namespace"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "apiVersion",
+              "kind",
+              "metadata"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "kubernetesObject"
+        ],
+        "type": "object"
+      }
+    },
+    "description": "This fault injects an Istio VirtualService that corrupts routing information for a target service, causing traffic to be routed to non-existent destinations. This simulates the November 2023 Optus BGP routing storm where software changes caused routing tables to become corrupted, disconnecting services from the core network. The fault automatically deploys an Istio waypoint proxy to enable L7 routing policies in Ambient mode, as VirtualServices require waypoint proxies for HTTP-level traffic management.",
+    "expectation": "Services attempting to communicate with the faulted service will experience connection failures and timeout errors. The service mesh will be unable to route traffic correctly, causing cascading failures across dependent services. HTTP requests will fail with 503 Service Unavailable or connection timeout errors.",
+    "id": "istio-service-mesh-routing-corruption",
+    "name": "Istio Service Mesh Routing Corruption",
+    "platform": "Kubernetes",
+    "resources": [
+      "https://istio.io/latest/docs/concepts/traffic-management/",
+      "https://istio.io/latest/docs/reference/config/networking/virtual-service/",
+      "https://istio.io/latest/docs/reference/config/networking/destination-rule/",
+      "https://istio.io/latest/docs/ops/common-problems/network-issues/"
+    ],
+    "solutions": {
+      "templates": [
+        {
+          "steps": [
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get virtualservice",
+              "text": "List all VirtualServices in the namespace to identify the corrupted routing configuration."
+            },
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete virtualservice {{ args.kubernetesObject.metadata.name }}-routing-fault",
+              "text": "Delete the corrupted VirtualService to restore normal routing."
+            }
+          ]
+        },
+        {
+          "steps": [
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit virtualservice {{ args.kubernetesObject.metadata.name }}-routing-fault",
+              "text": "Manually edit the VirtualService to fix the routing configuration."
+            }
+          ]
+        },
+        {
+          "steps": [
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete virtualservice {{ args.kubernetesObject.metadata.name }}-routing-fault",
+              "text": "Delete the corrupted VirtualService."
+            },
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete destinationrule {{ args.kubernetesObject.metadata.name }}-routing-fault",
+              "text": "Delete the associated DestinationRule with the corrupted subset."
+            }
+          ]
+        }
+      ]
+    },
+    "tags": [
+      "Networking"
+    ]
   }
 ]

@@ -1,0 +1,138 @@
+---
+# Istio Service Mesh Routing Corruption
+# Simulates the November 2023 Optus BGP routing storm by creating a VirtualService
+# that routes traffic to non-existent destinations, causing cascading connection failures
+#
+# IMPORTANT: Istio Ambient Mode Architecture
+# ------------------------------------------
+# Istio Ambient mode uses a two-layer architecture:
+# 1. ztunnel (L4): Handles TCP-level routing - always present
+# 2. waypoint proxy (L7): Handles HTTP-level routing policies (VirtualService, etc.) - optional
+#
+# VirtualServices require L7 processing, which only waypoint proxies provide.
+# Without a waypoint proxy, VirtualServices are ignored and traffic flows directly via ztunnel.
+# Therefore, this fault MUST deploy a waypoint proxy to enable VirtualService-based routing corruption.
+#
+# This mirrors real-world scenarios where routing infrastructure (waypoint) is required
+# for advanced routing policies, similar to how BGP routers are required for BGP routing.
+
+- name: Retrieve service
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+  register: faults_service
+
+- name: Validate that service exists
+  ansible.builtin.assert:
+    that:
+      - faults_service.api_found
+      - faults_service.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find service. Please verify that the service exists.
+    success_msg: Found service.
+
+# Deploy waypoint proxy to enable L7 routing policies (VirtualService)
+- name: Create waypoint gateway for L7 routing
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: Gateway
+      metadata:
+        name: waypoint
+        namespace: "{{ faults_service.resources[0].metadata.namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: ITBench
+      spec:
+        gatewayClassName: istio-waypoint
+        listeners:
+          - name: mesh
+            port: 15008
+            protocol: HBONE
+    state: present
+
+- name: Wait for waypoint gateway to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    name: waypoint
+    namespace: "{{ faults_service.resources[0].metadata.namespace }}"
+  register: faults_waypoint
+  until:
+    - faults_waypoint.api_found
+    - faults_waypoint.resources | ansible.builtin.length == 1
+    - faults_waypoint.resources[0].status.conditions is defined
+    - faults_waypoint.resources[0].status.conditions | selectattr('type', 'equalto', 'Programmed') | selectattr('status', 'equalto', 'True') | list | length > 0
+  delay: 5
+  retries: 24
+
+- name: Label namespace to use waypoint for L7 routing
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ faults_service.resources[0].metadata.namespace }}"
+        labels:
+          istio.io/use-waypoint: waypoint
+    state: patched
+
+- name: Create DestinationRule with non-existent subset
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: networking.istio.io/v1
+      kind: DestinationRule
+      metadata:
+        name: "{{ faults_service.resources[0].metadata.name }}-routing-fault"
+        namespace: "{{ faults_service.resources[0].metadata.namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: ITBench
+      spec:
+        host: "{{ faults_service.resources[0].metadata.name }}"
+        subsets:
+          - name: corrupted-route
+            labels:
+              # Non-existent label that no pods will match
+              routing-fault: "nonexistent-backend"
+    state: present
+
+- name: Create VirtualService with corrupted routing
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: networking.istio.io/v1
+      kind: VirtualService
+      metadata:
+        name: "{{ faults_service.resources[0].metadata.name }}-routing-fault"
+        namespace: "{{ faults_service.resources[0].metadata.namespace }}"
+        labels:
+          app.kubernetes.io/managed-by: ITBench
+      spec:
+        hosts:
+          - "{{ faults_service.resources[0].metadata.name }}"
+        http:
+          - route:
+              - destination:
+                  host: "{{ faults_service.resources[0].metadata.name }}"
+                  subset: corrupted-route
+                weight: 100
+    state: present
+
+- name: Wait for VirtualService to be created
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: networking.istio.io/v1
+    kind: VirtualService
+    name: "{{ faults_service.resources[0].metadata.name }}-routing-fault"
+    namespace: "{{ faults_service.resources[0].metadata.namespace }}"
+  register: faults_virtual_service
+  until:
+    - faults_virtual_service.api_found
+    - faults_virtual_service.resources | ansible.builtin.length == 1
+  delay: 5
+  retries: 12
