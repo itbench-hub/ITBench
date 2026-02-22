@@ -2526,5 +2526,95 @@
       "Deployment",
       "Code"
     ]
+  },
+  {
+    "alerts": {
+      "application": [
+        "KafkaConsumerGroupInactive"
+      ]
+    },
+    "arguments": {
+      "jsonSchema": {
+        "properties": {
+          "kubernetesObject": {
+            "properties": {
+              "apiVersion": {
+                "enum": [
+                  "apps/v1"
+                ],
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "Deployment",
+                  "StatefulSet"
+                ],
+                "type": "string"
+              },
+              "metadata": {
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "namespace"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "apiVersion",
+              "kind",
+              "metadata"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "kubernetesObject"
+        ],
+        "type": "object"
+      }
+    },
+    "description": "This fault scales a Kubernetes workload to zero replicas, simulating scenarios where worker services, queue processors, or event consumers are deliberately paused or stopped as part of incident mitigation or maintenance.",
+    "expectation": "All pods for the workload will be terminated. The deployment will show 0/0 ready replicas. Services depending on this workload will experience failures, timeouts, or event processing backlogs. Kafka consumer groups will become inactive with zero members.",
+    "id": "scaled-to-zero-kubernetes-workload",
+    "name": "Scaled to Zero Kubernetes Workload",
+    "platform": "Kubernetes",
+    "resources": [
+      "https://kubernetes.io/docs/concepts/workloads/",
+      "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
+      "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#scaling-to-0",
+      "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+    ],
+    "solutions": {
+      "templates": [
+        {
+          "steps": [
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} scale {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} --replicas=1",
+              "text": "Scale the workload back to 1 replica to restore service."
+            }
+          ]
+        },
+        {
+          "steps": [
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+              "text": "Revert the last change done to the manifest to restore the original replica count."
+            }
+          ]
+        }
+      ]
+    },
+    "tags": [
+      "Deployment",
+      "Performance"
+    ]
   }
 ]
