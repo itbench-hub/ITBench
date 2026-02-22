@@ -3,6 +3,9 @@
 components:
   accounting:
     replicas: {{ applications_otel_demo_configuration.accounting.replicas }}
+    resources:
+      limits:
+        memory: 200Mi
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
@@ -12,6 +15,9 @@ components:
       runAsUser: 1654
   ad:
     replicas: {{ applications_otel_demo_configuration.ad.replicas }}
+    resources:
+      limits:
+        memory: 512Mi
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
@@ -120,8 +126,11 @@ components:
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
-{% if applications_cluster.platform == "openshift" %}
   product-catalog:
+    resources:
+      limits:
+        memory: 160Mi
+{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
