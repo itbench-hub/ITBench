@@ -33,6 +33,17 @@
       kubeconfig: "{{ applications_cluster.kubeconfig }}"
       platform: "{{ applications_cluster.platform }}"
 
+- name: Merge component defaults with scenario overrides
+  ansible.builtin.set_fact:
+    applications_otel_demo_configuration: |-
+      {{
+        applications_component_defaults.otel_demo |
+        combine(
+          applications_configuration.opentelemetryDemo.options.components | default({}),
+          recursive=True
+        )
+      }}
+
 - name: Install OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
     chart_ref: "{{ applications_managers.opentelemetry_demo.helm.chart.reference }}"
@@ -153,4 +164,16 @@
       path: templates/kubernetes/otel_demo/prometheusrules.j2
       variable_end_string: "]]"
       variable_start_string: "[["
+    state: present
+
+- name: Deploy Kafka Exporter Deployment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    template: templates/kubernetes/otel_demo/kafkaexporter_deployment.j2
+    state: present
+
+- name: Deploy Kafka Exporter PodMonitor
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    template: templates/kubernetes/otel_demo/kafkaexporter_podmonitor.j2
     state: present

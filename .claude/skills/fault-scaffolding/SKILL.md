@@ -522,6 +522,37 @@ jq '[.[] | .alerts] | unique' \
   scenarios/sre/roles/documentation/files/library/faults/index.json
 ```
 
+### Step 3.1: Registering New Alerts
+
+**If your fault introduces a NEW alert** (not in the schema enum), you must register it in THREE locations:
+
+1. **Fault Schema** - Add to alert enum:
+   ```bash
+   # Edit: scenarios/sre/roles/documentation/files/library/faults/schema.json
+   # Add to: .properties.alerts.properties.application.items.enum
+   ```
+
+2. **Alerts Monitoring Playbook** - Add to alert detection (3 locations):
+   ```bash
+   # Edit: scenarios/sre/playbooks/check_for_specific_alerts_in_firing_state.yaml
+   # Add to ALL THREE alert lists (lines ~58-70, ~79-89, ~101-110)
+   ```
+
+3. **PrometheusRules Template** - Define the actual alert rule:
+   ```bash
+   # For OpenTelemetry Demo:
+   # scenarios/sre/roles/applications/templates/kubernetes/otel_demo/prometheusrules.j2
+   # For BookInfo:
+   # scenarios/sre/roles/applications/templates/kubernetes/book_info/prometheusrules.j2
+   ```
+
+**Example**: For `KafkaConsumerGroupInactive` alert, you would:
+- Add to fault schema enum (alphabetically)
+- Add to monitoring playbook (3 locations)
+- Define PrometheusRule with expression: `kafka_consumergroup_members{namespace="..."} == 0`
+
+**See scenario-scaffolding skill section 3.6.1 for detailed checklist and examples.**
+
 ### Step 4: Discover Solution Patterns from Existing Faults
 
 **Find common solution templates:**

@@ -1,6 +1,8 @@
 ---
+{# Configuration is pre-merged in Ansible task from defaults + scenario overrides #}
 components:
   accounting:
+    replicas: {{ applications_otel_demo_configuration.accounting.replicas }}
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
@@ -8,18 +10,21 @@ components:
     podSecurityContext:
       runAsNonRoot: true
       runAsUser: 1654
-{% if applications_cluster.platform == "openshift" %}
   ad:
+    replicas: {{ applications_otel_demo_configuration.ad.replicas }}
+{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
-{% if applications_cluster.platform == "openshift" %}
   cart:
+    replicas: {{ applications_otel_demo_configuration.cart.replicas }}
+{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
-{% if applications_cluster.platform == "openshift" %}
   checkout:
+    replicas: {{ applications_otel_demo_configuration.checkout.replicas }}
+{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
@@ -38,13 +43,20 @@ components:
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
-{% if applications_cluster.platform == "openshift" %}
   fraud-detection:
+    replicas: {{ applications_otel_demo_configuration.fraud_detection.replicas }}
+    resources:
+      limits:
+        memory: 512Mi
+      requests:
+        memory: 256Mi
+{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
-{% if applications_cluster.platform == "openshift" %}
   frontend:
+    replicas: {{ applications_otel_demo_configuration.frontend.replicas }}
+{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
@@ -61,8 +73,13 @@ components:
     podSecurityContext:
       runAsNonRoot: true
       runAsUser: 101
-{% if applications_cluster.platform == "openshift" %}
   kafka:
+    resources:
+      limits:
+        memory: 1024Mi
+      requests:
+        memory: 512Mi
+{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
@@ -71,21 +88,21 @@ components:
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
         value: |-
           {{
-            applications_configuration.opentelemetryDemo.options.loadGeneration.browserTraffic |
+            applications_applications_otel_demo_configuration.opentelemetryDemo.options.loadGeneration.browserTraffic |
             ansible.builtin.default(false) |
             ansible.builtin.string
           }}
       - name: LOCUST_SPAWN_RATE
         value: |-
           {{
-            applications_configuration.opentelemetryDemo.options.loadGeneration.usersSpawnRate |
+            applications_applications_otel_demo_configuration.opentelemetryDemo.options.loadGeneration.usersSpawnRate |
             ansible.builtin.default(5) |
             ansible.builtin.string
           }}
       - name: LOCUST_USERS
         value: |-
           {{
-            applications_configuration.opentelemetryDemo.options.loadGeneration.users |
+            applications_applications_otel_demo_configuration.opentelemetryDemo.options.loadGeneration.users |
             ansible.builtin.default(50) |
             ansible.builtin.string
           }}

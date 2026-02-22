@@ -54,17 +54,16 @@
              selectattr('state', '==', 'firing') |
              selectattr('labels.alertname', 'in', [
                'FailedPodsDetected',
+               'HighKafkaConsumerLag',
                'HighRequestLatency',
                'HighRequestErrorRate',
                'KafkaConnectionClosureRate',
-               'CPUSpend',
-               'MemorySpend',
-               'CPUEfficiency',
-               'MemoryEfficiency',
+               'KafkaConsumerGroupInactive',
                'KubeContainerWaiting',
                'KubeHpaMaxedOut',
                'KubePodCrashLooping',
-               'KubePodNotReady'
+               'KubePodNotReady',
+               'NoDatabaseOperations'
              ]) |
              list | length > 0)
 
@@ -74,15 +73,18 @@
               Found {{ alerts_api_result.json.data.alerts |
                        selectattr('state', '==', 'firing') |
                        selectattr('labels.alertname', 'in', [
-                         'FailedPodsDetected',
-                         'PendingPodsDetected',
-                         'RequestLatency',
-                         'RequestErrorRate',
-                         'KafkaConnectionClosureRate',
-                         'CPUSpend',
-                         'MemorySpend',
                          'CPUEfficiency',
-                         'MemoryEfficiency'
+                         'CPUSpend',
+                         'FailedPodsDetected',
+                         'HighKafkaConsumerLag',
+                         'KafkaConnectionClosureRate',
+                         'KafkaConsumerGroupInactive',
+                         'MemoryEfficiency',
+                         'MemorySpend',
+                         'NoDatabaseOperations',
+                         'PendingPodsDetected',
+                         'RequestErrorRate',
+                         'RequestLatency'
                        ]) |
                        list }} specific alerts in firing state
           when: alerts_api_result is defined and alerts_api_result.json is defined
@@ -96,15 +98,18 @@
                     "alerts": alerts_api_result.json.data.alerts |
                               selectattr('state', '==', 'firing') |
                               selectattr('labels.alertname', 'in', [
-                                'FailedPodsDetected',
-                                'PendingPodsDetected',
-                                'RequestLatency',
-                                'RequestErrorRate',
-                                'KafkaConnectionClosureRate',
-                                'CPUSpend',
-                                'MemorySpend',
                                 'CPUEfficiency',
-                                'MemoryEfficiency'
+                                'CPUSpend',
+                                'FailedPodsDetected',
+                                'HighKafkaConsumerLag',
+                                'KafkaConnectionClosureRate',
+                                'KafkaConsumerGroupInactive',
+                                'MemoryEfficiency',
+                                'MemorySpend',
+                                'NoDatabaseOperations',
+                                'PendingPodsDetected',
+                                'RequestErrorRate',
+                                'RequestLatency'
                               ]) | list
                   },
                   "status": "success",
