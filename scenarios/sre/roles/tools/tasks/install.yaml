@@ -30,6 +30,27 @@
       (tools_installation_plan.istio.enabled | default(false)) or
       (tools_installation_plan.opentelemetry.enabled | default(true))
 
+- name: Update Prometheus to use Clickhouse as Remote Access
+  kubernetes.core.helm:
+    chart_ref: "{{ tools_managers.prometheus.helm.chart.reference }}"
+    chart_version: "{{ tools_managers.prometheus.helm.chart.version }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_managers.prometheus.helm.release.name }}"
+    release_namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
+    release_state: present
+    reset_values: false
+    reuse_values: true
+    timeout: 10m0s
+    values:
+      prometheus:
+        prometheusSpec:
+          remoteWrite:
+            - url: "http://default:@clickhouse-{{ tools_managers.clickhouse_operator.instances.names.main }}.{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}.svc.cluster.local:9363/write"
+              queueConfig:
+                maxSamplesPerSend: 5000
+                batchSendDeadline: 10s
+    wait: true
+
 - name: Import OpenSearch installation tasks
   ansible.builtin.import_tasks:
     file: install_opensearch.yaml

@@ -10,62 +10,67 @@
           apiVersion: v1
           kind: Namespace
           metadata:
-            name: "{{ tools_helm_releases.prometheus.namespace }}"
             labels:
-              it-bench/monitoring: "true"
-              it-bench/shared-gateway-access: "true"
+              "itbench.io/gateway-access": shared
+              "pod-security.kubernetes.io/enforce": baseline
+              "pod-security.kubernetes.io/enforce-version": v1.35
+              "pod-security.kubernetes.io/warn": restricted
+              "pod-security.kubernetes.io/warn-version": v1.35
+              "prometheus.itbench.io/monitor": "true"
+            name: "{{ tools_managers.prometheus.kubernetes.namespace }}"
         state: present
 
     - name: Install Prometheus Operator and Prometheus
       kubernetes.core.helm:
-        chart_ref: oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack
-        chart_version: 80.2.0
+        chart_ref: "{{ tools_managers.prometheus.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.prometheus.helm.chart.version }}"
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_helm_releases.prometheus.name }}"
-        release_namespace: "{{ tools_helm_releases.prometheus.namespace }}"
+        release_name: "{{ tools_managers.prometheus.helm.release.name }}"
+        release_namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
         release_state: present
         timeout: 10m0s
-        values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/prometheus.j2') | from_yaml }}"
+        values:
+          alertmanager:
+            enabled: false
+          grafana:
+            enabled: false
+          prometheus:
+            prometheusSpec:
+              podMonitorNamespaceSelector:
+                matchLabels:
+                  "prometheus.itbench.io/monitor": "true"
+              podMonitorSelectorNilUsesHelmValues: false
+              ruleNamespaceSelector:
+                matchLabels:
+                  "prometheus.itbench.io/monitor": "true"
+              ruleSelectorNilUsesHelmValues: false
+              serviceMonitorNamespaceSelector:
+                matchLabels:
+                  "prometheus.itbench.io/monitor": "true"
+              serviceMonitorSelectorNilUsesHelmValues: false
+              enableOTLPReceiver: true
+              routePrefix: /prometheus
+          customRules:
+            KubeContainerWaiting:
+              for: 5m
+            KubeHpaMaxedOut:
+              for: 5m
+            KubePodCrashLooping:
+              for: 5m
+            KubePodNotReady:
+              for: 5m
+          defaultRules:
+            rules:
+              alertmanager: false
+          kubeControllerManager:
+            enabled: "{{ tools_cluster.provider == 'kind' }}"
+          kubeEtcd:
+            enabled: "{{ tools_cluster.provider == 'kind' }}"
+          kubeProxy:
+            enabled: "{{ tools_cluster.provider == 'kind' }}"
+          kubeScheduler:
+            enabled: "{{ tools_cluster.provider == 'kind' }}"
         wait: true
-
-    - name: Enable external access on Kind
-      when:
-        - tools_installation_plan.prometheus.external_access
-        - tools_cluster.provider == "kind"
-        - not tools_installation_plan.istio.enabled
-      block:
-        - name: Create Cloud Provider Kind Kubernetes Gateway
-          kubernetes.core.k8s:
-            kubeconfig: "{{ tools_cluster.kubeconfig }}"
-            template: templates/kubernetes_gateways/kind.j2
-            state: present
-            wait: true
-            wait_condition:
-              reason: Programmed
-              status: "True"
-              type: Programmed
-          vars:
-            gateway:
-              name: "{{ tools_helm_releases.prometheus.name }}"
-
-        - name: Create HTTP Route
-          kubernetes.core.k8s:
-            kubeconfig: "{{ tools_cluster.kubeconfig }}"
-            template: templates/prometheus/http_route.j2
-            state: present
-          vars:
-            gateway:
-              name: "{{ tools_helm_releases.prometheus.name }}"
-
-        - name: Import connection test to external endpoint
-          ansible.builtin.import_tasks:
-            file: test_gateway_endpoint.yaml
-          vars:
-            tools_external_paths:
-              - /query
-              - /alerts
-            tools_kubernetes_gateway:
-              name: "{{ tools_helm_releases.prometheus.name }}"
 
 - name: Enabled OpenShift User Worklord Monitoring (Prometheus)
   when:

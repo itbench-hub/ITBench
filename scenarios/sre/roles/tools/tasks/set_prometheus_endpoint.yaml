@@ -23,8 +23,8 @@
     api_version: monitoring.coreos.com/v1
     kind: Prometheus
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ 'prometheus-k8s' if tools_cluster.platform == 'openshift' else (tools_helm_releases.prometheus.name + '-kube-prometheus-prometheus') }}"
-    namespace: "{{ 'openshift-monitoring' if tools_cluster.platform == 'openshift' else tools_helm_releases.prometheus.namespace }}"
+    name: "{{ 'prometheus-k8s' if tools_cluster.platform == 'openshift' else (tools_managers.prometheus.helm.release.name + '-kube-prometheus-prometheus') }}"
+    namespace: "{{ 'openshift-monitoring' if tools_cluster.platform == 'openshift' else tools_managers.prometheus.kubernetes.namespace }}"
   register: tools_prometheus
 
 - name: Verify that object exists
