@@ -13,7 +13,7 @@
       kind: Secret
       metadata:
         name: user-default-credentials
-        namespace: "{{ tools_managers.clickhouse_operator.instances.main.namespace }}"
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
       type: Opaque
       stringData:
         user: default
@@ -31,7 +31,7 @@
         labels:
           "app.kubernetes.io/name": clickhouse
         name: clickhouse-init-prometheus
-        namespace: "{{ tools_managers.clickhouse_operator.instances.main.namespace }}"
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
       data:
         01_init_prometheus.sql: |
           -- Based on https://clickhouse.com/docs/engines/table-engines/special/time_series
@@ -61,7 +61,7 @@
           app.kubernetes.io/name: clickhouse
           app.kubernetes.io/version: 25.3.8.10041
         name: "{{ tools_managers.clickhouse_operator.instances.main.name }}"
-        namespace: "{{ tools_managers.clickhouse_operator.instances.main.namespace }}"
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
       spec:
         defaults:
           templates:
@@ -111,7 +111,7 @@
     kind: ClickHouseInstallation
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     name: "{{ tools_managers.clickhouse_operator.instances.main.name }}"
-    namespace: "{{ tools_managers.clickhouse_operator.instances.main.namespace }}"
+    namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
   register: tools_chi
   until:
     - tools_chi.resources[0].status is defined
@@ -128,7 +128,7 @@
       kind: ServiceMonitor
       metadata:
         name: "{{ tools_managers.clickhouse_operator.instances.main.name }}"
-        namespace: "{{ tools_managers.clickhouse_operator.instances.main.namespace }}"
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
       spec:
         selector:
           matchLabels:

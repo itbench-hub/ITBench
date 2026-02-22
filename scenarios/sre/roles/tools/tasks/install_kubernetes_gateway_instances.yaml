@@ -12,7 +12,7 @@
           "pod-security.kubernetes.io/warn": restricted
           "pod-security.kubernetes.io/warn-version": v1.35
           "prometheus.itbench.io/monitor": "true"
-        name: "{{ tools_managers.kubernetes_gateway.kubernetes.namespace }}"
+        name: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
     state: present
 
 - name: Create Istio implemented Gateway
@@ -23,7 +23,7 @@
       kind: Gateway
       metadata:
         name: istio-main
-        namespace: "{{ tools_managers.kubernetes_gateway.kubernetes.namespace }}"
+        namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
       spec:
         gatewayClassName: istio
         listeners:
@@ -70,7 +70,7 @@
       kind: HTTPRoute
       metadata:
         name: "{{ tools_managers.clickhouse_operator.instances.main.name }}"
-        namespace: "{{ tools_managers.clickhouse_operator.instances.main.namespace }}"
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
       spec:
         parentRefs:
           - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
