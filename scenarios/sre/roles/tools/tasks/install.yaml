@@ -9,9 +9,9 @@
   when:
     - tools_cluster.provider == 'kind'
 
-- name: Install SRE and FinOps Tools
+- name: Install SRE and FinOps Observability Tools
   when:
-    - ( (tools_configuration.finops.enabled | ansible.builtin.default(false)) or (tools_configuration.sre.enabled | ansible.builtin.default(false)) )
+    - ((tools_configuration.finops.enabled | ansible.builtin.default(false)) or (tools_configuration.sre.enabled | ansible.builtin.default(false)))
   block:
     - name: Import Prometheus installation tasks
       ansible.builtin.import_tasks:
@@ -66,29 +66,33 @@
       ansible.builtin.import_tasks:
         file: install_kubernetes_metrics_server.yaml
 
+- name: Install FinOps specific tools
+  when:
+    - tools_configuration.finops.enabled | ansible.builtin.default(false)
+  block:
+    - name: Import OpenCost installation tasks
+      ansible.builtin.import_tasks:
+        file: install_opencost.yaml
+
+- name: Install SRE specific tools
+  when:
+    - tools_configuration.sre.enabled | ansible.builtin.default(false)
+  block:
+    - name: Import Chaos Mesh installation tasks
+      ansible.builtin.import_tasks:
+        file: install_chaos_mesh.yaml
+
+    - name: Import Kubernetes Topology Monitor installation tasks
+      ansible.builtin.import_tasks:
+        file: install_kubernetes_topology_monitor.yaml
+
+- name: Install SRE and FinOps Networking Tools
+  when:
+    - ((tools_configuration.finops.enabled | ansible.builtin.default(false)) or (tools_configuration.sre.enabled | ansible.builtin.default(false)))
+  block:
     - name: Import Istio installation tasks
       ansible.builtin.import_tasks:
         file: install_istio.yaml
-
-    - name: Install FinOps specific tools
-      when:
-        - tools_configuration.finops.enabled | ansible.builtin.default(false)
-      block:
-        - name: Import OpenCost installation tasks
-          ansible.builtin.import_tasks:
-            file: install_opencost.yaml
-
-    - name: Install SRE specific tools
-      when:
-        - tools_configuration.sre.enabled | ansible.builtin.default(false)
-      block:
-        - name: Import Chaos Mesh installation tasks
-          ansible.builtin.import_tasks:
-            file: install_chaos_mesh.yaml
-
-        - name: Import Kubernetes Topology Monitor installation tasks
-          ansible.builtin.import_tasks:
-            file: install_kubernetes_topology_monitor.yaml
 
     - name: Import Kubernetes Gateway API installation tasks
       ansible.builtin.import_tasks:
