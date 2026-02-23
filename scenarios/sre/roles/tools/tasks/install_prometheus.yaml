@@ -3,7 +3,7 @@
   when:
     - tools_cluster.platform == "kubernetes"
   block:
-    - name: Create the release namespace
+    - name: Create Namespace for Prometheus and Prometheus Operator
       kubernetes.core.k8s:
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
@@ -12,10 +12,6 @@
           metadata:
             labels:
               "itbench.io/gateway-access": shared
-              "pod-security.kubernetes.io/enforce": baseline
-              "pod-security.kubernetes.io/enforce-version": v1.35
-              "pod-security.kubernetes.io/warn": restricted
-              "pod-security.kubernetes.io/warn-version": v1.35
               "prometheus.itbench.io/monitor": "true"
             name: "{{ tools_managers.prometheus.kubernetes.namespace }}"
         state: present
