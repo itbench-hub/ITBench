@@ -1,0 +1,63 @@
+---
+- name: Retrieve all namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+  register: tools_namespaces
+
+- name: Create internal cluster endpoint variables
+  when:
+    - tools_namespaces.api_found
+    - tools_namespaces.resources | ansible.builtin.length > 0
+  block:
+    - name: Import Clickhouse variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_internal_endpoints_clickhouse.yaml
+      when:
+        - tools_namespaces.resources |
+          ansible.builtin.selectattr(
+            "metadata.name",
+            "==",
+            tools_managers.clickhouse_operator.instances.kubernetes.namespace
+          ) |
+          ansible.builtin.length == 1
+
+    - name: Import Jaeger variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_internal_endpoints_jaeger.yaml
+      when:
+        - tools_namespaces.resources |
+          ansible.builtin.selectattr(
+            "metadata.name",
+            "==",
+            tools_managers.opentelemetry_operator.instances.kubernetes.namespace
+          ) |
+          ansible.builtin.length == 1
+
+    - name: Import Kubernetes Topology Monitor variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_internal_endpoints_kubernetes_topology_monitor.yaml
+      when:
+        - tools_namespaces.resources |
+          ansible.builtin.selectattr(
+            "metadata.name",
+            "==",
+            tools_managers.kubernetes_topology_monitor.kubernetes.namespace
+          ) |
+          ansible.builtin.length == 1
+
+    - name: Import Prometheus variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_internal_endpoints_prometheus.yaml
+      when:
+        - tools_namespaces.resources |
+          ansible.builtin.selectattr(
+            "metadata.name",
+            "in",
+            [
+              "openshift-monitoring",
+              tools_managers.prometheus.kubernetes.namespace
+            ]
+          ) |
+          ansible.builtin.length == 1

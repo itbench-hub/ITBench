@@ -1,0 +1,80 @@
+---
+- name: Create Prometheus in-cluster endpoint on Kubernetes
+  when:
+    - tools_cluster.platform == "Kubernetes"
+  block:
+    - name: Retrieve Service for Prometheus
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: "{{ tools_managers.prometheus.helm.release.name }}-kube-prometheus-prometheus"
+        namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
+      register: tools_prometheus_service
+
+    - name: Validate that Prometheus service exists
+      ansible.builtin.assert:
+        that:
+          - tools_prometheus_service.api_found
+          - tools_prometheus_service.resources | ansible.builtin.length == 1
+        fail_msg: Prometheus service not found. Please verify that Prometheus was successfully installed.
+        success_msg: Prometheus service found.
+
+    - name: Create Prometheus in-cluster endpoints
+      ansible.builtin.set_fact:
+        tools_prometheus_endpoint:
+          http: |-
+            {{
+              "http://" +
+              (
+                [
+                  tools_prometheus_service.resources[0].metadata.name,
+                  tools_prometheus_service.resources[0].metadata.namespace,
+                  "svc",
+                  "cluster"
+                  "local"
+                ] |
+                ansible.builtin.join(".")
+              ) +
+              ":9090/prometheus"
+            }}
+
+- name: Create Prometheus in-cluster endpoint on OpenShift
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Retrieve Service for Prometheus
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: prometheus-k8s
+        namespace: openshift-monitoring
+      register: tools_prometheus_service
+
+    - name: Validate that Prometheus service exists
+      ansible.builtin.assert:
+        that:
+          - tools_prometheus_service.api_found
+          - tools_prometheus_service.resources | ansible.builtin.length == 1
+        fail_msg: Prometheus service not found. Please verify that Prometheus was successfully installed.
+        success_msg: Prometheus service found.
+
+    - name: Create Prometheus in-cluster endpoints
+      ansible.builtin.set_fact:
+        tools_prometheus_endpoint:
+          http: |-
+            {{
+              "http://" +
+              (
+                [
+                  tools_prometheus_service.resources[0].metadata.name,
+                  tools_prometheus_service.resources[0].metadata.namespace,
+                  "svc",
+                  "cluster"
+                  "local"
+                ] |
+                ansible.builtin.join(".")
+              ) +
+              ":9090"
+            }}

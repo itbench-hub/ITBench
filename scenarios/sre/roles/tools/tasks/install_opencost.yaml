@@ -5,9 +5,17 @@
     state: present
     template: templates/kubernetes/opencost/namespace.j2
 
-- name: Import variable setting task
+- name: Import Prometheus credential variable setting tasks
   ansible.builtin.import_tasks:
-    file: set_prometheus_endpoint.yaml
+    file: set_credentials_prometheus.yaml
+  when:
+    - tools_prometheus_bearer_token is undefined
+
+- name: Import Prometheus endpoint variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_internal_endpoints_prometheus.yaml
+  when:
+    - tools_prometheus_endpoint.http is undefined
 
 - name: Install OpenCost
   kubernetes.core.helm:

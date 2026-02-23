@@ -1,0 +1,52 @@
+---
+- name: Retrieve Service for Jaeger
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}-collector"
+    namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+  register: tools_jaeger_service
+
+- name: Validate that Jaeger service exists
+  ansible.builtin.assert:
+    that:
+      - tools_jaeger_service.api_found
+      - tools_jaeger_service.resources | ansible.builtin.length == 1
+    fail_msg: Jaeger service not found. Please verify that Jaeger was successfully installed.
+    success_msg: Jaeger service found.
+
+- name: Create Jaeger in-cluster endpoints
+  ansible.builtin.set_fact:
+    tools_jaeger_endpoint:
+      collector:
+        grpc: |-
+          {{
+            (
+              [
+                tools_jaeger_service.resources[0].metadata.name,
+                tools_jaeger_service.resources[0].metadata.namespace,
+                "svc",
+                "cluster"
+                "local"
+              ] |
+              ansible.builtin.join(".")
+            ) +
+            ":4317"
+          }}
+      querier:
+        http: |-
+          {{
+            "http://" +
+            (
+              [
+                tools_jaeger_service.resources[0].metadata.name,
+                tools_jaeger_service.resources[0].metadata.namespace,
+                "svc",
+                "cluster"
+                "local"
+              ] |
+              ansible.builtin.join(".")
+            ) +
+            ":16686/jaeger"
+          }}

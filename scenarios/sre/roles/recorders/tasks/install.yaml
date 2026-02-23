@@ -9,6 +9,15 @@
         name: "{{ recorders_namespace.name }}"
     state: present
 
+- name: Import tools role for variable setting tasks
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_internal_endpoints
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+      platform: "{{ recorders_cluster.platform }}"
+
 - name: Import alert recorder installation tasks
   ansible.builtin.import_tasks:
     file: install_alerts_recorders.yaml

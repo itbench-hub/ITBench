@@ -20,9 +20,21 @@
       ansible.builtin.import_tasks:
         file: install_prometheus.yaml
 
+    - name: Import Prometheus endpoint variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_internal_endpoints_prometheus.yaml
+
     - name: Import Clickhouse installation tasks
       ansible.builtin.import_tasks:
         file: install_clickhouse.yaml
+
+    - name: Import Clickhouse credential variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_credentials_clickhouse.yaml
+
+    - name: Import Clickhouse endpoint variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_internal_endpoints_clickhouse.yaml
 
     - name: Update Prometheus to use Clickhouse as Remote Access
       kubernetes.core.helm:
@@ -39,7 +51,7 @@
           prometheus:
             prometheusSpec:
               remoteWrite:
-                - url: "http://default:@clickhouse-{{ tools_managers.clickhouse_operator.instances.names.main }}.{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}.svc.cluster.local:9363/write"
+                - url: "http://default:@{{ tools_clickhouse_endpoint.prometheus }}/write"
                   queueConfig:
                     maxSamplesPerSend: 5000
                     batchSendDeadline: 10s

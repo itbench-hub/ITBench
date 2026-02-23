@@ -18,11 +18,16 @@
 
 - name: Import variable setting task
   ansible.builtin.import_tasks:
-    file: set_clickhouse_credentials.yaml
+    file: set_credentials_clickhouse.yaml
+  when:
+    - tools_clickhouse_username is not defined
+    - tools_clickhouse_password is not defined
 
-- name: Import variable setting task
+- name: Import Clickhouse endpoint variable setting tasks
   ansible.builtin.import_tasks:
-    file: set_clickhouse_endpoint.yaml
+    file: set_internal_endpoints_clickhouse.yaml
+  when:
+    - tools_clickhouse_endpoint.http is not defined
 
 - name: Install OpenTelemetry Collector for Istio
   kubernetes.core.k8s:
@@ -59,7 +64,7 @@
             clickhouse:
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
-              endpoint: "{{ tools_clickhouse_endpoint }}:8123"
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
               logs_table_name: istio_access
             debug: {}
     state: present
@@ -216,7 +221,7 @@
             clickhouse:
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
-              endpoint: "{{ tools_clickhouse_endpoint }}:8123"
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
               logs_table_name: kubernetes_events
             debug: {}
     state: present
@@ -486,7 +491,7 @@
             clickhouse:
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
-              endpoint: "{{ tools_clickhouse_endpoint }}:8123"
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
               logs_table_name: kubernetes_objects_snapshot
             debug: {}
     state: present
