@@ -76,11 +76,34 @@
   when:
     - tools_cluster.platform == "openshift"
   block:
-    - name: Enable OpenShift user workload monitoring
+    - name: Create Cluster Monitoring ConfigMap
       kubernetes.core.k8s:
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: cluster-monitoring-config
+            namespace: openshift-monitoring
+          data:
+            config.yaml: |
+              enableUserWorkload: true
         state: present
-        src: files/openshift/user-workload-monitoring-config.yaml
+
+    - name: Create User Workload ConfigMap
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: user-workload-monitoring-config
+            namespace: openshift-user-workload-monitoring
+          data:
+            config.yaml: |
+              alertmanager:
+                enabled: false
+        state: present
 
     - name: Wait for Prometheus workload pods to start
       kubernetes.core.k8s_info:

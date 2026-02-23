@@ -34,8 +34,24 @@
   when:
     - tools_cluster.platform == "openshift"
   block:
-    - name: Disable OpenShift user workload monitoring
+    - name: Delete User Workload ConfigMap
       kubernetes.core.k8s:
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: user-workload-monitoring-config
+            namespace: openshift-user-workload-monitoring
         state: absent
-        src: files/openshift/user-workload-monitoring-config.yaml
+
+    - name: Delete Cluster Monitoring ConfigMap
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: cluster-monitoring-config
+            namespace: openshift-monitoring
+        state: absent
