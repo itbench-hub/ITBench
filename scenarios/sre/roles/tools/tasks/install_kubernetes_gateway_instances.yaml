@@ -101,7 +101,7 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ tools_managers.opentelemetry_operator.instances.jaeger.name }}"
+        name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}"
         namespace: "{{ tools_managers.opentelemetry_operator.instances.jaeger.namespace }}"
       spec:
         parentRefs:
@@ -109,7 +109,7 @@
             namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
-              - name: "{{ tools_managers.opentelemetry_operator.instances.jaeger.name }}-collector"
+              - name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}-collector"
                 port: 16686
             matches:
               - path:
@@ -128,7 +128,7 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ tools_managers.kubernetes_topology_monitor.chart.release.name }}"
+        name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
         namespace: "{{ tools_managers.kubernetes_topology_monitor.chart.release.namespace }}"
       spec:
         parentRefs:
@@ -162,7 +162,7 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ tools_managers.opencost.chart.release.name }}"
+        name: "{{ tools_managers.opencost.helm.release.name }}"
         namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
       spec:
         parentRefs:
@@ -170,7 +170,7 @@
             namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
-              - name: "{{ tools_managers.opencost.chart.release.name }}"
+              - name: "{{ tools_managers.opencost.helm.release.name }}"
                 port: 9090
             filters:
               - type: ResponseHeaderModifier
@@ -187,7 +187,7 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ tools_managers.prometheus.chart.release.name }}"
+        name: "{{ tools_managers.prometheus.helm.release.name }}"
         namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
       spec:
         parentRefs:
@@ -195,7 +195,7 @@
             namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
-              - name: "{{ tools_managers.prometheus.chart.release.name }}-kube-prometheus-prometheus"
+              - name: "{{ tools_managers.prometheus.helm.release.name }}-kube-prometheus-prometheus"
                 port: 9090
             matches:
               - path:
