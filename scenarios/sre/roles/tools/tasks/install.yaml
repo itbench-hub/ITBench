@@ -9,88 +9,86 @@
   when:
     - tools_cluster.provider == 'kind'
 
-- name: Import Kubernetes Gateway API installation tasks
-  ansible.builtin.import_tasks:
-    file: install_kubernetes_gateway_api.yaml
+- name: Install SRE and FinOps Tools
   when:
-    - tools_cluster.platform == "kubernetes"
+    - (
+        (tools_configuration.finops.enabled | ansible.builtin.default(false)) or
+        (tools_configuration.sre.enabled | ansible.builtin.default(false))
+      )
+  block:
+    - name: Import Prometheus installation tasks
+      ansible.builtin.import_tasks:
+        file: install_prometheus.yaml
 
-- name: Import Prometheus installation tasks
-  ansible.builtin.import_tasks:
-    file: install_prometheus.yaml
-  when:
-    - (tools_installation_plan.prometheus.enabled | default(true)) or
-      (tools_installation_plan.opencost.enabled | default(false))
+    - name: Import Clickhouse installation tasks
+      ansible.builtin.import_tasks:
+        file: install_clickhouse.yaml
 
-- name: Import Clickhouse installation tasks
-  ansible.builtin.import_tasks:
-    file: install_clickhouse.yaml
-  when:
-    - (tools_installation_plan.clickhouse.enabled | default(true)) or
-      (tools_installation_plan.istio.enabled | default(false)) or
-      (tools_installation_plan.opentelemetry.enabled | default(true))
+    - name: Update Prometheus to use Clickhouse as Remote Access
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.prometheus.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.prometheus.helm.chart.version }}"
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.prometheus.helm.release.name }}"
+        release_namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
+        release_state: present
+        reset_values: false
+        reuse_values: true
+        timeout: 10m0s
+        values:
+          prometheus:
+            prometheusSpec:
+              remoteWrite:
+                - url: "http://default:@clickhouse-{{ tools_managers.clickhouse_operator.instances.names.main }}.{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}.svc.cluster.local:9363/write"
+                  queueConfig:
+                    maxSamplesPerSend: 5000
+                    batchSendDeadline: 10s
+        wait: true
 
-- name: Update Prometheus to use Clickhouse as Remote Access
-  kubernetes.core.helm:
-    chart_ref: "{{ tools_managers.prometheus.helm.chart.reference }}"
-    chart_version: "{{ tools_managers.prometheus.helm.chart.version }}"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_managers.prometheus.helm.release.name }}"
-    release_namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
-    release_state: present
-    reset_values: false
-    reuse_values: true
-    timeout: 10m0s
-    values:
-      prometheus:
-        prometheusSpec:
-          remoteWrite:
-            - url: "http://default:@clickhouse-{{ tools_managers.clickhouse_operator.instances.names.main }}.{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}.svc.cluster.local:9363/write"
-              queueConfig:
-                maxSamplesPerSend: 5000
-                batchSendDeadline: 10s
-    wait: true
+    - name: Import OpenSearch installation tasks
+      ansible.builtin.import_tasks:
+        file: install_opensearch.yaml
 
-- name: Import OpenSearch installation tasks
-  ansible.builtin.import_tasks:
-    file: install_opensearch.yaml
-  when:
-    - tools_installation_plan.jaeger.enabled | default(true)
+    - name: Import OpenTelemetry installation tasks
+      ansible.builtin.import_tasks:
+        file: install_opentelemetry.yaml
 
-- name: Import OpenTelemetry installation tasks
-  ansible.builtin.import_tasks:
-    file: install_opentelemetry.yaml
-  when:
-    - (tools_installation_plan.opentelemetry.enabled | default(true)) or
-      (tools_installation_plan.jaeger.enabled | default(true)) or
-      (tools_installation_plan.istio.enabled | default(false))
+    - name: Import Kubernetes Metrics Server installation tasks
+      ansible.builtin.import_tasks:
+        file: install_kubernetes_metrics_server.yaml
 
-- name: Import OpenCost installation tasks
-  ansible.builtin.import_tasks:
-    file: install_opencost.yaml
-  when:
-    - tools_installation_plan.opencost.enabled | default(false)
+    - name: Import Istio installation tasks
+      ansible.builtin.import_tasks:
+        file: install_istio.yaml
 
-- name: Import Chaos Mesh installation tasks
-  ansible.builtin.import_tasks:
-    file: install_chaos_mesh.yaml
-  when:
-    - tools_installation_plan.chaos_mesh.enabled | default(false)
+    - name: Install FinOps specific tools
+      when:
+        - tools_configuration.finops.enabled | ansible.builtin.default(false)
+      block:
+        - name: Import OpenCost installation tasks
+          ansible.builtin.import_tasks:
+            file: install_opencost.yaml
 
-- name: Import Kubernetes Metrics Server installation tasks
-  ansible.builtin.import_tasks:
-    file: install_kubernetes_metrics_server.yaml
-  when:
-    - tools_installation_plan.kubernetes_metrics_server.enabled | default(false)
+    - name: Install SRE specific tools
+      when:
+        - tools_configuration.sre.enabled | ansible.builtin.default(false)
+      block:
+        - name: Import Chaos Mesh installation tasks
+          ansible.builtin.import_tasks:
+            file: install_chaos_mesh.yaml
 
-- name: Import Kubernetes Topology Monitor installation tasks
-  ansible.builtin.import_tasks:
-    file: install_kubernetes_topology_monitor.yaml
-  when:
-    - tools_installation_plan.kubernetes_topology_monitor.enabled | default(true)
+        - name: Import Kubernetes Topology Monitor installation tasks
+          ansible.builtin.import_tasks:
+            file: install_kubernetes_topology_monitor.yaml
 
-- name: Import Istio installation tasks
-  ansible.builtin.import_tasks:
-    file: install_istio.yaml
-  when:
-    - tools_installation_plan.istio.enabled | default(true)
+    - name: Import Kubernetes Gateway API installation tasks
+      ansible.builtin.import_tasks:
+        file: install_kubernetes_gateway_api.yaml
+      when:
+        - tools_cluster.platform == "kubernetes"
+
+    - name: Import OpenShift Route installation tasks
+      ansible.builtin.import_tasks:
+        file: install_openshift_routes.yaml
+      when:
+        - tools_cluster.platform == "openshift"
