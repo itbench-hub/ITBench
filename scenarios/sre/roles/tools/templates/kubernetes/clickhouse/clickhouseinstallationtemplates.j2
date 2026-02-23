@@ -20,6 +20,13 @@ spec:
             app.kubernetes.io/name: clickhouse
             app.kubernetes.io/version: 25.3.8.10041
         spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-role.itbench.io/sandbox
+                    operator: DoesNotExist
           securityContext:
             fsGroup: 101
             runAsGroup: 101
@@ -77,7 +84,7 @@ spec:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 25Gi
+              storage: 15Gi
 ---
 apiVersion: clickhouse.altinity.com/v1
 kind: ClickHouseInstallationTemplate

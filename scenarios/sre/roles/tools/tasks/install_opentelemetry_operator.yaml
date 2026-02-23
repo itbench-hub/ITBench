@@ -29,13 +29,20 @@
         release_state: present
         timeout: 10m0s
         values:
-          manager:
-            serviceMonitor:
-              enabled: true
           admissionWebhooks:
             certManager:
               enabled: false
             autoGenerateCert:
+              enabled: true
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.itbench.io/sandbox
+                        operator: DoesNotExist
+          manager:
+            serviceMonitor:
               enabled: true
         wait: true
 
@@ -94,9 +101,7 @@
         namespace: openshift-opentelemetry-operator
       register: tools_openshift_otel_operator_csv
       until:
-        - tools_openshift_otel_operator_csv.resources |
-          ansible.builtin.selectattr("status.phase", "==", "Succeeded") |
-          ansible.builtin.length == 0
+        - tools_openshift_otel_operator_csv.resources | ansible.builtin.selectattr("status.phase", "==", "Succeeded") | ansible.builtin.length == 0
       retries: 10
       delay: 30
 

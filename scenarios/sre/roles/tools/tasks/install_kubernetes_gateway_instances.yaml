@@ -15,6 +15,28 @@
         name: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
     state: present
 
+- name: Create ConfigMap for Istio Gateway
+  kubernetes.core.k8s:
+    kubeconfig:
+    resource_definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}-options"
+        namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+      data:
+        deployment: |
+          spec:
+            template:
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                      - matchExpressions:
+                        - key: node-role.itbench.io/sandbox
+                          operator: DoesNotExist
+
 - name: Create Istio implemented Gateway
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
@@ -25,6 +47,11 @@
         name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}"
         namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
       spec:
+        infrastructure:
+          parametersRef:
+            group: ""
+            kind: ConfigMap
+            name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}-options"
         gatewayClassName: istio
         listeners:
           - name: http

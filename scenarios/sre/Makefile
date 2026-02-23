@@ -59,11 +59,6 @@ else
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools"
 endif
 
-.PHONY: remove-tools-crds
-remove-tools-crds: ## Removes all the observability and fault tools custom resource definitions from cluster
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_tools.yaml --tags "uninstall_tools" \
-		--extra-vars "remove_crds=true"
-
 .PHONY: deploy-applications
 deploy-applications: ## Deploys the applications to cluster
 ifdef SCENARIO_NUMBER
@@ -145,6 +140,10 @@ test-unit-agent: ## Runs agent access unit tests
 .PHONY: test-unit-faults
 test-unit-faults: ## Runs fault injection unit tests
 	cd roles/faults && uv run molecule test --all --report --command-borders
+
+.PHONY: test-unit-tools
+test-unit-tools: ## Runs tool installation unit tests
+	cd roles/tools && uv run molecule test --all --report --command-borders
 
 .PHONY: test-unit-waiters
 test-unit-waiters: ## Runs waiter unit tests

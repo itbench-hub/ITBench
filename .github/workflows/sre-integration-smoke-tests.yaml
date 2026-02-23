@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  bookinfo:
+  book-info:
     name: Istio Book Info Smoke Tests
     needs:
       - istio
@@ -49,6 +49,10 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
+          cat <<EOF > scenarios/sre/group_vars/environment/tools.yaml
+          ---
+          tools:
+            sre: true
           cat <<EOF > scenarios/sre/group_vars/environment/applications.yaml
           ---
           applications:
@@ -63,326 +67,8 @@ jobs:
       - name: Run uninstallation smoke test
         run: |
           make -C scenarios/sre undeploy-applications
-  chaos-mesh:
-    name: Chaos Mesh Smoke Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
-      - uses: actions/setup-go@v6.2.0
-        with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.18.6
-      - name: Create Kind cluster
-        run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
-      - name: Install project dependencies
-        run: |
-          make -C scenarios/sre deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/chaos-mesh.yaml scenarios/sre/group_vars/environment/tools.yaml
-      - name: Run installation smoke test
-        run: |
-          make -C scenarios/sre deploy-tools
-      - name: Run uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-tools
-      - name: Run remove custom resource definitions
-        run: |
-          make -C scenarios/sre remove-tools-crds
-  clickhouse:
-    name: Alinity Clickhouse Smoke Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
-      - uses: actions/setup-go@v6.2.0
-        with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.18.6
-      - name: Create Kind cluster
-        run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C scenarios/sre/dev/local_cluster run-service-provider &
-      - name: Install project dependencies
-        run: |
-          make -C scenarios/sre deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/clickhouse.yaml scenarios/sre/group_vars/environment/tools.yaml
-      - name: Run installation smoke test
-        run: |
-          make -C scenarios/sre deploy-tools
-      - name: Run uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-tools
-      - name: Run remove custom resource definitions
-        run: |
-          make -C scenarios/sre remove-tools-crds
-  istio:
-    name: Istio Smoke Tests
-    runs-on: ubuntu-24.04
-    needs:
-      - clickhouse
-      - jaeger
-      - kubernetes-topology-monitor
-      - opencost
-      - prometheus
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
-      - uses: actions/setup-go@v6.2.0
-        with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.18.6
-      - name: Create Kind cluster
-        run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C scenarios/sre/dev/local_cluster run-service-provider &
-      - name: Install project dependencies
-        run: |
-          make -C scenarios/sre deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/istio.yaml scenarios/sre/group_vars/environment/tools.yaml
-      - name: Run installation smoke test
-        run: |
-          make -C scenarios/sre deploy-tools
-      - name: Run uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-tools
-      - name: Run remove custom resource definitions
-        run: |
-          make -C scenarios/sre remove-tools-crds
-  jaeger:
-    name: Jaeger Smoke Tests
-    runs-on: ubuntu-24.04
-    needs:
-      - opentelemetry
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
-      - uses: actions/setup-go@v6.2.0
-        with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.18.6
-      - name: Create Kind cluster
-        run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C scenarios/sre/dev/local_cluster run-service-provider &
-      - name: Install project dependencies
-        run: |
-          make -C scenarios/sre deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/jaeger.yaml scenarios/sre/group_vars/environment/tools.yaml
-      - name: Run installation smoke test
-        run: |
-          make -C scenarios/sre deploy-tools
-      - name: Run data recorder installation smoke test
-        run: |
-          make -C scenarios/sre deploy-recorders
-      - name: Run data recorder uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-recorders
-      - name: Run uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-tools
-      - name: Run remove custom resource definitions
-        run: |
-          make -C scenarios/sre remove-tools-crds
-  kubernetes-metrics-server:
-    name: Kubernetes Metrics Server Smoke Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
-      - uses: actions/setup-go@v6.2.0
-        with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.18.6
-      - name: Create Kind cluster
-        run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
-      - name: Install project dependencies
-        run: |
-          make -C scenarios/sre deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/kubernetes-metrics-server.yaml scenarios/sre/group_vars/environment/tools.yaml
-      - name: Run installation smoke test
-        run: |
-          make -C scenarios/sre deploy-tools
-      - name: Run uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-tools
-      - name: Run remove custom resource definitions
-        run: |
-          make -C scenarios/sre remove-tools-crds
-  kubernetes-topology-monitor:
-    name: Kubernetes Topology Monitor Smoke Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
-      - uses: actions/setup-go@v6.2.0
-        with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.18.6
-      - name: Create Kind cluster
-        run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C scenarios/sre/dev/local_cluster run-service-provider &
-      - name: Install project dependencies
-        run: |
-          make -C scenarios/sre deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/kubernetes-topology-monitor.yaml scenarios/sre/group_vars/environment/tools.yaml
-      - name: Run installation smoke test
-        run: |
-          make -C scenarios/sre deploy-tools
-      - name: Run data recorder installation smoke test
-        run: |
-          make -C scenarios/sre deploy-recorders
-      - name: Run data recorder uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-recorders
-      - name: Run uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-tools
-      - name: Run remove custom resource definitions
-        run: |
-          make -C scenarios/sre remove-tools-crds
-  opencost:
-    name: OpenCost Smoke Tests
-    needs:
-      - prometheus
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
-      - uses: actions/setup-go@v6.2.0
-        with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.18.6
-      - name: Create Kind cluster
-        run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C scenarios/sre/dev/local_cluster run-service-provider &
-      - name: Install project dependencies
-        run: |
-          make -C scenarios/sre deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/opencost.yaml scenarios/sre/group_vars/environment/tools.yaml
-      - name: Run installation smoke test
-        run: |
-          make -C scenarios/sre deploy-tools
-      - name: Run uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-tools
-      - name: Run remove custom resource definitions
-        run: |
-          make -C scenarios/sre remove-tools-crds
-  opentelemetry:
-    name: OpenTelemetry Collector Smoke Tests
-    needs:
-      - clickhouse
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
-      - uses: actions/setup-go@v6.2.0
-        with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.18.6
-      - name: Create Kind cluster
-        run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C scenarios/sre/dev/local_cluster run-service-provider &
-      - name: Install project dependencies
-        run: |
-          make -C scenarios/sre deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/opentelemetry.yaml scenarios/sre/group_vars/environment/tools.yaml
-      - name: Run installation smoke test
-        run: |
-          make -C scenarios/sre deploy-tools
-      - name: Run uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-tools
-      - name: Run remove custom resource definitions
-        run: |
-          make -C scenarios/sre remove-tools-crds
   otel-demo:
     name: OpenTelemetry Demo (Astronomy Shop) Smoke Tests
-    needs:
-      - clickhouse
-      - jaeger
-      - prometheus
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6.0.2
@@ -408,6 +94,10 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
+          cat <<EOF > scenarios/sre/group_vars/environment/tools.yaml
+          ---
+          tools:
+            sre: true
           cat <<EOF > scenarios/sre/group_vars/environment/applications.yaml
           ---
           applications:
@@ -415,61 +105,16 @@ jobs:
           EOF
       - name: Install tools
         run: |
-          SCENARIO_NUMBER=1 make -C scenarios/sre deploy-tools
+          make -C scenarios/sre deploy-tools
       - name: Run installation smoke test
         run: |
           make -C scenarios/sre deploy-applications
       - name: Run uninstallation smoke test
         run: |
           make -C scenarios/sre undeploy-applications
-  prometheus:
-    name: Prometheus Smoke Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
-      - uses: actions/setup-go@v6.2.0
-        with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
-      - uses: azure/setup-helm@v4.3.1
-        with:
-          version: v3.18.6
-      - name: Create Kind cluster
-        run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C scenarios/sre/dev/local_cluster run-service-provider &
-      - name: Install project dependencies
-        run: |
-          make -C scenarios/sre deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-          mv scenarios/sre/tests/files/prometheus.yaml scenarios/sre/group_vars/environment/tools.yaml
-      - name: Run installation smoke test
-        run: |
-          make -C scenarios/sre deploy-tools
-      - name: Run data recorder installation smoke test
-        run: |
-          make -C scenarios/sre deploy-recorders
-      - name: Run data recorder uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-recorders
-      - name: Run uninstallation smoke test
-        run: |
-          make -C scenarios/sre undeploy-tools
-      - name: Run remove custom resource definitions
-        run: |
-          make -C scenarios/sre remove-tools-crds
   sre-scenario-1:
     name: SRE Scenario 1 Smoke Test
     needs:
-      - kubernetes-topology-monitor
-      - opentelemetry
       - otel-demo
     runs-on: ubuntu-24.04
     steps:
@@ -511,8 +156,6 @@ jobs:
   sre-scenario-3:
     name: SRE Scenario 3 Smoke Test
     needs:
-      - kubernetes-topology-monitor
-      - opentelemetry
       - otel-demo
     runs-on: ubuntu-24.04
     steps:
@@ -554,9 +197,6 @@ jobs:
   sre-scenario-26:
     name: SRE Scenario 26 Smoke Test
     needs:
-      - chaos-mesh
-      - kubernetes-topology-monitor
-      - opentelemetry
       - otel-demo
     runs-on: ubuntu-24.04
     steps:
@@ -598,9 +238,6 @@ jobs:
   sre-scenario-41:
     name: SRE Scenario 41 Smoke Test
     needs:
-      - chaos-mesh
-      - kubernetes-topology-monitor
-      - opentelemetry
       - otel-demo
     runs-on: ubuntu-24.04
     steps:
@@ -642,9 +279,7 @@ jobs:
   sre-scenario-47:
     name: SRE Scenario 47 Smoke Test
     needs:
-      - kubernetes-topology-monitor
-      - prometheus
-      - bookinfo
+      - book-info
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6.0.2
@@ -685,9 +320,7 @@ jobs:
   sre-scenario-50:
     name: SRE Scenario 50 Smoke Test
     needs:
-      - kubernetes-topology-monitor
-      - prometheus
-      - bookinfo
+      - book-info
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6.0.2
@@ -728,10 +361,6 @@ jobs:
   finops-incident-38:
     name: FinOps Incident 38 Smoke Test
     needs:
-      - kubernetes-metrics-server
-      - kubernetes-topology-monitor
-      - opentelemetry
-      - opencost
       - otel-demo
     runs-on: ubuntu-24.04
     steps:

@@ -1,0 +1,25 @@
+---
+- name: Install SRE tools
+  hosts:
+    - environment
+  tasks:
+    - name: Import cluster role to set platform and provider variables
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: false
+
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+        tools_configuration:
+          sre:
+            enabled: true

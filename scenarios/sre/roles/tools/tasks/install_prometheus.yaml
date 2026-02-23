@@ -34,8 +34,31 @@
             enabled: false
           grafana:
             enabled: false
+          prometheusOperator:
+            admissionWebhooks:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: node-role.itbench.io/sandbox
+                            operator: DoesNotExist
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.itbench.io/sandbox
+                          operator: DoesNotExist
           prometheus:
             prometheusSpec:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: node-role.itbench.io/sandbox
+                            operator: DoesNotExist
               podMonitorNamespaceSelector:
                 matchLabels:
                   "prometheus.itbench.io/monitor": "true"

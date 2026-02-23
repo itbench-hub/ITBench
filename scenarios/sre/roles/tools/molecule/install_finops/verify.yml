@@ -1,0 +1,139 @@
+---
+- name: Verify that FinOps tools were installed and SRE-specific tools were not
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve Prometheus namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: prometheus
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_prometheus_namespace
+
+    - name: Validate that Prometheus namespace exists
+      ansible.builtin.assert:
+        that:
+          - tools_prometheus_namespace.resources | ansible.builtin.length == 1
+        fail_msg: Prometheus namespace not found. Installation failed.
+        success_msg: Prometheus namespace found.
+
+    - name: Retrieve ClickHouse Operator namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: clickhouse-operator
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_clickhouse_namespace
+
+    - name: Validate that ClickHouse Operator namespace exists
+      ansible.builtin.assert:
+        that:
+          - tools_clickhouse_namespace.resources | ansible.builtin.length == 1
+        fail_msg: ClickHouse Operator namespace not found. Installation failed.
+        success_msg: ClickHouse Operator namespace found.
+
+    - name: Retrieve OpenSearch namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: opensearch
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_opensearch_namespace
+
+    - name: Validate that OpenSearch namespace exists
+      ansible.builtin.assert:
+        that:
+          - tools_opensearch_namespace.resources | ansible.builtin.length == 1
+        fail_msg: OpenSearch namespace not found. Installation failed.
+        success_msg: OpenSearch namespace found.
+
+    - name: Retrieve OpenTelemetry Operator namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: opentelemetry-operator
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_opentelemetry_namespace
+
+    - name: Validate that OpenTelemetry Operator namespace exists
+      ansible.builtin.assert:
+        that:
+          - tools_opentelemetry_namespace.resources | ansible.builtin.length == 1
+        fail_msg: OpenTelemetry Operator namespace not found. Installation failed.
+        success_msg: OpenTelemetry Operator namespace found.
+
+    - name: Retrieve Kubernetes Metrics Server namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: kube-metrics-server
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_metrics_server_namespace
+
+    - name: Validate that Kubernetes Metrics Server namespace exists
+      ansible.builtin.assert:
+        that:
+          - tools_metrics_server_namespace.resources | ansible.builtin.length == 1
+        fail_msg: Kubernetes Metrics Server namespace not found. Installation failed.
+        success_msg: Kubernetes Metrics Server namespace found.
+
+    - name: Retrieve Istio System namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: istio-system
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_istio_namespace
+
+    - name: Validate that Istio System namespace exists
+      ansible.builtin.assert:
+        that:
+          - tools_istio_namespace.resources | ansible.builtin.length == 1
+        fail_msg: Istio System namespace not found. Installation failed.
+        success_msg: Istio System namespace found.
+
+    - name: Retrieve OpenCost namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: opencost
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_opencost_namespace
+
+    - name: Validate that OpenCost namespace exists
+      ansible.builtin.assert:
+        that:
+          - tools_opencost_namespace.resources | ansible.builtin.length == 1
+        fail_msg: OpenCost namespace not found. Installation failed.
+        success_msg: OpenCost namespace found.
+
+    - name: Retrieve Chaos Mesh namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: chaos-mesh
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_chaos_mesh_namespace
+
+    - name: Validate that Chaos Mesh namespace does NOT exist
+      ansible.builtin.assert:
+        that:
+          - tools_chaos_mesh_namespace.resources | ansible.builtin.length == 0
+        fail_msg: Chaos Mesh namespace found. Installation failed.
+        success_msg: Chaos Mesh namespace not found.
+
+    - name: Retrieve Kubernetes Topology Monitor namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: kube-topology-monitor
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_topology_monitor_namespace
+
+    - name: Validate that Kubernetes Topology Monitor namespace does NOT exist
+      ansible.builtin.assert:
+        that:
+          - tools_topology_monitor_namespace.resources | ansible.builtin.length == 0
+        fail_msg: Kubernetes Topology Monitor namespace found. Installation failed.
+        success_msg: Kubernetes Topology Monitor namespace not found.
