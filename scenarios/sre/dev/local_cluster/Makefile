@@ -44,4 +44,4 @@ destroy-awx-cluster: ## Deletes the local development AWX Kind cluster
 
 .PHONY: run-service-provider
 run-service-provider: ## Runs Cloud Provider Kind for Load Balancer services
-	$(GO) tool cloud-provider-kind --gateway-channel disabled
+	$(GO) tool cloud-provider-kind --enable-lb-port-mapping --gateway-channel disabled

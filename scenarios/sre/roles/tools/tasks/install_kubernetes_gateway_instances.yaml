@@ -22,7 +22,7 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: Gateway
       metadata:
-        name: istio-main
+        name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}"
         namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
       spec:
         gatewayClassName: istio
@@ -138,6 +138,10 @@
           - backendRefs:
               - name: topology-monitor-svc
                 port: 8080
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /topology/
             filters:
               - type: ResponseHeaderModifier
                 responseHeaderModifier:
