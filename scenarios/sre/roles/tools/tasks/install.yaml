@@ -90,5 +90,37 @@
     - name: Import OpenShift Route installation tasks
       ansible.builtin.import_tasks:
         file: install_openshift_routes.yaml
+      vars:
+        route_response_headers:
+          - name: Content-Security-Policy
+            action:
+              type: Set
+              set:
+                value: "img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; form-action 'none'; frame-ancestors 'none'"
+          - name: Cross-Origin-Resource-Policy
+            action:
+              type: Set
+              set:
+                value: same-origin
+          - name: Referrer-Policy
+            action:
+              type: Set
+              set:
+                value: strict-origin-when-cross-origin
+          - name: X-Content-Type-Options
+            action:
+              type: Set
+              set:
+                value: nosniff
+          - name: X-Frame-Options
+            action:
+              type: Set
+              set:
+                value: DENY
+          - name: X-XSS-Protection
+            action:
+              type: Set
+              set:
+                value: "0"
       when:
         - tools_cluster.platform == "openshift"
