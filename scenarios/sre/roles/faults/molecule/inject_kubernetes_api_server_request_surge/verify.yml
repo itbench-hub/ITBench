@@ -1,0 +1,82 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Validate that ServiceAccount was created
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: ServiceAccount
+        name: workload-scanner
+        namespace: kubernetes-api-server-request-surge-test
+      register: faults_service_account
+
+    - name: Validate ServiceAccount exists
+      ansible.builtin.assert:
+        that:
+          - faults_service_account.resources | ansible.builtin.length == 1
+        fail_msg: ServiceAccount not found. Fault injection failed.
+        success_msg: ServiceAccount found.
+
+    - name: Validate that ClusterRole was created
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        name: workload-scanner
+      register: faults_cluster_role
+
+    - name: Validate ClusterRole exists
+      ansible.builtin.assert:
+        that:
+          - faults_cluster_role.resources | ansible.builtin.length == 1
+        fail_msg: ClusterRole not found. Fault injection failed.
+        success_msg: ClusterRole found.
+
+    - name: Validate that ClusterRoleBinding was created
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        name: workload-scanner
+      register: faults_cluster_role_binding
+
+    - name: Validate ClusterRoleBinding exists
+      ansible.builtin.assert:
+        that:
+          - faults_cluster_role_binding.resources | ansible.builtin.length == 1
+        fail_msg: ClusterRoleBinding not found. Fault injection failed.
+        success_msg: ClusterRoleBinding found.
+
+    - name: Validate that ConfigMap was created
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: ConfigMap
+        name: generator-script
+        namespace: kubernetes-api-server-request-surge-test
+      register: faults_config_map
+
+    - name: Validate ConfigMap exists
+      ansible.builtin.assert:
+        that:
+          - faults_config_map.resources | ansible.builtin.length == 1
+        fail_msg: ConfigMap not found. Fault injection failed.
+        success_msg: ConfigMap found.
+
+    - name: Validate that Deployment was created
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: workload-scanner
+        namespace: kubernetes-api-server-request-surge-test
+      register: faults_deployment
+
+    - name: Validate Deployment exists
+      ansible.builtin.assert:
+        that:
+          - faults_deployment.resources | ansible.builtin.length == 1
+        fail_msg: Deployment not found. Fault injection failed.
+        success_msg: Deployment found.

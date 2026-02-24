@@ -1893,6 +1893,202 @@
     },
     {
         "alerts": [
+            "HighRequestLatency"
+        ],
+        "category": "sre",
+        "complexity": "low",
+        "description": "This scenario simulates Kubernetes API server a surge in request during OpenTelemetry Demo's execution.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "Namespace",
+                                "metadata": {
+                                    "name": "otel-demo"
+                                }
+                            },
+                            "loadGenerator": {
+                                "options": {
+                                    "requestsPerSecond": 1000
+                                }
+                            }
+                        },
+                        "id": "kubernetes-api-server-request-surge"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 51,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment workload-scanner",
+                            "text": "Manually edit the manifest and lower the request rate."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo delete deployment workload-scanner",
+                            "text": "Delete the injected load generator deployment."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [
+            "KubePodNotReady"
+        ],
+        "category": "sre",
+        "complexity": "low",
+        "description": "This scenario simulates OpenTelemetry Demo being unable to scale up with load is surging.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "checking",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "insufficient-kubernetes-resource-quota"
+                    },
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "loadGeneratorFloodHomepage",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "load-generator",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "args": {
+                        "autoscaling": {
+                            "kubernetes": {
+                                "hpa": true
+                            }
+                        }
+                    },
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 52,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit resourcequota memory",
+                            "text": "Manually edit the manifest(s) and increase the values of the resource quota(s)."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo delete resourcequota memory",
+                            "text": "Delete the offending resource quota(s) if it is no longer required."
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (loadGeneratorFloodHomepage) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [
             "KubePodNotReady"
         ],
         "category": "sre",
@@ -1961,6 +2157,172 @@
         ],
         "tags": [
             "Deployment"
+        ]
+    },
+    {
+        "alerts": [],
+        "category": "sre",
+        "complexity": "low",
+        "description": "This scenario simulates Kubernetes API server being stressed during OpenTelemetry Demo's execution.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "api-server-memory-stress",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "stressChaos": {
+                                    "duration": "55s",
+                                    "mode": "one",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "component": "kube-apiserver"
+                                        },
+                                        "namespaces": [
+                                            "kube-system"
+                                        ]
+                                    },
+                                    "stressors": {
+                                        "memory": {
+                                            "size": "6GB",
+                                            "workers": 4
+                                        }
+                                    }
+                                },
+                                "type": "StressChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 54,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [],
+        "category": "sre",
+        "complexity": "low",
+        "description": "This scenario simulates Kubernetes API server experiencing latency during OpenTelemetry Demo's execution.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "api-server-memory-stress",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "ioChaos": {
+                                    "action": "latency",
+                                    "delay": "200ms",
+                                    "duration": "5m",
+                                    "mode": "all",
+                                    "percent": 50,
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "component": "etcd"
+                                        },
+                                        "namespaces": [
+                                            "kube-system"
+                                        ]
+                                    },
+                                    "volumePath": "/var/lib/etcd"
+                                },
+                                "type": "IOChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 55,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get iochaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
         ]
     },
     {

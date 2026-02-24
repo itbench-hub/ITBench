@@ -1,0 +1,37 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-52
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: checking
+        namespace: otel-demo
+    - apiVersion: v1
+      kind: ResourceQuota
+      metadata:
+        name: strict-resource-quota
+        namespace: otel-demo
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: flagd-config
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo edit resourcequota memory
+            text: Manually edit the manifest(s) and increase the values of the resource quota(s).
+      - steps:
+          - command: kubectl -n otel-demo delete resourcequota memory
+            text: Delete the offending resource quota(s) if it is no longer required.
+    - - steps:
+          - command: kubectl -n otel-demo edit configmap flagd-config
+            text: Disable the feature flag (loadGeneratorFloodHomepage) by manually editing the contents of the ConfigMap
+          - command: kubectl -n otel-demo rollout restart deployment
+            text: Restart all of the Deployment workloads.

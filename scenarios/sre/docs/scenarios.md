@@ -35,7 +35,11 @@ The following scenarios are being open-sourced at this time and their implementa
 | [48](#Scenario-48) | sre | medium | Kubernetes | Deployment, Networking |
 | [49](#Scenario-49) | sre | medium | Kubernetes | Deployment, Performance |
 | [50](#Scenario-50) | sre | medium | Kubernetes | Deployment, Networking |
+| [51](#Scenario-51) | sre | low | Kubernetes | Deployment, Performance |
+| [52](#Scenario-52) | sre | low | Kubernetes | Deployment, Performance |
 | [53](#Scenario-53) | sre | medium | Kubernetes | Deployment |
+| [54](#Scenario-54) | sre | low | Kubernetes | Deployment, Performance |
+| [55](#Scenario-55) | sre | low | Kubernetes | Deployment, Performance |
 | [102](#Scenario-102) | sre | medium | Kubernetes | Deployment, Performance |
 | [105](#Scenario-105) | sre | medium | Kubernetes | Deployment, Performance |
 
@@ -45,19 +49,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 4 | 25 |
+| 4 | 29 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 27 |
+| 2 | 31 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 10 | 18 | 1 |
+| 14 | 18 | 1 |
 
 ## Detailed Summary of Scenarios
 
@@ -884,6 +888,77 @@ OR
 ```shell
 kubectl edit namespace book-info
 ```
+### Scenario 51
+
+**Description:** This scenario simulates Kubernetes API server a surge in request during OpenTelemetry Demo's execution.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Kubernetes API Server Request Surge](./faults.md#Kubernetes-API-Server-Request-Surge)
+
+**Solution:**
+
+Step 1
+
+- Manually edit the manifest and lower the request rate.
+
+```shell
+kubectl -n otel-demo edit deployment workload-scanner
+```
+
+OR
+
+- Delete the injected load generator deployment.
+
+```shell
+kubectl -n otel-demo delete deployment workload-scanner
+```
+### Scenario 52
+
+**Description:** This scenario simulates OpenTelemetry Demo being unable to scale up with load is surging.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Insufficient Kubernetes Resource Quota](./faults.md#Insufficient-Kubernetes-Resource-Quota)
+- [OpenTelemetry Demo Feature Flag](./faults.md#OpenTelemetry-Demo-Feature-Flag)
+
+**Solution:**
+
+Step 1
+
+- Manually edit the manifest(s) and increase the values of the resource quota(s).
+
+```shell
+kubectl -n otel-demo edit resourcequota memory
+```
+
+OR
+
+- Delete the offending resource quota(s) if it is no longer required.
+
+```shell
+kubectl -n otel-demo delete resourcequota memory
+```
+Step 2
+
+- Disable the feature flag (loadGeneratorFloodHomepage) by manually editing the contents of the ConfigMap
+
+```shell
+kubectl -n otel-demo edit configmap flagd-config
+```
+- Restart all of the Deployment workloads.
+
+```shell
+kubectl -n otel-demo rollout restart deployment
+```
 ### Scenario 53
 
 **Description:** This scenario simulates BookInfo's `reviews-v3` service being unable to start due to lack of persistent storage.
@@ -920,6 +995,70 @@ OR
 
 ```shell
 kubectl -n book-info edit deployment reviews-v3
+```
+### Scenario 54
+
+**Description:** This scenario simulates Kubernetes API server being stressed during OpenTelemetry Demo's execution.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Scheduled Chaos Mesh Experiment](./faults.md#Scheduled-Chaos-Mesh-Experiment)
+
+**Solution:**
+
+Step 1
+
+- Annotate the schedule to pause the active experiment.
+
+```shell
+kubectl -n chaos-mesh annotate schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'
+```
+- Retrieve the associated experiment managed by the schedule.
+
+```shell
+kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'
+```
+- Delete the retrieved experiement after it has entered the `Paused` state.
+- Delete the schedule.
+
+```shell
+kubectl -n chaos-mesh delete schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'
+```
+### Scenario 55
+
+**Description:** This scenario simulates Kubernetes API server experiencing latency during OpenTelemetry Demo's execution.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Scheduled Chaos Mesh Experiment](./faults.md#Scheduled-Chaos-Mesh-Experiment)
+
+**Solution:**
+
+Step 1
+
+- Annotate the schedule to pause the active experiment.
+
+```shell
+kubectl -n chaos-mesh annotate schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'
+```
+- Retrieve the associated experiment managed by the schedule.
+
+```shell
+kubectl -n chaos-mesh get iochaos --selector='experiment.chaos-mesh.org/pause=true'
+```
+- Delete the retrieved experiement after it has entered the `Paused` state.
+- Delete the schedule.
+
+```shell
+kubectl -n chaos-mesh delete schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'
 ```
 ### Scenario 102
 

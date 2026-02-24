@@ -1,0 +1,33 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-51
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: otel-demo
+            loadGenerator:
+              options:
+                requestsPerSecond: 1000
+          id: kubernetes-api-server-request-surge
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: false
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

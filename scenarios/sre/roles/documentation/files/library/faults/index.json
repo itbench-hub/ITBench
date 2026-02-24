@@ -762,6 +762,110 @@
     },
     {
         "alerts": {
+            "goldenSignal": [
+                "HighRequestLatency"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Namespace"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    },
+                    "loadGenerator": {
+                        "properties": {
+                            "options": {
+                                "properties": {
+                                    "requestsPerSecond": {
+                                        "minimum": 1,
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "requestsPerSecond"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "options"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "loadGenerator"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault injects a workload which causes a surge in requests to the API server, causing performance degredation.",
+        "expectation": "Workloads will be to experience high latency and new workloads may not be able to be scheduled.",
+        "id": "kubernetes-api-server-request-surge",
+        "name": "Kubernetes API Server Request Surge",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/overview/components/",
+            "https://kubernetes.io/docs/concepts/architecture/#kube-apiserver"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} edit deployment workload-scanner",
+                            "text": "Manually edit the manifest and lower the request rate."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} delete deployment workload-scanner",
+                            "text": "Delete the injected load generator deployment."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": {
             "application": [
                 "KubeHpaMaxedOut"
             ]
