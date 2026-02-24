@@ -1,0 +1,24 @@
+---
+# Validates individual components for partial resource definitions
+
+- name: Warn about component with partial resource definitions
+  ansible.builtin.debug:
+    msg: |-
+      ⚠️  WARNING: Scenario {{ scenario.id }} - Component '{{ component.key }}'
+
+      The component defines resources but is missing {% if component.value.resources.requests is not defined %}'requests'{% endif %}{% if component.value.resources.requests is not defined and component.value.resources.limits is not defined %} and {% endif %}{% if component.value.resources.limits is not defined %}'limits'{% endif %}.
+
+      Current configuration:
+      {{ component.value.resources | to_nice_yaml(indent=2) | indent(2) }}
+
+      ⚠️  Impact: This will REPLACE the entire upstream 'resources' object from the Helm chart.
+                 Any upstream defaults for requests or limits will be LOST.
+
+      💡 Recommendation: Define both 'requests' and 'limits' for predictable behavior.
+  loop: "{{ app.options.components | default({}) | dict2items }}"
+  loop_control:
+    loop_var: component
+    label: "{{ component.key }}"
+  when:
+    - component.value.resources is defined
+    - (component.value.resources.requests is not defined) or (component.value.resources.limits is not defined)
