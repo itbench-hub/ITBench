@@ -36,13 +36,11 @@ jobs:
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.0.0
-      - uses: astral-sh/setup-uv@v7.3.1
-        with:
-          working-directory: scenarios/sre
+        uses: docker/setup-buildx-action@v3.12.0
+      - uses: astral-sh/setup-uv@v7.3.0
       - name: Install project dependencies
         run: |
-          make -C scenarios/sre deps
+          make deps
       - name: Create AWX Execution Environment image context
         run: |
           uv run ansible-builder create --output-filename Dockerfile
