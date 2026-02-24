@@ -24,12 +24,6 @@
         wait: true
         wait_timeout: 600
 
-    - name: Append Prometheus Operator related CRDs to list
-      ansible.builtin.set_fact:
-        tools_custom_resource_definitions: "{{ tools_custom_resource_definitions + crds }}"
-      vars:
-        crds: "{{ tools_crds.resources | selectattr('spec.group', '==', 'monitoring.coreos.com') }}"
-
 - name: Disable OpenShift User Workload Monitoring
   when:
     - tools_cluster.platform == "openshift"
