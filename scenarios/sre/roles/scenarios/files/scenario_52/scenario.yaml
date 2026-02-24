@@ -1,0 +1,64 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-52
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+      options:
+        autoscaling:
+          kubernetes:
+            hpa: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: checking
+                namespace: otel-demo
+          id: insufficient-kubernetes-resource-quota
+        - args:
+            flag:
+              name: loadGeneratorFloodHomepage
+              state: "on"
+            kubernetesObject:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: flagd-config
+                namespace: otel-demo
+          id: opentelemetry-demo-feature-flag
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: flagd
+                  namespace: otel-demo
+            id: restart-kubernetes-workload
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: load-generator
+                  namespace: otel-demo
+            id: restart-kubernetes-workload
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: false
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

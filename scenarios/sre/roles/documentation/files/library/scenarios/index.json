@@ -1962,6 +1962,136 @@
             "KubePodNotReady"
         ],
         "category": "sre",
+        "complexity": "low",
+        "description": "This scenario simulates OpenTelemetry Demo being unable to scale up with load is surging.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "checking",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "insufficient-kubernetes-resource-quota"
+                    },
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "loadGeneratorFloodHomepage",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "load-generator",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "args": {
+                        "autoscaling": {
+                            "kubernetes": {
+                                "hpa": true
+                            }
+                        }
+                    },
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 52,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit resourcequota memory",
+                            "text": "Manually edit the manifest(s) and increase the values of the resource quota(s)."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo delete resourcequota memory",
+                            "text": "Delete the offending resource quota(s) if it is no longer required."
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (loadGeneratorFloodHomepage) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [
+            "KubePodNotReady"
+        ],
+        "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates BookInfo's `reviews-v3` service being unable to start due to lack of persistent storage.",
         "disruptions": [

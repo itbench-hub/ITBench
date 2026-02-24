@@ -36,6 +36,7 @@ The following scenarios are being open-sourced at this time and their implementa
 | [49](#Scenario-49) | sre | medium | Kubernetes | Deployment, Performance |
 | [50](#Scenario-50) | sre | medium | Kubernetes | Deployment, Networking |
 | [51](#Scenario-51) | sre | low | Kubernetes | Deployment, Performance |
+| [52](#Scenario-52) | sre | low | Kubernetes | Deployment, Performance |
 | [53](#Scenario-53) | sre | medium | Kubernetes | Deployment |
 | [54](#Scenario-54) | sre | low | Kubernetes | Deployment, Performance |
 | [55](#Scenario-55) | sre | low | Kubernetes | Deployment, Performance |
@@ -48,19 +49,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 4 | 28 |
+| 4 | 29 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 30 |
+| 2 | 31 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 13 | 18 | 1 |
+| 14 | 18 | 1 |
 
 ## Detailed Summary of Scenarios
 
@@ -915,6 +916,48 @@ OR
 
 ```shell
 kubectl -n otel-demo delete deployment workload-scanner
+```
+### Scenario 52
+
+**Description:** This scenario simulates OpenTelemetry Demo being unable to scale up with load is surging.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Insufficient Kubernetes Resource Quota](./faults.md#Insufficient-Kubernetes-Resource-Quota)
+- [OpenTelemetry Demo Feature Flag](./faults.md#OpenTelemetry-Demo-Feature-Flag)
+
+**Solution:**
+
+Step 1
+
+- Manually edit the manifest(s) and increase the values of the resource quota(s).
+
+```shell
+kubectl -n otel-demo edit resourcequota memory
+```
+
+OR
+
+- Delete the offending resource quota(s) if it is no longer required.
+
+```shell
+kubectl -n otel-demo delete resourcequota memory
+```
+Step 2
+
+- Disable the feature flag (loadGeneratorFloodHomepage) by manually editing the contents of the ConfigMap
+
+```shell
+kubectl -n otel-demo edit configmap flagd-config
+```
+- Restart all of the Deployment workloads.
+
+```shell
+kubectl -n otel-demo rollout restart deployment
 ```
 ### Scenario 53
 

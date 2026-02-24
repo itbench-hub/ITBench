@@ -773,6 +773,77 @@
       injectionIndex: 0
   tags: {{ documentation_faults["kubernetes-api-server-request-surge"].tags }}
 - category: sre
+  complexity: low
+  description: This scenario simulates OpenTelemetry Demo being unable to scale up with load is surging.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: checking
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: insufficient-kubernetes-resource-quota
+      - args:
+          flag:
+            name: loadGeneratorFloodHomepage
+            state: "on"
+          kubernetesObject:
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: flagd-config
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: opentelemetry-demo-feature-flag
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: flagd
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: restart-kubernetes-workload
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: load-generator
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: restart-kubernetes-workload
+  environment:
+    applications:
+      - args:
+          autoscaling:
+            kubernetes:
+              hpa: true
+        id: opentelemetry-demo
+  id: 52
+  platforms: {{
+        [
+          documentation_faults["insufficient-kubernetes-resource-quota"].platform,
+          documentation_faults["opentelemetry-demo-feature-flag"].platform
+        ] |
+        ansible.builtin.unique
+    }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+    - disruptionIndex: 0
+      injectionIndex: 1
+  tags:
+    {{
+      [
+        documentation_faults["insufficient-kubernetes-resource-quota"].tags,
+        documentation_faults["opentelemetry-demo-feature-flag"].tags
+      ] |
+      ansible.builtin.flatten |
+      ansible.builtin.unique
+    }}
+- category: sre
   complexity: medium
   description: This scenario simulates BookInfo's `reviews-v3` service being unable to start due to lack of persistent storage.
   disruptions:
