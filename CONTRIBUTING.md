@@ -11,8 +11,7 @@ ITBench-Scenarios accepts contributions through GitHub pull request.
 1. Install `pre-commit` to the repo. This only needs to be done once.
 
 ```shell
-uv run pre-commit install
-uv run pre-commit install --hook-type commit-msg --hook-type pre-push
+make pre-commit-hooks
 ```
 
 ## Committing Code
