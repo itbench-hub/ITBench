@@ -3,9 +3,14 @@
 components:
   accounting:
     replicas: {{ applications_otel_demo_configuration.accounting.replicas }}
+{% if applications_otel_demo_configuration.accounting.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.accounting.resources | to_nice_yaml | indent(6, first=True) }}
+{% else %}
     resources:
       limits:
         memory: 200Mi
+{% endif %}
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
@@ -15,64 +20,116 @@ components:
       runAsUser: 1654
   ad:
     replicas: {{ applications_otel_demo_configuration.ad.replicas }}
+{% if applications_otel_demo_configuration.ad.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.ad.resources | to_nice_yaml | indent(6, first=True) }}
+{% else %}
     resources:
       limits:
         memory: 512Mi
+{% endif %}
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
   cart:
     replicas: {{ applications_otel_demo_configuration.cart.replicas }}
+{% if applications_otel_demo_configuration.cart.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.cart.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
   checkout:
     replicas: {{ applications_otel_demo_configuration.checkout.replicas }}
+{% if applications_otel_demo_configuration.checkout.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.checkout.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
 {% if applications_cluster.platform == "openshift" %}
   currency:
+    replicas: {{ applications_otel_demo_configuration.currency.replicas }}
+
+{% if applications_otel_demo_configuration.currency.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.currency.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
 {% if applications_cluster.platform == "openshift" %}
   email:
+    replicas: {{ applications_otel_demo_configuration.email.replicas }}
+
+{% if applications_otel_demo_configuration.email.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.email.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
 {% if applications_cluster.platform == "openshift" %}
   flagd:
+    replicas: {{ applications_otel_demo_configuration.flagd.replicas }}
+
+{% if applications_otel_demo_configuration.flagd.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.flagd.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
   fraud-detection:
     replicas: {{ applications_otel_demo_configuration.fraud_detection.replicas }}
+{% if applications_otel_demo_configuration.fraud_detection.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.fraud_detection.resources | to_nice_yaml | indent(6, first=True) }}
+{% else %}
     resources:
       limits:
         memory: 512Mi
       requests:
         memory: 256Mi
+{% endif %}
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
   frontend:
     replicas: {{ applications_otel_demo_configuration.frontend.replicas }}
+{% if applications_otel_demo_configuration.frontend.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.frontend.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
 {% if applications_cluster.platform == "openshift" %}
   frontend-proxy:
+    replicas: {{ applications_otel_demo_configuration.frontend_proxy.replicas }}
+
+{% if applications_otel_demo_configuration.frontend_proxy.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.frontend_proxy.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
 {% if applications_cluster.platform == "openshift" %}
   image-provider:
+    replicas: {{ applications_otel_demo_configuration.image_provider.replicas }}
+
+{% if applications_otel_demo_configuration.image_provider.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.image_provider.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
@@ -80,16 +137,27 @@ components:
       runAsNonRoot: true
       runAsUser: 101
   kafka:
+    replicas: {{ applications_otel_demo_configuration.kafka.replicas }}
+{% if applications_otel_demo_configuration.kafka.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.kafka.resources | to_nice_yaml | indent(6, first=True) }}
+{% else %}
     resources:
       limits:
         memory: 1024Mi
       requests:
         memory: 512Mi
+{% endif %}
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
   load-generator:
+    replicas: {{ applications_otel_demo_configuration.load_generator.replicas }}
+{% if applications_otel_demo_configuration.load_generator.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.load_generator.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     envOverrides:
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
         value: |-
@@ -116,41 +184,102 @@ components:
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
+  llm:
+    replicas: {{ applications_otel_demo_configuration.llm.replicas }}
+{% if applications_otel_demo_configuration.llm.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.llm.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
 {% if applications_cluster.platform == "openshift" %}
   payment:
+    replicas: {{ applications_otel_demo_configuration.payment.replicas }}
+
+{% if applications_otel_demo_configuration.payment.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.payment.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
 {% if applications_cluster.platform == "openshift" %}
   postgresql:
+    replicas: {{ applications_otel_demo_configuration.postgresql.replicas }}
+
+{% if applications_otel_demo_configuration.postgresql.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.postgresql.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
   product-catalog:
+    replicas: {{ applications_otel_demo_configuration.product_catalog.replicas }}
+{% if applications_otel_demo_configuration.product_catalog.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.product_catalog.resources | to_nice_yaml | indent(6, first=True) }}
+{% else %}
     resources:
       limits:
         memory: 160Mi
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
+  product-reviews:
+    replicas: {{ applications_otel_demo_configuration.product_reviews.replicas }}
+{% if applications_otel_demo_configuration.product_reviews.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.product_reviews.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
 {% if applications_cluster.platform == "openshift" %}
   quote:
+    replicas: {{ applications_otel_demo_configuration.quote.replicas }}
+
+{% if applications_otel_demo_configuration.quote.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.quote.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
-{% if applications_cluster.platform == "openshift" %}
   recommendation:
+    replicas: {{ applications_otel_demo_configuration.recommendation.replicas }}
+{% if applications_otel_demo_configuration.recommendation.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.recommendation.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
+{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
 {% if applications_cluster.platform == "openshift" %}
   shipping:
+    replicas: {{ applications_otel_demo_configuration.shipping.replicas }}
+
+{% if applications_otel_demo_configuration.shipping.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.shipping.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
 {% if applications_cluster.platform == "openshift" %}
   valkey-cart:
+    replicas: {{ applications_otel_demo_configuration.valkey_cart.replicas }}
+
+{% if applications_otel_demo_configuration.valkey_cart.resources is defined %}
+    resources:
+{{ applications_otel_demo_configuration.valkey_cart.resources | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}

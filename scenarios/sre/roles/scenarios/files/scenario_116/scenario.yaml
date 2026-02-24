@@ -1,0 +1,77 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-116
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: valkey-cart-stress-chaos
+                namespace: chaos-mesh
+            scheduleSpec:
+              stressChaos:
+                duration: 55s
+                mode: all
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: valkey-cart
+                  namespaces:
+                    - otel-demo
+                  podPhaseSelectors:
+                    - Running
+                stressors:
+                  cpu:
+                    load: 50
+                    workers: 2
+                  memory:
+                    options:
+                      - --vm-hang
+                      - "0"
+                    size: 128MB
+                    workers: 4
+              type: StressChaos
+          id: scheduled-chaos-mesh-experiment
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: valkey-cart-io-chaos
+                namespace: chaos-mesh
+            scheduleSpec:
+              ioChaos:
+                action: latency
+                delay: 750ms
+                duration: 55s
+                mode: all
+                percent: 80
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: valkey-cart
+                  namespaces:
+                    - otel-demo
+                  podPhaseSelectors:
+                    - Running
+                volumePath: /data
+              type: IOChaos
+          id: scheduled-chaos-mesh-experiment
+  tools:
+    chaosEngineering:
+      chaosMesh:
+        enabled: true
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true
