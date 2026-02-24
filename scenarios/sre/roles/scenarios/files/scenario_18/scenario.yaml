@@ -1,4 +1,3 @@
----
 apiVersion: itbench.io/v2
 kind: Scenario
 metadata:
@@ -8,25 +7,25 @@ spec:
     opentelemetryDemo:
       enabled: true
   faults:
-    - injections:
-        - args:
-            kubernetesObject:
-              apiVersion: chaos-mesh.org/v1alpha1
-              kind: Schedule
-              metadata:
-                name: otel-demo-product-catalog-network-delay
-                namespace: chaos-mesh
-            scheduleSpec:
-              podChaos:
-                action: pod-failure
-                mode: all
-                selector:
-                  labelSelectors:
-                    app.kubernetes.io/component: checkout
-                  namespaces:
-                    - otel-demo
-              type: PodChaos
-          id: scheduled-chaos-mesh-experiment
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: chaos-mesh.org/v1alpha1
+          kind: Schedule
+          metadata:
+            name: otel-demo-product-catalog-network-delay
+            namespace: chaos-mesh
+        scheduleSpec:
+          podChaos:
+            action: pod-failure
+            mode: all
+            selector:
+              labelSelectors:
+                app.kubernetes.io/component: checkout
+              namespaces:
+              - otel-demo
+          type: PodChaos
+      id: scheduled-chaos-mesh-experiment
   tools:
     sre:
       enabled: true
