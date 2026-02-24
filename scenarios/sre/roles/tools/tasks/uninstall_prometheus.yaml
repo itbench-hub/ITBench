@@ -6,36 +6,46 @@
     - name: Uninstall Prometheus Operator and Prometheus
       kubernetes.core.helm:
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_helm_releases.prometheus.name }}"
-        release_namespace: "{{ tools_helm_releases.prometheus.namespace }}"
+        release_name: "{{ tools_managers.prometheus.helm.release.name }}"
+        release_namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
         release_state: absent
         wait: true
         timeout: "600s"
 
-    - name: Delete the release namespace
+    - name: Delete Namespace for Prometheus
       kubernetes.core.k8s:
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           api_version: v1
           kind: Namespace
           metadata:
-            name: "{{ tools_helm_releases.prometheus.namespace }}"
+            name: "{{ tools_managers.prometheus.kubernetes.namespace }}"
         state: absent
         wait: true
         wait_timeout: 600
-
-    - name: Append Prometheus Operator related CRDs to list
-      ansible.builtin.set_fact:
-        tools_custom_resource_definitions: "{{ tools_custom_resource_definitions + crds }}"
-      vars:
-        crds: "{{ tools_crds.resources | selectattr('spec.group', '==', 'monitoring.coreos.com') }}"
 
 - name: Disable OpenShift User Workload Monitoring
   when:
     - tools_cluster.platform == "openshift"
   block:
-    - name: Disable OpenShift user workload monitoring
+    - name: Delete User Workload ConfigMap
       kubernetes.core.k8s:
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: user-workload-monitoring-config
+            namespace: openshift-user-workload-monitoring
         state: absent
-        src: files/openshift/user-workload-monitoring-config.yaml
+
+    - name: Delete Cluster Monitoring ConfigMap
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: cluster-monitoring-config
+            namespace: openshift-monitoring
+        state: absent

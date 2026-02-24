@@ -1,5 +1,5 @@
 ---
-- name: Create release namespace for Istio
+- name: Create Namespace for Istio
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     state: present
@@ -7,161 +7,171 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_helm_releases.istio.namespace }}"
         labels:
-          it-bench/monitoring: "true"
+          "prometheus.itbench.io/monitor": "true"
+        name: "{{ tools_managers.istio_base.kubernetes.namespace }}"
 
 - name: Install Istio Base (CRDs)
   kubernetes.core.helm:
-    chart_ref: oci://gcr.io/istio-release/charts/base
-    chart_version: 1.28.1
+    chart_ref: "{{ tools_managers.istio_base.helm.chart.reference }}"
+    chart_version: "{{ tools_managers.istio_base.helm.chart.version }}"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio.components.base }}"
-    release_namespace: "{{ tools_helm_releases.istio.namespace }}"
+    release_name: "{{ tools_managers.istio_base.helm.release.name }}"
+    release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
     release_state: present
-    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/istio/base.j2') | from_yaml }}"
+    values: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/helm/istio_base/values.j2') |
+        ansible.builtin.from_yaml
+      }}
     wait: true
 
 - name: Install Istiod Control Plane
   kubernetes.core.helm:
-    chart_ref: oci://gcr.io/istio-release/charts/istiod
-    chart_version: 1.28.1
+    chart_ref: "{{ tools_managers.istio_istiod.helm.chart.reference }}"
+    chart_version: "{{ tools_managers.istio_istiod.helm.chart.version }}"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio.components.istiod_control_plane }}"
-    release_namespace: "{{ tools_helm_releases.istio.namespace }}"
+    release_name: "{{ tools_managers.istio_istiod.helm.release.name }}"
+    release_namespace: "{{ tools_managers.istio_istiod.kubernetes.namespace }}"
     release_state: present
-    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/istio/istiod_control_plane.j2') | from_yaml }}"
+    values: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/helm/istio_istiod/values.j2') |
+        ansible.builtin.from_yaml
+      }}
     wait: true
+
+- name: Create Telemetry
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: telemetry.istio.io/v1
+      kind: Telemetry
+      metadata:
+        name: istio-telemetry
+        namespace: "{{ tools_managers.istio_istiod.kubernetes.namespace }}"
+      spec:
+        accessLogging:
+          - providers:
+              - name: opentelemetry
+        tracing:
+          - providers:
+              - name: jaeger
+            randomSamplingPercentage: 0
+    state: present
+
+- name: Create ServiceMonitor for Control Plane
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: "{{ tools_managers.istio_istiod.helm.release.name }}"
+        namespace: "{{ tools_managers.istio_istiod.kubernetes.namespace }}"
+      spec:
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: "{{ tools_managers.istio_istiod.helm.release.name }}"
+            app.kubernetes.io/part-of: istio
+        endpoints:
+          - interval: 30s
+            port: http-monitoring
+    state: present
 
 - name: Install Istio CNI Node Agent
   kubernetes.core.helm:
-    chart_ref: oci://gcr.io/istio-release/charts/cni
-    chart_version: 1.28.1
+    chart_ref: "{{ tools_managers.istio_cni.helm.chart.reference }}"
+    chart_version: "{{ tools_managers.istio_cni.helm.chart.version }}"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio.components.cni_node_agent }}"
-    release_namespace: "{{ 'kube-system' if tools_cluster.platform == 'openshift' else tools_helm_releases.istio.namespace }}"
+    release_name: "{{ tools_managers.istio_cni.helm.release.name }}"
+    release_namespace: |-
+      {{
+        (tools_cluster.platform == 'openshift') |
+        ansible.builtin.ternary(tools_managers.istio_cni.openshift.namespace, tools_managers.istio_cni.kubernetes.namespace)
+      }}
     release_state: present
-    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/istio/cni_node_agent.j2') | from_yaml }}"
+    values: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/helm/istio_cni/values.j2') |
+        ansible.builtin.from_yaml
+      }}
     wait: true
+
+- name: Create PodMonitor for CNI Pods
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: PodMonitor
+      metadata:
+        name: "{{ tools_managers.istio_cni.helm.release.name }}"
+        namespace: |-
+          {{
+            (tools_cluster.platform == 'openshift') |
+            ansible.builtin.ternary(tools_managers.istio_cni.openshift.namespace, tools_managers.istio_cni.kubernetes.namespace)
+          }}
+      spec:
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: "{{ tools_managers.istio_cni.helm.release.name }}"
+            app.kubernetes.io/part-of: istio
+        podMetricsEndpoints:
+          - interval: 30s
+            port: metrics
+    state: present
 
 - name: Install Istio ZTunnel
   kubernetes.core.helm:
-    chart_ref: oci://gcr.io/istio-release/charts/ztunnel
-    chart_version: 1.28.1
+    chart_ref: "{{ tools_managers.istio_ztunnel.helm.chart.reference }}"
+    chart_version: "{{ tools_managers.istio_ztunnel.helm.chart.version }}"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio.components.ztunnel }}"
-    release_namespace: "{{ 'kube-system' if tools_cluster.platform == 'openshift' else tools_helm_releases.istio.namespace }}"
+    release_name: "{{ tools_managers.istio_ztunnel.helm.release.name }}"
+    release_namespace: |-
+      {{
+        (tools_cluster.platform == 'openshift') |
+        ansible.builtin.ternary(tools_managers.istio_ztunnel.openshift.namespace, tools_managers.istio_ztunnel.kubernetes.namespace)
+      }}
     release_state: present
-    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/istio/ztunnel.j2') | from_yaml }}"
+    values: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/helm/istio_ztunnel/values.j2') |
+        ansible.builtin.from_yaml
+      }}
     wait: true
 
-- name: Create Kubernetes Gateway
-  vars:
-    tools_istio_gateway_http_routes: []
-    tools_istio_gateway_test_endpoints: []
-  when:
-    - tools_cluster.platform == "kubernetes"
-  block:
-    - name: Append http routes and test endpoints
-      ansible.builtin.set_fact:
-        tools_istio_gateway_http_routes: "{{ tools_istio_gateway_http_routes + item.routes }}"
-        tools_istio_gateway_test_endpoints: "{{ tools_istio_gateway_test_endpoints + item.endpoints }}"
-      loop:
-        - enabled: "{{ tools_installation_plan.clickhouse.enabled | default(true) }}"
-          endpoints:
-            - /clickhouse/{{ tools_instances.clickhouse.names.main }}/play
-          routes:
-            - template_path: templates/clickhouse/http_routes/main.j2
-              path:
-                match_prefix: true
-                rewrite_url: true
-        - enabled: "{{ tools_installation_plan.jaeger.enabled | default(true) }}"
-          endpoints:
-            - /jaeger
-          routes:
-            - template_path: templates/opentelemetry/http_routes/jaeger.j2
-              path:
-                match_prefix: true
-        - enabled: "{{ tools_installation_plan.opencost.enabled | default(false) }}"
-          endpoints:
-            - /
-          routes:
-            - template_path: templates/opencost/http_route.j2
-        - enabled: "{{ tools_installation_plan.prometheus.enabled | default(true) }}"
-          endpoints:
-            - /prometheus/alerts
-            - /prometheus/query
-          routes:
-            - template_path: templates/prometheus/http_route.j2
-              path:
-                match_prefix: true
-        - enabled: "{{ tools_installation_plan.kubernetes_topology_monitor.enabled | default(true) }}"
-          endpoints:
-            - /topology/healthz
-          routes:
-            - template_path: templates/kubernetes_topology_monitor/http_route.j2
-              path:
-                match_prefix: true
-                rewrite_url: true
-      when:
-        - item.enabled
+- name: Create PodMonitor for ZTunnel Pods
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: PodMonitor
+      metadata:
+        name: "{{ tools_managers.istio_ztunnel.helm.release.name }}"
+        namespace: |-
+          {{
+            (tools_cluster.platform == 'openshift') |
+            ansible.builtin.ternary(tools_managers.istio_ztunnel.openshift.namespace, tools_managers.istio_ztunnel.kubernetes.namespace)
+          }}
+      spec:
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: "{{ tools_managers.istio_ztunnel.helm.release.name }}"
+            app.kubernetes.io/part-of: istio
+        podMetricsEndpoints:
+          - interval: 30s
+            port: ztunnel-stats
+    state: present
 
-    - name: Create Kubernetes Gateway based on Istio
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        template: templates/kubernetes_gateways/istio.j2
-        state: present
-        wait: true
-        wait_condition:
-          reason: Programmed
-          status: "True"
-          type: Programmed
-
-    - name: Create HTTPRoutes
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        template: "{{ route.template_path }}"
-        state: present
-      loop: "{{ tools_istio_gateway_http_routes }}"
-      loop_control:
-        label: template/{{ route.template_path }}
-        loop_var: route
-      vars:
-        gateway:
-          name: istio-main
-
-    - name: Import connection test to external endpoint
-      ansible.builtin.import_tasks:
-        file: test_gateway_endpoint.yaml
-      vars:
-        tools_external_paths: "{{ tools_istio_gateway_test_endpoints }}"
-        tools_kubernetes_gateway:
-          name: istio-main
-
-- name: Enable Routing via Host feature
+- name: Enable Host Routing
   kubernetes.core.k8s_json_patch:
-    api_version: operator.openshift.io/v1
-    kind: Network
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: network.operator.openshift.io/v1
+    kind: EgressRouter
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     name: cluster
-    namespace: default # TODO: Need to validate this namespace
     patch:
       - op: replace
         path: /spec/defaultNetwork/ovnKubernetesConfig/gatewayConfig/routingViaHost
         value: true
   when:
     - tools_cluster.platform == "openshift"
-
-- name: Deploy Istio Telemetry
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    template: templates/istio/telemetry.j2
-    state: present
-
-- name: Deploy Prometheus Monitors
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    template: templates/istio/monitoring.j2
-    state: present
-  when:
-    - tools_installation_plan.prometheus.enabled | default(true)

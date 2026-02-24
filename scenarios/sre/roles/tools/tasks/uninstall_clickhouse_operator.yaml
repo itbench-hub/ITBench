@@ -1,0 +1,19 @@
+---
+- name: Uninstall Clickhouse Operator
+  kubernetes.core.helm:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_managers.clickhouse_operator.helm.release.name }}"
+    release_namespace: "{{ tools_managers.clickhouse_operator.kubernetes.namespace }}"
+    release_state: absent
+    wait: true
+
+- name: Delete Namespace for Clickhouse Operator
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ tools_managers.clickhouse_operator.kubernetes.namespace }}"
+    state: absent
+    wait: true

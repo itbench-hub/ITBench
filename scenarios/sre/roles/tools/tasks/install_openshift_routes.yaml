@@ -1,0 +1,85 @@
+---
+- name: Create Route for Clickhouse
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+      spec:
+        httpHeaders:
+          actions:
+            response: "{{ route_response_headers }}"
+        port:
+          targetPort: 8123
+        to:
+          kind: Service
+          name: clickhouse-{{ tools_managers.clickhouse_operator.instances.names.main }}
+    state: present
+
+- name: Create Route for Jaeger
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}"
+        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+      spec:
+        httpHeaders:
+          actions:
+            response: "{{ route_response_headers }}"
+        path: /jaeger
+        port:
+          targetPort: 16686
+        to:
+          kind: Service
+          name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}-collector"
+    state: present
+
+- name: Create Route for Kubernetes Topology Monitor
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
+        namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
+      spec:
+        httpHeaders:
+          actions:
+            response: "{{ route_response_headers }}"
+        port:
+          targetPort: 8080
+        to:
+          kind: Service
+          name: topology-monitor-svc
+    state: present
+  when:
+    - tools_configuration.sre.enabled | ansible.builtin.default(false)
+
+- name: Create Route for OpenCost
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: "{{ tools_managers.opencost.chart.release.name }}"
+        namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
+      spec:
+        httpHeaders:
+          actions:
+            response: "{{ route_response_headers }}"
+        port:
+          targetPort: 9090
+        to:
+          kind: Service
+          name: "{{ tools_managers.opencost.chart.release.name }}"
+    state: present
+  when:
+    - tools_configuration.finops.enabled | ansible.builtin.default(false)

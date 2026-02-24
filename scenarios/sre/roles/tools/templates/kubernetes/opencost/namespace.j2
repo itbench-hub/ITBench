@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+{% if tools_cluster.platform == "openshift" %}
+  annotations:
+    openshift.io/sa.scc.mcs: s0:c36,c15
+    openshift.io/sa.scc.supplemental-groups: 1001/1000
+    openshift.io/sa.scc.uid-range: 1000/10000
+{% endif %}
+  labels:
+    itbench.io/gateway-access: shared
+    prometheus.itbench.io/monitor: "true"
+  name: "{{ tools_managers.opencost.kubernetes.namespace }}"

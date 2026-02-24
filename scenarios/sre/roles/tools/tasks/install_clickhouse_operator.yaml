@@ -1,0 +1,39 @@
+---
+- name: Create Namespace for Clickhouse Operator
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        labels:
+          "prometheus.itbench.io/monitor": "true"
+        name: "{{ tools_managers.clickhouse_operator.kubernetes.namespace }}"
+    state: present
+
+- name: Install Clickhouse Operator
+  kubernetes.core.helm:
+    chart_ref: "{{ tools_managers.clickhouse_operator.helm.chart.reference }}"
+    chart_version: "{{ tools_managers.clickhouse_operator.helm.chart.version }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_managers.clickhouse_operator.helm.release.name }}"
+    release_namespace: "{{ tools_managers.clickhouse_operator.kubernetes.namespace }}"
+    release_state: present
+    timeout: 10m0s
+    values:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.itbench.io/sandbox
+                    operator: DoesNotExist
+      configs:
+        files:
+          config.yaml:
+            watch:
+              namespaces:
+                - "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+      serviceMonitor:
+        enabled: true
+    wait: true

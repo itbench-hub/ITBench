@@ -22,14 +22,10 @@ spec:
 {% endfor %}
   faults: {{ scenario.disruptions }}
   tools:
-    chaosEngineering:
-      chaosMesh:
-        enabled: {{ enable_chaos_mesh }}
-    costMonitoring:
-      opencost:
-        enabled: {{ scenario.category == "finops" }}
-    observability:
-      topology:
-        enabled: true
-      traces:
-        enabled: true
+{% if scenario.category == "finops" %}
+    finops:
+      enabled: true
+{% elif scenario.category == "sre" %}
+    sre:
+      enabled: true
+{% endif %}

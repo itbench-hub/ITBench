@@ -26,20 +26,17 @@
     - name: Import tools role for variable setting tasks
       ansible.builtin.import_role:
         name: tools
-        tasks_from: set_external_endpoint
+        tasks_from: set_external_endpoints
       vars:
         tools_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
-        tools_external_network_object:
-          name: istio-main
-          namespace: kube-gateways
 
     - name: Attempt to check for firing alerts
       block:
         - name: Call the Prometheus Alerts API until specific alerts in firing state are detected
           ansible.builtin.uri:
-            url: "{{ tools_external_http_endpoint }}/prometheus/api/v1/alerts"
+            url: "{{ tools_prometheus_endpoint.host }}/api/v1/alerts"
             method: GET
             return_content: true
             body_format: json

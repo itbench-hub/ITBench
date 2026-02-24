@@ -1,0 +1,114 @@
+---
+- name: Install OpenTelemetry Operator on Kubernetes
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Create Namespace OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            labels:
+              "prometheus.itbench.io/monitor": "true"
+            name: "{{ tools_managers.opentelemetry_operator.kubernetes.namespace }}"
+        state: present
+
+    - name: Install OpenTelemetry Operator
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.opentelemetry_operator.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.opentelemetry_operator.helm.chart.version }}"
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.opentelemetry_operator.helm.release.name }}"
+        release_namespace: "{{ tools_managers.opentelemetry_operator.kubernetes.namespace }}"
+        release_state: present
+        timeout: 10m0s
+        values:
+          admissionWebhooks:
+            certManager:
+              enabled: false
+            autoGenerateCert:
+              enabled: true
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: node-role.itbench.io/sandbox
+                        operator: DoesNotExist
+          manager:
+            serviceMonitor:
+              enabled: true
+        wait: true
+
+- name: Install RedHat build of OpenTelemetry Operator on OpenShift
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Create the project for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: project.openshift.io/v1
+          kind: Project
+          metadata:
+            name: openshift-opentelemetry-operator
+            labels:
+              kubernetes.io/metadata.name: openshift-opentelemetry-operator
+              openshift.io/cluster-monitoring: "true"
+        state: present
+
+    - name: Create the operator group for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: openshift-opentelemetry-operator
+            namespace: openshift-opentelemetry-operator
+          spec:
+            upgradeStrategy: Default
+        state: present
+
+    - name: Create the subscription for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: opentelemetry-product
+            namespace: openshift-opentelemetry-operator
+          spec:
+            channel: stable
+            installPlanApproval: Automatic
+            name: opentelemetry-product
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+        state: present
+
+    - name: Wait for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s_info:
+        api_version: operators.coreos.com/v1alpha1
+        kind: ClusterServiceVersion
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: openshift-opentelemetry-operator
+      register: tools_openshift_otel_operator_csv
+      until:
+        - tools_openshift_otel_operator_csv.resources | ansible.builtin.selectattr("status.phase", "==", "Succeeded") | ansible.builtin.length == 0
+      retries: 10
+      delay: 30
+
+    - name: Wait for OpenTelemetry CRD to be installed
+      kubernetes.core.k8s_info:
+        api_version: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: opentelemetrycollectors.opentelemetry.io
+      register: tools_openshift_otel_collector_crd
+      until:
+        - tools_openshift_otel_collector_crd.resources | ansible.builtin.length == 1
+      retries: 10
+      delay: 30

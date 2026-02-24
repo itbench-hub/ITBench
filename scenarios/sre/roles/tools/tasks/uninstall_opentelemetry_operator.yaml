@@ -1,0 +1,59 @@
+---
+- name: Uninstall OpenTelemetry Operator on Kubernetes
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Uninstall OpenTelemetry Operator
+      kubernetes.core.helm:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.opentelemetry_operator.helm.release.name }}"
+        release_namespace: "{{ tools_managers.opentelemetry_operator.kubernetes.namespace }}"
+        release_state: absent
+        wait: true
+
+    - name: Delete Namespace for OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          api_version: v1
+          kind: Namespace
+          metadata:
+            name: "{{ tools_managers.opentelemetry_operator.kubernetes.namespace }}"
+        state: absent
+        wait: true
+
+- name: Uninstall RH build of OpenTelemetry Operator on Openshift
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Delete the subscription for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: opentelemetry-product
+            namespace: openshift-opentelemetry-operator
+        state: absent
+
+    - name: Delete the operator group for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: openshift-opentelemetry-operator
+            namespace: openshift-opentelemetry-operator
+        state: absent
+
+    - name: Delete the project for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: project.openshift.io/v1
+          kind: Project
+          metadata:
+            name: openshift-opentelemetry-operator
+        state: absent

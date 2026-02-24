@@ -1,102 +1,40 @@
 ---
-- name: Create the release namespace
+- name: Create Namespace for OpenCost
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ tools_helm_releases.opencost.namespace }}"
-        annotations:
-          openshift.io/sa.scc.mcs: s0:c36,c15
-          openshift.io/sa.scc.supplemental-groups: 1001/1000
-          openshift.io/sa.scc.uid-range: 1000/10000
-        labels:
-          it-bench/monitoring: "true"
-          it-bench/shared-gateway-access: "true"
     state: present
+    template: templates/kubernetes/opencost/namespace.j2
 
-- name: Import variable setting task
+- name: Import Prometheus credential variable setting tasks
   ansible.builtin.import_tasks:
-    file: set_prometheus_endpoint.yaml
+    file: set_credentials_prometheus.yaml
+  when:
+    - tools_prometheus_bearer_token is undefined
+
+- name: Import Prometheus endpoint variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_internal_endpoints_prometheus.yaml
+  when:
+    - tools_prometheus_endpoint.http is undefined
 
 - name: Install OpenCost
   kubernetes.core.helm:
-    chart_ref: opencost
-    chart_repo_url: https://opencost.github.io/opencost-helm-chart
-    chart_version: 2.4.1
+    chart_ref: "{{ tools_managers.opencost.helm.chart.reference }}"
+    chart_version: "{{ tools_managers.opencost.helm.chart.version }}"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.opencost.name }}"
-    release_namespace: "{{ tools_helm_releases.opencost.namespace }}"
+    release_name: "{{ tools_managers.opencost.helm.release.name }}"
+    release_namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
     release_state: present
     timeout: 10m0s
-    values: "{{ lookup('ansible.builtin.template', 'templates/helm_values/opencost.j2') | from_yaml }}"
+    values: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/helm/opencost/values.j2') |
+        ansible.builtin.from_yaml
+      }}
     wait: true
 
 - name: Create PrometheusRules
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    template: templates/opencost/prometheusrules.j2
     state: present
-
-- name: Enable external access to OpenCost
-  when:
-    - tools_installation_plan.opencost.external_access
-  block:
-    - name: Enable external access on Kind
-      when:
-        - tools_cluster.provider == "kind"
-        - not (tools_installation_plan.istio.enabled | default(false))
-      block:
-        - name: Create Cloud Provider Kind Kubernetes Gateway
-          kubernetes.core.k8s:
-            kubeconfig: "{{ tools_cluster.kubeconfig }}"
-            template: templates/kubernetes_gateways/kind.j2
-            state: present
-            wait: true
-            wait_condition:
-              reason: Programmed
-              status: "True"
-              type: Programmed
-          vars:
-            gateway:
-              name: "{{ tools_helm_releases.opencost.name }}"
-
-        - name: Create HTTP Route
-          kubernetes.core.k8s:
-            kubeconfig: "{{ tools_cluster.kubeconfig }}"
-            template: templates/opencost/http_route.j2
-            state: present
-          vars:
-            gateway:
-              name: "{{ tools_helm_releases.opencost.name }}"
-
-        - name: Import connection test to external endpoint
-          ansible.builtin.import_tasks:
-            file: test_gateway_endpoint.yaml
-          vars:
-            tools_external_paths:
-              - /
-            tools_kubernetes_gateway:
-              name: "{{ tools_helm_releases.opencost.name }}"
-
-    - name: Enable external access on OpenShift
-      when:
-        - tools_cluster.platform == "openshift"
-      block:
-        - name: Create OpenShift Route
-          kubernetes.core.k8s:
-            kubeconfig: "{{ tools_cluster.kubeconfig }}"
-            template: templates/opencost/route.j2
-            state: present
-          register: tools_opencost_openshift_route
-
-        - name: Import connection test to external endpoint
-          ansible.builtin.import_tasks:
-            file: test_route_endpoint.yaml
-          vars:
-            tools_external_paths:
-              - /
-            tools_route:
-              name: "{{ tools_opencost_openshift_route.result.metadata.name }}"
-              namespace: "{{ tools_opencost_openshift_route.result.metadata.namespace }}"
+    template: templates/kubernetes/opencost/prometheusrules.j2

@@ -1,0 +1,231 @@
+---
+- name: Create Kubernetes Gateway instance Namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        labels:
+          "prometheus.itbench.io/monitor": "true"
+        name: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+    state: present
+
+- name: Create ConfigMap for Istio Gateway
+  kubernetes.core.k8s:
+    kubeconfig:
+    resource_definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}-options"
+        namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+      data:
+        deployment: |
+          spec:
+            template:
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                      - matchExpressions:
+                        - key: node-role.itbench.io/sandbox
+                          operator: DoesNotExist
+
+- name: Create Istio implemented Gateway
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: Gateway
+      metadata:
+        name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}"
+        namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+      spec:
+        infrastructure:
+          parametersRef:
+            group: ""
+            kind: ConfigMap
+            name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}-options"
+        gatewayClassName: istio
+        listeners:
+          - name: http
+            port: 80
+            protocol: HTTP
+            allowedRoutes:
+              namespaces:
+                from: Selector
+                selector:
+                  matchLabels:
+                    "itbench.io/gateway-access": shared
+    state: present
+    wait: true
+    wait_condition:
+      reason: Programmed
+      status: "True"
+      type: Programmed
+  register: tools_istio_kubenetes_gateway
+
+- name: Create PodMonitor for Istio Kubernetes Gateway
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: PodMonitor
+      metadata:
+        name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+        namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+      spec:
+        selector:
+          matchLabels:
+            "gateway.networking.k8s.io/gateway-name": "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+        podMetricsEndpoints:
+          - interval: 30s
+            port: metrics
+    state: present
+
+- name: Create HTTPRoute for Clickhouse
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        rules:
+          - backendRefs:
+              - name: clickhouse-{{ tools_managers.clickhouse_operator.instances.names.main }}
+                port: 8123
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /clickhouse/{{ tools_managers.clickhouse_operator.instances.names.main }}/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+              - type: URLRewrite
+                urlRewrite:
+                  path:
+                    type: ReplacePrefixMatch
+                    replacePrefixMatch: /
+    state: present
+
+- name: Create HTTPRoute for Jaeger
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}"
+        namespace: "{{ tools_managers.opentelemetry_operator.instances.jaeger.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}-collector"
+                port: 16686
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /jaeger/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+    state: present
+
+- name: Create HTTPRoute for Kubernetes Topology Monitor
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
+        namespace: "{{ tools_managers.kubernetes_topology_monitor.chart.release.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        rules:
+          - backendRefs:
+              - name: topology-monitor-svc
+                port: 8080
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /topology/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+              - type: URLRewrite
+                urlRewrite:
+                  path:
+                    type: ReplacePrefixMatch
+                    replacePrefixMatch: /
+    state: present
+  when:
+    - tools_configuration.sre.enabled | ansible.builtin.default(false)
+
+- name: Create HTTPRoute for OpenCost
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_managers.opencost.helm.release.name }}"
+        namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_managers.opencost.helm.release.name }}"
+                port: 9090
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+    state: present
+  when:
+    - tools_configuration.finops.enabled | ansible.builtin.default(false)
+
+- name: Create HTTPRoute for Promtheus
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_managers.prometheus.helm.release.name }}"
+        namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_managers.prometheus.helm.release.name }}-kube-prometheus-prometheus"
+                port: 9090
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /prometheus/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+    state: present

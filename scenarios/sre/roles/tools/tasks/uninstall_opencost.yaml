@@ -2,18 +2,18 @@
 - name: Uninstall OpenCost
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.opencost.name }}"
-    release_namespace: "{{ tools_helm_releases.opencost.namespace }}"
+    release_name: "{{ tools_managers.opencost.helm.release.name }}"
+    release_namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
     release_state: absent
     wait: true
 
-- name: Delete the release namespace
+- name: Delete Namespace for OpenCost
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       api_version: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_helm_releases.opencost.namespace }}"
+        name: "{{ tools_managers.opencost.kubernetes.namespace }}"
     state: absent
     wait: true

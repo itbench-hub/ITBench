@@ -1,37 +1,27 @@
 ---
-# NOTE: When using Cloud Provider Kind, it installs its own copy of the
-#       Kubernetes Gateway API crds. In that case, this step is unnecessary and
-#       can cause errors if the version installed here does not match the
-#       version installed by the tool. Istio requires the crds as well. For
-#       ease of use, the crds are "installed" here regardless.
-
 # NOTE: `kubectl` is used in place of the `kubernetes.core` module because
 #       the server side configuration the yaml files are still downloaded
 #       and rendered on the client side. Depending on the file, sometimes
 #       there are rendering issues.
 
-- name: Add Kubernetes Gateway API CRDs
+- name: Apply Kubernetes Gateway API Custom Resource Definitions
   ansible.builtin.command:
     argv:
       - kubectl
       - apply
       - --server-side
       - -f
-      - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml
+      - |-
+        {{
+          [
+            tools_managers.kubernetes_gateway.git.repository.removesuffix(".git"),
+            "releases",
+            "download",
+            tools_managers.kubernetes_gateway.git.tag,
+            "standard-install.yaml"
+          ] |
+          ansible.builtin.join('/')
+        }}
       - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
   register: tools_kubernetes_gateway_crds_apply
   changed_when: tools_kubernetes_gateway_crds_apply.rc == 0
-  when:
-    - tools_cluster.platform == "kubernetes"
-
-- name: Create Kubernetes Gateway instance namespace
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ tools_instances.kubernetes_gateways.namespace }}"
-        labels:
-          it-bench/monitoring: "true"
-    state: present

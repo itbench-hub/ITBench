@@ -1,19 +1,19 @@
 ---
-- name: Uninstall the Kubernetes Topology Monitor
+- name: Uninstall Kubernetes Topology Monitor
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
+    release_namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
     release_state: absent
-    release_name: "{{ tools_helm_releases.kubernetes_topology_monitor.name }}"
-    release_namespace: "{{ tools_helm_releases.kubernetes_topology_monitor.namespace }}"
     wait: true
 
-- name: Delete the release namespace
+- name: Delete Namespace for Kubernetes Topology Monitor
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       api_version: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_helm_releases.kubernetes_topology_monitor.namespace }}"
+        name: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
     state: absent
     wait: true

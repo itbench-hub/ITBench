@@ -9,65 +9,127 @@
   when:
     - tools_cluster.provider == 'kind'
 
-- name: Import Kubernetes Gateway API installation tasks
-  ansible.builtin.import_tasks:
-    file: install_kubernetes_gateway_api.yaml
-
-- name: Import Prometheus installation tasks
-  ansible.builtin.import_tasks:
-    file: install_prometheus.yaml
+- name: Install SRE and FinOps Tools
   when:
-    - (tools_installation_plan.prometheus.enabled | default(true)) or
-      (tools_installation_plan.opencost.enabled | default(false))
+    - ((tools_configuration.finops.enabled | ansible.builtin.default(false)) or (tools_configuration.sre.enabled | ansible.builtin.default(false)))
+  block:
+    - name: Import Prometheus installation tasks
+      ansible.builtin.import_tasks:
+        file: install_prometheus.yaml
 
-- name: Import Clickhouse installation tasks
-  ansible.builtin.import_tasks:
-    file: install_clickhouse.yaml
-  when:
-    - (tools_installation_plan.clickhouse.enabled | default(true)) or
-      (tools_installation_plan.istio.enabled | default(false)) or
-      (tools_installation_plan.opentelemetry.enabled | default(true))
+    - name: Import Prometheus endpoint variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_internal_endpoints_prometheus.yaml
 
-- name: Import OpenSearch installation tasks
-  ansible.builtin.import_tasks:
-    file: install_opensearch.yaml
-  when:
-    - tools_installation_plan.jaeger.enabled | default(true)
+    - name: Import Clickhouse installation tasks
+      ansible.builtin.import_tasks:
+        file: install_clickhouse.yaml
 
-- name: Import OpenTelemetry installation tasks
-  ansible.builtin.import_tasks:
-    file: install_opentelemetry.yaml
-  when:
-    - (tools_installation_plan.opentelemetry.enabled | default(true)) or
-      (tools_installation_plan.jaeger.enabled | default(true)) or
-      (tools_installation_plan.istio.enabled | default(false))
+    - name: Import Clickhouse credential variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_credentials_clickhouse.yaml
 
-- name: Import OpenCost installation tasks
-  ansible.builtin.import_tasks:
-    file: install_opencost.yaml
-  when:
-    - tools_installation_plan.opencost.enabled | default(false)
+    - name: Import Clickhouse endpoint variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_internal_endpoints_clickhouse.yaml
 
-- name: Import Chaos Mesh installation tasks
-  ansible.builtin.import_tasks:
-    file: install_chaos_mesh.yaml
-  when:
-    - tools_installation_plan.chaos_mesh.enabled | default(false)
+    - name: Update Prometheus to use Clickhouse as Remote Access
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.prometheus.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.prometheus.helm.chart.version }}"
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.prometheus.helm.release.name }}"
+        release_namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
+        release_state: present
+        reset_values: false
+        reuse_values: true
+        timeout: 10m0s
+        values:
+          prometheus:
+            prometheusSpec:
+              remoteWrite:
+                - url: "http://default:@{{ tools_clickhouse_endpoint.prometheus }}/write"
+                  queueConfig:
+                    maxSamplesPerSend: 5000
+                    batchSendDeadline: 10s
+        wait: true
 
-- name: Import Kubernetes Metrics Server installation tasks
-  ansible.builtin.import_tasks:
-    file: install_kubernetes_metrics_server.yaml
-  when:
-    - tools_installation_plan.kubernetes_metrics_server.enabled | default(false)
+    - name: Import OpenSearch installation tasks
+      ansible.builtin.import_tasks:
+        file: install_opensearch.yaml
 
-- name: Import Kubernetes Topology Monitor installation tasks
-  ansible.builtin.import_tasks:
-    file: install_kubernetes_topology_monitor.yaml
-  when:
-    - tools_installation_plan.kubernetes_topology_monitor.enabled | default(true)
+    - name: Import OpenTelemetry installation tasks
+      ansible.builtin.import_tasks:
+        file: install_opentelemetry.yaml
 
-- name: Import Istio installation tasks
-  ansible.builtin.import_tasks:
-    file: install_istio.yaml
-  when:
-    - tools_installation_plan.istio.enabled | default(true)
+    - name: Import Kubernetes Metrics Server installation tasks
+      ansible.builtin.import_tasks:
+        file: install_kubernetes_metrics_server.yaml
+
+    - name: Install FinOps specific tools
+      when:
+        - tools_configuration.finops.enabled | ansible.builtin.default(false)
+      block:
+        - name: Import OpenCost installation tasks
+          ansible.builtin.import_tasks:
+            file: install_opencost.yaml
+
+    - name: Install SRE specific tools
+      when:
+        - tools_configuration.sre.enabled | ansible.builtin.default(false)
+      block:
+        - name: Import Chaos Mesh installation tasks
+          ansible.builtin.import_tasks:
+            file: install_chaos_mesh.yaml
+
+        - name: Import Kubernetes Topology Monitor installation tasks
+          ansible.builtin.import_tasks:
+            file: install_kubernetes_topology_monitor.yaml
+
+    - name: Import Istio installation tasks
+      ansible.builtin.import_tasks:
+        file: install_istio.yaml
+
+    - name: Import Kubernetes Gateway API installation tasks
+      ansible.builtin.import_tasks:
+        file: install_kubernetes_gateway_api.yaml
+      when:
+        - tools_cluster.platform == "kubernetes"
+
+    - name: Import OpenShift Route installation tasks
+      ansible.builtin.import_tasks:
+        file: install_openshift_routes.yaml
+      vars:
+        route_response_headers:
+          - name: Content-Security-Policy
+            action:
+              type: Set
+              set:
+                value: "img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; form-action 'none'; frame-ancestors 'none'"
+          - name: Cross-Origin-Resource-Policy
+            action:
+              type: Set
+              set:
+                value: same-origin
+          - name: Referrer-Policy
+            action:
+              type: Set
+              set:
+                value: strict-origin-when-cross-origin
+          - name: X-Content-Type-Options
+            action:
+              type: Set
+              set:
+                value: nosniff
+          - name: X-Frame-Options
+            action:
+              type: Set
+              set:
+                value: DENY
+          - name: X-XSS-Protection
+            action:
+              type: Set
+              set:
+                value: "0"
+      when:
+        - tools_cluster.platform == "openshift"

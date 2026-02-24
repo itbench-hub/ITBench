@@ -1,0 +1,139 @@
+---
+- name: Create Namespace for Clickhouse Operator managed instances
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    state: present
+    template: templates/kubernetes/clickhouse/namespace.j2
+
+- name: Create Secret for Clickhouse installation default user
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: user-default-credentials
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+      type: Opaque
+      stringData:
+        user: default
+        password: "" # pragma: allowlist secret
+    state: present
+  register: tools_clickhouse_default_user_secret
+
+- name: Create ConfigMap for Prometheus database initialization
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          "app.kubernetes.io/name": clickhouse
+        name: clickhouse-init-prometheus
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+      data:
+        01_init_prometheus.sql: |
+          -- Based on https://clickhouse.com/docs/engines/table-engines/special/time_series
+          -- Create database for Prometheus metrics
+          CREATE DATABASE IF NOT EXISTS prometheus;
+
+          -- Create the TimeSeries table with default schema
+          CREATE TABLE IF NOT EXISTS prometheus.metrics
+          ENGINE = TimeSeries;
+    state: present
+  register: tools_clickhouse_prometheus_config_map
+
+- name: Create Clickhouse Installation Templates
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    state: present
+    template: templates/kubernetes/clickhouse/clickhouseinstallationtemplates.j2
+
+- name: Create Clickhouse Installation
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: clickhouse.altinity.com/v1
+      kind: ClickHouseInstallation
+      metadata:
+        labels:
+          app.kubernetes.io/name: clickhouse
+          app.kubernetes.io/version: 25.3.8.10041
+        name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+      spec:
+        defaults:
+          templates:
+            dataVolumeClaimTemplate: clickhouse-data
+            podTemplate: clickhouse-pod
+            serviceTemplate: clickhouse-service
+        useTemplates:
+          - name: clickhouse-data
+          - name: clickhouse-pod
+          - name: clickhouse-service
+        configuration:
+          settings:
+            prometheus/asynchronous_metrics: "true"
+            prometheus/endpoint: "/metrics"
+            prometheus/errors: "true"
+            prometheus/events: "true"
+            prometheus/handlers/remote_write_rule/handler/database: "prometheus"
+            prometheus/handlers/remote_write_rule/handler/table: "metrics"
+            prometheus/handlers/remote_write_rule/handler/type: "remote_write"
+            prometheus/handlers/remote_write_rule/url: "/write"
+            prometheus/metrics: "true"
+            prometheus/port: 9363
+          users:
+            default/networks/ip: 0.0.0.0/0
+            default/access_management: 1
+            default/named_collection_control: 1
+            default/show_named_collections: 1
+            default/show_named_collections_secrets: 1
+            default/password:
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ tools_clickhouse_default_user_secret.result.metadata.name }}"
+                  key: password
+          profiles:
+            default/allow_experimental_time_series_table: 1
+            default/http_connection_timeout: 30
+          clusters:
+            - name: main
+              layout:
+                shardsCount: 1
+                replicasCount: 1
+    state: present
+
+- name: Wait for Clickhouse installation to complete
+  kubernetes.core.k8s_info:
+    api_version: clickhouse.altinity.com/v1
+    kind: ClickHouseInstallation
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
+    namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+  register: tools_chi
+  until:
+    - tools_chi.resources[0].status is defined
+    - tools_chi.resources[0].status.status is defined
+    - tools_chi.resources[0].status.status == 'Completed'
+  retries: 10
+  delay: 30
+
+- name: Create ServiceMonitor for Clickhouse Installation
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
+        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+      spec:
+        selector:
+          matchLabels:
+            "app.kubernetes.io/name": clickhouse
+        endpoints:
+          - interval: 30s
+            port: prometheus
+    state: present

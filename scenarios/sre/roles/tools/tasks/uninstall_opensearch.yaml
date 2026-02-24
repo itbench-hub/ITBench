@@ -2,18 +2,18 @@
 - name: Uninstall OpenSearch
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.opensearch.name }}"
-    release_namespace: "{{ tools_helm_releases.opensearch.namespace }}"
+    release_name: "{{ tools_managers.opensearch.helm.release.name }}"
+    release_namespace: "{{ tools_managers.opensearch.kubernetes.namespace }}"
     release_state: absent
     wait: true
 
-- name: Delete the release namespace
+- name: Delete Namespace for OpenSearch
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       api_version: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_helm_releases.opensearch.namespace }}"
+        name: "{{ tools_managers.opensearch.kubernetes.namespace }}"
     state: absent
     wait: true

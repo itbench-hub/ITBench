@@ -32,14 +32,11 @@
     - name: Import tools role for variable setting tasks
       ansible.builtin.import_role:
         name: tools
-        tasks_from: set_external_endpoint
+        tasks_from: set_external_endpoints
       vars:
         tools_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
-        tools_external_network_object:
-          name: prometheus
-          namespace: prometheus
 
     - name: Copy restricted kubeconfig into temporary directory from S3 bucket
       amazon.aws.s3_object:
@@ -69,12 +66,12 @@
         msg: |
           {{
             {
-              "prometheus_url": tools_external_http_endpoint + '/prometheus',
+              "prometheus_url": tools_prometheus_endpoint.host,
               "kubeconfig": lookup("ansible.builtin.file", "/tmp/kubeconfig")
             }
           }}
       vars:
         restricted_kubeconfig_exists: "{{ '/tmp/kubeconfig' is exists }}"
       when:
-        - tools_external_http_endpoint is defined
+        - tools_prometheus_endpoint is defined
         - restricted_kubeconfig_exists

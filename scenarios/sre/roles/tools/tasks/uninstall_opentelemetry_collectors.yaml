@@ -1,0 +1,99 @@
+---
+- name: Retrieve OpenTelemetry Collector Custom Resource Definition
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: opentelemetrycollectors.opentelemetry.io
+  register: tools_custom_resource_definition
+
+- name: Delete OpenTelemetry Collectors
+  when:
+    - tools_custom_resource_definition.api_found
+    - tools_custom_resource_definition.resources | ansible.builtin.length == 1
+  block:
+    - name: Retrieve OpenTelemetry Collectors
+      kubernetes.core.k8s_info:
+        api_version: opentelemetry.io/v1beta1
+        kind: OpenTelemetryCollector
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+      register: tools_opentelemetry_collectors
+
+    - name: Delete OpenTelemetry Collectors
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: "{{ resource.apiVersion }}"
+          kind: "{{ resource.kind }}"
+          metadata:
+            name: "{{ resource.metadata.name }}"
+            namespace: "{{ resource.metadata.namespace }}"
+        state: absent
+        wait: true
+      loop: "{{ tools_opentelemetry_collectors.resources }}"
+      loop_control:
+        label: opentelemetrycollector/{{ resource.metadata.name }}
+        loop_var: resource
+      when:
+        - tools_opentelemetry_collectors.api_found
+
+- name: Retrieve OpenTelemetry Collector related ClusterRoleBinding
+  kubernetes.core.k8s_info:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    label_selectors:
+      - app.kubernetes.io/component = opentelemetry-collector
+      - app.kubernetes.io/managed-by = ITBench
+  register: tools_cluster_role_bindings
+
+- name: Delete all OpenTelemetry Collector related ClusterRoleBinding
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ cluster_role_binding.apiVersion }}"
+      kind: "{{ cluster_role_binding.kind }}"
+      metadata:
+        name: "{{ cluster_role_binding.metadata.name }}"
+    state: absent
+    wait: true
+  loop: "{{ tools_cluster_role_bindings.resources }}"
+  loop_control:
+    label: clusterolebinding/{{ cluster_role_binding.metadata.name }}
+    loop_var: cluster_role_binding
+
+- name: Retrieve OpenTelemetry Collector related ClusterRole
+  kubernetes.core.k8s_info:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    label_selectors:
+      - app.kubernetes.io/component = opentelemetry-collector
+      - app.kubernetes.io/managed-by = ITBench
+  register: tools_cluster_roles
+
+- name: Delete all OpenTelemetry Collector related ClusterRole
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ cluster_role.apiVersion }}"
+      kind: "{{ cluster_role.kind }}"
+      metadata:
+        name: "{{ cluster_role.metadata.name }}"
+    state: absent
+    wait: true
+  loop: "{{ tools_cluster_roles.resources }}"
+  loop_control:
+    label: clusterole/{{ cluster_role.metadata.name }}
+    loop_var: cluster_role
+
+- name: Delete Namepsace for OpenTelemetry Collectors
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: v1
+      kind: Namespace
+      metadata:
+        name: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+    state: absent
+    wait: true

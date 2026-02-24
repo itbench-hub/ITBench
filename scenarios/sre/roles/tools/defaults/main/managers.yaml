@@ -1,0 +1,148 @@
+---
+tools_managers:
+  chaos_mesh:
+    helm:
+      chart:
+        reference: chaos-mesh
+        repository: https://charts.chaos-mesh.org
+        version: 2.8.0
+      release:
+        name: chaos-mesh
+    kubernetes:
+      namespace: chaos-mesh
+  clickhouse_operator:
+    helm:
+      chart:
+        # renovate: datasource=docker depName=ghcr.io/altinity/clickhouse-operator-helm-chart/altinity-clickhouse-operator
+        reference: oci://ghcr.io/altinity/clickhouse-operator-helm-chart/altinity-clickhouse-operator
+        version: 0.25.6
+      release:
+        name: clickhouse-operator
+    instances:
+      kubernetes:
+        namespace: clickhouse
+      names:
+        main: main
+    kubernetes:
+      namespace: clickhouse-operator
+  istio_base:
+    helm:
+      chart:
+        # renovate: datasource=docker depName=gcr.io/istio-release/charts/base
+        reference: oci://gcr.io/istio-release/charts/base
+        version: 1.28.1
+      release:
+        name: istio-base
+    kubernetes:
+      namespace: istio-system
+  istio_cni:
+    helm:
+      chart:
+        # renovate: datasource=docker depName=gcr.io/istio-release/charts/cni
+        reference: oci://gcr.io/istio-release/charts/cni
+        version: 1.28.1
+      release:
+        name: istio-cni
+    kubernetes:
+      namespace: istio-system
+    openshift:
+      namespace: kube-system
+  istio_istiod:
+    helm:
+      chart:
+        # renovate: datasource=docker depName=gcr.io/istio-release/charts/istiod
+        reference: oci://gcr.io/istio-release/charts/istiod
+        version: 1.28.1
+      release:
+        name: istiod
+    kubernetes:
+      namespace: istio-system
+  istio_ztunnel:
+    helm:
+      chart:
+        # renovate: datasource=docker depName=gcr.io/istio-release/charts/ztunnel
+        reference: oci://gcr.io/istio-release/charts/ztunnel
+        version: 1.28.1
+      release:
+        name: ztunnel
+    kubernetes:
+      namespace: istio-system
+    openshift:
+      namespace: kube-system
+  kubernetes_gateway:
+    git:
+      # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
+      repository: https://github.com/kubernetes-sigs/gateway-api.git
+      tag: v1.4.0
+    instances:
+      kubernetes:
+        namespace: kube-gateways
+      names:
+        istio: istio-main
+  kubernetes_metrics_server:
+    helm:
+      chart:
+        reference: metrics-server
+        repository: https://kubernetes-sigs.github.io/metrics-server/
+        version: 3.13.0
+      release:
+        name: kube-metrics-server
+    kubernetes:
+      namespace: kube-metrics-server
+  kubernetes_topology_monitor:
+    git:
+      branch: main
+      repository: https://github.com/itbench-hub/ITBench.git
+    helm:
+      release:
+        name: kube-topology-monitor
+    kubernetes:
+      namespace: topology-monitor
+  opencost:
+    helm:
+      chart:
+        # renovate: datasource=docker depName=ghcr.io/opencost/charts/opencost
+        reference: oci://ghcr.io/opencost/charts/opencost
+        version: 2.4.1
+      release:
+        name: opencost
+    kubernetes:
+      namespace: opencost
+  opensearch:
+    helm:
+      chart:
+        reference: opensearch
+        repository: https://opensearch-project.github.io/helm-charts
+        version: 3.3.2
+      release:
+        name: opensearch
+    kubernetes:
+      namespace: opensearch
+  opentelemetry_operator:
+    helm:
+      chart:
+        # renovate: datasource=docker depName=ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-operator
+        reference: oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-operator
+        version: 0.99.2
+      release:
+        name: opentelemetry-operator
+    instances:
+      kubernetes:
+        namespace: opentelemetry-collectors
+      names:
+        istio: istio
+        jaeger: jaeger
+        kubernetes_events: kubernetes-events
+        kubernetes_objects_snapshot: kubernetes-objects-snapshot
+    kubernetes:
+      namespace: opentelemetry-operator
+  prometheus:
+    helm:
+      chart:
+        # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/kube-prometheus-stack
+        reference: oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack
+        version: 80.2.0
+      release:
+        name: prometheus
+    kubernetes:
+      namespace: prometheus

@@ -1,0 +1,23 @@
+---
+- name: Uninstall SRE tools
+  hosts:
+    - environment
+  tasks:
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: false
+
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: uninstall.yaml
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"

@@ -1,0 +1,125 @@
+---
+- name: Retrieve all CustomResourceDefinitions
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+  register: tools_custom_resource_definitions
+
+- name: Delete Chaos Mesh related CustomResourceDefinitions
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: "{{ custom_resource_definition.apiVersion }}"
+      kind: "{{ custom_resource_definition.kind }}"
+      metadata:
+        name: "{{ custom_resource_definition.metadata.name }}"
+    state: absent
+    wait: true
+  loop: |-
+    {{
+      tools_custom_resource_definitions.resources |
+      ansible.builtin.selectattr("spec.group", "==", "chaos-mesh.org")
+    }}
+  loop_control:
+    label: customresourcedefinition/{{ custom_resource_definition.metadata.name }}
+    loop_var: custom_resource_definition
+
+- name: Delete Alinity Clickhouse Operator related CustomResourceDefinitions
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: "{{ custom_resource_definition.apiVersion }}"
+      kind: "{{ custom_resource_definition.kind }}"
+      metadata:
+        name: "{{ custom_resource_definition.metadata.name }}"
+    state: absent
+    wait: true
+  loop: |-
+    {{
+      tools_custom_resource_definitions.resources |
+      ansible.builtin.selectattr("spec.group", "search", "\.altinity\.com$")
+    }}
+  loop_control:
+    label: customresourcedefinition/{{ custom_resource_definition.metadata.name }}
+    loop_var: custom_resource_definition
+
+- name: Delete Istio related CustomResourceDefinitions
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: "{{ custom_resource_definition.apiVersion }}"
+      kind: "{{ custom_resource_definition.kind }}"
+      metadata:
+        name: "{{ custom_resource_definition.metadata.name }}"
+    state: absent
+    wait: true
+  loop: |-
+    {{
+      tools_custom_resource_definitions.resources |
+      ansible.builtin.selectattr("spec.group", "search", "\.istio\.io$")
+    }}
+  loop_control:
+    label: customresourcedefinition/{{ custom_resource_definition.metadata.name }}
+    loop_var: custom_resource_definition
+
+- name: Remove CustomResourceDefinitions not managed by OpenShift
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Delete Kubernetes Gateway related CustomResourceDefinitions
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          api_version: "{{ custom_resource_definition.apiVersion }}"
+          kind: "{{ custom_resource_definition.kind }}"
+          metadata:
+            name: "{{ custom_resource_definition.metadata.name }}"
+        state: absent
+        wait: true
+      loop: |-
+        {{
+          tools_custom_resource_definitions.resources |
+          ansible.builtin.selectattr("spec.group", "==", "gateway.networking.k8s.io")
+        }}
+      loop_control:
+        label: customresourcedefinition/{{ custom_resource_definition.metadata.name }}
+        loop_var: custom_resource_definition
+
+    - name: Delete OpenTelemetry Operator related CustomResourceDefinitions
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          api_version: "{{ custom_resource_definition.apiVersion }}"
+          kind: "{{ custom_resource_definition.kind }}"
+          metadata:
+            name: "{{ custom_resource_definition.metadata.name }}"
+        state: absent
+        wait: true
+      loop: |-
+        {{
+          tools_custom_resource_definitions.resources |
+          ansible.builtin.selectattr("spec.group", "==", "opentelemetry.io")
+        }}
+      loop_control:
+        label: customresourcedefinition/{{ custom_resource_definition.metadata.name }}
+        loop_var: custom_resource_definition
+
+    - name: Delete Prometheus Operator related CustomResourceDefinitions
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          api_version: "{{ custom_resource_definition.apiVersion }}"
+          kind: "{{ custom_resource_definition.kind }}"
+          metadata:
+            name: "{{ custom_resource_definition.metadata.name }}"
+        state: absent
+        wait: true
+      loop: |-
+        {{
+          tools_custom_resource_definitions.resources |
+          ansible.builtin.selectattr("spec.group", "==", "monitoring.coreos.com")
+        }}
+      loop_control:
+        label: customresourcedefinition/{{ custom_resource_definition.metadata.name }}
+        loop_var: custom_resource_definition

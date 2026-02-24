@@ -1,0 +1,36 @@
+---
+- name: Retrieve Kubernetes Topology Monitor Service service
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: topology-monitor-svc
+    namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
+  register: tools_kubernetes_topology_monitor_service
+
+- name: Validate that Kubernetes Topology Monitor service exists
+  ansible.builtin.assert:
+    that:
+      - tools_kubernetes_topology_monitor_service.api_found
+      - tools_kubernetes_topology_monitor_service.resources | ansible.builtin.length == 1
+    fail_msg: Kubernetes Topology Monitor service not found. Please verify that Kubernetes Topology Monitor was successfully installed.
+    success_msg: Kubernetes Topology Monitor service found.
+
+- name: Create Kubernetes Topology Monitor in-cluster endpoints
+  ansible.builtin.set_fact:
+    tools_kubernetes_topology_monitor_endpoint:
+      http: |-
+        {{
+          "http://" +
+          (
+            [
+              tools_kubernetes_topology_monitor_service.resources[0].metadata.name,
+              tools_kubernetes_topology_monitor_service.resources[0].metadata.namespace,
+              "svc",
+              "cluster",
+              "local"
+            ] |
+            ansible.builtin.join(".")
+          ) +
+          ":8080"
+        }}

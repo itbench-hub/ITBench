@@ -1,11 +1,10 @@
 ---
-- name: Disable Routing via Host feature
+- name: Disable Host Routing
   kubernetes.core.k8s_json_patch:
-    api_version: operator.openshift.io/v1
-    kind: Network
+    api_version: network.operator.openshift.io/v1
+    kind: EgressRouter
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     name: cluster
-    namespace: default # TODO: Need to validate this namespace
     patch:
       - op: replace
         path: /spec/defaultNetwork/ovnKubernetesConfig/gatewayConfig/routingViaHost
@@ -13,62 +12,53 @@
   when:
     - tools_cluster.platform == "openshift"
 
-- name: Retrieve all CRDs
-  kubernetes.core.k8s_info:
-    api_version: apiextensions.k8s.io/v1
-    kind: CustomResourceDefinition
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-  register: tools_crd_info
-
 - name: Uninstall Istio ZTunnel
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio.components.ztunnel }}"
-    release_namespace: "{{ 'kube-system' if tools_cluster.platform == 'openshift' else tools_helm_releases.istio.namespace }}"
+    release_name: "{{ tools_managers.istio_ztunnel.helm.release.name }}"
+    release_namespace: |-
+      {{
+        (tools_cluster.platform == 'openshift') |
+        ansible.builtin.ternary(tools_managers.istio_ztunnel.openshift.namespace, tools_managers.istio_ztunnel.kubernetes.namespace)
+      }}
     release_state: absent
     wait: true
 
 - name: Uninstall Istio CNI Node Agent
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio.components.cni_node_agent }}"
-    release_namespace: "{{ 'kube-system' if tools_cluster.platform == 'openshift' else tools_helm_releases.istio.namespace }}"
+    release_name: "{{ tools_managers.istio_cni.helm.release.name }}"
+    release_namespace: |-
+      {{
+        (tools_cluster.platform == 'openshift') |
+        ansible.builtin.ternary(tools_managers.istio_cni.openshift.namespace, tools_managers.istio_cni.kubernetes.namespace)
+      }}
     release_state: absent
     wait: true
 
 - name: Uninstall Istiod Control Plane
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio.components.istiod_control_plane }}"
-    release_namespace: "{{ tools_helm_releases.istio.namespace }}"
+    release_name: "{{ tools_managers.istio_istiod.helm.release.name }}"
+    release_namespace: "{{ tools_managers.istio_istiod.kubernetes.namespace }}"
     release_state: absent
     wait: true
 
 - name: Uninstall Istio Base (CRDs)
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_helm_releases.istio.components.base }}"
-    release_namespace: "{{ tools_helm_releases.istio.namespace }}"
+    release_name: "{{ tools_managers.istio_base.helm.release.name }}"
+    release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
     release_state: absent
     wait: true
 
-- name: Delete the release namespaces
+- name: Delete Istio namespace
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       api_version: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_helm_releases.istio.namespace }}"
+        name: "{{ tools_managers.istio_base.kubernetes.namespace }}"
     state: absent
     wait: true
-
-- name: Append Istio related CRDs to list
-  ansible.builtin.set_fact:
-    tools_custom_resource_definitions: "{{ tools_custom_resource_definitions + crds }}"
-  vars:
-    crds: |
-      {{
-        tools_crds.resources |
-        community.general.json_query("[?ends_with(spec.group, 'istio.io')]")
-      }}

@@ -1,0 +1,118 @@
+---
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallationTemplate
+metadata:
+  name: clickhouse-pod
+  namespace: {{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.3.8.10041
+spec:
+  templates:
+    podTemplates:
+      - name: clickhouse-pod
+        metadata:
+{% if tools_cluster.platform == "openshift" %}
+          annotations:
+            openshift.io/required-scc: restricted-v2
+{% endif %}
+          labels:
+            app.kubernetes.io/name: clickhouse
+            app.kubernetes.io/version: 25.3.8.10041
+        spec:
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-role.itbench.io/sandbox
+                    operator: DoesNotExist
+          securityContext:
+            fsGroup: 101
+            runAsGroup: 101
+            runAsNonRoot: true
+            runAsUser: 101
+            seccompProfile:
+              type: "RuntimeDefault"
+          containers:
+            - name: clickhouse
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              image: docker.io/altinity/clickhouse-server:25.3.8.10041.altinitystable
+              imagePullPolicy: IfNotPresent
+              ports:
+                - name: http
+                  containerPort: 8123
+                - name: tcp
+                  containerPort: 9000
+                - name: prometheus
+                  containerPort: 9363
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 2Gi
+                limits:
+                  memory: 6Gi
+              volumeMounts:
+                - name: initdb-volume
+                  mountPath: /docker-entrypoint-initdb.d
+                  readOnly: true
+          volumes:
+            - name: initdb-volume
+              configMap:
+                name: {{ tools_clickhouse_prometheus_config_map.result.metadata.name }}
+                defaultMode: 0555
+---
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallationTemplate
+metadata:
+  name: clickhouse-data
+  namespace: {{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.3.8.10041
+spec:
+  templates:
+    volumeClaimTemplates:
+      - name: clickhouse-data
+        reclaimPolicy: Retain
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+---
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallationTemplate
+metadata:
+  name: clickhouse-service
+  namespace: {{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.3.8.10041
+spec:
+  templates:
+    serviceTemplates:
+      - name: clickhouse-service
+        metadata:
+          labels:
+            app.kubernetes.io/name: clickhouse
+            app.kubernetes.io/version: 25.3.8.10041
+        spec:
+          type: ClusterIP
+          ports:
+            - name: http
+              port: 8123
+              targetPort: 8123
+            - name: tcp
+              port: 9000
+              targetPort: 9000
+            - name: prometheus
+              port: 9363
+              targetPort: 9363
+          selector:
+            app.kubernetes.io/name: clickhouse
