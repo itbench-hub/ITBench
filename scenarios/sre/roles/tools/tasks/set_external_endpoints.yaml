@@ -1,8 +1,41 @@
 ---
-- name: Retrieve host address from Gateway
+- name: Retrieve all namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+  register: tools_namespaces
+
+- name: Validate that namespaces exists
+  ansible.builtin.assert:
+    that:
+      - tools_namespaces.api_found
+      - tools_namespaces.resources | ansible.builtin.length > 0
+    fail_msg: No namespaces were found. Please ensure that tool installation completed successfully.
+    success_msg: Namespaces found.
+
+- name: Map resources to names list
+  ansible.builtin.set_fact:
+    tools_namespaces_names: "{{ tools_namespaces.resources | map(attribute='metadata.name') }}"
+
+- name: Create localhost address based on service provider
+  ansible.builtin.set_fact:
+    tools_service_provider_address: http://localhost:{{ tools_service_provider.host_port }}
+  when:
+    - tools_service_provider is defined
+
+- name: Extract Kubernetes Gateway address
   when:
     - tools_cluster.platform == "kubernetes"
+    - tools_service_provider is undefined
   block:
+    - name: Validate that Kubernetes Gateway instance namespace exists
+      ansible.builtin.assert:
+        that:
+          - tools_managers.kubernetes_gateway.instances.kubernetes.namespace in tools_namespaces_names
+        fail_msg: Kubernetes Gateway namespace does not exist. Please ensure tool installation was successful.
+        success_msg: Kubernetes Gateway namespace exists.
+
     - name: Retrieve Istio managed Gateway
       kubernetes.core.k8s_info:
         api_version: gateway.networking.k8s.io/v1
@@ -12,9 +45,9 @@
         namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
       register: tools_istio_gateway
       until:
-        - tools_istio_gateway.resources | length == 1
+        - tools_istio_gateway.resources | ansible.builtin.length == 1
         - tools_istio_gateway.resources[0].status.addresses is defined
-        - tools_istio_gateway.resources[0].status.addresses | length > 0
+        - tools_istio_gateway.resources[0].status.addresses | ansible.builtin.length > 0
       delay: 15
       retries: 20
 
@@ -30,192 +63,35 @@
       when:
         - tools_istio_gateway.resources[0].status.addresses[0].type == "Hostname"
 
-    - name: Retrieve HTTPRoute for Clickhouse
-      kubernetes.core.k8s_info:
-        api_version: gateway.networking.k8s.io/v1
-        kind: HTTPRoute
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
-        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
-      register: tools_clickhouse_http_route
-
-    - name: Create Clickhouse external endpoint
-      ansible.builtin.set_fact:
-        tools_clickhouse_endpoint: |-
-          {{
-            tools_gateway_http_address +
-            tools_clickhouse_http_route.spec.rules[0].matches[0].path.value
-          }}
-      when:
-        - tools_clickhouse_http_route.api_found
-        - tools_clickhouse_http_route.resources | ansible.builtin.length == 1
-
-    - name: Retrieve HTTPRoute for Jaeger
-      kubernetes.core.k8s_info:
-        api_version: gateway.networking.k8s.io/v1
-        kind: HTTPRoute
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
-      register: tools_jaeger_http_route
-
-    - name: Create Jaeger external endpoint
-      ansible.builtin.set_fact:
-        tools_jaeger_endpoint: |-
-          {{
-            tools_gateway_http_address +
-            tools_jaeger_http_route.spec.rules[0].matches[0].path.value
-          }}
-      when:
-        - tools_jaeger_http_route.api_found
-        - tools_jaeger_http_route.resources | ansible.builtin.length == 1
-
-    - name: Retrieve HTTPRoute for Kubernetes Topology Monitor
-      kubernetes.core.k8s_info:
-        api_version: gateway.networking.k8s.io/v1
-        kind: HTTPRoute
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
-        namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
-      register: tools_kubernetes_topology_monitor_http_route
-
-    - name: Create Kubernetes Topology Monitor external endpoint
-      ansible.builtin.set_fact:
-        tools_kubernetes_topology_monitor_endpoint: |-
-          {{
-            tools_gateway_http_address +
-            tools_kubernetes_topology_monitor_http_route.spec.rules[0].matches[0].path.value
-          }}
-      when:
-        - tools_kubernetes_topology_monitor_http_route.api_found
-        - tools_kubernetes_topology_monitor_http_route.resources | ansible.builtin.length == 1
-
-    - name: Retrieve HTTPRoute for OpenCost
-      kubernetes.core.k8s_info:
-        api_version: gateway.networking.k8s.io/v1
-        kind: HTTPRoute
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.opencost.chart.release.name }}"
-        namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
-      register: tools_opencost_http_route
-
-    - name: Create OpenCost external endpoint
-      ansible.builtin.set_fact:
-        tools_prometheus_endpoint: "{{ tools_gateway_http_address }}/"
-      when:
-        - tools_opencost_http_route.api_found
-        - tools_opencost_http_route.resources | ansible.builtin.length == 1
-
-    - name: Retrieve HTTPRoute for Prometheus
-      kubernetes.core.k8s_info:
-        api_version: gateway.networking.k8s.io/v1
-        kind: HTTPRoute
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.prometheus.chart.release.name }}"
-        namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
-      register: tools_prometheus_http_route
-
-    - name: Create Prometheus external endpoint
-      ansible.builtin.set_fact:
-        tools_prometheus_endpoint: |-
-          {{
-            tools_gateway_http_address +
-            tools_prometheus_http_route.spec.rules[0].matches[0].path.value
-          }}
-      when:
-        - tools_prometheus_http_route.api_found
-        - tools_prometheus_http_route.resources | ansible.builtin.length == 1
-
-- name: Retrieve host address from Routes
+- name: Import Clickhouse variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_external_endpoints_clickhouse.yaml
   when:
-    - tools_cluster.platform == "openshift"
-  block:
-    - name: Retrieve Route for Clickhouse
-      kubernetes.core.k8s_info:
-        api_version: route.openshift.io/v1
-        kind: Route
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
-        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
-      register: tools_clickhouse_route
+    - tools_managers.clickhouse_operator.instances.kubernetes.namespace in tools_namespaces_names
 
-    - name: Create Clickhouse external endpoint
-      ansible.builtin.set_fact:
-        tools_clickhouse_endpoint: "http://{{ tools_clickhouse_route.resources[0].status.ingress[0].host }}"
-      when:
-        - tools_clickhouse_route.api_found
-        - tools_clickhouse_route.resources | ansible.builtin.length == 1
-        - tools_clickhouse_route.resources[0].status.ingress is defined
-        - tools_clickhouse_route.resources[0].status.ingress | ansible.builtin.length > 0
+- name: Import Jaeger variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_external_endpoints_jaeger.yaml
+  when:
+    - tools_managers.opentelemetry_operator.instances.kubernetes.namespace in tools_namespaces_names
 
-    - name: Retrieve Route for Jaeger
-      kubernetes.core.k8s_info:
-        api_version: route.openshift.io/v1
-        kind: Route
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
-      register: tools_jaeger_route
+- name: Import Kubernetes Topology Monitor variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_external_endpoints_kubernetes_topology_monitor.yaml
+  when:
+    - tools_managers.kubernetes_topology_monitor.kubernetes.namespace in tools_namespaces_names
 
-    - name: Create Jaeger external endpoint
-      ansible.builtin.set_fact:
-        tools_jaeger_endpoint: "http://{{ tools_jaeger_route.resources[0].status.ingress[0].host }}"
-      when:
-        - tools_jaeger_route.api_found
-        - tools_jaeger_route.resources | ansible.builtin.length == 1
-        - tools_jaeger_route.resources[0].status.ingress is defined
-        - tools_jaeger_route.resources[0].status.ingress | ansible.builtin.length > 0
+- name: Import OpenCost variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_external_endpoints_kubernetes_topology_monitor.yaml
+  when:
+    - tools_managers.opencost.kubernetes.namespace in tools_namespaces_names
 
-    - name: Retrieve Route for Kubernetes Topology Monitor
-      kubernetes.core.k8s_info:
-        api_version: route.openshift.io/v1
-        kind: Route
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
-        namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
-      register: tools_kubernetes_topology_monitor_route
-
-    - name: Create Kubernetes Topology Monitor external endpoint
-      ansible.builtin.set_fact:
-        tools_kubernetes_topology_monitor_endpoint: "http://{{ tools_kubernetes_topology_monitor_route.resources[0].status.ingress[0].host }}"
-      when:
-        - tools_kubernetes_topology_monitor_route.api_found
-        - tools_kubernetes_topology_monitor_route.resources | ansible.builtin.length == 1
-        - tools_kubernetes_topology_monitor_route.resources[0].status.ingress is defined
-        - tools_kubernetes_topology_monitor_route.resources[0].status.ingress | ansible.builtin.length > 0
-
-    - name: Retrieve Route for OpenCost
-      kubernetes.core.k8s_info:
-        api_version: route.openshift.io/v1
-        kind: Route
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.opencost.chart.release.name }}"
-        namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
-      register: tools_opencost_route
-
-    - name: Create OpenCost external endpoint
-      ansible.builtin.set_fact:
-        tools_opencost_endpoint: "http://{{ tools_opencost_route.resources[0].status.ingress[0].host }}"
-      when:
-        - tools_opencost_route.api_found
-        - tools_opencost_route.resources | ansible.builtin.length == 1
-        - tools_opencost_route.resources[0].status.ingress is defined
-        - tools_opencost_route.resources[0].status.ingress | ansible.builtin.length > 0
-
-    - name: Retrieve Route for Prometheus
-      kubernetes.core.k8s_info:
-        api_version: route.openshift.io/v1
-        kind: Route
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: prometheus-k8s
-        namespace: openshift-monitoring
-      register: tools_prometheus_route
-
-    - name: Create Prometheus external endpoint
-      ansible.builtin.set_fact:
-        tools_prometheus_endpoint: "http://{{ tools_prometheus_route.resources[0].status.ingress[0].host }}"
-      when:
-        - tools_prometheus_route.api_found
-        - tools_prometheus_route.resources | ansible.builtin.length == 1
-        - tools_prometheus_route.resources[0].status.ingress is defined
-        - tools_prometheus_route.resources[0].status.ingress | ansible.builtin.length > 0
+- name: Import Prometheus variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_external_endpoints_prometheus.yaml
+  when:
+    - (
+        ("openshift-monitoring" in tools_namespaces_names) or
+        (tools_managers.prometheus.kubernetes.namespace in tools_namespaces_names)
+      )

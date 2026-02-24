@@ -1,0 +1,67 @@
+---
+- name: Retrieve host address from Gateway
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Retrieve HTTPRoute for Kubernetes Topology Monitor
+      kubernetes.core.k8s_info:
+        api_version: gateway.networking.k8s.io/v1
+        kind: HTTPRoute
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
+        namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
+      register: tools_kubernetes_topology_monitor_http_route
+
+    - name: Validate that Kubernetes Topology Monitor Route exists
+      ansible.builtin.assert:
+        that:
+          - tools_kubernetes_topology_monitor_http_route.api_found
+          - tools_kubernetes_topology_monitor_http_route.resources | ansible.builtin.length == 1
+        fail_msg: Kubernetes Topology Monitor route not found. Please verify that Kubernetes Topology Monitor was successfully installed.
+        success_msg: Kubernetes Topology Monitor route found.
+
+    - name: Create Kubernetes Topology Monitor external endpoint
+      ansible.builtin.set_fact:
+        tools_kubernetes_topology_monitor_endpoint:
+          host: |-
+            {{
+              (
+                tools_service_provider_address |
+                ansible.builtin.default(tools_gateway_http_address) |
+                ansible.builtin.default("")
+              ) +
+              tools_kubernetes_topology_monitor_http_route.spec.rules[0].matches[0].path.value
+            }}
+          paths:
+            - /
+
+- name: Retrieve host address from Routes
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Retrieve Route for Kubernetes Topology Monitor
+      kubernetes.core.k8s_info:
+        api_version: route.openshift.io/v1
+        kind: Route
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
+        namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
+      register: tools_kubernetes_topology_monitor_route
+
+    - name: Validate that Kubernetes Topology Monitor Route exists
+      ansible.builtin.assert:
+        that:
+          - tools_kubernetes_topology_monitor_route.api_found
+          - tools_kubernetes_topology_monitor_route.resources | ansible.builtin.length == 1
+        fail_msg: Kubernetes Topology Monitor route not found. Please verify that Kubernetes Topology Monitor was successfully installed.
+        success_msg: Kubernetes Topology Monitor route found.
+
+    - name: Create Kubernetes Topology Monitor external endpoint
+      ansible.builtin.set_fact:
+        tools_kubernetes_topology_monitor_endpoint:
+          host: "http://{{ tools_kubernetes_topology_monitor_route.resources[0].status.ingress[0].host }}"
+          paths:
+            - /
+      when:
+        - tools_kubernetes_topology_monitor_route.resources[0].status.ingress is defined
+        - tools_kubernetes_topology_monitor_route.resources[0].status.ingress | ansible.builtin.length > 0
