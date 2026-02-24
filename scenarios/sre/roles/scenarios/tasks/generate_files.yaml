@@ -9,6 +9,13 @@
   vars:
     index_file_path: "{{ playbook_dir }}/../roles/documentation/files/library/scenarios/index.json"
 
+- name: Validate resource definitions in scenarios
+  ansible.builtin.include_tasks: validate_scenario_resources.yaml
+  loop: "{{ scenarios_library_index }}"
+  loop_control:
+    loop_var: scenario
+    label: "scenario-{{ scenario.id }}"
+
 - name: Generate scenario directory paths
   ansible.builtin.set_fact:
     scenarios_directory_paths: |-
