@@ -29,7 +29,7 @@
 
 - name: Parse region names
   ansible.builtin.set_fact:
-    kops_regions: "{{ kops_region_info.regions | community.general.json_query('[*].region_name') }}"
+    kops_regions: "{{ kops_region_info.regions | map(attribute='region_name') }}"
 
 - name: Validate that region exists
   ansible.builtin.assert:
@@ -46,7 +46,7 @@
 
 - name: Parse zone names
   ansible.builtin.set_fact:
-    kops_available_zones: "{{ kops_availability_zone_info.availability_zones | community.general.json_query('[*].zone_name') }}"
+    kops_available_zones: "{{ kops_availability_zone_info.availability_zones | map(attribute='zone_name') }}"
 
 - name: Validate that zones are available
   ansible.builtin.assert:

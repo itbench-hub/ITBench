@@ -31,7 +31,7 @@
 
 - name: Parse public subnet ids
   ansible.builtin.set_fact:
-    kops_public_subnet_ids: "{{ kops_public_subnets.results | community.general.json_query('[*].subnet.id') }}"
+    kops_public_subnet_ids: "{{ kops_public_subnets.results | map(attribute='subnet.id') }}"
 
 - name: Create a private subnet for each cluster
   amazon.aws.ec2_vpc_subnet:
@@ -50,7 +50,7 @@
 
 - name: Parse private subnet ids
   ansible.builtin.set_fact:
-    kops_private_subnet_ids: "{{ kops_private_subnets.results | community.general.json_query('[*].subnet.id') }}"
+    kops_private_subnet_ids: "{{ kops_private_subnets.results | map(attribute='subnet.id') }}"
 
 - name: Create a single NAT Gateway for all clusters
   amazon.aws.ec2_vpc_nat_gateway:
