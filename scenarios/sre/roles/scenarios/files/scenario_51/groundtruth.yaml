@@ -4,9 +4,7 @@ kind: GroundTruth
 metadata:
   name: scenario-51
 spec:
-  alerts:
-    - labels: {}
-      name: HighRequestLatency
+  alerts: []
   entities:
     - apiVersion: v1
       kind: Namespace
@@ -14,8 +12,5 @@ spec:
         name: otel-demo
   solutions:
     - - steps:
-          - command: kubectl -n otel-demo edit deployment workload-scanner
-            text: Manually edit the manifest and lower the request rate.
-      - steps:
-          - command: kubectl -n otel-demo delete deployment workload-scanner
-            text: Delete the injected load generator deployment.
+          - text: Configure API server rate limiting flags (--max-requests-inflight, --max-mutating-requests-inflight) if not already set.
+          - text: Implement client-side rate limiting in the application code to reduce API request frequency.
