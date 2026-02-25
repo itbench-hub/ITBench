@@ -770,6 +770,90 @@
     "tags": ["Networking"]
   },
   {
+    "arguments": {
+      "jsonSchema": {
+        "properties": {
+          "kubernetesObject": {
+            "properties": {
+              "apiVersion": {
+                "enum": ["v1"],
+                "type": "string"
+              },
+              "kind": {
+                "enum": ["Namespace"],
+                "type": "string"
+              },
+              "metadata": {
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": ["name"],
+                "type": "object"
+              }
+            },
+            "required": ["apiVersion", "kind", "metadata"],
+            "type": "object"
+          },
+          "loadGenerator": {
+            "properties": {
+              "options": {
+                "properties": {
+                  "requestsPerSecond": {
+                    "minimum": 1,
+                    "type": "number"
+                  }
+                },
+                "required": ["requestsPerSecond"],
+                "type": "object"
+              }
+            },
+            "required": ["options"],
+            "type": "object"
+          }
+        },
+        "required": ["kubernetesObject", "loadGenerator"],
+        "type": "object"
+      }
+    },
+    "description": "This fault generates a high volume of requests to the Kubernetes API server by deploying multiple load generator pods that continuously query cluster resources. The surge in API requests can overwhelm the API server and impact cluster control plane performance.",
+    "expectation": "The Kubernetes API server experiences increased load from continuous resource queries. This may cause API latency, rate limiting, or impact other control plane operations. Applications relying on the Kubernetes API may experience slower response times or failures.",
+    "id": "kubernetes-api-server-request-surge",
+    "name": "Kubernetes API Server Request Surge",
+    "platform": "Kubernetes",
+    "resources": [
+      "https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/",
+      "https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/",
+      "https://kubernetes.io/docs/concepts/cluster-administration/flow-control/"
+    ],
+    "solutions": {
+      "templates": [
+        {
+          "steps": [
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} get deployments",
+              "text": "List all deployments in the namespace to identify the load generator."
+            },
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} delete deployment workload-scanner",
+              "text": "Delete the workload-scanner deployment that is generating the API load."
+            },
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} delete clusterrole workload-scanner",
+              "text": "Clean up the associated ClusterRole."
+            },
+            {
+              "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} delete clusterrolebinding workload-scanner",
+              "text": "Clean up the associated ClusterRoleBinding."
+            }
+          ]
+        }
+      ]
+    },
+    "tags": ["Control Plane", "Performance"]
+  },
+  {
     "alerts": {
       "application": ["KubePodCrashLooping"]
     },
