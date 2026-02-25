@@ -5,49 +5,52 @@ help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .PHONY: group-vars
-group-vars: ## Generates the group variables
-	mkdir group_vars/all
-	echo "ansible_python_interpreter: $(shell uv python find)" > group_vars/all/ansible.yaml
-	cp group_vars/development/awx_stack.yaml.example group_vars/development/awx_stack.yaml
-	cp group_vars/development/kops_cluster.yaml.example group_vars/development/kops_cluster.yaml
+group-vars: ## Generates the group variables from templates
+	echo "---\nansible_python_interpreter: $(shell uv python find)" > inventory/group_vars/all/python.yaml
+	cp inventory/group_vars/all/aws.yaml.example inventory/group_vars/all/aws.yaml
+	cp inventory/group_vars/all/cluster.yaml.example inventory/group_vars/all/cluster.yaml
+	cp inventory/group_vars/all/docker.yaml.example inventory/group_vars/all/docker.yaml
+	cp inventory/group_vars/all/ssh_keys.yaml.example inventory/group_vars/all/ssh_keys.yaml
+	cp inventory/group_vars/awx/stack.yaml.example inventory/group_vars/awx/stack.yaml
+	cp inventory/group_vars/basic/runner.yaml.example inventory/group_vars/basic/runner.yaml
 
 .PHONY: create-kops-cluster
 create-kops-cluster: ## Creates a single cluster created by kops
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "create_cluster"
+	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "create_cluster"
 
 .PHONY: list-kops-clusters
 list-kops-clusters: ## Lists all active clusters created by kops
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "list_clusters"
+	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "list_clusters"
 
 .PHONY: export-kops-kubeconfig
 export-kops-kubeconfig: ## Exports the kubeconfig of a single cluster created by kops
 ifdef CLUSTER_NAME
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "export_cluster" \
+	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "export_cluster" \
 		--extra-vars "kops_full_cluster_name_override=$(CLUSTER_NAME)"
 else
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "export_cluster"
+	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "export_cluster"
 endif
 
 .PHONY: destroy-kops-cluster
 destroy-kops-cluster: ## Deletes a single cluster created by kops
 ifdef CLUSTER_NAME
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "delete_cluster" \
+	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "delete_cluster" \
 		--extra-vars "kops_full_cluster_name_override=$(CLUSTER_NAME)"
 else
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_kops_cluster.yaml --tags "delete_cluster"
+	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "delete_cluster"
 endif
 
 .PHONY: create-awx-stack
 create-awx-stack: ## Creates an AWX stack created by kops
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "create_stack"
+	uv run ansible-playbook -i inventory playbooks/manage_awx_stack.yaml --tags "create_stack"
 
 .PHONY: export-awx-kubeconfigs
 export-awx-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "export_stack"
+	uv run ansible-playbook -i inventory playbooks/manage_awx_stack.yaml --tags "export_stack"
 
 .PHONY: destroy-awx-stack
 destroy-awx-stack: ## Destroy an AWX stack created by kops
-	uv run ansible-playbook -i inventory.yaml playbooks/manage_awx_stack.yaml --tags "delete_stack"
+	uv run ansible-playbook -i inventory playbooks/manage_awx_stack.yaml --tags "delete_stack"
 
 .PHONY: check-awx-clusters
 check-awx-clusters: ## Check which AWX clusters have validation errors

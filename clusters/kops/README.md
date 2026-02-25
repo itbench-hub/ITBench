@@ -176,7 +176,7 @@ Add the following to `group_vars/development/awx_stack.yaml`:
 docker_registry:
   server: "docker.io"
   username: "your-docker-username"
-  password: "your-docker-token-or-password"
+  password: "your-docker-token-or-password" # pragma: allowlist secret
   email: "your-email@example.com"
 ```
 
