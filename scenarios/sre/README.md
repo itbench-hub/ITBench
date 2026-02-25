@@ -67,7 +67,7 @@ sudo dnf install python3.13
 
 1. Create a Python virtual environment
 ```bash
-make deps
+make -C ../../ deps
 ```
 
 2. Create the relevant environment variable files by running

@@ -20,15 +20,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.2
       - uses: astral-sh/setup-uv@v7.3.0
-        with:
-          working-directory: scenarios/sre
       - uses: actions/setup-go@v6.2.0
         with:
           go-version-file: scenarios/sre/dev/local_cluster/go.mod
           cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
-          version: v3.19.0
+          version: v3.18.6
       - name: Create Kind cluster
         run: |
           make -C scenarios/sre/dev/local_cluster create-awx-cluster
@@ -37,7 +35,7 @@ jobs:
           make -C scenarios/sre/dev/local_cluster run-service-provider &
       - name: Install project dependencies
         run: |
-          make -C scenarios/sre deps
+          make deps
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
