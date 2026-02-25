@@ -7,36 +7,36 @@ spec:
     opentelemetryDemo:
       enabled: true
   faults:
-  - injections:
-    - args:
-        flag:
-          name: adHighCpu
-          state: 'on'
-        kubernetesObject:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: flagd-config
-            namespace: otel-demo
-      id: opentelemetry-demo-feature-flag
-    waitFor:
-      postInjection:
-      - args:
-          kubernetesObject:
-            apiVersion: apps/v1
-            kind: Deployment
-            metadata:
-              name: flagd
-              namespace: otel-demo
-        id: restart-kubernetes-workload
-      - args:
-          kubernetesObject:
-            apiVersion: apps/v1
-            kind: Deployment
-            metadata:
-              name: ad
-              namespace: otel-demo
-        id: restart-kubernetes-workload
+    - injections:
+        - args:
+            flag:
+              name: adHighCpu
+              state: "on"
+            kubernetesObject:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: flagd-config
+                namespace: otel-demo
+          id: opentelemetry-demo-feature-flag
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: flagd
+                  namespace: otel-demo
+            id: restart-kubernetes-workload
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: ad
+                  namespace: otel-demo
+            id: restart-kubernetes-workload
   tools:
     sre:
       enabled: true
