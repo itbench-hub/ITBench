@@ -215,25 +215,25 @@
     prefix: restricted-kubeconfig
   register: agent_temporary_kubeconfig
 
-- name: Create restricted kubeconfig file in temporary directory
-  ansible.builtin.copy:
-    content: |-
-      {{
-        lookup('ansible.builtin.template', 'templates/kubernetes/kubeconfig.j2') |
-        ansible.builtin.from_yaml |
-        ansible.builtin.to_nice_yaml(indent=2)
-      }}
-    dest: "{{ agent_temporary_kubeconfig.path }}"
-    mode: "0644"
-  vars:
-    cluster: "{{ agent_current_cluster | first }}"
-    service_account_token: |-
+- name: Set cluster and token variables for template
+  ansible.builtin.set_fact:
+    agent_cluster_config: "{{ agent_current_cluster | first }}"
+    agent_service_account_token: |-
       {{
         (
           agent_token_creation_output.stdout |
           ansible.builtin.from_json
         ).status.token
       }}
+
+- name: Create restricted kubeconfig file in temporary directory
+  ansible.builtin.template:
+    src: kubernetes/kubeconfig.j2
+    dest: "{{ agent_temporary_kubeconfig.path }}"
+    mode: "0644"
+  vars:
+    cluster: "{{ agent_cluster_config }}"
+    service_account_token: "{{ agent_service_account_token }}"
 
 - name: Copy restricted kubeconfig into local directory
   ansible.builtin.copy:
