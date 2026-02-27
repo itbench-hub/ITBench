@@ -22,6 +22,9 @@
     success_msg: All requested namespaces found.
   vars:
     existing_namespaces: "{{ agent_namespaces.resources | map(attribute='metadata.name') }}"
+  when:
+    - agent_access_request is defined
+    - agent_access_request.namespaces is defined
 
 - name: Create Namespace
   kubernetes.core.k8s:
@@ -124,6 +127,9 @@
   loop_control:
     label: namespace/{{ ns }}
     loop_var: ns
+  when:
+    - agent_access_request is defined
+    - agent_access_request.namespaces is defined
 
 - name: Create RoleBinding in each requested namespace
   kubernetes.core.k8s:
@@ -150,6 +156,9 @@
   loop_control:
     label: namespace/{{ ns }}
     loop_var: ns
+  when:
+    - agent_access_request is defined
+    - agent_access_request.namespaces is defined
 
 - name: Create TokenRequest
   ansible.builtin.command:
