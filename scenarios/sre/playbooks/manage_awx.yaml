@@ -40,5 +40,5 @@
         awx_runners:
           kubeconfigs: "{{ stack.runners.kubeconfigs }}"
         awx_agent:
-          version: "{{ agent_configuration.version }}"
+          version: "{{ agent_configuration.version | default('default') if agent_configuration.version | default('') | length > 0 else 'default' }}"
           configuration: "{{ agent_configuration.configuration }}"
