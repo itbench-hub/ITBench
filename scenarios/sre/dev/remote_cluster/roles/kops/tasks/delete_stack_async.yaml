@@ -1,26 +1,12 @@
 ---
-- name: Asynchronously delete kOps clusters
-  ansible.builtin.command:
-    cmd: kops delete cluster --name {{ item }} --yes --state {{ kops_state_store }}
-  async: 900
-  loop: "{{ stack_cluster_names }}"
-  poll: 0
-  register: kops_async_delete_results
-
-- name: Wait for asynchronous operations to complete
-  ansible.builtin.async_status:
-    jid: "{{ item.ansible_job_id }}"
-  loop: "{{ kops_async_delete_results.results }}"
-  register: kops_async_delete_poll_results
-  until: kops_async_delete_poll_results.finished
-  delay: 60
-  retries: 15
-
-- name: Clean up ansychronous operations
-  ansible.builtin.async_status:
-    mode: cleanup
-    jid: "{{ item.ansible_job_id }}"
-  loop: "{{ kops_async_delete_results.results }}"
+- name: Delete kOps clusters in batches of 20
+  ansible.builtin.include_tasks:
+    file: delete_batch.yaml
+  loop: "{{ stack_cluster_names | batch(20) | list }}"
+  loop_control:
+    loop_var: batch_cluster_names
+    label: "Batch {{ batch_index + 1 }}: {{ batch_cluster_names | length }} clusters"
+    index_var: batch_index
 
 - name: Find all route tables associated with kOps clusters
   amazon.aws.ec2_vpc_route_table_info:
