@@ -198,6 +198,18 @@
     fail_msg: More than one context discovered. Please ensure kubeconfig is properly formatted.
     success_msg: Context discovered.
 
+- name: Debug - Show agent_current_cluster
+  ansible.builtin.debug:
+    var: agent_current_cluster
+
+- name: Debug - Show agent_current_cluster | first
+  ansible.builtin.debug:
+    var: agent_current_cluster | first
+
+- name: Debug - Show service account token structure
+  ansible.builtin.debug:
+    msg: "Token length: {{ (agent_token_creation_output.stdout | ansible.builtin.from_json).status.token | length }}"
+
 - name: Create temporary file for restricted kubeconfig
   ansible.builtin.tempfile:
     prefix: restricted-kubeconfig
