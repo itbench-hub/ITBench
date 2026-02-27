@@ -30,6 +30,11 @@ additional_build_steps:
     - RUN . /etc/environment && curl -L "https://get.helm.sh/helm-v3.18.6-linux-${HELM_ARCH}.tar.gz" -o helm.tar.gz && tar -xvf helm.tar.gz && mv ./linux-${HELM_ARCH}/helm /usr/local/bin/helm
     - RUN . /etc/environment && curl -L "https://awscli.amazonaws.com/awscli-exe-linux-${AWS_ARCH}.zip" -o awscli-exe.zip && unzip awscli-exe.zip && ./aws/install && rm awscli-exe.zip && rm -rf aws
   append_final:
-    - COPY --from=quay.io/ansible/receptor:devel /usr/bin/receptor /usr/bin/receptor
+    # Copy binaries from builder stage to final runtime image
+    - COPY --from=builder /usr/local/bin/kubectl /usr/local/bin/kubectl
+    - COPY --from=builder /usr/local/bin/helm /usr/local/bin/helm
+    - COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
+    - RUN ln -s /usr/local/aws-cli/v2/current/bin/aws /usr/local/bin/aws
+    - COPY --from=quay.io/ansible/receptor:devel /usr/bin/receptor /usr/local/bin/receptor
     - RUN mkdir -p /var/run/receptor
     - RUN git lfs install --system
