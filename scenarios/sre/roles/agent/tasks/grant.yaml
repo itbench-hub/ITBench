@@ -203,7 +203,11 @@
     prefix: restricted-kubeconfig
   register: agent_temporary_kubeconfig
 
-- name: Create restricted kubeconfig using template with scoped vars
+- name: Create restricted kubeconfig file in temporary directory
+  ansible.builtin.template:
+    src: kubernetes/kubeconfig.j2
+    dest: "{{ agent_temporary_kubeconfig.path }}"
+    mode: "0644"
   vars:
     cluster: "{{ agent_current_cluster | first }}"
     service_account_token: |-
@@ -213,12 +217,6 @@
           ansible.builtin.from_json
         ).status.token
       }}
-  block:
-    - name: Create restricted kubeconfig file in temporary directory
-      ansible.builtin.template:
-        src: kubernetes/kubeconfig.j2
-        dest: "{{ agent_temporary_kubeconfig.path }}"
-        mode: "0644"
 
 - name: Copy restricted kubeconfig into local directory
   ansible.builtin.copy:
