@@ -8,7 +8,7 @@
         api_version: gateway.networking.k8s.io/v1
         kind: HTTPRoute
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.prometheus.chart.release.name }}"
+        name: "{{ tools_managers.prometheus.helm.release.name }}"
         namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
       register: tools_prometheus_http_route
 
@@ -30,7 +30,7 @@
                 ansible.builtin.default(tools_gateway_http_address) |
                 ansible.builtin.default("")
               ) +
-              tools_prometheus_http_route.spec.rules[0].matches[0].path.value
+              tools_prometheus_http_route.resources[0].spec.rules[0].matches[0].path.value
             }}
           paths:
             - /alerts
