@@ -198,42 +198,27 @@
     fail_msg: More than one context discovered. Please ensure kubeconfig is properly formatted.
     success_msg: Context discovered.
 
-- name: Debug - Show agent_current_cluster
-  ansible.builtin.debug:
-    var: agent_current_cluster
-
-- name: Debug - Show agent_current_cluster | first
-  ansible.builtin.debug:
-    var: agent_current_cluster | first
-
-- name: Debug - Show service account token structure
-  ansible.builtin.debug:
-    msg: "Token length: {{ (agent_token_creation_output.stdout | ansible.builtin.from_json).status.token | length }}"
-
 - name: Create temporary file for restricted kubeconfig
   ansible.builtin.tempfile:
     prefix: restricted-kubeconfig
   register: agent_temporary_kubeconfig
 
-- name: Set cluster and token variables for template
-  ansible.builtin.set_fact:
-    agent_cluster_config: "{{ agent_current_cluster | first }}"
-    agent_service_account_token: |-
+- name: Create restricted kubeconfig using template with scoped vars
+  vars:
+    cluster: "{{ agent_current_cluster | first }}"
+    service_account_token: |-
       {{
         (
           agent_token_creation_output.stdout |
           ansible.builtin.from_json
         ).status.token
       }}
-
-- name: Create restricted kubeconfig file in temporary directory
-  ansible.builtin.template:
-    src: kubernetes/kubeconfig.j2
-    dest: "{{ agent_temporary_kubeconfig.path }}"
-    mode: "0644"
-  vars:
-    cluster: "{{ agent_cluster_config }}"
-    service_account_token: "{{ agent_service_account_token }}"
+  block:
+    - name: Create restricted kubeconfig file in temporary directory
+      ansible.builtin.template:
+        src: kubernetes/kubeconfig.j2
+        dest: "{{ agent_temporary_kubeconfig.path }}"
+        mode: "0644"
 
 - name: Copy restricted kubeconfig into local directory
   ansible.builtin.copy:
