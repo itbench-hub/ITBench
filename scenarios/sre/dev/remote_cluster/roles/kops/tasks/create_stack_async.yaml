@@ -14,10 +14,38 @@
     state: present
   register: kops_igw_info
 
+- name: Validate VPC capacity for requested number of clusters
+  ansible.builtin.assert:
+    that:
+      - (stack_cluster_names | length) <= 100
+    fail_msg: |
+      Cannot create {{ stack_cluster_names | length }} clusters - maximum supported is 100!
+
+      Configuration: /24 subnets (256 IPs each), single /16 VPC (10.0.0.0/16)
+      AWS Default Quota: 200 subnets per VPC
+
+      Current request:
+      - Clusters requested: {{ stack_cluster_names | length }}
+      - Subnets needed: {{ stack_cluster_names | length * 2 }} ({{ stack_cluster_names | length }} public + {{ stack_cluster_names | length }} private)
+      - Maximum supported: 100 clusters (200 subnets)
+
+      Capacity tiers:
+      - ≤100 clusters -- Supported (works with default AWS quota)
+      - 101-128 clusters -- Requires AWS quota bump to 256 (not automated)
+      - >128 clusters -- Requires secondary CIDR block (not supported)
+
+      To scale beyond 100 clusters, you need to:
+      1. Request AWS subnet quota increase
+      2. Update this validation to allow >100
+      3. For >128 clusters: Implement secondary CIDR support
+
+      For now: Reduce cluster count to ≤100
+    success_msg: "✓ Capacity validated: {{ stack_cluster_names | length }} clusters ({{ stack_cluster_names | length * 2 }} /24 subnets)"
+
 - name: Create a public subnet for each cluster to be used as utility subnets
   amazon.aws.ec2_vpc_subnet:
     vpc_id: "{{ kops_vpc_info.vpc.id }}"
-    cidr: "{{ kops_stack.runners.aws.subnet.public_base }}.{{ item * 2 }}.0/23"
+    cidr: "{{ kops_stack.runners.aws.subnet.public_base }}.{{ item }}.0/24"
     az: "{{ kops_cluster.aws.zones[0] }}"
     region: "{{ kops_cluster.aws.region }}"
     map_public: true
@@ -28,6 +56,9 @@
       ManagedBy: ansible
   loop: "{{ range(1, (stack_cluster_names | length) + 1) | list }}"
   register: kops_public_subnets
+  retries: 5
+  delay: 10
+  until: kops_public_subnets is succeeded
 
 - name: Parse public subnet ids
   ansible.builtin.set_fact:
@@ -36,7 +67,7 @@
 - name: Create a private subnet for each cluster
   amazon.aws.ec2_vpc_subnet:
     vpc_id: "{{ kops_vpc_info.vpc.id }}"
-    cidr: "{{ kops_stack.runners.aws.subnet.private_base }}.{{ 100 + (item * 2) }}.0/23"
+    cidr: "{{ kops_stack.runners.aws.subnet.private_base }}.{{ (stack_cluster_names | length) + item }}.0/24"
     az: "{{ kops_cluster.aws.zones[0] }}"
     region: "{{ kops_cluster.aws.region }}"
     map_public: false
@@ -47,10 +78,23 @@
       ManagedBy: ansible
   loop: "{{ range(1, (stack_cluster_names | length) + 1) | list }}"
   register: kops_private_subnets
+  retries: 5
+  delay: 10
+  until: kops_private_subnets is succeeded
 
 - name: Parse private subnet ids
   ansible.builtin.set_fact:
     kops_private_subnet_ids: "{{ kops_private_subnets.results | community.general.json_query('[*].subnet.id') }}"
+
+- name: Verify all subnets were created
+  ansible.builtin.assert:
+    that:
+      - kops_public_subnets.results | length == stack_cluster_names | length
+      - kops_private_subnets.results | length == stack_cluster_names | length
+      - kops_public_subnets is succeeded
+      - kops_private_subnets is succeeded
+    fail_msg: "Subnet creation incomplete: expected {{ stack_cluster_names | length }} of each type"
+    success_msg: "✓ Created {{ stack_cluster_names | length }} public and {{ stack_cluster_names | length }} private subnets"
 
 - name: Create a single NAT Gateway for all clusters
   amazon.aws.ec2_vpc_nat_gateway:
@@ -64,6 +108,9 @@
       Environment: k8s
       ManagedBy: ansible
   register: kops_nat_gateway
+  retries: 3
+  delay: 15
+  until: kops_nat_gateway is succeeded
   when:
     - kops_elastic_ip_available
 
@@ -80,20 +127,25 @@
     state: present
   register: kops_public_route_table
 
-- name: Associate public subnets in batches of 10
+- name: Associate all public subnets with public route table
   amazon.aws.ec2_vpc_route_table:
     vpc_id: "{{ kops_vpc_info.vpc.id }}"
     region: "{{ kops_cluster.aws.region }}"
     route_table_id: "{{ kops_public_route_table.route_table.id }}"
-    subnets: "{{ item }}"
-    purge_subnets: false
+    subnets: "{{ kops_public_subnet_ids }}"
     routes:
       - dest: "0.0.0.0/0"
         gateway_id: "{{ kops_igw_info.gateway_id }}"
     state: present
-  loop: "{{ kops_public_subnet_ids | batch(10) | list }}"
-  loop_control:
-    pause: 2
+  retries: 5
+  delay: 10
+  register: kops_public_route_association
+
+- name: Verify public subnet route table associations
+  ansible.builtin.assert:
+    that:
+      - kops_public_route_association is succeeded
+    fail_msg: "Failed to associate public subnets with route table"
 
 - name: Create private route table via shared NAT
   amazon.aws.ec2_vpc_route_table:
@@ -111,20 +163,28 @@
     - kops_nat_gateway is defined
     - kops_nat_gateway.nat_gateway_id is defined
 
-- name: Associate private subnets with NAT route table in batches of 10
+- name: Associate all private subnets with NAT route table
   amazon.aws.ec2_vpc_route_table:
     vpc_id: "{{ kops_vpc_info.vpc.id }}"
     region: "{{ kops_cluster.aws.region }}"
     route_table_id: "{{ kops_private_route_table_nat.route_table.id }}"
-    subnets: "{{ item }}"
-    purge_subnets: false
+    subnets: "{{ kops_private_subnet_ids }}"
     routes:
       - dest: "0.0.0.0/0"
         nat_gateway_id: "{{ kops_nat_gateway.nat_gateway_id }}"
     state: present
-  loop: "{{ kops_private_subnet_ids | batch(10) | list }}"
-  loop_control:
-    pause: 2
+  retries: 5
+  delay: 10
+  register: kops_nat_route_association
+  when:
+    - kops_nat_gateway is defined
+    - kops_nat_gateway.nat_gateway_id is defined
+
+- name: Verify NAT route table associations
+  ansible.builtin.assert:
+    that:
+      - kops_nat_route_association is succeeded
+    fail_msg: "Failed to associate private subnets with NAT route table"
   when:
     - kops_nat_gateway is defined
     - kops_nat_gateway.nat_gateway_id is defined
@@ -144,22 +204,48 @@
   when:
     - kops_nat_gateway is not defined or kops_nat_gateway.nat_gateway_id is not defined
 
-- name: Associate private subnets with IGW route table in batches of 10
+- name: Associate all private subnets with IGW route table
   amazon.aws.ec2_vpc_route_table:
     vpc_id: "{{ kops_vpc_info.vpc.id }}"
     region: "{{ kops_cluster.aws.region }}"
     route_table_id: "{{ kops_private_route_table_igw.route_table.id }}"
-    subnets: "{{ item }}"
-    purge_subnets: false
+    subnets: "{{ kops_private_subnet_ids }}"
     routes:
       - dest: "0.0.0.0/0"
         gateway_id: "{{ kops_igw_info.gateway_id }}"
     state: present
-  loop: "{{ kops_private_subnet_ids | batch(10) | list }}"
-  loop_control:
-    pause: 2
+  retries: 5
+  delay: 10
+  register: kops_igw_route_association
   when:
     - kops_nat_gateway is not defined or kops_nat_gateway.nat_gateway_id is not defined
+
+- name: Verify IGW route table associations
+  ansible.builtin.assert:
+    that:
+      - kops_igw_route_association is succeeded
+    fail_msg: "Failed to associate private subnets with IGW route table"
+  when:
+    - kops_nat_gateway is not defined or kops_nat_gateway.nat_gateway_id is not defined
+
+- name: Verify subnet route table associations are complete
+  amazon.aws.ec2_vpc_subnet_info:
+    region: "{{ kops_cluster.aws.region }}"
+    filters:
+      vpc-id: "{{ kops_vpc_info.vpc.id }}"
+  register: kops_subnet_verification
+  retries: 30
+  delay: 60
+  until: >-
+    kops_subnet_verification.subnets | length == ((stack_cluster_names | length) * 2)
+
+- name: Assert all subnets have explicit route table associations
+  ansible.builtin.assert:
+    that:
+      - kops_subnet_verification.subnets | length == ((stack_cluster_names | length) * 2)
+      - kops_subnet_verification.subnets | selectattr('vpc_id', 'equalto', kops_vpc_info.vpc.id) | list | length == ((stack_cluster_names | length) * 2)
+    fail_msg: "Not all subnets are properly associated with route tables"
+    success_msg: "✓ All {{ (stack_cluster_names | length) * 2 }} subnets have route table associations"
 
 - name: Asynchronously create kOps clusters
   ansible.builtin.command:
@@ -205,7 +291,7 @@
   poll: 0
   register: kops_async_create_results
 
-- name: Wait for asynchronous operations to complete
+- name: Wait for asynchronous create operations to complete
   ansible.builtin.async_status:
     jid: "{{ item.ansible_job_id }}"
   loop: "{{ kops_async_create_results.results }}"
@@ -214,7 +300,7 @@
   delay: 60
   retries: 10
 
-- name: Clean up ansychronous operations
+- name: Clean up asynchronous create operations
   ansible.builtin.async_status:
     mode: cleanup
     jid: "{{ item.ansible_job_id }}"
@@ -326,37 +412,14 @@
     state: absent
   loop: "{{ stack_cluster_names }}"
 
-- name: Asynchronously build kOps clusters
-  ansible.builtin.command:
-    argv:
-      - kops
-      - update
-      - cluster
-      - --name
-      - "{{ item }}"
-      - --state
-      - "{{ kops_state_store }}"
-      - --yes
-      - --create-kube-config=false
-  async: 600
-  loop: "{{ stack_cluster_names }}"
-  poll: 0
-  register: kops_async_update_results
-
-- name: Wait for asynchronous operations to complete
-  ansible.builtin.async_status:
-    jid: "{{ item.ansible_job_id }}"
-  loop: "{{ kops_async_update_results.results }}"
-  register: kops_async_update_poll_results
-  until: kops_async_update_poll_results.finished
-  delay: 60
-  retries: 10
-
-- name: Clean up ansychronous operations
-  ansible.builtin.async_status:
-    mode: cleanup
-    jid: "{{ item.ansible_job_id }}"
-  loop: "{{ kops_async_update_results.results }}"
+- name: Build kOps clusters in batches of 20
+  ansible.builtin.include_tasks:
+    file: update_batch.yaml
+  loop: "{{ stack_cluster_names | batch(20) | list }}"
+  loop_control:
+    loop_var: batch_cluster_names
+    label: "Batch {{ batch_index + 1 }}: {{ batch_cluster_names | length }} clusters"
+    index_var: batch_index
 
 - name: Export the kubeconfigs for the clusters
   ansible.builtin.command:
@@ -375,7 +438,7 @@
   register: kops_kops_export_output
   changed_when: kops_kops_export_output.rc == 0
 
-- name: Asynchronously validate kOps cluster
+- name: Asynchronously validate kOps clusters
   ansible.builtin.command:
     argv:
       - kops
@@ -392,7 +455,7 @@
   poll: 0
   register: kops_async_validate_results
 
-- name: Wait for asynchronous operations to complete
+- name: Wait for asynchronous validate operations to complete
   ansible.builtin.async_status:
     jid: "{{ item.ansible_job_id }}"
   loop: "{{ kops_async_validate_results.results }}"
@@ -401,11 +464,21 @@
   delay: 60
   retries: 30
 
-- name: Clean up ansychronous operations
+- name: Clean up asynchronous validate operations
   ansible.builtin.async_status:
     mode: cleanup
     jid: "{{ item.ansible_job_id }}"
   loop: "{{ kops_async_validate_results.results }}"
+
+- name: Check for failed cluster validations
+  ansible.builtin.fail:
+    msg: "Cluster validation failed for: {{ item.item }}"
+  loop: "{{ kops_async_validate_poll_results.results }}"
+  when:
+    - item.failed is defined
+    - item.failed | bool
+  loop_control:
+    label: "{{ item.item }}"
 
 - name: Setup Docker registry credentials
   ansible.builtin.include_tasks:

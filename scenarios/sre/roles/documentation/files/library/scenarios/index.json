@@ -1892,9 +1892,7 @@
         ]
     },
     {
-        "alerts": [
-            "HighRequestLatency"
-        ],
+        "alerts": [],
         "category": "sre",
         "complexity": "low",
         "description": "This scenario simulates Kubernetes API server a surge in request during OpenTelemetry Demo's execution.",
@@ -1937,24 +1935,28 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo edit deployment workload-scanner",
-                            "text": "Manually edit the manifest and lower the request rate."
-                        }
-                    ]
-                },
-                {
-                    "steps": [
+                            "command": "kubectl -n otel-demo get deployments",
+                            "text": "List all deployments in the namespace to identify the load generator."
+                        },
                         {
                             "command": "kubectl -n otel-demo delete deployment workload-scanner",
-                            "text": "Delete the injected load generator deployment."
+                            "text": "Delete the workload-scanner deployment that is generating the API load."
+                        },
+                        {
+                            "command": "kubectl -n otel-demo delete clusterrole workload-scanner",
+                            "text": "Clean up the associated ClusterRole."
+                        },
+                        {
+                            "command": "kubectl -n otel-demo delete clusterrolebinding workload-scanner",
+                            "text": "Clean up the associated ClusterRoleBinding."
                         }
                     ]
                 }
             ]
         ],
         "tags": [
-            "Deployment",
-            "Performance"
+            "Performance",
+            "Control Plane"
         ]
     },
     {

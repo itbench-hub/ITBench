@@ -1,0 +1,61 @@
+---
+# Write scenario skeleton to the scenarios index.
+#
+# Requires vars (passed via include_role vars:):
+#   scaffolding_fault_id   - fault ID to wire into the scenario
+#   scaffolding_tags       - list of tags for the scenario
+#
+# Requires resolved vars from collect_scenario_inputs:
+#   scaffolding_resolved_application
+#   scaffolding_scenario_description_input
+#   scaffolding_resolved_category
+#   scaffolding_resolved_complexity
+#
+# Sets:
+#   scaffolding_next_scenario_id
+
+- name: Load existing scenarios index
+  ansible.builtin.set_fact:
+    scaffolding_scenarios_index: "{{ lookup('ansible.builtin.file', scaffolding_scenarios_index_path) | from_json }}"
+
+- name: Compute next scenario ID
+  ansible.builtin.set_fact:
+    scaffolding_next_scenario_id: "{{ (scaffolding_scenarios_index | map(attribute='id') | max) + 1 }}"
+
+- name: Build skeleton scenario entry
+  ansible.builtin.set_fact:
+    scaffolding_skeleton_scenario:
+      alerts: []
+      category: "{{ scaffolding_resolved_category }}"
+      complexity: "{{ scaffolding_resolved_complexity }}"
+      description: "{{ scaffolding_scenario_description_input.user_input }}"
+      disruptions: []
+      environment:
+        applications:
+          - id: "{{ scaffolding_resolved_application }}"
+      faultId: "{{ scaffolding_fault_id }}"  # Scaffolding hint for Phase II; not in schema. Remove after disruptions are populated.
+      id: "{{ scaffolding_next_scenario_id | int }}"
+      platforms:
+        - "Kubernetes"
+      solutions: []
+      tags: "{{ scaffolding_tags }}"
+
+- name: Append skeleton scenario to scenarios index
+  ansible.builtin.copy:
+    content: "{{ (scaffolding_scenarios_index + [scaffolding_skeleton_scenario]) | to_nice_json(indent=4) }}\n"
+    dest: "{{ scaffolding_scenarios_index_path }}"
+    mode: "0644"
+
+- name: Print scenario summary
+  ansible.builtin.debug:
+    msg:
+      - "Scenario:"
+      - "  ID: {{ scaffolding_next_scenario_id }}"
+      - "  Category: {{ scaffolding_resolved_category }}"
+      - "  Complexity: {{ scaffolding_resolved_complexity }}"
+      - "  Application: {{ scaffolding_resolved_application }}"
+      - "  Fault: {{ scaffolding_fault_id }}"
+      - "  Added to: {{ scaffolding_scenarios_index_path }}"
+      - ""
+      - "Next step: Populate TODO fields in the index entry (alerts, disruptions, solutions),"
+      - "then run 'make regenerate-scenario-files' to update generated files."

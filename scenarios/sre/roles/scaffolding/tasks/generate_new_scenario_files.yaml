@@ -1,0 +1,55 @@
+---
+# Generate scenario files for a newly scaffolded scenario only.
+#
+# Uses the scenarios role's Jinja2 templates to render scenario.yaml
+# and groundtruth.yaml for the single new scenario, avoiding a full
+# regeneration of all existing scenario files.
+#
+# Requires:
+#   scaffolding_next_scenario_id
+#   scaffolding_skeleton_scenario
+
+- name: Set scenario file paths
+  ansible.builtin.set_fact:
+    scaffolding_scenario_dir: "{{ scaffolding_scenarios_files_dir }}/scenario_{{ scaffolding_next_scenario_id }}"
+    scaffolding_scenario_templates_dir: "{{ playbook_dir }}/../roles/scenarios/templates/manifests"
+
+- name: Create scenario directory
+  ansible.builtin.file:
+    mode: "0755"
+    path: "{{ scaffolding_scenario_dir }}"
+    state: directory
+
+- name: Generate scenario spec
+  ansible.builtin.copy:
+    content: |-
+      {{
+        lookup('ansible.builtin.template', scaffolding_scenario_templates_dir ~ '/scenario.j2') |
+        ansible.builtin.from_yaml |
+        ansible.builtin.to_nice_yaml(indent=2, width=160)
+      }}
+    dest: "{{ scaffolding_scenario_dir }}/scenario.yaml"
+    mode: "0644"
+  vars:
+    scenario: "{{ scaffolding_skeleton_scenario }}"
+    enable_chaos_mesh: |-
+      {{
+        scaffolding_skeleton_scenario.disruptions |
+        map(attribute="injections") |
+        ansible.builtin.flatten |
+        ansible.builtin.selectattr("id", "==", "scheduled-chaos-mesh-experiment") |
+        ansible.builtin.length > 0
+      }}
+
+- name: Generate scenario ground truth
+  ansible.builtin.copy:
+    content: |-
+      {{
+        lookup('ansible.builtin.template', scaffolding_scenario_templates_dir ~ '/groundtruth.j2') |
+        ansible.builtin.from_yaml |
+        ansible.builtin.to_nice_yaml(indent=2, width=160)
+      }}
+    dest: "{{ scaffolding_scenario_dir }}/groundtruth.yaml"
+    mode: "0644"
+  vars:
+    scenario: "{{ scaffolding_skeleton_scenario }}"

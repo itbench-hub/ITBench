@@ -31,6 +31,11 @@
   loop_control:
     label: schedule/{{ schedule.metadata.name }}
     loop_var: schedule
+  register: faults_pause_result
+  failed_when:
+    - faults_pause_result is failed
+    - "'webhook' not in (faults_pause_result.msg | default('') | lower)"
+    - "'connection refused' not in (faults_pause_result.msg | default('') | lower)"
 
 - name: Wait for scheduled experiement(s) to pause
   kubernetes.core.k8s_info:
@@ -47,6 +52,11 @@
   loop_control:
     label: "{{ experiment.kind | lower }}/{{ experiment.name }}"
     loop_var: experiment
+  register: faults_wait_result
+  failed_when:
+    - faults_wait_result is failed
+    - "'not found' not in (faults_wait_result.msg | default('') | lower)"
+    - "'timeout' not in (faults_wait_result.msg | default('') | lower)"
 
 - name: Delete associated scheduled experiment(s)
   kubernetes.core.k8s:

@@ -11,6 +11,7 @@ import re
 import sys
 from datetime import datetime
 from typing import Dict, List, Optional
+from urllib.parse import urlparse
 
 import clickhouse_connect
 import pandas as pd
@@ -995,16 +996,18 @@ def main():
     username = os.environ.get("CLICKHOUSE_USERNAME", "default")
     password = os.environ.get("CLICKHOUSE_PASSWORD", "")
 
-    # Clean up the endpoint if it has protocol
-    endpoint = endpoint.replace("https://", "").replace("http://", "")
-
     if endpoint is None or username is None or password is None:
         sys.exit(
             "error: CLICKHOUSE_ENDPOINT, USERNAME and PASSWORD environment variables are not set"
         )
 
+    # Parse the endpoint URL to extract host and port
+    parsed = urlparse(endpoint)
+    host = parsed.hostname or parsed.path.split(":")[0]
+    port = parsed.port or 8123
+
     streamer = ClickHouseEventStreamer(
-        host=endpoint, username=username, password=password
+        host=host, port=port, username=username, password=password
     )
 
     try:

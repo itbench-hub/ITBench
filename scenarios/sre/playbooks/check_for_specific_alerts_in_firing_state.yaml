@@ -54,17 +54,16 @@
              selectattr('state', '==', 'firing') |
              selectattr('labels.alertname', 'in', [
                'FailedPodsDetected',
+               'HighKafkaConsumerLag',
                'HighRequestLatency',
                'HighRequestErrorRate',
                'KafkaConnectionClosureRate',
-               'CPUSpend',
-               'MemorySpend',
-               'CPUEfficiency',
-               'MemoryEfficiency',
+               'KafkaConsumerGroupInactive',
                'KubeContainerWaiting',
                'KubeHpaMaxedOut',
                'KubePodCrashLooping',
-               'KubePodNotReady'
+               'KubePodNotReady',
+               'NoDatabaseOperations'
              ]) |
              list | length > 0)
 
@@ -75,14 +74,13 @@
                        selectattr('state', '==', 'firing') |
                        selectattr('labels.alertname', 'in', [
                          'FailedPodsDetected',
-                         'PendingPodsDetected',
-                         'RequestLatency',
-                         'RequestErrorRate',
+                         'HighKafkaConsumerLag',
                          'KafkaConnectionClosureRate',
-                         'CPUSpend',
-                         'MemorySpend',
-                         'CPUEfficiency',
-                         'MemoryEfficiency'
+                         'KafkaConsumerGroupInactive',
+                         'NoDatabaseOperations',
+                         'PendingPodsDetected',
+                         'RequestErrorRate',
+                         'RequestLatency'
                        ]) |
                        list }} specific alerts in firing state
           when: alerts_api_result is defined and alerts_api_result.json is defined
@@ -97,14 +95,13 @@
                               selectattr('state', '==', 'firing') |
                               selectattr('labels.alertname', 'in', [
                                 'FailedPodsDetected',
-                                'PendingPodsDetected',
-                                'RequestLatency',
-                                'RequestErrorRate',
+                                'HighKafkaConsumerLag',
                                 'KafkaConnectionClosureRate',
-                                'CPUSpend',
-                                'MemorySpend',
-                                'CPUEfficiency',
-                                'MemoryEfficiency'
+                                'KafkaConsumerGroupInactive',
+                                'NoDatabaseOperations',
+                                'PendingPodsDetected',
+                                'RequestErrorRate',
+                                'RequestLatency'
                               ]) | list
                   },
                   "status": "success",

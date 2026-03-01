@@ -1,0 +1,51 @@
+---
+# Display available faults and let user select one for a scenario.
+#
+# Sets:
+#   scaffolding_selected_fault_id
+
+- name: Load existing faults index
+  ansible.builtin.set_fact:
+    scaffolding_faults_index: "{{ lookup('ansible.builtin.file', scaffolding_faults_index_path) | from_json }}"
+  when: scaffolding_faults_index is not defined
+
+- name: Build available fault IDs
+  ansible.builtin.set_fact:
+    scaffolding_available_fault_ids: "{{ scaffolding_faults_index | map(attribute='id') | list }}"
+
+- name: Build fault name lookup
+  ansible.builtin.set_fact:
+    scaffolding_fault_names: "{{ dict(scaffolding_faults_index | map(attribute='id') | zip(scaffolding_faults_index | map(attribute='name'))) }}"
+
+- name: Select fault ID for this scenario
+  ansible.builtin.pause:
+    prompt: |-
+      Select fault for this scenario:
+      {% for fid in scaffolding_available_fault_ids %}
+        {{ loop.index }}. {{ scaffolding_fault_names[fid] }} ({{ fid }})
+      {% endfor %}
+        {{ scaffolding_available_fault_ids | length + 1 }}. TODO (fill later)
+      Enter fault ID (or number)
+  register: scaffolding_fault_id_input
+
+- name: Resolve fault selection
+  ansible.builtin.set_fact:
+    scaffolding_selected_fault_id: >-
+      {%- set input = scaffolding_fault_id_input.user_input | trim -%}
+      {%- if input | int > 0 and input | int <= scaffolding_available_fault_ids | length -%}
+        {{ scaffolding_available_fault_ids[input | int - 1] }}
+      {%- elif input | int == scaffolding_available_fault_ids | length + 1 -%}
+        TODO
+      {%- else -%}
+        {{ input }}
+      {%- endif -%}
+
+- name: Validate fault ID
+  ansible.builtin.assert:
+    that:
+      - scaffolding_selected_fault_id in scaffolding_available_fault_ids
+    fail_msg: >-
+      '{{ scaffolding_selected_fault_id }}' is not a valid fault ID.
+      Choose from: {{ scaffolding_available_fault_ids | join(', ') }}
+    success_msg: "Selected fault: {{ scaffolding_selected_fault_id }}"
+  when: scaffolding_selected_fault_id != 'TODO'

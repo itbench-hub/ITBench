@@ -1,0 +1,100 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-51
+spec:
+  # No observable alerts for API server request surge in application metrics
+  alerts: []
+
+  # Resource groups representing affected Kubernetes resources
+  groups:
+    # Root cause: Injected workload-scanner deployment generating API load
+    - id: workload-scanner-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - workload-scanner\b
+      root_cause: true
+
+    - id: workload-scanner-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - workload-scanner-.*
+
+    # Kubernetes API server experiencing the surge
+    - id: api-server-pod-1
+      kind: Pod
+      namespace: kube-system
+      filter:
+        - kube-apiserver-.*
+
+    # RBAC resources enabling the load generator
+    - id: workload-scanner-clusterrole-1
+      kind: ClusterRole
+      namespace: ""
+      filter:
+        - workload-scanner\b
+
+    - id: workload-scanner-clusterrolebinding-1
+      kind: ClusterRoleBinding
+      namespace: ""
+      filter:
+        - workload-scanner\b
+
+  # Logical relationships between groups
+  aliases:
+    - - workload-scanner-deployment-1
+      - workload-scanner-pod-1
+
+  # Fault propagation chains showing how the API surge cascades
+  propagations:
+    # workload-scanner deployment creates pods with high API request rate
+    - source: workload-scanner-deployment-1
+      target: workload-scanner-pod-1
+      condition: "workload-scanner deployment configured to scan all Kubernetes resources at 1000 requests/second"
+      effect: "workload-scanner pods generate sustained high-volume API requests to list/watch resources"
+
+    # workload-scanner pods overwhelm API server
+    - source: workload-scanner-pod-1
+      target: api-server-pod-1
+      condition: "workload-scanner pods continuously query API server at 1000 requests/second"
+      effect: "Kubernetes API server experiences request surge, potentially causing increased latency, throttling, or resource exhaustion"
+
+  # Fault metadata describing the root cause
+  fault:
+    - category: Create
+      condition: "Deployment named 'workload-scanner' created in otel-demo namespace with ClusterRole permissions to list/watch all resources, generating 1000 API requests per second"
+      entity:
+        group_id: workload-scanner-deployment-1
+        kind: Deployment
+        name: workload-scanner
+      fault_mechanism: >-
+        Simulates a misbehaving controller or scanning tool that creates excessive API server load,
+        similar to incidents where poorly configured monitoring agents or CI/CD tools overwhelm
+        the Kubernetes control plane
+
+  # Recommended remediation actions
+  recommendedActions:
+    - solution:
+        actions:
+          - "Monitor API server request metrics using /metrics endpoint to identify patterns and high-volume sources"
+          - "Check current API Priority and Fairness (APF) configuration"
+          - "Implement or adjust APF FlowSchemas and PriorityLevelConfigurations to throttle non-critical requests"
+          - "Preserve critical control plane operations while rate limiting high-volume list/watch operations"
+        id: implement-priority-and-fairness
+    - solution:
+        actions:
+          - "Identify pods with high CPU/memory usage that may correlate with API request patterns"
+          - "Review API server audit logs to identify ServiceAccount or user generating the surge"
+          - "Apply ResourceQuota or LimitRange to restrict the misbehaving workload's impact"
+          - "Investigate the workload's code for inefficient API usage patterns (e.g., frequent polling instead of watches)"
+        id: investigate-and-constrain-source
+    - solution:
+        actions:
+          - "Configure API server flags: --max-requests-inflight and --max-mutating-requests-inflight"
+          - "Implement client-side rate limiting in application code"
+          - "Replace frequent list operations with watch operations using informers"
+          - "Increase informer resync periods to reduce periodic list operations"
+        id: implement-rate-limiting-and-best-practices

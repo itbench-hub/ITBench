@@ -131,3 +131,44 @@ spec:
             severity: critical
           annotations:
             description: "Service {{ $labels.service_name }} in namespace {{ $labels.namespace }} has received no requests"
+    - name: opentelemetrydemo.kafka
+      rules:
+        - alert: KafkaConsumerGroupInactive
+          expr: |
+            kafka_consumergroup_members{
+              namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
+            } == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            description: "Kafka consumer group {{ $labels.consumergroup }} in namespace {{ $labels.namespace }} has no active members (current: {{ $value }})"
+        - alert: HighKafkaConsumerLag
+          expr: |
+            kafka_consumergroup_lag_sum{
+              namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
+            } > 100
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Kafka consumer group {{ $labels.consumergroup }} has high lag on topic {{ $labels.topic }} (current: {{ $value }} messages)"
+    - name: opentelemetrydemo.database
+      rules:
+        - alert: NoDatabaseOperations
+          expr: |
+            sum by (service_name, namespace) (
+              rate(
+                traces_span_metrics_calls_total{
+                  service_name="accounting",
+                  span_name="postgresql",
+                  span_kind="SPAN_KIND_CLIENT",
+                  namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
+                }[5m]
+              )
+            ) == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Service {{ $labels.service_name }} in namespace {{ $labels.namespace }} has stopped performing database operations"

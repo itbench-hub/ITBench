@@ -1,0 +1,10 @@
+---
+# Validates that components with resources defined have both requests and limits
+# to avoid accidentally replacing upstream Helm chart defaults
+
+- name: Validate components for each application
+  ansible.builtin.include_tasks: validate_scenario_resources_components.yaml
+  loop: "{{ scenario.environment.applications | default([]) }}"
+  loop_control:
+    loop_var: app
+    label: "checking application"
