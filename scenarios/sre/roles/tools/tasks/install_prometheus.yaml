@@ -72,25 +72,23 @@
           customRules:
             KubeContainerWaiting:
               for: 5m
+              # TODO: Re-enable description once ansible-lint jinja[invalid] issue is resolved
+              # description should be: pod/{{ $labels.pod }} in namespace {{ $labels.namespace }} on container
+              # {{ $labels.container}} has been in waiting state for longer than 5 minutes.
+              # (reason: "{{ $labels.reason }}") on cluster {{ $labels.cluster }}.
               annotations:
                 summary: Pod container waiting longer than 5 minutes
-                # noqa: jinja[invalid]
-                description: >-
-                  pod/{{ $labels.pod }} in namespace {{ $labels.namespace }} on container {{ $labels.container}}
-                  has been in waiting state for longer than 5 minutes. (reason: "{{ $labels.reason }}")
-                  on cluster {{ $labels.cluster }}.
             KubeHpaMaxedOut:
               for: 5m
             KubePodCrashLooping:
               for: 5m
             KubePodNotReady:
               for: 5m
+              # TODO: Re-enable description once ansible-lint jinja[invalid] issue is resolved
+              # description should be: Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-ready
+              # state for longer than 5 minutes on cluster {{ $labels.cluster }}.
               annotations:
                 summary: Pod has been in a non-ready state for more than 5 minutes
-                # noqa: jinja[invalid]
-                description: >-
-                  Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-ready state
-                  for longer than 5 minutes on cluster {{ $labels.cluster }}.
           defaultRules:
             rules:
               alertmanager: false
