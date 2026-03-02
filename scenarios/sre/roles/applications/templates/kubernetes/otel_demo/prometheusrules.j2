@@ -69,7 +69,7 @@ spec:
               sum (
                 rate(
                   traces_span_metrics_duration_milliseconds_bucket{
-                    service_name!~"flagd|load-generator|frontend*",
+                    service_name!~"flagd|load-generator|frontend*|accounting",
                     namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
                   }[2m]
                 )
@@ -81,6 +81,25 @@ spec:
             severity: critical
           annotations:
             description: "Latency in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 1500ms (current: {{ $value }}s)"
+        - alert: HighRequestLatency
+          expr: |
+            histogram_quantile(
+              0.95,
+              sum (
+                rate(
+                  traces_span_metrics_duration_milliseconds_bucket{
+                    service_name="accounting",
+                    namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
+                  }[5m]
+                )
+              ) by(le, service_name, namespace)
+            )
+            > 1500
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Latency in accounting service in namespace {{ $labels.namespace }} is above 1500ms after warmup (current: {{ $value }}s)"
         - alert: HighRequestErrorRate
           expr: |
             sum (
