@@ -32,6 +32,10 @@
           kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
 
+    - name: Wait for alerts to fire after fault injection
+      ansible.builtin.pause:
+        seconds: 600
+
     - name: Attempt to check for firing alerts
       block:
         - name: Call the Prometheus Alerts API until specific alerts in firing state are detected
@@ -44,7 +48,7 @@
               Content-Type: "application/json"
           register: alerts_api_result
           retries: 30
-          delay: 15
+          delay: 10
           until: >
             alerts_api_result.status == 200 and
             alerts_api_result.json is defined and
@@ -54,17 +58,16 @@
              selectattr('state', '==', 'firing') |
              selectattr('labels.alertname', 'in', [
                'FailedPodsDetected',
+               'HighKafkaConsumerLag',
                'HighRequestLatency',
                'HighRequestErrorRate',
                'KafkaConnectionClosureRate',
-               'CPUSpend',
-               'MemorySpend',
-               'CPUEfficiency',
-               'MemoryEfficiency',
+               'KafkaConsumerGroupInactive',
                'KubeContainerWaiting',
                'KubeHpaMaxedOut',
                'KubePodCrashLooping',
-               'KubePodNotReady'
+               'KubePodNotReady',
+               'NoDatabaseOperations'
              ]) |
              list | length > 0)
 
@@ -75,14 +78,13 @@
                        selectattr('state', '==', 'firing') |
                        selectattr('labels.alertname', 'in', [
                          'FailedPodsDetected',
-                         'PendingPodsDetected',
-                         'RequestLatency',
-                         'RequestErrorRate',
+                         'HighKafkaConsumerLag',
                          'KafkaConnectionClosureRate',
-                         'CPUSpend',
-                         'MemorySpend',
-                         'CPUEfficiency',
-                         'MemoryEfficiency'
+                         'KafkaConsumerGroupInactive',
+                         'NoDatabaseOperations',
+                         'PendingPodsDetected',
+                         'RequestErrorRate',
+                         'RequestLatency'
                        ]) |
                        list }} specific alerts in firing state
           when: alerts_api_result is defined and alerts_api_result.json is defined
@@ -97,14 +99,13 @@
                               selectattr('state', '==', 'firing') |
                               selectattr('labels.alertname', 'in', [
                                 'FailedPodsDetected',
-                                'PendingPodsDetected',
-                                'RequestLatency',
-                                'RequestErrorRate',
+                                'HighKafkaConsumerLag',
                                 'KafkaConnectionClosureRate',
-                                'CPUSpend',
-                                'MemorySpend',
-                                'CPUEfficiency',
-                                'MemoryEfficiency'
+                                'KafkaConsumerGroupInactive',
+                                'NoDatabaseOperations',
+                                'PendingPodsDetected',
+                                'RequestErrorRate',
+                                'RequestLatency'
                               ]) | list
                   },
                   "status": "success",

@@ -10,14 +10,31 @@
       - app.kubernetes.io/part-of = it-bench
   register: recorders_jaeger_pods_info
 
+# NOTE: The shell command is used over the Ansible module because the k8s_cp module
+#       can fail with internal errors even when the pod is healthy.
+
+- name: Ensure local directory exists
+  ansible.builtin.file:
+    path: /tmp/traces
+    state: directory
+    mode: "0755"
+  when:
+    - recorders_jaeger_pods_info.resources | length == 1
+
 - name: Copy records directory from pod
-  kubernetes.core.k8s_cp:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    local_path: /tmp/traces
-    namespace: "{{ recorders_jaeger_pods_info.resources[0].metadata.namespace }}"
-    pod: "{{ recorders_jaeger_pods_info.resources[0].metadata.name }}"
-    remote_path: /opt/app-root/src/records
-    state: from_pod
+  ansible.builtin.shell: |
+    set -o pipefail
+    kubectl exec \
+      --kubeconfig={{ recorders_cluster.kubeconfig | ansible.builtin.expanduser }} \
+      -n {{ recorders_jaeger_pods_info.resources[0].metadata.namespace }} \
+      {{ recorders_jaeger_pods_info.resources[0].metadata.name }} \
+      -c recorder \
+      -- tar cf - -C /opt/app-root/src/records --exclude='lost+found' . | \
+    tar xf - -C /tmp/traces/
+  args:
+    executable: /bin/bash
+  register: recorders_jaeger_copy_output
+  changed_when: recorders_jaeger_copy_output.rc == 0
   when:
     - recorders_jaeger_pods_info.resources | length == 1
 

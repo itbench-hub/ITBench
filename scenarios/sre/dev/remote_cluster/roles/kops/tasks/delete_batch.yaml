@@ -1,0 +1,27 @@
+---
+- name: Asynchronously delete batch of kOps clusters
+  ansible.builtin.command:
+    cmd: kops delete cluster --name {{ cluster_name }} --yes --state {{ kops_state_store }}
+  async: 1200
+  poll: 0
+  loop: "{{ batch_cluster_names }}"
+  loop_control:
+    loop_var: cluster_name
+  register: kops_batch_async_delete_results
+  changed_when: false
+
+- name: Wait for batch asynchronous operations to complete
+  ansible.builtin.async_status:
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_batch_async_delete_results.results }}"
+  register: kops_batch_async_delete_poll_results
+  until: kops_batch_async_delete_poll_results.finished
+  delay: 60
+  retries: 15
+  failed_when: false
+
+- name: Clean up batch asynchronous operations
+  ansible.builtin.async_status:
+    mode: cleanup
+    jid: "{{ item.ansible_job_id }}"
+  loop: "{{ kops_batch_async_delete_results.results }}"

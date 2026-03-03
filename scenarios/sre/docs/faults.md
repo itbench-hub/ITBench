@@ -8,6 +8,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | Name | Platform | Tags |
 | --- | --- | --- |
 | [Cordoned Kubernetes Worker Node](#Cordoned-Kubernetes-Worker-Node) | Kubernetes | Deployment, Performance |
+| [Deleted Kubernetes Service](#Deleted-Kubernetes-Service) | Kubernetes | Deployment, Networking |
 | [Disabled Istio Ambient Mode Kubernetes Namespace](#Disabled-Istio-Ambient-Mode-Kubernetes-Namespace) | Kubernetes | Deployment, Networking |
 | [Failing Name Resolution Kubernetes Workload DNS Policy](#Failing-Name-Resolution-Kubernetes-Workload-DNS-Policy) | Kubernetes | Deployment, Networking |
 | [Hanging Kubernetes Workload Init Container](#Hanging-Kubernetes-Workload-Init-Container) | Kubernetes | Deployment, Performance |
@@ -15,7 +16,9 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Insufficient Kubernetes Resource Quota](#Insufficient-Kubernetes-Resource-Quota) | Kubernetes | Deployment, Performance |
 | [Insufficient Kubernetes Workload Container Resources](#Insufficient-Kubernetes-Workload-Container-Resources) | Kubernetes | Deployment, Performance |
 | [Invalid Kubernetes Workload Container Command](#Invalid-Kubernetes-Workload-Container-Command) | Kubernetes | Deployment, Performance |
-| [Kubernetes API Server Request Surge](#Kubernetes-API-Server-Request-Surge) | Kubernetes | Deployment, Performance |
+| [Istio Service Mesh Routing Corruption](#Istio-Service-Mesh-Routing-Corruption) | Kubernetes | Networking |
+| [Kubernetes API Server Request Surge](#Kubernetes-API-Server-Request-Surge) | Kubernetes | Control Plane, Performance |
+| [Malformed ConfigMap Causing Service Crash](#Malformed-ConfigMap-Causing-Service-Crash) | Kubernetes | Code |
 | [Misconfigured Kubernetes Horizontal Pod Autoscaler](#Misconfigured-Kubernetes-Horizontal-Pod-Autoscaler) | Kubernetes | Deployment, Performance |
 | [Misconfigured Kubernetes Workload Container Readiness Probe](#Misconfigured-Kubernetes-Workload-Container-Readiness-Probe) | Kubernetes | Deployment, Performance |
 | [Modified Kubernetes Workload Container Environment Variable](#Modified-Kubernetes-Workload-Container-Environment-Variable) | Kubernetes | Deployment, Performance |
@@ -25,6 +28,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Nonexistent Kubernetes Workload Persistent Volume Claim](#Nonexistent-Kubernetes-Workload-Persistent-Volume-Claim) | Kubernetes | Deployment |
 | [OpenTelemetry Demo Feature Flag](#OpenTelemetry-Demo-Feature-Flag) | Kubernetes | Deployment, Performance |
 | [Priority Kubernetes Workload Priority Preemption](#Priority-Kubernetes-Workload-Priority-Preemption) | Kubernetes | Deployment, Performance |
+| [Scaled to Zero Kubernetes Workload](#Scaled-to-Zero-Kubernetes-Workload) | Kubernetes | Deployment, Performance |
 | [Scheduled Chaos Mesh Experiment](#Scheduled-Chaos-Mesh-Experiment) | Kubernetes | Deployment, Performance |
 | [Strict Mutual TLS Istio Service Mesh Enforcement](#Strict-Mutual-TLS-Istio-Service-Mesh-Enforcement) | Kubernetes | Deployment, Networking |
 | [Traffic Denying Istio Gateway Authorization Policy](#Traffic-Denying-Istio-Gateway-Authorization-Policy) | Kubernetes | Deployment, Networking |
@@ -68,6 +72,72 @@ A fault is a solvable issue injected into an environment to create an incident.
                     "enum": [
                         "Deployment",
                         "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
+### Deleted Kubernetes Service
+
+**Description:** This fault deletes a Kubernetes Service resource, causing DNS resolution failures and preventing workloads from discovering or connecting to the target pods.
+
+**Expectation:** Applications attempting to connect to the deleted service will experience DNS resolution failures or connection refused errors. This simulates incidents like Azure's Traffic Manager profile deletion (PSM0-BQ8) where DNS-based service discovery was broken, causing widespread unavailability of dependent services.
+
+**[Implementation](../roles/faults/tasks/inject_deleted_kubernetes_service.yaml)**
+
+**Firing Alerts**
+
+**Golden Signal Alerts:** HighRequestErrorRate
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/services-networking/service/
+- https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+- https://kubernetes.io/docs/tasks/access-application-cluster/connecting-frontend-backend/
+- https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Service"
                     ],
                     "type": "string"
                 },
@@ -579,21 +649,86 @@ A fault is a solvable issue injected into an environment to create an incident.
     "type": "object"
 }
 ```
-### Kubernetes API Server Request Surge
+### Istio Service Mesh Routing Corruption
 
-**Description:** This fault injects a workload which causes a surge in requests to the API server, causing performance degredation.
+**Description:** This fault injects an Istio VirtualService that corrupts routing information for a target service, causing traffic to be routed to non-existent destinations. This simulates the November 2023 Optus BGP routing storm where software changes caused routing tables to become corrupted, disconnecting services from the core network. The fault automatically deploys an Istio waypoint proxy to enable L7 routing policies in Ambient mode, as VirtualServices require waypoint proxies for HTTP-level traffic management.
 
-**Expectation:** Workloads will be to experience high latency and new workloads may not be able to be scheduled.
+**Expectation:** Services attempting to communicate with the faulted service will experience connection failures and timeout errors. The service mesh will be unable to route traffic correctly, causing cascading failures across dependent services. HTTP requests will fail with 503 Service Unavailable or connection timeout errors.
 
-**[Implementation](../roles/faults/tasks/inject_kubernetes_api_server_request_surge.yaml)**
+**[Implementation](../roles/faults/tasks/inject_istio_service_mesh_routing_corruption.yaml)**
 
 **Firing Alerts**
 
-**Golden Signal Alerts:** HighRequestLatency
+**Golden Signal Alerts:** HighRequestErrorRate
 
 **Resources:**
-- https://kubernetes.io/docs/concepts/overview/components/
-- https://kubernetes.io/docs/concepts/architecture/#kube-apiserver
+- https://istio.io/latest/docs/concepts/traffic-management/
+- https://istio.io/latest/docs/reference/config/networking/virtual-service/
+- https://istio.io/latest/docs/reference/config/networking/destination-rule/
+- https://istio.io/latest/docs/ops/common-problems/network-issues/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Service"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
+### Kubernetes API Server Request Surge
+
+**Description:** This fault generates a high volume of requests to the Kubernetes API server by deploying multiple load generator pods that continuously query cluster resources. The surge in API requests can overwhelm the API server and impact cluster control plane performance.
+
+**Expectation:** The Kubernetes API server experiences increased load from continuous resource queries. This may cause API latency, rate limiting, or impact other control plane operations. Applications relying on the Kubernetes API may experience slower response times or failures.
+
+**[Implementation](../roles/faults/tasks/inject_kubernetes_api_server_request_surge.yaml)**
+
+See the scenario ground truth file where this fault is invoked.
+
+**Resources:**
+- https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/
+- https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/
+- https://kubernetes.io/docs/concepts/cluster-administration/flow-control/
 
 **Arguments Schema:**
 ```json
@@ -638,7 +773,7 @@ A fault is a solvable issue injected into an environment to create an incident.
                     "properties": {
                         "requestsPerSecond": {
                             "minimum": 1,
-                            "type": "integer"
+                            "type": "number"
                         }
                     },
                     "required": [
@@ -656,6 +791,76 @@ A fault is a solvable issue injected into an environment to create an incident.
     "required": [
         "kubernetesObject",
         "loadGenerator"
+    ],
+    "type": "object"
+}
+```
+### Malformed ConfigMap Causing Service Crash
+
+**Description:** This fault injects a malformed ConfigMap (truncated JSON) into any Kubernetes workload and adds an initContainer that validates the configuration during pod startup. The initContainer crashes when attempting to parse the invalid JSON, preventing the main application container from starting. This simulates incidents like Cloudflare's November 2025 outage where malformed config files caused application crashes.
+
+**Expectation:** The pod will fail to start and enter Init:CrashLoopBackOff state as the validation initContainer repeatedly crashes when parsing the malformed configuration. The workload becomes unavailable, returning HTTP 5xx errors or no response. Dependent services may experience cascading failures as requests to the affected service fail.
+
+**[Implementation](../roles/faults/tasks/inject_malformed_configmap_causing_service_crash.yaml)**
+
+**Firing Alerts**
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/configuration/configmap/
+- https://kubernetes.io/docs/concepts/workloads/
+- https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+- https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+- https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/config-map-v1/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "configMapName": {
+            "type": "string"
+        },
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject",
+        "configMapName"
     ],
     "type": "object"
 }
@@ -1280,6 +1485,71 @@ See the scenario ground truth file where this fault is invoked.
 - https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/
 - https://kubernetes.io/docs/concepts/workloads/
 - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+- https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
+### Scaled to Zero Kubernetes Workload
+
+**Description:** This fault scales a Kubernetes workload to zero replicas, simulating scenarios where worker services, queue processors, or event consumers are deliberately paused or stopped as part of incident mitigation or maintenance.
+
+**Expectation:** All pods for the workload will be terminated. The deployment will show 0/0 ready replicas. Services depending on this workload will experience failures, timeouts, or event processing backlogs. Kafka consumer groups will become inactive with zero members.
+
+**[Implementation](../roles/faults/tasks/inject_scaled_to_zero_kubernetes_workload.yaml)**
+
+**Firing Alerts**
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/workloads/
+- https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+- https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#scaling-to-0
 - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
 
 **Arguments Schema:**

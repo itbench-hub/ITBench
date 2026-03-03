@@ -1,0 +1,123 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-52
+spec:
+  # Predicted alerts based on fault propagation
+  alerts:
+    - group_id: checking-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: "checking deployment pods cannot be scheduled due to insufficient resource quota, preventing them from reaching Ready state"
+
+  # Resource groups representing affected Kubernetes resources
+  groups:
+    # Root cause: ResourceQuota preventing new pod scheduling
+    - id: resource-quota-1
+      kind: ResourceQuota
+      namespace: otel-demo
+      filter:
+        - strict-resource-quota\b
+      root_cause: true
+
+    # Secondary root cause: Feature flag causing load surge
+    - id: flagd-configmap-1
+      kind: ConfigMap
+      namespace: otel-demo
+      filter:
+        - flagd-config\b
+      root_cause: true
+
+    # Affected deployment that cannot scale
+    - id: checking-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - checking\b
+
+    - id: checking-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - checking-.*
+
+    # Load generator creating demand
+    - id: load-generator-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - load-generator\b
+
+    - id: load-generator-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - load-generator-.*
+
+  # Logical relationships between groups
+  aliases:
+    - - checking-deployment-1
+      - checking-pod-1
+    - - load-generator-deployment-1
+      - load-generator-pod-1
+
+  # Fault propagation chains showing how the resource constraint cascades
+  propagations:
+    # Feature flag enables load flooding
+    - source: flagd-configmap-1
+      target: load-generator-pod-1
+      condition: "loadGeneratorFloodHomepage feature flag is enabled in flagd-config ConfigMap"
+      effect: "load-generator pods generate significantly increased request volume to application services"
+
+    # Increased load triggers autoscaling attempt
+    - source: load-generator-pod-1
+      target: checking-deployment-1
+      condition: "Surge in requests causes HPA or manual scaling to attempt increasing checking deployment replicas"
+      effect: "checking deployment attempts to scale up to handle increased load"
+
+    # Resource quota blocks scaling
+    - source: resource-quota-1
+      target: checking-pod-1
+      condition: "strict-resource-quota in otel-demo namespace has insufficient memory/CPU limits available"
+      effect: "New checking pods cannot be scheduled due to namespace resource quota exceeded, resulting in KubePodNotReady alert"
+
+  # Fault metadata describing the root causes
+  fault:
+    - category: Create
+      condition: "ResourceQuota 'strict-resource-quota' created with insufficient memory allocation for namespace scaling needs"
+      entity:
+        group_id: resource-quota-1
+        kind: ResourceQuota
+        name: strict-resource-quota
+      fault_mechanism: >-
+        Simulates resource exhaustion at namespace level where resource quotas prevent horizontal
+        scaling during load spikes, similar to production incidents where quota limits are set
+        too conservatively
+    - category: Change
+      condition: "Feature flag 'loadGeneratorFloodHomepage' enabled in flagd-config ConfigMap"
+      entity:
+        group_id: flagd-configmap-1
+        kind: ConfigMap
+        name: flagd-config
+      fault_mechanism: "Enables load generation to trigger scaling pressure, exposing the resource quota constraint"
+
+  # Recommended remediation actions
+  recommendedActions:
+    - solution:
+        actions:
+          - "Review namespace resource quotas using kubectl get resourcequota"
+          - "Edit the resource quota to increase memory/CPU limits"
+          - "Verify pods can now be scheduled"
+        id: increase-resource-quota
+    - solution:
+        actions:
+          - "Delete the restrictive resource quota if no longer needed"
+          - "Ensure namespace has adequate resources for workload scaling"
+        id: delete-resource-quota
+    - solution:
+        actions:
+          - "Disable the loadGeneratorFloodHomepage feature flag by editing flagd-config ConfigMap"
+          - "Restart flagd and load-generator deployments to apply changes"
+          - "Reduce load to prevent triggering quota limits"
+        id: disable-load-generation

@@ -19,6 +19,16 @@ spec:
                 name: checkout
                 namespace: otel-demo
           id: unsupported-architecture-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: checkout
+                  namespace: otel-demo
+            id: force-workload-restart-by-scaling
   tools:
     sre:
       enabled: true

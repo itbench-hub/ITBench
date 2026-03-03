@@ -19,6 +19,16 @@ spec:
                 name: product-catalog
                 namespace: otel-demo
           id: nonexistent-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: product-catalog
+                  namespace: otel-demo
+            id: force-workload-restart-by-scaling
   tools:
     sre:
       enabled: true

@@ -1,0 +1,38 @@
+---
+- name: Retrieve service
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+  register: faults_service
+
+- name: Validate that service exists
+  ansible.builtin.assert:
+    that:
+      - faults_service.api_found
+      - faults_service.resources | ansible.builtin.length == 1
+    fail_msg: Unable to find service. Please verify that the service exists.
+    success_msg: Found service.
+
+- name: Delete the service
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ faults_service.resources[0].apiVersion }}"
+    kind: "{{ faults_service.resources[0].kind }}"
+    name: "{{ faults_service.resources[0].metadata.name }}"
+    namespace: "{{ faults_service.resources[0].metadata.namespace }}"
+    state: absent
+
+- name: Wait for service deletion to complete
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
+    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+  register: faults_service_check
+  until: faults_service_check.resources | ansible.builtin.length == 0
+  retries: 10
+  delay: 2

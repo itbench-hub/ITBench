@@ -1,0 +1,101 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-53
+spec:
+  # Predicted alerts based on fault propagation
+  alerts:
+    - group_id: reviews-v3-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: "reviews-v3 pods cannot start due to nonexistent PersistentVolumeClaim, preventing them from reaching Ready state"
+
+  # Resource groups representing affected Kubernetes resources
+  groups:
+    # Root cause: Deployment configured with nonexistent PVC
+    - id: reviews-v3-deployment-1
+      kind: Deployment
+      namespace: book-info
+      filter:
+        - reviews-v3\b
+      root_cause: true
+
+    - id: reviews-v3-pod-1
+      kind: Pod
+      namespace: book-info
+      filter:
+        - reviews-v3-.*
+
+    # Nonexistent or misconfigured PVC
+    - id: reviews-v3-pvc-1
+      kind: PersistentVolumeClaim
+      namespace: book-info
+      filter:
+        - reviews-v3\b
+
+    # Service that cannot reach healthy pods
+    - id: reviews-service-1
+      kind: Service
+      namespace: book-info
+      filter:
+        - reviews\b
+
+  # Logical relationships between groups
+  aliases:
+    - - reviews-v3-deployment-1
+      - reviews-v3-pod-1
+
+  # Fault propagation chains showing how the storage issue cascades
+  propagations:
+    # Deployment references nonexistent PVC
+    - source: reviews-v3-deployment-1
+      target: reviews-v3-pvc-1
+      condition: "reviews-v3 deployment configured to mount PersistentVolumeClaim that either doesn't exist or references invalid storageClassName"
+      effect: "Kubernetes cannot bind the volume claim, blocking pod creation"
+
+    # PVC binding failure prevents pod startup
+    - source: reviews-v3-pvc-1
+      target: reviews-v3-pod-1
+      condition: "PersistentVolumeClaim cannot be provisioned or bound due to nonexistent storageClassName or insufficient storage resources"
+      effect: "reviews-v3 pods remain in Pending state with FailedMount events, never reaching Running/Ready state, triggering KubePodNotReady alert"
+
+    # Unhealthy pods affect service availability
+    - source: reviews-v3-pod-1
+      target: reviews-service-1
+      condition: "reviews-v3 pods are not in Ready state"
+      effect: "reviews service (v3 subset) has no healthy endpoints, potentially causing request failures if traffic is routed to v3"
+
+  # Fault metadata describing the root cause
+  fault:
+    - category: Change
+      condition: "Deployment 'reviews-v3' modified to reference a nonexistent or misconfigured PersistentVolumeClaim, preventing persistent storage from being mounted"
+      entity:
+        group_id: reviews-v3-deployment-1
+        kind: Deployment
+        name: reviews-v3
+      fault_mechanism: >-
+        Simulates storage provisioning failures common in Kubernetes environments, such as
+        incorrect storageClassName, exhausted storage capacity, or misconfigured persistent
+        volume provisioners, similar to production incidents where storage backends fail to
+        provision volumes
+
+  # Recommended remediation actions
+  recommendedActions:
+    - solution:
+        actions:
+          - "Rollback the deployment to previous working configuration"
+          - "Verify PVC is no longer required in the reverted version"
+        id: rollback-deployment
+    - solution:
+        actions:
+          - "Identify available StorageClasses using kubectl get storageclass"
+          - "Edit the PersistentVolumeClaim to use a valid storageClassName"
+          - "Verify the PVC binds successfully"
+        id: fix-pvc-storageclass
+    - solution:
+        actions:
+          - "Identify existing PVCs in the namespace"
+          - "Edit the deployment to reference an existing, bound PVC"
+          - "Remove the invalid PVC reference"
+        id: use-existing-pvc

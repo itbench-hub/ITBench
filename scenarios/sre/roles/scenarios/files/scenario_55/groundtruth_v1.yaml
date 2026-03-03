@@ -1,0 +1,114 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-55
+spec:
+  # No observable alerts in application metrics for control plane storage latency
+  alerts: []
+
+  # Resource groups representing affected Kubernetes resources
+  groups:
+    # Root cause: Chaos Mesh Schedule creating IO latency
+    - id: chaos-schedule-1
+      kind: Schedule
+      namespace: chaos-mesh
+      filter:
+        - api-server-memory-stress\b
+      root_cause: true
+
+    # IOChaos experiment targeting etcd storage
+    - id: io-chaos-1
+      kind: IOChaos
+      namespace: chaos-mesh
+      filter:
+        - api-server-memory-stress-.*
+
+    # etcd pods experiencing storage latency
+    - id: etcd-pod-1
+      kind: Pod
+      namespace: kube-system
+      filter:
+        - etcd-.*
+
+    # Kubernetes API server depending on etcd
+    - id: api-server-pod-1
+      kind: Pod
+      namespace: kube-system
+      filter:
+        - kube-apiserver-.*
+
+    # Application pods potentially affected by control plane degradation
+    - id: otel-demo-pods-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - .*
+
+  # Logical relationships between groups
+  aliases:
+    - - chaos-schedule-1
+      - io-chaos-1
+
+  # Fault propagation chains showing how storage latency cascades
+  propagations:
+    # Chaos Mesh Schedule creates IOChaos experiments
+    - source: chaos-schedule-1
+      target: io-chaos-1
+      condition: "Chaos Mesh Schedule 'api-server-memory-stress' periodically creates IOChaos experiments targeting etcd"
+      effect: "IOChaos experiments are created and applied to etcd pods"
+
+    # IOChaos injects storage latency into etcd
+    - source: io-chaos-1
+      target: etcd-pod-1
+      condition: "IOChaos experiment injects 200ms latency on 50% of I/O operations to /var/lib/etcd volume for 5 minute duration"
+      effect: "etcd pods experience degraded storage performance, causing slower read/write operations to the cluster state store"
+
+    # etcd latency degrades API server performance
+    - source: etcd-pod-1
+      target: api-server-pod-1
+      condition: "etcd experiencing I/O latency causes slower responses to API server read/write requests"
+      effect: >-
+        kube-apiserver experiences increased latency for all operations that require etcd access
+        (get, list, watch, create, update, delete), potentially causing timeouts or slow kubectl
+        commands
+
+    # API server degradation affects cluster operations
+    - source: api-server-pod-1
+      target: otel-demo-pods-1
+      condition: "kube-apiserver with degraded etcd access exhibits increased response times for all Kubernetes API operations"
+      effect: >-
+        Application pods may experience delayed pod lifecycle operations, slower health check
+        updates, delayed ConfigMap/Secret propagation, and webhook timeouts, potentially causing
+        cascading failures
+
+  # Fault metadata describing the root cause
+  fault:
+    - category: Create
+      condition: "Chaos Mesh Schedule 'api-server-memory-stress' created to inject 200ms I/O latency on 50% of operations to etcd's /var/lib/etcd volume for 5 minute intervals"
+      entity:
+        group_id: chaos-schedule-1
+        kind: Schedule
+        name: api-server-memory-stress
+      fault_mechanism: >-
+        Simulates Kubernetes control plane storage degradation scenarios, such as slow disk I/O,
+        network-attached storage latency, or etcd performance issues that affect cluster state
+        management, similar to production incidents where storage backend degradation causes
+        cluster-wide control plane slowdowns (e.g., AWS EBS throttling, NFS latency spikes)
+
+  # Recommended remediation actions
+  recommendedActions:
+    - solution:
+        actions:
+          - "Pause the Chaos Mesh Schedule to prevent new experiments from starting"
+          - "Wait for current IOChaos experiment to complete or delete it manually"
+          - "Delete the Schedule to permanently stop the chaos injection"
+          - "Verify etcd I/O performance returns to normal using etcd metrics"
+        id: pause-and-delete-chaos-schedule
+    - solution:
+        actions:
+          - "Monitor etcd metrics (disk sync duration, backend commit duration) to assess impact"
+          - "Review API server latency metrics and logs"
+          - "Consider etcd storage backend performance requirements"
+          - "Verify etcd is on high-performance storage (SSD, provisioned IOPS)"
+        id: monitor-and-tune-etcd-storage

@@ -1,130 +1,105 @@
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "type": "object",
-    "required": [
-        "arguments",
-        "description",
-        "expectation",
-        "name",
-        "platform",
-        "resources",
-        "solutions",
-        "tags"
-    ],
-    "properties": {
-        "alerts": {
-            "type": "object",
-            "minProperties": 1,
-            "properties": {
-                "application": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "KubeContainerWaiting",
-                            "KubeHpaMaxedOut",
-                            "KubePodCrashLooping",
-                            "KubePodNotReady",
-                            "NoRequestsReceived"
-                        ]
-                    },
-                    "uniqueItems": true
-                },
-                "goldenSignal": {
-                    "type": "array",
-                    "items": {
-                        "type": "string",
-                        "enum": [
-                            "HighRequestErrorRate",
-                            "HighRequestLatency"
-                        ]
-                    },
-                    "uniqueItems": true
-                }
-            }
-        },
-        "arguments": {
-            "type": "object",
-            "required": [
-                "jsonSchema"
-            ],
-            "properties": {
-                "jsonSchema": {
-                    "type": "object"
-                }
-            }
-        },
-        "description": {
-            "type": "string"
-        },
-        "expectation": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "platform": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["arguments", "description", "expectation", "name", "platform", "resources", "solutions", "tags"],
+  "properties": {
+    "alerts": {
+      "type": "object",
+      "minProperties": 1,
+      "properties": {
+        "application": {
+          "type": "array",
+          "items": {
             "type": "string",
             "enum": [
-                "Kubernetes"
+              "HighKafkaConsumerLag",
+              "KafkaConsumerGroupInactive",
+              "KubeContainerWaiting",
+              "KubeHpaMaxedOut",
+              "KubePodCrashLooping",
+              "KubePodNotReady",
+              "NoDatabaseOperations",
+              "NoRequestsReceived"
             ]
+          },
+          "uniqueItems": true
         },
-        "resources": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            },
-            "uniqueItems": true
-        },
-        "solutions": {
-            "type": "object",
-            "required": [
-                "templates"
-            ],
-            "properties": {
-                "templates": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "required": [
-                            "steps"
-                        ],
-                        "properties": {
-                            "steps": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "required": [
-                                        "text"
-                                    ],
-                                    "properties": {
-                                        "command": {
-                                            "type": "string"
-                                        },
-                                        "text": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "tags": {
-            "type": "array",
-            "items": {
-                "type": "string",
-                "enum": [
-                    "Authentication",
-                    "Code",
-                    "Deployment",
-                    "Networking",
-                    "Performance"
-                ]
-            },
-            "uniqueItems": true
+        "goldenSignal": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["HighRequestErrorRate", "HighRequestLatency"]
+          },
+          "uniqueItems": true
         }
+      }
+    },
+    "arguments": {
+      "type": "object",
+      "required": ["jsonSchema"],
+      "properties": {
+        "jsonSchema": {
+          "type": "object"
+        }
+      }
+    },
+    "description": {
+      "type": "string"
+    },
+    "expectation": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["Kubernetes"]
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "solutions": {
+      "type": "object",
+      "required": ["templates"],
+      "properties": {
+        "templates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["steps"],
+            "properties": {
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["text"],
+                  "properties": {
+                    "command": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["Authentication", "Code", "Control Plane", "Deployment", "Networking", "Performance"]
+      },
+      "uniqueItems": true
     }
+  }
 }

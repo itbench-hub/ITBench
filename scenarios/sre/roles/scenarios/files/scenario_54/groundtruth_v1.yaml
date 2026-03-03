@@ -1,0 +1,94 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-54
+spec:
+  # No observable alerts in application metrics for control plane stress
+  alerts: []
+
+  # Resource groups representing affected Kubernetes resources
+  groups:
+    # Root cause: Chaos Mesh Schedule creating memory stress
+    - id: chaos-schedule-1
+      kind: Schedule
+      namespace: chaos-mesh
+      filter:
+        - api-server-memory-stress\b
+      root_cause: true
+
+    # StressChaos experiment targeting API server
+    - id: stress-chaos-1
+      kind: StressChaos
+      namespace: chaos-mesh
+      filter:
+        - api-server-memory-stress-.*
+
+    # Kubernetes API server experiencing memory pressure
+    - id: api-server-pod-1
+      kind: Pod
+      namespace: kube-system
+      filter:
+        - kube-apiserver-.*
+
+    # Application pods potentially affected by control plane degradation
+    - id: otel-demo-pods-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - .*
+
+  # Logical relationships between groups
+  aliases:
+    - - chaos-schedule-1
+      - stress-chaos-1
+
+  # Fault propagation chains showing how memory stress cascades
+  propagations:
+    # Chaos Mesh Schedule creates StressChaos experiments
+    - source: chaos-schedule-1
+      target: stress-chaos-1
+      condition: "Chaos Mesh Schedule 'api-server-memory-stress' periodically creates StressChaos experiments targeting kube-apiserver"
+      effect: "StressChaos experiments are created and applied to API server pods"
+
+    # StressChaos injects memory pressure into API server
+    - source: stress-chaos-1
+      target: api-server-pod-1
+      condition: "StressChaos experiment allocates 6GB of memory across 4 workers in kube-apiserver pod for 55 second duration"
+      effect: "kube-apiserver pod experiences memory pressure, potentially causing OOM conditions, increased response times, or pod eviction"
+
+    # API server degradation affects cluster operations
+    - source: api-server-pod-1
+      target: otel-demo-pods-1
+      condition: "kube-apiserver under memory stress exhibits increased latency, throttling, or temporary unavailability"
+      effect: "Application pods may experience delayed pod lifecycle operations (scheduling, health checks, resource updates), slower kubectl commands, and potential webhook timeouts"
+
+  # Fault metadata describing the root cause
+  fault:
+    - category: Create
+      condition: "Chaos Mesh Schedule 'api-server-memory-stress' created to inject 6GB memory stress into kube-apiserver pods using 4 worker threads for 55 second intervals"
+      entity:
+        group_id: chaos-schedule-1
+        kind: Schedule
+        name: api-server-memory-stress
+      fault_mechanism: >-
+        Simulates Kubernetes control plane resource exhaustion scenarios, such as API server
+        memory leaks, excessive caching, or resource-intensive operations that degrade cluster
+        control plane performance, similar to production incidents where control plane components
+        experience resource pressure under heavy load
+
+  # Recommended remediation actions
+  recommendedActions:
+    - solution:
+        actions:
+          - "Pause the Chaos Mesh Schedule to prevent new experiments from starting"
+          - "Wait for current StressChaos experiment to complete or delete it manually"
+          - "Delete the Schedule to permanently stop the chaos injection"
+          - "Verify API server memory usage returns to normal"
+        id: pause-and-delete-chaos-schedule
+    - solution:
+        actions:
+          - "Monitor API server metrics and logs to assess impact"
+          - "Consider increasing API server memory limits if legitimate load requires it"
+          - "Review API server audit logs to identify request patterns"
+        id: monitor-and-tune-api-server

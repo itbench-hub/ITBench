@@ -26,6 +26,16 @@ group-vars: ## Generates the group variables
 generate-docs: ## Generates library indexes, schemas, and other related documentation
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_documentation.yaml --tags "generate_docs"
 
+.PHONY: scaffold-fault
+scaffold-fault: ## Collect user input and create skeleton for fault entry
+	uv run ansible-playbook -i inventory.yaml playbooks/scaffold_fault.yaml
+	uv run ansible-lint roles/scenarios/files roles/scenarios/meta roles/waiters/meta roles/faults/meta --fix
+
+.PHONY: scaffold-scenario
+scaffold-scenario: ## Collect user input and create skeleton for scenario entry
+	uv run ansible-playbook -i inventory.yaml playbooks/scaffold_scenario.yaml
+	uv run ansible-lint roles/scenarios/files roles/scenarios/meta roles/waiters/meta roles/faults/meta --fix
+
 .PHONY: validate-docs
 validate-docs: ## Validates library indexes
 	uv run ansible-playbook -i inventory.yaml playbooks/manage_documentation.yaml --tags "validate_docs"

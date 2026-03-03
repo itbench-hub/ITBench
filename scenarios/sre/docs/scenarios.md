@@ -35,7 +35,7 @@ The following scenarios are being open-sourced at this time and their implementa
 | [48](#Scenario-48) | sre | medium | Kubernetes | Deployment, Networking |
 | [49](#Scenario-49) | sre | medium | Kubernetes | Deployment, Performance |
 | [50](#Scenario-50) | sre | medium | Kubernetes | Deployment, Networking |
-| [51](#Scenario-51) | sre | low | Kubernetes | Deployment, Performance |
+| [51](#Scenario-51) | sre | low | Kubernetes | Control Plane, Performance |
 | [52](#Scenario-52) | sre | low | Kubernetes | Deployment, Performance |
 | [53](#Scenario-53) | sre | medium | Kubernetes | Deployment |
 | [54](#Scenario-54) | sre | low | Kubernetes | Deployment, Performance |
@@ -904,18 +904,25 @@ kubectl edit namespace book-info
 
 Step 1
 
-- Manually edit the manifest and lower the request rate.
+- List all deployments in the namespace to identify the load generator.
 
 ```shell
-kubectl -n otel-demo edit deployment workload-scanner
+kubectl -n otel-demo get deployments
 ```
-
-OR
-
-- Delete the injected load generator deployment.
+- Delete the workload-scanner deployment that is generating the API load.
 
 ```shell
 kubectl -n otel-demo delete deployment workload-scanner
+```
+- Clean up the associated ClusterRole.
+
+```shell
+kubectl -n otel-demo delete clusterrole workload-scanner
+```
+- Clean up the associated ClusterRoleBinding.
+
+```shell
+kubectl -n otel-demo delete clusterrolebinding workload-scanner
 ```
 ### Scenario 52
 

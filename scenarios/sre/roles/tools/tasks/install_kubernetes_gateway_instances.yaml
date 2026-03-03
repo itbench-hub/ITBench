@@ -13,7 +13,7 @@
 
 - name: Create ConfigMap for Istio Gateway
   kubernetes.core.k8s:
-    kubeconfig:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: ConfigMap
@@ -65,7 +65,7 @@
       reason: Programmed
       status: "True"
       type: Programmed
-  register: tools_istio_kubenetes_gateway
+  register: tools_istio_kubernetes_gateway
 
 - name: Create PodMonitor for Istio Kubernetes Gateway
   kubernetes.core.k8s:
@@ -74,12 +74,12 @@
       apiVersion: monitoring.coreos.com/v1
       kind: PodMonitor
       metadata:
-        name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
-        namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+        name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
+        namespace: "{{ tools_istio_kubernetes_gateway.result.metadata.namespace }}"
       spec:
         selector:
           matchLabels:
-            "gateway.networking.k8s.io/gateway-name": "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
+            "gateway.networking.k8s.io/gateway-name": "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
         podMetricsEndpoints:
           - interval: 30s
             port: metrics
@@ -96,8 +96,8 @@
         namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
       spec:
         parentRefs:
-          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
-            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+          - name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubernetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
               - name: clickhouse-{{ tools_managers.clickhouse_operator.instances.names.main }}
@@ -125,11 +125,11 @@
       kind: HTTPRoute
       metadata:
         name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.jaeger.namespace }}"
+        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
       spec:
         parentRefs:
-          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
-            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+          - name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubernetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
               - name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}-collector"
@@ -152,11 +152,11 @@
       kind: HTTPRoute
       metadata:
         name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
-        namespace: "{{ tools_managers.kubernetes_topology_monitor.chart.release.namespace }}"
+        namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
       spec:
         parentRefs:
-          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
-            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+          - name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubernetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
               - name: topology-monitor-svc
@@ -189,8 +189,8 @@
         namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
       spec:
         parentRefs:
-          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
-            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+          - name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubernetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
               - name: "{{ tools_managers.opencost.helm.release.name }}"
@@ -214,8 +214,8 @@
         namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
       spec:
         parentRefs:
-          - name: "{{ tools_istio_kubenetes_gateway.result.metadata.name }}"
-            namespace: "{{ tools_istio_kubenetes_gateway.result.metadata.namespace }}"
+          - name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
+            namespace: "{{ tools_istio_kubernetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
               - name: "{{ tools_managers.prometheus.helm.release.name }}-kube-prometheus-prometheus"

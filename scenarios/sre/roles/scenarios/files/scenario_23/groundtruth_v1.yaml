@@ -5,21 +5,35 @@ metadata:
   name: scenario-23
 spec:
   alerts:
-    - group_id: checkout-pod-1
-      id: PendingPodsDetected
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
       metadata:
-        description: Pods in pending state for checkout service
+        description: Frontend service error rate above threshold due to checkout unavailability
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy service error rate above threshold due to checkout unavailability
+    - group_id: checkout-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Pods in not ready state for checkout service
+    - group_id: checkout-pod-1
+      id: KubeContainerWaiting
+      metadata:
+        description: Checkout container waiting due to unsupported architecture image
   aliases:
     - - checkout-service-1
       - checkout-pod-1
+    - - checkout-pod-1
+      - checkout-deployment-1
   fault:
     - category: Change
-      condition: To Be Specified
+      condition: Invalid architecture image specified in deployment
       entity:
-        group_id: checkout-pod-1
-        kind: Pod
-        name: checkout-pod-1
-      fault_mechanism: custom
+        group_id: checkout-deployment-1
+        kind: Deployment
+        name: checkout
+      fault_mechanism: unsupported-architecture-kubernetes-workload-container-image
   groups:
     - filter:
         - checkout-.*
@@ -37,15 +51,29 @@ spec:
       id: checkout-service-1
       kind: Service
       namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
-    - condition: checkout deployment updated to point to an invalid image - incorrect architecture
-      effect: checkout pod is in ImagePullBackOff error
+    - condition: checkout deployment updated to point to an invalid architecture image
+      effect: checkout pod enters ImagePullBackOff state
       source: checkout-deployment-1
       target: checkout-pod-1
-    - condition: checkout pod is in ImagePullBackOff error
-      effect: ""
+    - condition: checkout service has zero healthy endpoints after forced restart
+      effect: frontend service experiences request errors when calling checkout
       source: checkout-pod-1
-      target: checkout-service-1
+      target: frontend-service-1
+    - condition: frontend service experiences errors
+      effect: frontend-proxy service experiences request errors
+      source: frontend-service-1
+      target: frontend-proxy-service-1
   recommended_actions:
     - solution:
         actions:

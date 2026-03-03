@@ -1,0 +1,80 @@
+{
+  "skills": [
+    {
+      "name": "fault-scaffolding",
+      "type": "suggest",
+      "priority": "high",
+      "description": "Helps complete fault TODO fields after running scaffold_fault",
+      "triggers": {
+        "prompt": {
+          "keywords": [
+            "fault scaffold",
+            "complete fault",
+            "fault TODO",
+            "fill fault",
+            "injection task",
+            "fault arguments",
+            "fault schema"
+          ],
+          "intentPatterns": [
+            "(help|assist|complete).*?fault",
+            "(fill|populate|generate).*?(TODO|schema|arguments)",
+            "injection.*?task",
+            "fault.*?(definition|index)"
+          ]
+        },
+        "file": {
+          "pathPatterns": [
+            "**/faults/index.json",
+            "**/faults/tasks/inject_*.yaml",
+            "**/roles/faults/**"
+          ],
+          "contentPatterns": [
+            "\"alerts\":\\s*\"TODO\"",
+            "\"arguments\":\\s*\"TODO\"",
+            "\"resources\":\\s*\"TODO\"",
+            "\"solutions\":\\s*\"TODO\"",
+            "# TODO: LLM-generated injection task"
+          ]
+        }
+      }
+    },
+    {
+      "name": "scenario-scaffolding",
+      "type": "suggest",
+      "priority": "high",
+      "description": "Helps complete scenario TODO fields after running scaffold_scenario",
+      "triggers": {
+        "prompt": {
+          "keywords": [
+            "scenario scaffold",
+            "complete scenario",
+            "scenario TODO",
+            "fill scenario",
+            "disruptions",
+            "scenario solutions",
+            "faultId"
+          ],
+          "intentPatterns": [
+            "(help|assist|complete).*?scenario",
+            "(fill|populate|generate).*?(disruptions|solutions)",
+            "scenario.*?(definition|index)",
+            "fault.*?scenario"
+          ]
+        },
+        "file": {
+          "pathPatterns": [
+            "**/scenarios/index.json",
+            "**/roles/scenarios/**"
+          ],
+          "contentPatterns": [
+            "\"faultId\":",
+            "\"disruptions\":\\s*\\[\\]",
+            "\"solutions\":\\s*\\[\\]",
+            "\"alerts\":\\s*\\[\\]"
+          ]
+        }
+      }
+    }
+  ]
+}
