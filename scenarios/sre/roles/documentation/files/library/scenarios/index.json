@@ -330,7 +330,7 @@
         ],
         "category": "sre",
         "complexity": "low",
-        "description": "This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image.",
+        "description": "This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image, with a forced restart to trigger complete service outage.",
         "disruptions": [
             {
                 "injections": [
@@ -395,7 +395,7 @@
         ],
         "category": "sre",
         "complexity": "medium",
-        "description": "This scenario changes the environment variables of OpenTelemetry Demo's `shipping` service, causing it to be unable to reach the `quote` service.",
+        "description": "This scenario simulates the OpenTelemetry Demo's `checkout` service being unable to start due to an unsupported architecture image, with a forced restart to trigger complete service outage.",
         "disruptions": [
             {
                 "injections": [
@@ -2317,6 +2317,144 @@
                         {
                             "command": "kubectl -n chaos-mesh delete schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'",
                             "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [
+            "KubePodNotReady"
+        ],
+        "category": "sre",
+        "complexity": "low",
+        "description": "This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image, testing Kubernetes rolling update resilience without forced restart.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "container": {
+                                "name": "product-catalog"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "product-catalog",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "nonexistent-kubernetes-workload-container-image"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 56,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/product-catalog",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment product-catalog",
+                            "text": "Manually edit the manifest and replace the invalid image with the correct value."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [
+            "KubePodNotReady"
+        ],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `checkout` service being unable to start due to an unsupported architecture image, testing Kubernetes rolling update resilience without forced restart.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "container": {
+                                "name": "checkout"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "checkout",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "unsupported-architecture-kubernetes-workload-container-image"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 57,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/checkout",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment checkout",
+                            "text": "Manually edit the manifest and replace the invalid image with the correct value."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment checkout",
+                            "text": "Manually edit the manifest and replace the node selector to allow Kubernetes to schedule the workload on a supported node (if exists)."
                         }
                     ]
                 }

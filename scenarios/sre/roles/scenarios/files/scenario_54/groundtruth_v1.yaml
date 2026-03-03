@@ -6,7 +6,6 @@ metadata:
 spec:
   # No observable alerts in application metrics for control plane stress
   alerts: []
-
   # Resource groups representing affected Kubernetes resources
   groups:
     # Root cause: Chaos Mesh Schedule creating memory stress
@@ -61,12 +60,14 @@ spec:
     - source: api-server-pod-1
       target: otel-demo-pods-1
       condition: "kube-apiserver under memory stress exhibits increased latency, throttling, or temporary unavailability"
-      effect: "Application pods may experience delayed pod lifecycle operations (scheduling, health checks, resource updates), slower kubectl commands, and potential webhook timeouts"
+      effect: "Application pods may experience delayed pod lifecycle operations (scheduling, health checks, resource updates), slower kubectl commands, and potential
+        webhook timeouts"
 
   # Fault metadata describing the root cause
   fault:
     - category: Create
-      condition: "Chaos Mesh Schedule 'api-server-memory-stress' created to inject 6GB memory stress into kube-apiserver pods using 4 worker threads for 55 second intervals"
+      condition: "Chaos Mesh Schedule 'api-server-memory-stress' created to inject 6GB memory stress into kube-apiserver pods using 4 worker threads for 55 second
+        intervals"
       entity:
         group_id: chaos-schedule-1
         kind: Schedule
