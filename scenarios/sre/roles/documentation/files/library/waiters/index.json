@@ -132,5 +132,59 @@
         "id": "scale-kubernetes-workload",
         "name": "Scale Kubernetes Workload",
         "platform": "Kubernetes"
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "Forces a complete workload restart by scaling to zero replicas and back to original count, ensuring all pods are terminated and recreated.",
+        "id": "force-workload-restart-by-scaling",
+        "name": "Force Workload Restart by Scaling",
+        "platform": "Kubernetes"
     }
 ]

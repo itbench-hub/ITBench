@@ -145,7 +145,7 @@
   tags: {{ documentation_faults["scheduled-chaos-mesh-experiment"].tags }}
 - category: sre
   complexity: low
-  description: This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image.
+  description: This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image, with a forced restart to trigger complete service outage.
   disruptions:
     - injections:
       - args:
@@ -169,7 +169,7 @@
   tags: {{ documentation_faults["nonexistent-kubernetes-workload-container-image"].tags }}
 - category: sre
   complexity: medium
-  description: This scenario changes the environment variables of OpenTelemetry Demo's `shipping` service, causing it to be unable to reach the `quote` service.
+  description: This scenario simulates the OpenTelemetry Demo's `checkout` service being unable to start due to an unsupported architecture image, with a forced restart to trigger complete service outage.
   disruptions:
     - injections:
       - args:
@@ -939,6 +939,54 @@
     - disruptionIndex: 0
       injectionIndex: 0
   tags: {{ documentation_faults["scheduled-chaos-mesh-experiment"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image, testing Kubernetes rolling update resilience without forced restart.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: product-catalog
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: product-catalog
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: nonexistent-kubernetes-workload-container-image
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 56
+  platforms: {{ [documentation_faults["nonexistent-kubernetes-workload-container-image"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["nonexistent-kubernetes-workload-container-image"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates the OpenTelemetry Demo's `checkout` service being unable to start due to an unsupported architecture image, testing Kubernetes rolling update resilience without forced restart.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: checkout
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: checkout
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: unsupported-architecture-kubernetes-workload-container-image
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 57
+  platforms: {{ [documentation_faults["unsupported-architecture-kubernetes-workload-container-image"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["unsupported-architecture-kubernetes-workload-container-image"].tags }}
 - category: sre
   complexity: medium
   description: This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.
