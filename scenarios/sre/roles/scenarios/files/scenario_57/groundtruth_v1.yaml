@@ -1,0 +1,51 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-57
+spec:
+  alerts:
+    - group_id: checkout-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Checkout pod not ready due to architecture mismatch (rolling update protects service availability)
+    - group_id: checkout-pod-1
+      id: KubeContainerWaiting
+      metadata:
+        description: Checkout container waiting due to unsupported architecture image
+  aliases:
+    - - checkout-pod-1
+      - checkout-deployment-1
+  fault:
+    - category: Change
+      condition: Invalid architecture image specified in deployment during rolling update
+      entity:
+        group_id: checkout-deployment-1
+        kind: Deployment
+        name: checkout
+      fault_mechanism: unsupported-architecture-kubernetes-workload-container-image
+  groups:
+    - filter:
+        - checkout-.*
+      id: checkout-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - checkout-.*
+      id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: checkout deployment updated to point to an invalid architecture image
+      effect: new checkout pod enters ImagePullBackOff state while old pod continues serving traffic
+      source: checkout-deployment-1
+      target: checkout-pod-1
+  recommended_actions:
+    - solution:
+        actions:
+          - Identify the deployment with failing pods using kubectl get pods
+          - Check pod events for architecture mismatch errors
+          - Update deployment image to use correct architecture (amd64 vs arm64)
+          - Verify new pods start successfully
+        id: fix_architecture_mismatch_in_rolling_update

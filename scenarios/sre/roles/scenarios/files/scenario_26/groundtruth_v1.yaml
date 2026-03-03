@@ -5,14 +5,18 @@ metadata:
   name: scenario-26
 spec:
   alerts:
-    - group_id: email-service-1
-      id: HighRequestErrorRate
-      metadata:
-        description: Request error rate in service email in namespace otel-demo is above 0
     - group_id: checkout-service-1
       id: HighRequestErrorRate
       metadata:
         description: Request error rate in service checkout in namespace otel-demo is above 0
+    - group_id: checkout-service-1
+      id: HighRequestLatency
+      metadata:
+        description: Checkout service latency increases when email service fails
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy errors cascade from checkout service failures
   aliases:
     - - email-service-1
       - email-pod-1
@@ -53,6 +57,11 @@ spec:
       id: checkout-pod-1
       kind: Pod
       namespace: otel-demo
+    - filter:
+        - frontend-proxy
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
     - condition: HTTP Chaos tampers POST request bodies with invalid JSON payload
       effect: Email service receives corrupted requests and fails to process them
@@ -62,6 +71,14 @@ spec:
       effect: Checkout service experiences errors when sending order confirmation emails
       source: email-service-1
       target: checkout-service-1
+    - condition: Email service errors cause retry logic in checkout
+      effect: Checkout service experiences increased latency from email service retries
+      source: email-service-1
+      target: checkout-service-1
+    - condition: Checkout service errors and latency from email failures
+      effect: Frontend-proxy experiences errors from checkout service failures
+      source: checkout-service-1
+      target: frontend-proxy-service-1
   recommendedActions:
     - solution:
         actions:

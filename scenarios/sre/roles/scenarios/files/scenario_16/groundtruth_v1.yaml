@@ -6,9 +6,21 @@ metadata:
 spec:
   alerts:
     - group_id: shipping-service-1
-      id: HighRequestLatency
+      id: HighRequestErrorRate
       metadata:
-        description: Latency in service shipping in namespace otel-demo is above 1500ms
+        description: Shipping service errors due to connection failures to quote service
+    - group_id: checkout-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Checkout errors cascade from shipping service failures
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend errors cascade from checkout service failures
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy errors cascade from frontend service failures
   aliases:
     - - shipping-service-1
       - shipping-pod-1
@@ -38,11 +50,38 @@ spec:
       id: shipping-pod-1
       kind: Pod
       namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
     - condition: Shipping service cannot connect to quote service due to incorrect QUOTE_ADDR port configuration
       effect: Shipping service experiences high latency while attempting to connect to invalid port
       source: shipping-deployment-1
       target: shipping-service-1
+    - condition: Shipping service latency causes connection failures
+      effect: Checkout service experiences errors when calling shipping service
+      source: shipping-service-1
+      target: checkout-service-1
+    - condition: Checkout service errors from shipping failures
+      effect: Frontend service experiences errors when calling checkout service
+      source: checkout-service-1
+      target: frontend-service-1
+    - condition: Frontend service errors from checkout failures
+      effect: Frontend-proxy experiences errors from frontend service failures
+      source: frontend-service-1
+      target: frontend-proxy-service-1
   recommendedActions:
     - solution:
         actions:
