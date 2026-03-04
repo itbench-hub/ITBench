@@ -1,0 +1,105 @@
+---
+- name: Install Kyverno
+  kubernetes.core.helm:
+    chart_ref: "{{ docker_managers.kyverno.helm.chart.reference }}"
+    chart_version: "{{ docker_managers.kyverno.helm.chart.version }}"
+    create_namespace: true
+    kubeconfig: "{{ docker_cluster.kubeconfig }}"
+    release_name: "{{ docker_managers.kyverno.helm.release.name }}"
+    release_namespace: "{{ docker_managers.kyverno.kubernetes.namespace }}"
+    values:
+      admissionController:
+        rbac:
+          clusterRole:
+            extraResources:
+              - apiGroups:
+                  - ""
+                resources:
+                  - secrets
+                verbs:
+                  - get
+                  - list
+                  - watch
+                  - create
+                  - update
+                  - delete
+      backgroundController:
+        rbac:
+          clusterRole:
+            extraResources:
+              - apiGroups:
+                  - ""
+                resources:
+                  - secrets
+                verbs:
+                  - get
+                  - list
+                  - watch
+                  - create
+                  - update
+                  - delete
+      config:
+        webhooks: # Override the default webhook configuration
+          namespaceSelector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: NotIn
+                values:
+                  - kube-public
+                  - kyverno
+        resourceFilters: # Explicitly set resourceFilters without kube-system
+          - "[*/*,kyverno,*]"
+          - "[Event,*,*]"
+          - "[*/*,kube-public,*]"
+          - "[*/*,kube-node-lease,*]"
+          - "[Node,*,*]"
+          - "[Node/?*,*,*]"
+          - "[APIService,*,*]"
+          - "[APIService/?*,*,*]"
+          - "[TokenReview,*,*]"
+          - "[SubjectAccessReview,*,*]"
+          - "[SelfSubjectAccessReview,*,*]"
+          - "[Binding,*,*]"
+          - "[Pod/binding,*,*]"
+          - "[ReplicaSet,*,*]"
+          - "[ReplicaSet/?*,*,*]"
+      excludeKyvernoNamespace: true
+      webhooks:
+        namespaceSelector:
+          matchExpressions:
+            - key: kubernetes.io/metadata.name
+              operator: NotIn
+              values:
+                - kube-public
+
+- name: Wait for Kyverno Deployment to become ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ docker_cluster.kubeconfig }}"
+    namespace: "{{ docker_managers.kyverno.kubernetes.namespace }}"
+    wait: true
+
+- name: Wait for Kyverno webhook to become ready
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    kubeconfig: "{{ docker_cluster.kubeconfig }}"
+    label_selectors:
+      - app.kubernetes.io/component=admission-controller
+      - app.kubernetes.io/instance=kyverno
+    namespace: "{{ docker_managers.kyverno.kubernetes.namespace }}"
+    wait: true
+    wait_condition:
+      type: Ready
+      status: "True"
+    wait_timeout: 300
+
+- name: Create ClusterPolicies
+  kubernetes.core.k8s:
+    kubeconfig: "{{ docker_cluster.kubeconfig }}"
+    state: present
+    template:
+      path: templates/kubernetes/kyverno/clusterpolicies.j2
+      variable_end_string: "]]"
+      variable_start_string: "[["
