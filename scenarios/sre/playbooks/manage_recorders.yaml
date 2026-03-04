@@ -23,6 +23,14 @@
         cluster_tools_enabled:
           oc: "{{ system_oc_exists }}"
   tasks:
+    - name: Import role variables from scenario
+      when:
+        - scenario_id is defined
+      ansible.builtin.import_role:
+        name: scenarios
+      vars:
+        scenarios_identifier: "{{ scenario_id }}"
+
     - name: Import leaderboard role
       ansible.builtin.import_role:
         name: leaderboard
@@ -42,13 +50,13 @@
               platform: "{{ cluster_platform }}"
             recorders_required:
               alerts:
-                prometheus: "{{ incidents_tools.prometheus | default(tools.sre or tools.finops) }}"
+                prometheus: "{{ scenarios_tools.prometheus | default(false) }}"
               topology:
-                kubernetes: "{{ incidents_tools.kubernetes_topology_monitor | default(tools.sre) }}"
+                kubernetes: "{{ scenarios_tools.kubernetes_topology_monitor | default(false) }}"
               traces:
-                jaeger: "{{ incidents_tools.jaeger | default(tools.sre or tools.finops) }}"
+                jaeger: "{{ scenarios_tools.jaeger | default(false) }}"
               unified:
-                clickhouse: "{{ incidents_tools.clickhouse | default(tools.sre or tools.finops) }}"
+                clickhouse: "{{ scenarios_tools.clickhouse | default(false) }}"
             recorders_storage: "{{ storage }}"
 
         - name: Import leaderboard role

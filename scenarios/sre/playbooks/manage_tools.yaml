@@ -28,16 +28,10 @@
         - install_tools
       when:
         - scenario_id is defined
-      block:
-        - name: Import scenarios role
-          ansible.builtin.import_role:
-            name: scenarios
-          vars:
-            scenarios_identifier: "{{ scenario_id }}"
-
-        - name: Create tool installation variable
-          ansible.builtin.set_fact:
-            tools_configuration: "{{ scenarios_scenario.spec.tools }}"
+      ansible.builtin.import_role:
+        name: scenarios
+      vars:
+        scenarios_identifier: "{{ scenario_id }}"
 
     - name: Create role variables
       tags:
@@ -61,3 +55,4 @@
           kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
           provider: "{{ cluster_provider }}"
+        tools_configuration: "{{ scenarios_scenario.spec.tools | default(tools_configuration) }}"
