@@ -1955,8 +1955,8 @@
             ]
         ],
         "tags": [
-            "Performance",
-            "Control Plane"
+            "Control Plane",
+            "Performance"
         ]
     },
     {
@@ -2582,6 +2582,142 @@
                         {
                             "command": "kubectl -n otel-demo edit deployment product-catalog",
                             "text": "Manually edit the manifest and replace the invalid command with the correct value."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [
+            "KubePodCrashLooping"
+        ],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates OpenTelemetry Demo's `recommendation` service crashing due to a malformed ConfigMap.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "configMapName": "features",
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "recommendation",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "malformed-configmap-causing-service-crash"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 106,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/recommendation",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment recommendation",
+                            "text": "Manually edit the manifest and remove the malformed ConfigMap volumes."
+                        },
+                        {
+                            "command": "kubectl -n otel-demo delete configmap features",
+                            "text": "Delete the injected malformed ConfigMap object."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap features",
+                            "text": "Manually edit the ConfigMap and reduce its size to acceptable limits."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Code"
+        ]
+    },
+    {
+        "alerts": [
+            "KafkaConsumerGroupInactive"
+        ],
+        "category": "sre",
+        "complexity": "low",
+        "description": "This scenario simulates OpenTelemetry Demo's `accounting` service being scaled to zero replicas.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "accounting",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "scaled-to-zero-kubernetes-workload"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 107,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo scale deployment/accounting --replicas=1",
+                            "text": "Scale the workload back to 1 replica to restore service."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/accounting",
+                            "text": "Revert the last change done to the manifest to restore the original replica count."
                         }
                     ]
                 }

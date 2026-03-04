@@ -40,8 +40,12 @@ The following scenarios are being open-sourced at this time and their implementa
 | [53](#Scenario-53) | sre | medium | Kubernetes | Deployment |
 | [54](#Scenario-54) | sre | low | Kubernetes | Deployment, Performance |
 | [55](#Scenario-55) | sre | low | Kubernetes | Deployment, Performance |
+| [56](#Scenario-56) | sre | low | Kubernetes | Deployment, Performance |
+| [57](#Scenario-57) | sre | medium | Kubernetes | Deployment, Performance |
 | [102](#Scenario-102) | sre | medium | Kubernetes | Deployment, Performance |
 | [105](#Scenario-105) | sre | medium | Kubernetes | Deployment, Performance |
+| [106](#Scenario-106) | sre | medium | Kubernetes | Code |
+| [107](#Scenario-107) | sre | low | Kubernetes | Deployment, Performance |
 
 ## Scenario Statistics
 
@@ -49,19 +53,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 4 | 29 |
+| 4 | 33 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 31 |
+| 2 | 35 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 14 | 18 | 1 |
+| 16 | 20 | 1 |
 
 ## Detailed Summary of Scenarios
 
@@ -180,7 +184,7 @@ kubectl -n chaos-mesh delete schedule otel-demo-product-catalog-network-delay ex
 ```
 ### Scenario 20
 
-**Description:** This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image.
+**Description:** This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image, with a forced restart to trigger complete service outage.
 
 **Active Applications:**
 
@@ -209,7 +213,7 @@ kubectl -n otel-demo edit deployment product-catalog
 ```
 ### Scenario 23
 
-**Description:** This scenario changes the environment variables of OpenTelemetry Demo's `shipping` service, causing it to be unable to reach the `quote` service.
+**Description:** This scenario simulates the OpenTelemetry Demo's `checkout` service being unable to start due to an unsupported architecture image, with a forced restart to trigger complete service outage.
 
 **Active Applications:**
 
@@ -1067,6 +1071,72 @@ kubectl -n chaos-mesh get iochaos --selector='experiment.chaos-mesh.org/pause=tr
 ```shell
 kubectl -n chaos-mesh delete schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'
 ```
+### Scenario 56
+
+**Description:** This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image, testing Kubernetes rolling update resilience without forced restart.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Nonexistent Kubernetes Workload Container Image](./faults.md#Nonexistent-Kubernetes-Workload-Container-Image)
+
+**Solution:**
+
+Step 1
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n otel-demo rollout undo deployment/product-catalog
+```
+
+OR
+
+- Manually edit the manifest and replace the invalid image with the correct value.
+
+```shell
+kubectl -n otel-demo edit deployment product-catalog
+```
+### Scenario 57
+
+**Description:** This scenario simulates the OpenTelemetry Demo's `checkout` service being unable to start due to an unsupported architecture image, testing Kubernetes rolling update resilience without forced restart.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Unsupported Architecture Kubernetes Workload Container Image](./faults.md#Unsupported-Architecture-Kubernetes-Workload-Container-Image)
+
+**Solution:**
+
+Step 1
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n otel-demo rollout undo deployment/checkout
+```
+
+OR
+
+- Manually edit the manifest and replace the invalid image with the correct value.
+
+```shell
+kubectl -n otel-demo edit deployment checkout
+```
+
+OR
+
+- Manually edit the manifest and replace the node selector to allow Kubernetes to schedule the workload on a supported node (if exists).
+
+```shell
+kubectl -n otel-demo edit deployment checkout
+```
 ### Scenario 102
 
 **Description:** This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.
@@ -1124,4 +1194,78 @@ OR
 
 ```shell
 kubectl -n otel-demo edit deployment product-catalog
+```
+### Scenario 106
+
+**Description:** This scenario simulates OpenTelemetry Demo's `recommendation` service crashing due to a malformed ConfigMap.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Malformed ConfigMap Causing Service Crash](./faults.md#Malformed-ConfigMap-Causing-Service-Crash)
+
+**Solution:**
+
+Step 1
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n otel-demo rollout undo deployment/recommendation
+```
+
+OR
+
+- Manually edit the manifest and remove the malformed ConfigMap volumes.
+
+```shell
+kubectl -n otel-demo edit deployment recommendation
+```
+
+OR
+
+- Delete the injected malformed ConfigMap object.
+
+```shell
+kubectl -n otel-demo delete configmap features
+```
+
+OR
+
+- Manually edit the ConfigMap and reduce its size to acceptable limits.
+
+```shell
+kubectl -n otel-demo edit configmap features
+```
+### Scenario 107
+
+**Description:** This scenario simulates OpenTelemetry Demo's `accounting` service being scaled to zero replicas.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Scaled to Zero Kubernetes Workload](./faults.md#Scaled-to-Zero-Kubernetes-Workload)
+
+**Solution:**
+
+Step 1
+
+- Scale the workload back to 1 replica to restore service.
+
+```shell
+kubectl -n otel-demo scale deployment/accounting --replicas=1
+```
+
+OR
+
+- Revert the last change done to the manifest to restore the original replica count.
+
+```shell
+kubectl -n otel-demo rollout undo deployment/accounting
 ```

@@ -7,12 +7,66 @@ A waiter is an action that will occur before an injection.
 
 | Name | Platform |
 | --- | --- |
+| [Force Workload Restart by Scaling](#Force-Workload-Restart-by-Scaling) | Kubernetes |
 | [Pause Execution](#Pause-Execution) | Any |
 | [Restart Kubernetes Workload](#Restart-Kubernetes-Workload) | Kubernetes |
 | [Scale Kubernetes Workload](#Scale-Kubernetes-Workload) | Kubernetes |
 
 ## Detailed Summary of Waiters
 
+### Force Workload Restart by Scaling
+
+**Description:** Forces a complete workload restart by scaling to zero replicas and back to original count, ensuring all pods are terminated and recreated.
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
 ### Pause Execution
 
 **Description:** Pauses for the requested number of seconds.
