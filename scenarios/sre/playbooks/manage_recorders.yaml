@@ -31,6 +31,16 @@
       vars:
         scenarios_identifier: "{{ scenario_id }}"
 
+    - name: Create default recorder configuration
+      when:
+        - scenario_id is undefined
+      ansible.builtin.set_fact:
+        scenarios_tools:
+          clickhouse: false
+          jaeger: false
+          kubernetes_topology_monitor: false
+          prometheus: false
+
     - name: Import leaderboard role
       ansible.builtin.import_role:
         name: leaderboard
