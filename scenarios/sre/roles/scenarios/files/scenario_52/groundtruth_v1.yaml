@@ -6,10 +6,10 @@ metadata:
 spec:
   # Predicted alerts based on fault propagation
   alerts:
-    - group_id: checking-pod-1
+    - group_id: checkout-pod-1
       id: KubePodNotReady
       metadata:
-        description: "checking deployment pods cannot be scheduled due to insufficient resource quota, preventing them from reaching Ready state"
+        description: "checkout deployment pods cannot be scheduled due to insufficient resource quota, preventing them from reaching Ready state"
 
   # Resource groups representing affected Kubernetes resources
   groups:
@@ -30,17 +30,17 @@ spec:
       root_cause: true
 
     # Affected deployment that cannot scale
-    - id: checking-deployment-1
+    - id: checkout-deployment-1
       kind: Deployment
       namespace: otel-demo
       filter:
-        - checking\b
+        - checkout\b
 
-    - id: checking-pod-1
+    - id: checkout-pod-1
       kind: Pod
       namespace: otel-demo
       filter:
-        - checking-.*
+        - checkout-.*
 
     # Load generator creating demand
     - id: load-generator-deployment-1
@@ -57,8 +57,8 @@ spec:
 
   # Logical relationships between groups
   aliases:
-    - - checking-deployment-1
-      - checking-pod-1
+    - - checkout-deployment-1
+      - checkout-pod-1
     - - load-generator-deployment-1
       - load-generator-pod-1
 
@@ -72,15 +72,15 @@ spec:
 
     # Increased load triggers autoscaling attempt
     - source: load-generator-pod-1
-      target: checking-deployment-1
-      condition: "Surge in requests causes HPA or manual scaling to attempt increasing checking deployment replicas"
-      effect: "checking deployment attempts to scale up to handle increased load"
+      target: checkout-deployment-1
+      condition: "Surge in requests causes HPA or manual scaling to attempt increasing checkout deployment replicas"
+      effect: "checkout deployment attempts to scale up to handle increased load"
 
     # Resource quota blocks scaling
     - source: resource-quota-1
-      target: checking-pod-1
+      target: checkout-pod-1
       condition: "strict-resource-quota in otel-demo namespace has insufficient memory/CPU limits available"
-      effect: "New checking pods cannot be scheduled due to namespace resource quota exceeded, resulting in KubePodNotReady alert"
+      effect: "New checkout pods cannot be scheduled due to namespace resource quota exceeded, resulting in KubePodNotReady alert"
 
   # Fault metadata describing the root causes
   fault:
