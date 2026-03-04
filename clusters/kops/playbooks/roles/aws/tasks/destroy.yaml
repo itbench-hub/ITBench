@@ -1,0 +1,156 @@
+---
+- name: Retrieve all VPCs associated with cluster
+  amazon.aws.ec2_vpc_net_info:
+    filters:
+      "tag:ClusterGroup": "{{ aws_cluster_group.name.prefix }}"
+      "tag:ManagedBy": ansible
+      "tag:Name": "{{ aws_cluster_group.name.prefix }}-vpc"
+    region: "{{ aws_configuration.region }}"
+  register: aws_ec2_vpc_net
+
+- name: Retrieve all NAT Gateways associated with VPCs
+  amazon.aws.ec2_vpc_nat_gateway_info:
+    filters:
+      vpc-id: "{{ vpc.vpc_id }}"
+    region: "{{ aws_configuration.region }}"
+  loop: "{{ aws_ec2_vpc_net.vpcs }}"
+  loop_control:
+    label: vpc/{{ vpc.vpc_id }}
+    loop_var: vpc
+  register: aws_ec2_vpc_nat_gateways
+
+- name: Delete all associated NAT Gateways
+  amazon.aws.ec2_vpc_nat_gateway:
+    nat_gateway_id: "{{ nat_gateway.nat_gateway_id }}"
+    region: "{{ aws_configuration.region }}"
+    state: absent
+    wait: true
+    wait_timeout: 300
+  loop: |-
+    {{
+      aws_ec2_vpc_nat_gateways.results |
+      ansible.builtin.selectattr("result", "defined") |
+      map(attribute="result") |
+      ansible.builtin.flatten(1)
+    }}
+  loop_control:
+    label: natgateway/{{ nat_gateway.nat_gateway_id }}
+    loop_var: nat_gateway
+
+- name: Retrieve all Internet Gateways associated with VPCs
+  amazon.aws.ec2_vpc_igw_info:
+    filters:
+      vpc-id: "{{ vpc.vpc_id }}"
+    region: "{{ aws_configuration.region }}"
+  loop: "{{ aws_ec2_vpc_net.vpcs }}"
+  loop_control:
+    label: vpc/{{ vpc.vpc_id }}
+    loop_var: vpc
+  register: aws_ec2_vpc_igw_gateways
+
+- name: Delete all associated Internet Gateways
+  amazon.aws.ec2_vpc_igw:
+    internet_gateway_id: "{{ igw_gateway.internet_gateway_id }}"
+    region: "{{ aws_configuration.region }}"
+    state: absent
+  loop: |-
+    {{
+      aws_ec2_vpc_igw_gateways.results |
+      ansible.builtin.selectattr("internet_gateways", "defined") |
+      map(attribute="internet_gateways") |
+      ansible.builtin.flatten(1)
+    }}
+  loop_control:
+    label: igwgateway/{{ igw_gateway.internet_gateway_id }}
+    loop_var: igw_gateway
+
+- name: Retrieve all endpoints assocciated with VPCs
+  amazon.aws.ec2_vpc_endpoint_info:
+    filters:
+      vpc-id: "{{ vpc.vpc_id }}"
+    region: "{{ aws_configuration.region }}"
+  loop: "{{ aws_ec2_vpc_net.vpcs }}"
+  loop_control:
+    label: vpc/{{ vpc.vpc_id }}
+    loop_var: vpc
+  register: aws_ec2_vpc_endpoints
+
+- name: Delete all associated endpoints
+  amazon.aws.ec2_vpc_endpoint:
+    region: "{{ aws_configuration.region }}"
+    state: absent
+    vpc_endpoint_id: "{{ endpoint.vpc_endpoint_id }}"
+  loop: |-
+    {{
+      aws_ec2_vpc_endpoints.results |
+      map(attribute='vpc_endpoints') |
+      ansible.builtin.flatten(1)
+    }}
+  loop_control:
+    label: "endpoint/{{ endpoint.vpc_endpoint_id }}"
+    loop_var: endpoint
+
+- name: Retrieve all subnets associated with VPCs
+  amazon.aws.ec2_vpc_subnet_info:
+    filters:
+      vpc-id: "{{ vpc.vpc_id }}"
+    region: "{{ aws_configuration.region }}"
+  loop: "{{ aws_ec2_vpc_net.vpcs }}"
+  loop_control:
+    label: vpc/{{ vpc.vpc_id }}
+    loop_var: vpc
+  register: aws_ec2_vpc_subnets
+
+- name: Delete all associated subnets
+  amazon.aws.ec2_vpc_subnet:
+    cidr: "{{ subnet.cidr_block }}"
+    region: "{{ aws_configuration.region }}"
+    state: absent
+    vpc_id: "{{ subnet.vpc_id }}"
+  loop: |-
+    {{
+      aws_ec2_vpc_subnets.results |
+      map(attribute="subnets") |
+      ansible.builtin.flatten(1)
+    }}
+  loop_control:
+    label: "subnet/{{ subnet.id }}"
+    loop_var: subnet
+
+- name: Retrieve all Route Tables associated with VPCs
+  amazon.aws.ec2_vpc_route_table_info:
+    filters:
+      vpc-id: "{{ vpc.vpc_id }}"
+    region: "{{ aws_configuration.region }}"
+  loop: "{{ aws_ec2_vpc_net.vpcs }}"
+  loop_control:
+    label: vpc/{{ vpc.vpc_id }}
+    loop_var: vpc
+  register: aws_ec2_vpc_route_tables
+
+- name: Delete associated non-main Route Tables # Main Route Tables are deleted when VPCs is deleted
+  amazon.aws.ec2_vpc_route_table:
+    lookup: id
+    region: "{{ aws_configuration.region }}"
+    route_table_id: "{{ route_table.route_table_id }}"
+    state: absent
+  loop: |-
+    {{
+      aws_ec2_vpc_route_tables.results |
+      map(attribute="route_tables") |
+      ansible.builtin.flatten(1) |
+      ansible.builtin.rejectattr('associations', 'any', attribute='main')
+    }}"
+  loop_control:
+    label: routetable/{{ route_table.route_table_id }}
+    loop_var: route_table
+
+- name: Delete all VPCs associated with cluster
+  amazon.aws.ec2_vpc_net:
+    region: "{{ aws_configuration.region }}"
+    state: absent
+    vpc_id: "{{ vpc.vpc_id }}"
+  loop: "{{ aws_ec2_vpc_net.vpcs }}"
+  loop_control:
+    label: "vpc/{{ vpc.vpc_id }}"
+    loop_var: vpc

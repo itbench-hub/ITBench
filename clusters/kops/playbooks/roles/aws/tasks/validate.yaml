@@ -1,0 +1,72 @@
+---
+- name: Creation and Deletion Configuration Validation
+  tags:
+    - always
+  block:
+    - name: Retieve all regions
+      amazon.aws.aws_region_info:
+      register: aws_regions
+
+    - name: Validate that region exists
+      ansible.builtin.assert:
+        that: aws_configuration.region in regions
+        fail_msg: "AWS Region not found. Please select from region: {{ regions }}"
+        success_msg: AWS region found.
+      vars:
+        regions: "{{ aws_regions.regions | map(attribute='region_name') }}"
+
+- name: Creation Only Configuration Validtion
+  tags:
+    - create
+  block:
+    - name: Gather available zones in the region
+      amazon.aws.aws_az_info:
+        region: "{{ aws_configuration.region }}"
+        filters:
+          state: available
+      register: aws_availability_zones
+
+    - name: Validate that zones are available
+      ansible.builtin.assert:
+        that: aws_configuration.zones | ansible.builtin.difference(zones) | ansible.builtin.length == 0
+        fail_msg: "At least one zone is not available. Please select from available zones: {{ zones }}"
+        success_msg: All zones in region are available.
+      vars:
+        zones: "{{ aws_availability_zones.availability_zones | map(attribute='zone_name') }}"
+
+    - name: Retrieve VPC service quotas via CLI
+      ansible.builtin.command:
+        argv:
+          - aws
+          - service-quotas
+          - list-service-quotas
+          - --output
+          - json
+          - --region
+          - "{{ aws_configuration.region }}"
+          - --service-code
+          - vpc
+      register: aws_vpc_service_quotas_output
+      changed_when: false
+      failed_when: aws_vpc_service_quotas_output.rc != 0
+
+    - name: Parse CLI output
+      ansible.builtin.set_fact:
+        aws_vpc_service_quotas: "{{ (aws_vpc_service_quotas_output.stdout | ansible.builtin.from_json).Quotas }}"
+
+    - name: Validate subnet count
+      ansible.builtin.assert:
+        that:
+          - (aws_configuration.vpc.subnets.count * 2) <= subnet_quota.Value
+        fail_msg: Requested number of subnets is over region's quota limit (subnet_quota.Value). Please lower the amount or change the quota.
+        success_msg: Requested number of subnets within region's quota limit.
+      vars:
+        subnet_quota: |-
+          {{
+            aws_vpc_service_quotas |
+            ansible.builtin.selectattr(
+              "QuotaName",
+              "==",
+              "Subnets per VPC"
+            )
+          }}
