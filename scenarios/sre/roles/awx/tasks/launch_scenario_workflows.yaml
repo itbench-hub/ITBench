@@ -40,6 +40,7 @@
     controller_username: admin
     extra_vars:
       storage: "{{ lookup('ansible.builtin.template', 'templates/workflow_vars/storage.j2') | from_yaml }}"
+    request_timeout: 120
     workflow_template: Scenario-{{ item[0] }}-Partial-Execution-Start
     wait: false
   loop: "{{ awx_scenario_trial_groups }}"
@@ -47,6 +48,10 @@
     label: Scenario-{{ item[0] }}/Trial-{{ item[1] }}
   vars:
     run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item[0] }}/{{ item[1] }}"
+  retries: 3
+  delay: 10
+  register: awx_launch_result
+  until: awx_launch_result is succeeded
   when:
     - awx_experiments.phase == "start"
 
@@ -57,6 +62,7 @@
     controller_username: admin
     extra_vars:
       storage: "{{ lookup('ansible.builtin.template', 'templates/workflow_vars/storage.j2') | from_yaml }}"
+    request_timeout: 120
     workflow_template: Scenario-{{ item[0] }}-Partial-Execution-Stop
     wait: false
   loop: "{{ awx_scenario_trial_groups }}"
@@ -64,6 +70,10 @@
     label: Scenario-{{ item[0] }}/Trial-{{ item[1] }}
   vars:
     run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item[0] }}/{{ item[1] }}"
+  retries: 3
+  delay: 10
+  register: awx_launch_result
+  until: awx_launch_result is succeeded
   when:
     - awx_experiments.phase == "stop"
 
@@ -74,6 +84,7 @@
     controller_username: admin
     extra_vars:
       storage: "{{ lookup('ansible.builtin.template', 'templates/workflow_vars/storage.j2') | from_yaml }}"
+    request_timeout: 120
     workflow_template: Scenario-{{ item[0] }}-Full-Execution
     wait: false
   loop: "{{ awx_scenario_trial_groups }}"
@@ -81,6 +92,10 @@
     label: Scenario-{{ item[0] }}/Trial-{{ item[1] }}
   vars:
     run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item[0] }}/{{ item[1] }}"
+  retries: 3
+  delay: 10
+  register: awx_launch_result
+  until: awx_launch_result is succeeded
   when:
     - awx_experiments.phase == "full"
 
@@ -91,6 +106,7 @@
     controller_username: admin
     extra_vars:
       storage: "{{ lookup('ansible.builtin.template', 'templates/workflow_vars/storage.j2') | from_yaml }}"
+    request_timeout: 120
     workflow_template: Scenario-{{ item[0] }}-Data-Collection-Execution
     wait: false
   loop: "{{ awx_scenario_trial_groups }}"
@@ -98,5 +114,9 @@
     label: Scenario-{{ item[0] }}/Trial-{{ item[1] }}
   vars:
     run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ item[0] }}/{{ item[1] }}"
+  retries: 3
+  delay: 10
+  register: awx_launch_result
+  until: awx_launch_result is succeeded
   when:
     - awx_experiments.phase == "data_collection"
