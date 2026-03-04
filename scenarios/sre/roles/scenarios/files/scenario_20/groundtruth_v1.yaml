@@ -5,6 +5,10 @@ metadata:
   name: scenario-20
 spec:
   alerts:
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy service error rate above threshold propagated from frontend
     - group_id: frontend-service-1
       id: HighRequestErrorRate
       metadata:
@@ -13,6 +17,10 @@ spec:
       id: HighRequestErrorRate
       metadata:
         description: Recommendation service error rate above threshold due to product-catalog unavailability
+    - group_id: checkout-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Checkout service error rate above threshold propagated from frontend
     - group_id: productcatalog-pod-1
       id: KubePodNotReady
       metadata:
@@ -45,8 +53,18 @@ spec:
       kind: Pod
       namespace: otel-demo
     - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
         - frontend\b
       id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
       kind: Service
       namespace: otel-demo
     - filter:
