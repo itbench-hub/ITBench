@@ -1,4 +1,14 @@
 ---
+- name: Validate sufficient clusters for scenarios
+  ansible.builtin.assert:
+    that:
+      - awx_experiments.scenarios | length <= awx_runners.kubeconfigs | length
+    fail_msg: >-
+      Insufficient clusters: {{ awx_experiments.scenarios | length }} scenario(s) require
+      {{ awx_experiments.scenarios | length }} cluster(s), but only {{ awx_runners.kubeconfigs | length }}
+      cluster(s) available. Each scenario requires its own dedicated cluster to prevent parallel execution conflicts.
+    success_msg: "Cluster allocation valid: {{ awx_experiments.scenarios | length }} scenarios can be mapped to {{ awx_runners.kubeconfigs | length }} clusters"
+
 - name: Create all scenario workflows in parallel (throttled)
   awx.awx.workflow_job_template:
     controller_host: "{{ awx_controller_host }}"
@@ -16,14 +26,15 @@
   vars:
     scenario_id: "{{ item.1 }}"
     scenario_index: "{{ awx_experiments.scenarios.index(item.1) }}"
-    cluster_index: "{{ scenario_index | int % (awx_runners.kubeconfigs | length) }}"
+    cluster_index: "{{ scenario_index | int }}"
     requires_aws_credentials: "{{ awx_credentials.aws is defined }}"
     workflow_types:
       - { suffix: "-Partial-Execution-Start", template: "templates/workflow_nodes/scenario_exec_start.j2" }
       - { suffix: "-Partial-Execution-Stop", template: "templates/workflow_nodes/scenario_exec_stop.j2" }
       - { suffix: "-Full-Execution", template: "templates/workflow_nodes/scenario_exec_full.j2" }
       - { suffix: "-Data-Collection-Execution", template: "templates/workflow_nodes/scenario_exec_data_collection.j2" }
-  async: 600
+  throttle: 1
+  async: 1200
   poll: 0
   register: awx_workflow_creation
 
