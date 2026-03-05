@@ -20,7 +20,7 @@ create-kops-cluster: ## Creates a single cluster created by kops
 
 .PHONY: list-kops-clusters
 list-kops-clusters: ## Lists all active clusters created by kops
-	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "list_clusters"
+	uv run ansible-playbook -i inventory playbooks/list_kops_clusters.yaml
 
 .PHONY: export-kops-kubeconfig
 export-kops-kubeconfig: ## Exports the kubeconfig of a single cluster created by kops
