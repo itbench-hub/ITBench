@@ -192,7 +192,7 @@ kubectl -n chaos-mesh delete schedule otel-demo-product-catalog-network-delay ex
 
 **Faults Injected:**
 
-- [Nonexistent Kubernetes Workload Container Image](./faults.md#Nonexistent-Kubernetes-Workload-Container-Image)
+- [Modify Kubernetes Workload Container Image](./faults.md#Modify-Kubernetes-Workload-Container-Image)
 
 **Solution:**
 
@@ -1081,7 +1081,7 @@ kubectl -n chaos-mesh delete schedule api-server-memory-stress experiment.chaos-
 
 **Faults Injected:**
 
-- [Nonexistent Kubernetes Workload Container Image](./faults.md#Nonexistent-Kubernetes-Workload-Container-Image)
+- [Modify Kubernetes Workload Container Image](./faults.md#Modify-Kubernetes-Workload-Container-Image)
 
 **Solution:**
 

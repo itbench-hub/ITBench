@@ -23,7 +23,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Misconfigured Kubernetes Workload Container Readiness Probe](#Misconfigured-Kubernetes-Workload-Container-Readiness-Probe) | Kubernetes | Deployment, Performance |
 | [Modified Kubernetes Workload Container Environment Variable](#Modified-Kubernetes-Workload-Container-Environment-Variable) | Kubernetes | Deployment, Performance |
 | [Modified Target Port Kubernetes Service](#Modified-Target-Port-Kubernetes-Service) | Kubernetes | Deployment, Networking |
-| [Nonexistent Kubernetes Workload Container Image](#Nonexistent-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
+| [Modify Kubernetes Workload Container Image](#Modify-Kubernetes-Workload-Container-Image) | Kubernetes | Deployment, Performance |
 | [Nonexistent Kubernetes Workload Node](#Nonexistent-Kubernetes-Workload-Node) | Kubernetes | Deployment, Performance |
 | [Nonexistent Kubernetes Workload Persistent Volume Claim](#Nonexistent-Kubernetes-Workload-Persistent-Volume-Claim) | Kubernetes | Deployment |
 | [OpenTelemetry Demo Feature Flag](#OpenTelemetry-Demo-Feature-Flag) | Kubernetes | Deployment, Performance |
@@ -1190,12 +1190,12 @@ See the scenario ground truth file where this fault is invoked.
     "properties": {
         "container": {
             "properties": {
-                "name": {
+                "image": {
+                    "description": "Optional custom image to use. Defaults to 'quay.io/it-bench/hello-bench-invalid:1.0.0' if not provided.",
                     "type": "string"
                 },
-                "image": {
-                    "type": "string",
-                    "description": "Optional custom image to use. Defaults to 'quay.io/it-bench/hello-bench-invalid:1.0.0' if not provided."
+                "name": {
+                    "type": "string"
                 }
             },
             "required": [
