@@ -1,0 +1,25 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-404
+spec:
+  alerts: []
+  aliases: []
+  fault:
+    - category: Change
+      condition: Deployment updated with image that causes request errors
+      entity:
+        group_id: recommendation-deployment-1
+        kind: Deployment
+        name: recommendation
+      fault_mechanism: modify-kubernetes-workload-container-image
+  groups:
+    - filter:
+        - recommendation-.*
+      id: recommendation-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      root_cause: true
+  propagations: []
+  recommended_actions: []

@@ -1,0 +1,25 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-404
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            container:
+              name: recommendation
+              image: quay.io/shengkunrz/it-bench-dev:monzo-recommendation
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: recommendation
+                namespace: otel-demo
+          id: modify-kubernetes-workload-container-image
+  tools:
+    sre:
+      enabled: true
