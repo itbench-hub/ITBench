@@ -50,6 +50,22 @@
     state: present
     template: templates/kubernetes/clickhouse/clickhouseinstallationtemplates.j2
 
+- name: Wait for Clickhouse Installation Templates to exist
+  kubernetes.core.k8s_info:
+    api_version: clickhouse.altinity.com/v1
+    kind: ClickHouseInstallationTemplate
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ item }}"
+    namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+  register: tools_chi_template
+  until: tools_chi_template.resources | length > 0
+  retries: 6
+  delay: 10
+  loop:
+    - clickhouse-data
+    - clickhouse-pod
+    - clickhouse-service
+
 - name: Create Clickhouse Installation
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
@@ -120,7 +136,7 @@
     - tools_chi.resources[0].status.status is defined
     - tools_chi.resources[0].status.status == 'Completed'
   retries: 10
-  delay: 30
+  delay: 60
 
 - name: Create ServiceMonitor for Clickhouse Installation
   kubernetes.core.k8s:
