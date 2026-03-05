@@ -2727,5 +2727,71 @@
             "Deployment",
             "Performance"
         ]
+    },
+    {
+        "alerts": [
+            "KubePodNotReady"
+        ],
+        "category": "sre",
+        "complexity": "low",
+        "description": "This scenario simulates the OpenTelemetry Demo's `recommendation` service using a modified image that causes request errors.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "container": {
+                                "image": "quay.io/shengkunrz/it-bench-dev:monzo-recommendation",
+                                "name": "recommendation"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "recommendation",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "modify-kubernetes-workload-container-image"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 404,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/recommendation",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment recommendation",
+                            "text": "Manually edit the manifest and replace the invalid image with the correct value."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
     }
 ]

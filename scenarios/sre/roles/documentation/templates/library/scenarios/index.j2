@@ -1078,3 +1078,28 @@
     - disruptionIndex: 0
       injectionIndex: 0
   tags: {{ documentation_faults["scaled-to-zero-kubernetes-workload"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates the OpenTelemetry Demo's `recommendation` service using a modified image that causes request errors.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: recommendation
+            image: quay.io/shengkunrz/it-bench-dev:monzo-recommendation
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: recommendation
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: modify-kubernetes-workload-container-image
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 404
+  platforms: {{ [documentation_faults["modify-kubernetes-workload-container-image"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["modify-kubernetes-workload-container-image"].tags }}

@@ -46,6 +46,7 @@ The following scenarios are being open-sourced at this time and their implementa
 | [105](#Scenario-105) | sre | medium | Kubernetes | Deployment, Performance |
 | [106](#Scenario-106) | sre | medium | Kubernetes | Code |
 | [107](#Scenario-107) | sre | low | Kubernetes | Deployment, Performance |
+| [404](#Scenario-404) | sre | low | Kubernetes | Deployment, Performance |
 
 ## Scenario Statistics
 
@@ -53,19 +54,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 4 | 33 |
+| 4 | 34 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 35 |
+| 2 | 36 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 16 | 20 | 1 |
+| 17 | 20 | 1 |
 
 ## Detailed Summary of Scenarios
 
@@ -1268,4 +1269,33 @@ OR
 
 ```shell
 kubectl -n otel-demo rollout undo deployment/accounting
+```
+### Scenario 404
+
+**Description:** This scenario simulates the OpenTelemetry Demo's `recommendation` service using a modified image that causes request errors.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Modify Kubernetes Workload Container Image](./faults.md#Modify-Kubernetes-Workload-Container-Image)
+
+**Solution:**
+
+Step 1
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n otel-demo rollout undo deployment/recommendation
+```
+
+OR
+
+- Manually edit the manifest and replace the invalid image with the correct value.
+
+```shell
+kubectl -n otel-demo edit deployment recommendation
 ```
