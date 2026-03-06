@@ -57,6 +57,7 @@
             (alerts_api_result.json.data.alerts |
              selectattr('state', '==', 'firing') |
              selectattr('labels.alertname', 'in', [
+               'CPUSpend',
                'FailedPodsDetected',
                'HighKafkaConsumerLag',
                'HighRequestLatency',
@@ -67,7 +68,10 @@
                'KubeHpaMaxedOut',
                'KubePodCrashLooping',
                'KubePodNotReady',
-               'NoDatabaseOperations'
+               'MemorySpend',
+               'NoDatabaseOperations',
+               'NoRequestsOpened',
+               'NoRequestsReceived'
              ]) |
              list | length > 0)
 
@@ -77,14 +81,22 @@
               Found {{ alerts_api_result.json.data.alerts |
                        selectattr('state', '==', 'firing') |
                        selectattr('labels.alertname', 'in', [
+                         'CPUSpend',
                          'FailedPodsDetected',
                          'HighKafkaConsumerLag',
+                         'HighRequestLatency',
+                         'HighRequestErrorRate',
                          'KafkaConnectionClosureRate',
                          'KafkaConsumerGroupInactive',
+                         'KubeContainerWaiting',
+                         'KubeHpaMaxedOut',
+                         'KubePodCrashLooping',
+                         'KubePodNotReady',
+                         'MemorySpend',
                          'NoDatabaseOperations',
-                         'PendingPodsDetected',
-                         'RequestErrorRate',
-                         'RequestLatency'
+                         'NoRequestsOpened',
+                         'NoRequestsReceived',
+                         'PendingPodsDetected'
                        ]) |
                        list }} specific alerts in firing state
           when: alerts_api_result is defined and alerts_api_result.json is defined
@@ -98,14 +110,22 @@
                     "alerts": alerts_api_result.json.data.alerts |
                               selectattr('state', '==', 'firing') |
                               selectattr('labels.alertname', 'in', [
+                                'CPUSpend',
                                 'FailedPodsDetected',
                                 'HighKafkaConsumerLag',
+                                'HighRequestLatency',
+                                'HighRequestErrorRate',
                                 'KafkaConnectionClosureRate',
                                 'KafkaConsumerGroupInactive',
+                                'KubeContainerWaiting',
+                                'KubeHpaMaxedOut',
+                                'KubePodCrashLooping',
+                                'KubePodNotReady',
+                                'MemorySpend',
                                 'NoDatabaseOperations',
-                                'PendingPodsDetected',
-                                'RequestErrorRate',
-                                'RequestLatency'
+                                'NoRequestsOpened',
+                                'NoRequestsReceived',
+                                'PendingPodsDetected'
                               ]) | list
                   },
                   "status": "success",
