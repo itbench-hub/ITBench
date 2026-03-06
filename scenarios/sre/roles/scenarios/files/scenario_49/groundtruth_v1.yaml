@@ -5,36 +5,51 @@ metadata:
   name: scenario-49
 spec:
   alerts:
-    - group_id: frontend-pod-1
-      id: KubePodNotReady
+    - group_id: frontend-deployment-1
+      id: KubeDeploymentRolloutStuck
       metadata:
-        description: Frontend service pod stuck because of readiness probe
+        description: Frontend deployment rollout stuck due to misconfigured readiness probe
   aliases:
+    - - frontend-deployment-1
+      - frontend-pod-1
     - - frontend-pod-1
       - frontend-service-1
   fault:
-    - category: Custom
-      condition: Frontend service pod stuck because of readiness probe
+    - category: Configuration
+      condition: Frontend deployment has misconfigured readiness probe (wrong port)
       entity:
-        group_id: frontend-pod-1
-        kind: Custom
-        name: frontend-pod-1
-      fault_mechanism: patch
+        group_id: frontend-deployment-1
+        kind: Deployment
+        name: frontend
+      fault_mechanism: misconfigured-readiness-probe
   groups:
+    - filter:
+        - frontend\b
+      id: frontend-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      root_cause: true
     - filter:
         - frontend-.*
       id: frontend-pod-1
       kind: Pod
       namespace: otel-demo
-      root_cause: true
     - filter:
         - frontend\b
       id: frontend-service-1
       kind: Service
       namespace: otel-demo
   propagations:
-    - condition: Bad readiness probe prevents pod startup
-      effect: Frontend endpoint unavailable
+    - condition: Deployment has misconfigured readiness probe on port 40 (incorrect)
+      effect: Deployment rollout stuck trying to verify pod readiness
+      source: frontend-deployment-1
+      target: frontend-deployment-1
+    - condition: Deployment rollout stuck
+      effect: New pods created but never become ready
+      source: frontend-deployment-1
+      target: frontend-pod-1
+    - condition: Pods not ready due to failing readiness probe
+      effect: Frontend service has no healthy endpoints
       source: frontend-pod-1
       target: frontend-service-1
   recommendedActions: []
