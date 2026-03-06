@@ -21,7 +21,7 @@
     faults_port: |-
       {{
         faults_service.resources[0].spec.ports |
-        ansible.builtin.selectattr('targetPort', '==', injection_task.args.targetPort)
+        ansible.builtin.selectattr('targetPort', '==', injection_task.args.targetPort | int)
       }}
 
 - name: Validate that port exists
@@ -42,6 +42,5 @@
         namespace: "{{ faults_service.resources[0].metadata.namespace }}"
       spec:
         ports:
-          - port: "{{ faults_port[0].port }}"
-            targetPort: 9999
+          - "{{ faults_port[0] | combine({'targetPort': 9999}) }}"
     state: patched
