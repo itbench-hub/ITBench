@@ -1,0 +1,70 @@
+---
+- name: Import validation tasks
+  ansible.builtin.import_tasks:
+    file: validate_configuration.yaml
+
+- name: Create AWS S3 bucket
+  amazon.aws.s3_bucket:
+    name: "{{ kops_configuration.aws.s3.bucket.name }}"
+    region: "{{ kops_configuration.aws.region }}"
+    state: present
+
+- name: Import AWS role
+  ansible.builtin.import_role:
+    name: aws
+  vars:
+    aws_cluster_group:
+      name:
+        prefix: "{{ kops_cluster_group.name }}"
+    aws_configuration: "{{ lookup('ansible.builtin.template', 'templates/vars/aws_configuration.j2') }}"
+
+- name: Include cluster configuration tasks
+  ansible.builtin.include_tasks:
+    file: configure_clusters.yaml
+    apply:
+      tags:
+        - create_clusters
+  loop: "{{ kops_cluster_group.clusters }}"
+  loop_control:
+    label: cluster/{{ cluster_name }}
+    loop_var: cluster_name
+    index_var: name_index
+
+- name: Include cluster creation tasks
+  ansible.builtin.include_tasks:
+    file: build_clusters.yaml
+    apply:
+      tags:
+        - create_clusters
+  loop: "{{ kops_cluster_group.clusters | ansible.builtin.batch(20) }}"
+  loop_control:
+    label: batch-{{ batch_index + 1 }}
+    loop_var: cluster_names
+    index_var: batch_index
+
+- name: Include cluster validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_clusters.yaml
+    apply:
+      tags:
+        - create_clusters
+  loop: "{{ kops_cluster_group.clusters | ansible.builtin.batch(20) }}"
+  loop_control:
+    label: batch-{{ batch_index + 1 }}
+    loop_var: cluster_names
+    index_var: batch_index
+
+- name: Include Docker role
+  ansible.builtin.include_role:
+    name: docker
+    apply:
+      vars:
+        docker_cluster:
+          kubeconfig: "{{ [kops_temporary_directory.path, cluster_name] | ansible.builtin.path_join }}"
+        docker_registry: "{{ kops_configuration.docker.registry }}"
+  loop: "{{ kops_cluster_group.clusters }}"
+  loop_control:
+    label: cluster/{{ cluster_name }}
+    loop_var: cluster_name
+  when:
+    - kops_configuration.docker is defined

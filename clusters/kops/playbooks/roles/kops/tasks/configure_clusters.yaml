@@ -1,0 +1,95 @@
+---
+- name: Create temporary configuration file for {{ cluster_name }}
+  ansible.builtin.tempfile:
+    prefix: "{{ cluster_name }}"
+    state: file
+  register: kops_cluster_config
+
+- name: Create kOps cluster configuration for {{ cluster_name }}
+  ansible.builtin.command:
+    argv:
+
+  register: kops_create_cluster_results
+  changed_when: kops_create_cluster_results.rc == 0
+
+- name: Apply Cilium changes to configuration for {{ cluster_name }}
+  ansible.builtin.command:
+    argv:
+      - kops
+      - edit
+      - cluster
+      - --name
+      - "{{ cluster_name }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - --set
+      - spec.networking.cilium.cniExclusive=false
+      - --set
+      - spec.networking.cilium.bpfLBSockHostNSOnly=true
+  register: kops_edit_cluster_results
+  changed_when: kops_edit_cluster_results.rc == 0
+
+- name: Retrieve configuration from state store for {{ cluster_name }}
+  ansible.builtin.command:
+    argv:
+      - kops
+      - get
+      - cluster
+      - --name
+      - "{{ cluster_name }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - -o
+      - yaml
+  register: kops_get_cluster_results
+  changed_when: kops_get_cluster_results.rc == 0
+
+- name: Save retrieval output to file
+  ansible.builtin.copy:
+    content: "{{ kops_get_cluster_results.stdout }}"
+    dest: "{{ kops_cluster_config.path }}"
+    mode: "0644"
+
+- name: Add ebtables installation hooks to configuration for {{ cluster_name }}
+  ansible.builtin.blockinfile:
+    path: "{{ kops_cluster_config.path }}"
+    marker: "  # {mark} ANSIBLE MANAGED BLOCK - ebtables"
+    insertafter: "^spec:"
+    block: |2
+        hooks:
+        - name: install-ebtables.service
+          before:
+            - kubelet.service
+          roles:
+            - Master
+            - Node
+          manifest: |
+            [Unit]
+            Description=Install ebtables and load kernel modules
+            Before=kubelet.service
+
+            [Service]
+            Type=oneshot
+            ExecStart=/bin/bash -c 'apt-get update -qq && apt-get install -y ebtables && modprobe ebtable_broute && modprobe ebtable_nat && grep -q ebtable_broute /etc/modules || echo ebtable_broute >> /etc/modules && grep -q ebtable_nat /etc/modules || echo ebtable_nat >> /etc/modules'
+            RemainAfterExit=yes
+
+            [Install]
+            WantedBy=multi-user.target
+
+- name: Store updated configuration for {{ cluster_name }}
+  ansible.builtin.command:
+    argv:
+      - kops
+      - replace
+      - -f
+      - "{{ [kops_cluster_config.path, (cluster_name + '-config.yaml')] | ansible.builtin.path_join }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - --force
+  register: kops_replace_results
+  changed_when: kops_replace_results.rc == 0
+
+- name: Delete temporary configuration file for {{ cluster_name }}
+  ansible.builtin.file:
+    path: kops_cluster_config.path
+    state: absent

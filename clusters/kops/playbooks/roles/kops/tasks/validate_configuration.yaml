@@ -1,0 +1,22 @@
+---
+- name: Validate control node configuration
+  ansible.builtin.assert:
+    that:
+      - kops_configuration.cluster.nodes.control.count > 0
+      - kops_configuration.cluster.nodes.control.count % 2 == 1
+    fail_msg: Invalid number of control nodes set. Must be an odd number and greater than 0.
+    success_msg: Valid number of control nodes configured.
+
+- name: Validate worker node configuration
+  ansible.builtin.assert:
+    that:
+      - kops_configuration.cluster.nodes.worker.count > 0
+    fail_msg: Invalid number of worker nodes set. Must be greater than 0.
+    success_msg: Valid number of worker nodes configured.
+
+- name: Validate that public SSH key exists
+  ansible.builtin.assert:
+    that:
+      - kops_configuration.ssh_keys.public is ansible.builtin.file
+    fail_msg: Public SSH key file path is invalid. Please check that file exists.
+    success_msg: Public SSH key file path is valid.

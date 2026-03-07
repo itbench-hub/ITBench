@@ -1,0 +1,43 @@
+---
+- name: Asynchronously build kOps clusters
+  block:
+    - name: Build kOps managed clusters
+      ansible.builtin.command:
+        argv:
+          - kops
+          - update
+          - cluster
+          - --name
+          - "{{ cluster_name }}"
+          - --state
+          - "{{ kops_state_store }}"
+          - --yes
+          - --create-kube-config=false
+      async: 600
+      loop: "{{ cluster_names }}"
+      loop_control:
+        label: cluster/{{ cluster_name }}
+        loop_var: cluster_name
+      poll: 0
+      register: kops_update_cluster_result_async
+
+    - name: Wait for asynchronous update jobs to complete
+      ansible.builtin.async_status:
+        jid: "{{ update_task.ansible_job_id }}"
+      loop: "{{ kops_update_cluster_result_async.results }}"
+      loop_control:
+        label: job/{{ update_task.ansible_job_id }}
+        loop_var: update_task
+      register: kops_update_job_status
+      until: kops_update_job_status.finished
+      delay: 60
+      retries: 15
+  always:
+    - name: Clean up ansychronous update jobs
+      ansible.builtin.async_status:
+        mode: cleanup
+        jid: "{{ item.ansible_job_id }}"
+      loop: "{{ kops_update_cluster_result_async.results }}"
+      loop_control:
+        label: job/{{ update_task.ansible_job_id }}
+        loop_var: update_task
