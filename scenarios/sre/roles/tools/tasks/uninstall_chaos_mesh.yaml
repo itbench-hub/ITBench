@@ -18,6 +18,37 @@
     - tools_custom_resource_definition.api_found
     - tools_custom_resource_definition.resources | ansible.builtin.length == 1
 
+- name: Get all Chaos Mesh resource types
+  ansible.builtin.command:
+    cmd: >
+      kubectl
+      --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.quote }}
+      api-resources
+      --api-group=chaos-mesh.org
+      -o name
+  register: tools_chaos_resource_types
+  changed_when: false
+  failed_when: false
+
+- name: Delete all chaos experiment resources
+  ansible.builtin.command:
+    cmd: >
+      kubectl
+      --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.quote }}
+      delete
+      {{ item }}
+      --all
+      --all-namespaces
+      --ignore-not-found=true
+  loop: "{{ tools_chaos_resource_types.stdout_lines }}"
+  loop_control:
+    label: "{{ item }}"
+  changed_when: false
+  failed_when: false
+  when:
+    - tools_chaos_resource_types.stdout_lines is defined
+    - tools_chaos_resource_types.stdout_lines | length > 0
+
 - name: Uninstall Chaos Mesh
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
