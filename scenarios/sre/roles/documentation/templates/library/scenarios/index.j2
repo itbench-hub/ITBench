@@ -34,7 +34,12 @@
             id: restart-kubernetes-workload
   environment:
     applications:
-      - id: opentelemetry-demo
+      - args:
+          configuration:
+            load_generator:
+              users_spawn_rate: 10
+              users: 350
+        id: opentelemetry-demo
   id: 1
   platforms: {{ [documentation_faults["opentelemetry-demo-feature-flag"].platform] }}
   solutionTemplates:
@@ -77,7 +82,17 @@
             id: restart-kubernetes-workload
   environment:
     applications:
-      - id: opentelemetry-demo
+      - args:
+          configuration:
+            ad:
+              resources:
+                limits:
+                  cpu: 50m
+                  memory: 256Mi
+                requests:
+                  cpu: 50m
+                  memory: 256Mi
+        id: opentelemetry-demo
   id: 3
   platforms: {{ [documentation_faults["opentelemetry-demo-feature-flag"].platform] }}
   solutionTemplates:
@@ -158,6 +173,16 @@
               name: product-catalog
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: modify-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: product-catalog
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: force-workload-restart-by-scaling
   environment:
     applications:
       - id: opentelemetry-demo
@@ -182,6 +207,16 @@
               name: checkout
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: unsupported-architecture-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: checkout
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: force-workload-restart-by-scaling
   environment:
     applications:
       - id: opentelemetry-demo
@@ -400,7 +435,7 @@
             apiVersion: apps/v1
             kind: Deployment
             metadata:
-              name: fraud-detection
+              name: accounting
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: misconfigured-kubernetes-horizontal-pod-autoscaler
       - args:
@@ -408,15 +443,7 @@
             apiVersion: apps/v1
             kind: Deployment
             metadata:
-              name: frontend
-              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
-        id: misconfigured-kubernetes-horizontal-pod-autoscaler
-      - args:
-          kubernetesObject:
-            apiVersion: apps/v1
-            kind: Deployment
-            metadata:
-              name: image-provider
+              name: ad
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: misconfigured-kubernetes-horizontal-pod-autoscaler
   environment:
@@ -433,8 +460,6 @@
       injectionIndex: 0
     - disruptionIndex: 0
       injectionIndex: 1
-    - disruptionIndex: 0
-      injectionIndex: 2
   tags: {{ documentation_faults["misconfigured-kubernetes-horizontal-pod-autoscaler"].tags }}
 - category: sre
   complexity: low
@@ -519,6 +544,16 @@
                   workers: 10
               duration: 55s
         id: scheduled-chaos-mesh-experiment
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: cart
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: force-workload-restart-by-scaling
   environment:
     applications:
       - id: opentelemetry-demo
@@ -547,7 +582,7 @@
     }}
 - category: sre
   complexity: medium
-  description: This scenario simulates the OpenTelemetry Demo's `kafka` service being evicted from the node.
+  description: This scenario simulates the OpenTelemetry Demo's `payment` service being evicted from the node.
   disruptions:
     - injections:
       - args:
@@ -555,7 +590,7 @@
             apiVersion: apps/v1
             kind: Deployment
             metadata:
-              name: kafka
+              name: payment
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: priority-kubernetes-workload-priority-preemption
   environment:
@@ -693,6 +728,16 @@
             metadata:
               name: {{ applications_managers.book_info.kubernetes.namespace }}
         id: disabled-istio-ambient-mode-kubernetes-namespace
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: productpage-v1
+                  namespace: {{ applications_managers.book_info.kubernetes.namespace }}
+            id: force-workload-restart-by-scaling
   environment:
     applications:
       - id: book-info
@@ -704,19 +749,29 @@
   tags: {{ documentation_faults["disabled-istio-ambient-mode-kubernetes-namespace"].tags }}
 - category: sre
   complexity: medium
-  description: This scenario simulates OpenTelemetry Demo's `frontend` service having a malformed readiness probe.
+  description: This scenario simulates OpenTelemetry Demo's `cart` service having a malformed readiness probe.
   disruptions:
     - injections:
       - args:
           container:
-            name: frontend
+            name: cart
           kubernetesObject:
             apiVersion: apps/v1
             kind: Deployment
             metadata:
-              name: frontend
+              name: cart
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: misconfigured-kubernetes-workload-container-readiness-probe
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: cart
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: force-workload-restart-by-scaling
   environment:
     applications:
       - id: opentelemetry-demo
@@ -887,7 +942,7 @@
                 namespaces:
                   - kube-system
                 labelSelectors:
-                  component: kube-apiserver
+                  k8s-app: kube-apiserver
               stressors:
                 memory:
                   workers: 4
@@ -924,7 +979,7 @@
                 namespaces:
                   - kube-system
                 labelSelectors:
-                  component: etcd
+                  k8s-app: etcd-manager-main
               delay: 200ms
               percent: 50
               volumePath: /var/lib/etcd

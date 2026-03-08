@@ -467,7 +467,6 @@ kubectl -n otel-demo edit secret valkey-credentials
 
 - [Misconfigured Kubernetes Horizontal Pod Autoscaler](./faults.md#Misconfigured-Kubernetes-Horizontal-Pod-Autoscaler)
 - [Misconfigured Kubernetes Horizontal Pod Autoscaler](./faults.md#Misconfigured-Kubernetes-Horizontal-Pod-Autoscaler)
-- [Misconfigured Kubernetes Horizontal Pod Autoscaler](./faults.md#Misconfigured-Kubernetes-Horizontal-Pod-Autoscaler)
 
 **Solution:**
 
@@ -476,21 +475,14 @@ Step 1
 - Manually edit the manifest and replace the utilization values with the correct values.
 
 ```shell
-kubectl -n otel-demo edit horizontalpodautoscaler fraud-detection
+kubectl -n otel-demo edit horizontalpodautoscaler accounting
 ```
 Step 2
 
 - Manually edit the manifest and replace the utilization values with the correct values.
 
 ```shell
-kubectl -n otel-demo edit horizontalpodautoscaler frontend
-```
-Step 3
-
-- Manually edit the manifest and replace the utilization values with the correct values.
-
-```shell
-kubectl -n otel-demo edit horizontalpodautoscaler image-provider
+kubectl -n otel-demo edit horizontalpodautoscaler ad
 ```
 ### Scenario 39
 
@@ -625,7 +617,7 @@ kubectl -n otel-demo edit deployment cart
 ```
 ### Scenario 42
 
-**Description:** This scenario simulates the OpenTelemetry Demo's `kafka` service being evicted from the node.
+**Description:** This scenario simulates the OpenTelemetry Demo's `payment` service being evicted from the node.
 
 **Active Applications:**
 
@@ -642,7 +634,7 @@ Step 1
 - Revert the last change done to the manifest.
 
 ```shell
-kubectl -n otel-demo rollout undo deployment/kafka
+kubectl -n otel-demo rollout undo deployment/payment
 ```
 
 OR
@@ -650,7 +642,7 @@ OR
 - Manually edit the manifest and remove the node selector value with the correct value(s).
 
 ```shell
-kubectl -n otel-demo edit deployment kafka
+kubectl -n otel-demo edit deployment payment
 ```
 
 OR
@@ -659,7 +651,7 @@ OR
 - Manually edit the manifest and change the priority of the workload to the new priority.
 
 ```shell
-kubectl -n otel-demo edit deployment kafka
+kubectl -n otel-demo edit deployment payment
 ```
 ### Scenario 43
 
@@ -837,7 +829,7 @@ kubectl -n book-info edit namespace book-info-deny
 ```
 ### Scenario 49
 
-**Description:** This scenario simulates OpenTelemetry Demo's `frontend` service having a malformed readiness probe.
+**Description:** This scenario simulates OpenTelemetry Demo's `cart` service having a malformed readiness probe.
 
 **Active Applications:**
 
@@ -854,7 +846,7 @@ Step 1
 - Revert the last change done to the manifest.
 
 ```shell
-kubectl -n otel-demo rollout undo deployment/frontend
+kubectl -n otel-demo rollout undo deployment/cart
 ```
 
 OR
@@ -862,7 +854,7 @@ OR
 - Manually edit the manifest and remove the faulty readiness probe in the container rule.
 
 ```shell
-kubectl -n otel-demo edit deployment frontend
+kubectl -n otel-demo edit deployment cart
 ```
 ### Scenario 50
 

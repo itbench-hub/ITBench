@@ -60,6 +60,14 @@
         "environment": {
             "applications": [
                 {
+                    "args": {
+                        "configuration": {
+                            "load_generator": {
+                                "users": 350,
+                                "users_spawn_rate": 10
+                            }
+                        }
+                    },
                     "id": "opentelemetry-demo"
                 }
             ]
@@ -150,6 +158,22 @@
         "environment": {
             "applications": [
                 {
+                    "args": {
+                        "configuration": {
+                            "ad": {
+                                "resources": {
+                                    "limits": {
+                                        "cpu": "50m",
+                                        "memory": "256Mi"
+                                    },
+                                    "requests": {
+                                        "cpu": "50m",
+                                        "memory": "256Mi"
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "id": "opentelemetry-demo"
                 }
             ]
@@ -350,7 +374,24 @@
                         },
                         "id": "modify-kubernetes-workload-container-image"
                     }
-                ]
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "product-catalog",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "force-workload-restart-by-scaling"
+                        }
+                    ]
+                }
             }
         ],
         "environment": {
@@ -415,7 +456,24 @@
                         },
                         "id": "unsupported-architecture-kubernetes-workload-container-image"
                     }
-                ]
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "checkout",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "force-workload-restart-by-scaling"
+                        }
+                    ]
+                }
             }
         ],
         "environment": {
@@ -955,7 +1013,7 @@
                                 "apiVersion": "apps/v1",
                                 "kind": "Deployment",
                                 "metadata": {
-                                    "name": "fraud-detection",
+                                    "name": "accounting",
                                     "namespace": "otel-demo"
                                 }
                             }
@@ -968,20 +1026,7 @@
                                 "apiVersion": "apps/v1",
                                 "kind": "Deployment",
                                 "metadata": {
-                                    "name": "frontend",
-                                    "namespace": "otel-demo"
-                                }
-                            }
-                        },
-                        "id": "misconfigured-kubernetes-horizontal-pod-autoscaler"
-                    },
-                    {
-                        "args": {
-                            "kubernetesObject": {
-                                "apiVersion": "apps/v1",
-                                "kind": "Deployment",
-                                "metadata": {
-                                    "name": "image-provider",
+                                    "name": "ad",
                                     "namespace": "otel-demo"
                                 }
                             }
@@ -1014,7 +1059,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo edit horizontalpodautoscaler fraud-detection",
+                            "command": "kubectl -n otel-demo edit horizontalpodautoscaler accounting",
                             "text": "Manually edit the manifest and replace the utilization values with the correct values."
                         }
                     ]
@@ -1024,17 +1069,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo edit horizontalpodautoscaler frontend",
-                            "text": "Manually edit the manifest and replace the utilization values with the correct values."
-                        }
-                    ]
-                }
-            ],
-            [
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n otel-demo edit horizontalpodautoscaler image-provider",
+                            "command": "kubectl -n otel-demo edit horizontalpodautoscaler ad",
                             "text": "Manually edit the manifest and replace the utilization values with the correct values."
                         }
                     ]
@@ -1254,7 +1289,24 @@
                         },
                         "id": "scheduled-chaos-mesh-experiment"
                     }
-                ]
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "cart",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "force-workload-restart-by-scaling"
+                        }
+                    ]
+                }
             }
         ],
         "environment": {
@@ -1320,7 +1372,7 @@
         ],
         "category": "sre",
         "complexity": "medium",
-        "description": "This scenario simulates the OpenTelemetry Demo's `kafka` service being evicted from the node.",
+        "description": "This scenario simulates the OpenTelemetry Demo's `payment` service being evicted from the node.",
         "disruptions": [
             {
                 "injections": [
@@ -1330,7 +1382,7 @@
                                 "apiVersion": "apps/v1",
                                 "kind": "Deployment",
                                 "metadata": {
-                                    "name": "kafka",
+                                    "name": "payment",
                                     "namespace": "otel-demo"
                                 }
                             }
@@ -1356,7 +1408,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo rollout undo deployment/kafka",
+                            "command": "kubectl -n otel-demo rollout undo deployment/payment",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -1364,7 +1416,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo edit deployment kafka",
+                            "command": "kubectl -n otel-demo edit deployment payment",
                             "text": "Manually edit the manifest and remove the node selector value with the correct value(s)."
                         }
                     ]
@@ -1375,7 +1427,7 @@
                             "text": "Create a new priority class with a higher value than the workload which caused its preemption."
                         },
                         {
-                            "command": "kubectl -n otel-demo edit deployment kafka",
+                            "command": "kubectl -n otel-demo edit deployment payment",
                             "text": "Manually edit the manifest and change the priority of the workload to the new priority."
                         }
                     ]
@@ -1733,7 +1785,24 @@
                         },
                         "id": "disabled-istio-ambient-mode-kubernetes-namespace"
                     }
-                ]
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "productpage-v1",
+                                        "namespace": "book-info"
+                                    }
+                                }
+                            },
+                            "id": "force-workload-restart-by-scaling"
+                        }
+                    ]
+                }
             }
         ],
         "environment": {
@@ -1770,27 +1839,44 @@
         ],
         "category": "sre",
         "complexity": "medium",
-        "description": "This scenario simulates OpenTelemetry Demo's `frontend` service having a malformed readiness probe.",
+        "description": "This scenario simulates OpenTelemetry Demo's `cart` service having a malformed readiness probe.",
         "disruptions": [
             {
                 "injections": [
                     {
                         "args": {
                             "container": {
-                                "name": "frontend"
+                                "name": "cart"
                             },
                             "kubernetesObject": {
                                 "apiVersion": "apps/v1",
                                 "kind": "Deployment",
                                 "metadata": {
-                                    "name": "frontend",
+                                    "name": "cart",
                                     "namespace": "otel-demo"
                                 }
                             }
                         },
                         "id": "misconfigured-kubernetes-workload-container-readiness-probe"
                     }
-                ]
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "cart",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "force-workload-restart-by-scaling"
+                        }
+                    ]
+                }
             }
         ],
         "environment": {
@@ -1809,7 +1895,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo rollout undo deployment/frontend",
+                            "command": "kubectl -n otel-demo rollout undo deployment/cart",
                             "text": "Revert the last change done to the manifest."
                         }
                     ]
@@ -1817,7 +1903,7 @@
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n otel-demo edit deployment frontend",
+                            "command": "kubectl -n otel-demo edit deployment cart",
                             "text": "Manually edit the manifest and remove the faulty readiness probe in the container rule."
                         }
                     ]
@@ -2185,7 +2271,7 @@
                                     "mode": "one",
                                     "selector": {
                                         "labelSelectors": {
-                                            "component": "kube-apiserver"
+                                            "k8s-app": "kube-apiserver"
                                         },
                                         "namespaces": [
                                             "kube-system"
@@ -2272,7 +2358,7 @@
                                     "percent": 50,
                                     "selector": {
                                         "labelSelectors": {
-                                            "component": "etcd"
+                                            "k8s-app": "etcd-manager-main"
                                         },
                                         "namespaces": [
                                             "kube-system"

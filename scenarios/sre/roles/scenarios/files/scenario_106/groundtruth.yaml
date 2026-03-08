@@ -7,8 +7,6 @@ spec:
   alerts:
     - labels: {}
       name: KubePodCrashLooping
-    - labels: {}
-      name: KubePodNotReady
   entities:
     - apiVersion: apps/v1
       kind: Deployment
@@ -19,11 +17,11 @@ spec:
     - - steps:
           - command: kubectl -n otel-demo rollout undo deployment/recommendation
             text: Revert the last change done to the manifest.
-    - - steps:
+      - steps:
           - command: kubectl -n otel-demo edit deployment recommendation
             text: Manually edit the manifest and remove the malformed ConfigMap volumes.
           - command: kubectl -n otel-demo delete configmap features
             text: Delete the injected malformed ConfigMap object.
-    - - steps:
+      - steps:
           - command: kubectl -n otel-demo edit configmap features
-            text: Manually edit the ConfigMap and fix the malformed JSON to be properly formatted.
+            text: Manually edit the ConfigMap and reduce its size to acceptable limits.
