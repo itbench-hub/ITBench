@@ -5,34 +5,47 @@ metadata:
   name: scenario-49
 spec:
   alerts:
-    - group_id: frontend-deployment-1
+    - group_id: cart-deployment-1
       id: KubeDeploymentRolloutStuck
       metadata:
-        description: Frontend deployment rollout stuck due to misconfigured readiness probe
+        description: Cart deployment rollout stuck due to misconfigured readiness probe
+    - group_id: cart-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Cart service receiving no requests due to no healthy endpoints
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend experiencing high error rate when calling cart service
   aliases:
-    - - frontend-deployment-1
-      - frontend-pod-1
-    - - frontend-pod-1
-      - frontend-service-1
+    - - cart-pod-1
+      - cart-service-1
+      - cart-deployment-1
+    - - frontend-service-1
   fault:
     - category: Configuration
-      condition: Frontend deployment has misconfigured readiness probe (wrong port)
+      condition: Cart deployment has misconfigured readiness probe (wrong port)
       entity:
-        group_id: frontend-deployment-1
+        group_id: cart-deployment-1
         kind: Deployment
-        name: frontend
+        name: cart
       fault_mechanism: misconfigured-readiness-probe
   groups:
     - filter:
-        - frontend\b
-      id: frontend-deployment-1
+        - cart\b
+      id: cart-deployment-1
       kind: Deployment
       namespace: otel-demo
       root_cause: true
     - filter:
-        - frontend-.*
-      id: frontend-pod-1
+        - cart-.*
+      id: cart-pod-1
       kind: Pod
+      namespace: otel-demo
+    - filter:
+        - cart\b
+      id: cart-service-1
+      kind: Service
       namespace: otel-demo
     - filter:
         - frontend\b
@@ -42,14 +55,18 @@ spec:
   propagations:
     - condition: Deployment has misconfigured readiness probe on port 40 (incorrect)
       effect: Deployment rollout stuck trying to verify pod readiness
-      source: frontend-deployment-1
-      target: frontend-deployment-1
+      source: cart-deployment-1
+      target: cart-deployment-1
     - condition: Deployment rollout stuck
       effect: New pods created but never become ready
-      source: frontend-deployment-1
-      target: frontend-pod-1
+      source: cart-deployment-1
+      target: cart-pod-1
     - condition: Pods not ready due to failing readiness probe
-      effect: Frontend service has no healthy endpoints
-      source: frontend-pod-1
+      effect: Cart service has no healthy endpoints
+      source: cart-pod-1
+      target: cart-service-1
+    - condition: Cart service unavailable
+      effect: Frontend receives errors when calling cart API
+      source: cart-service-1
       target: frontend-service-1
   recommendedActions: []

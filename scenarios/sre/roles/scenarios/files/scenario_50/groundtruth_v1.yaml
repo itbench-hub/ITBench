@@ -9,6 +9,10 @@ spec:
       id: HighRequestErrorRate
       metadata:
         description: Increased error rate for product page service due to erroring requests
+    - group_id: ratings-service-1
+      id: NoRequestsOpened
+      metadata:
+        description: Ratings service receiving no TCP connections from reviews due to upstream productpage mTLS failure
   aliases:
     - - productpage-v1-pod-1
       - productpage-v1-service-1
@@ -32,9 +36,27 @@ spec:
       kind: Service
       namespace: bookinfo
       root_cause: true
+    - filter:
+        - reviews-v*
+      id: reviews-service-1
+      kind: Service
+      namespace: bookinfo
+    - filter:
+        - ratings-v*
+      id: ratings-service-1
+      kind: Service
+      namespace: bookinfo
   propagations:
-    - condition: Authenticaition policy causes service to be unable to communicate to other pods.
-      effect: HTTP requests to service are denied, leading to an increased error rate.
+    - condition: Strict mTLS peer authentication policy applied to productpage-v1
+      effect: HTTP requests to productpage are denied, leading to an increased error rate
       source: productpage-v1-service-1
-      target: productpage-v1-service-1
+      target: productpage-v1-pod-1
+    - condition: Productpage service fails to process requests successfully
+      effect: Reviews service stops receiving valid work from productpage
+      source: productpage-v1-pod-1
+      target: reviews-service-1
+    - condition: Reviews service has no valid requests to process
+      effect: Reviews stops opening TCP connections to ratings service
+      source: reviews-service-1
+      target: ratings-service-1
   recommendedActions: []

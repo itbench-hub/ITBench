@@ -5,28 +5,27 @@ metadata:
   name: scenario-41
 spec:
   alerts:
-    - group_id: node-1
-      id: NodeMemoryHighUtilization
+    - group_id: cart-pod-1
+      id: KubePodCrashLooping
       metadata:
-        description: The node running the cart pod will have much of its memory resources consumed.
+        description: Cart pod crashes in CrashLoopBackOff due to OOMKill from memory stress without resource limits
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy service experiences errors due to cart service unavailability from pod crashes
   aliases:
     - - cart-service-1
       - cart-pod-1
   fault:
     - category: Chaos
-      condition: Node resource exhaustion via removed CPU/memory limits
+      condition: Memory stress applied to cart pod with no resource limits causes OOMKill
       entity:
         group_id: cart-pod-1
         kind: Pod
-        name: remove-resource-limits-cart
+        name: cart
       fault_mechanism: custom
-      name: exhaust-node-resources
+      name: memory-stress-without-limits
   groups:
-    - filter:
-        - ""
-      id: node-1
-      kind: Node
-      namespace: ""
     - filter:
         - cart\b
       id: cart-service-1
@@ -38,11 +37,24 @@ spec:
       kind: Pod
       namespace: otel-demo
       root_cause: true
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
-    - condition: Removing CPU/memory limits allows pods to consume more resources, potentially causing node exhaustion
-      effect: Latency may increase
-      source: remove-resource-limits-cart
+    - condition: Memory stress applied to cart pod without resource limits
+      effect: Cart pod consumes excessive memory and gets OOMKilled by Kubernetes
+      source: cart-pod-1
       target: cart-pod-1
+    - condition: Cart pod crashes and enters CrashLoopBackOff
+      effect: Cart service becomes unavailable with no healthy endpoints
+      source: cart-pod-1
+      target: cart-service-1
+    - condition: Cart service unavailable when frontend-proxy tries to access it
+      effect: Frontend-proxy experiences request errors when serving pages requiring cart functionality
+      source: cart-service-1
+      target: frontend-proxy-service-1
   recommendedActions:
     - solution:
         actions:
