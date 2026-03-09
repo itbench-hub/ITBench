@@ -18,6 +18,34 @@ spec:
                 namespace: otel-demo
             targetPort: 8080
           id: modified-target-port-kubernetes-service
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: checkout-connection-reset
+                namespace: chaos-mesh
+            schedule: "0 */24 * * *"
+            scheduleSpec:
+              networkChaos:
+                action: partition
+                direction: both
+                duration: 2s
+                mode: all
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: frontend
+                  namespaces:
+                    - otel-demo
+                target:
+                  mode: all
+                  selector:
+                    labelSelectors:
+                      app.kubernetes.io/component: checkout
+                    namespaces:
+                      - otel-demo
+              type: NetworkChaos
+          id: scheduled-chaos-mesh-experiment
   tools:
     sre:
       enabled: true
