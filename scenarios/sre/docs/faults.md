@@ -1660,6 +1660,15 @@ See the scenario ground truth file where this fault is invoked.
             ],
             "type": "object"
         },
+        "schedule": {
+            "description": "Cron expression for when the experiment should run. Defaults to every minute (* * * * *).",
+            "examples": [
+                "*/10 * * * *",
+                "0 * * * *",
+                "0 */24 * * *"
+            ],
+            "type": "string"
+        },
         "scheduleSpec": {
             "properties": {
                 "type": {

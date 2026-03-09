@@ -305,7 +305,7 @@
   tags: {{ documentation_faults["scheduled-chaos-mesh-experiment"].tags }}
 - category: sre
   complexity: low
-  description: This scenario changes the specified port of OpenTelemetry Demo's `checkout` service.
+  description: This scenario simulates a service port misconfiguration in OpenTelemetry Demo's checkout service, combined with network disruption to force connection recycling.
   disruptions:
     - injections:
       - args:
@@ -317,6 +317,34 @@
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
           targetPort: 8080
         id: modified-target-port-kubernetes-service
+      - args:
+          kubernetesObject:
+            apiVersion: chaos-mesh.org/v1alpha1
+            kind: Schedule
+            metadata:
+              name: checkout-connection-reset
+              namespace: chaos-mesh
+          schedule: "0 */24 * * *"
+          scheduleSpec:
+            networkChaos:
+              action: partition
+              direction: both
+              duration: 2s
+              mode: all
+              selector:
+                labelSelectors:
+                  app.kubernetes.io/component: frontend
+                namespaces:
+                  - {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+              target:
+                mode: all
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: checkout
+                  namespaces:
+                    - {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            type: NetworkChaos
+        id: scheduled-chaos-mesh-experiment
   environment:
     applications:
       - id: opentelemetry-demo
