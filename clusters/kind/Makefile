@@ -17,7 +17,7 @@ else
 		echo "You may experience degredated or inconsistent performance on this machine,"; \
 	fi
 endif
-	$(GO) tool kind create cluster --config kind/configs/simple.yaml
+	$(GO) tool kind create cluster --config configs/simple.yaml
 
 .PHONY: create-awx-cluster
 create-awx-cluster: ## Create a Kind cluster for local development on AWX
@@ -32,7 +32,7 @@ else
 		echo "You may experience degredated or inconsistent performance on this machine."; \
 	fi
 endif
-	$(GO) tool kind create cluster --config kind/configs/awx.yaml
+	$(GO) tool kind create cluster --config configs/awx.yaml
 
 .PHONY: destroy-simple-cluster
 destroy-simple-cluster: ## Deletes the local development Kind cluster
