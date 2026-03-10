@@ -324,6 +324,7 @@ opentelemetry-collector:
           enabled: true
           num_consumers: 10
           queue_size: 10000
+          storage: file_storage
       opensearch:
         http:
           endpoint: http://opensearch-master.opensearch.svc.cluster.local:9200
@@ -335,7 +336,16 @@ opentelemetry-collector:
         endpoint: {{ tools_prometheus_endpoint.http }}
       prometheus:
         endpoint: 0.0.0.0:8888
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+      file_storage:
+        directory: /var/lib/otelcol
+        timeout: 10s
     service:
+      extensions:
+        - health_check
+        - file_storage
       pipelines:
         logs:
           receivers:
@@ -397,7 +407,17 @@ opentelemetry-collector:
     limits:
       memory: 1Gi
     requests:
+      cpu: 250m
       memory: 512Mi
+  podSecurityContext:
+    fsGroup: 10001
+  extraVolumes:
+    - name: queue-storage
+      persistentVolumeClaim:
+        claimName: otel-collector-queue-pvc
+  extraVolumeMounts:
+    - name: queue-storage
+      mountPath: /var/lib/otelcol
 {% if applications_cluster.platform == "openshift" %}
   podAnnotations:
     openshift.io/required-scc: restricted-v2
