@@ -142,6 +142,22 @@
               - type: ResponseHeaderModifier
                 responseHeaderModifier:
                   add: "{{ tools_http_route_response_headers }}"
+          - backendRefs:
+              - name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}-collector"
+                port: 16686
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /api/
+            filters:
+              - type: URLRewrite
+                urlRewrite:
+                  path:
+                    type: ReplacePrefixMatch
+                    replacePrefixMatch: /jaeger/api/
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
     state: present
 
 - name: Create HTTPRoute for Kubernetes Topology Monitor
@@ -203,7 +219,7 @@
   when:
     - tools_configuration.finops.enabled | ansible.builtin.default(false)
 
-- name: Create HTTPRoute for Promtheus
+- name: Create HTTPRoute for Prometheus
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
