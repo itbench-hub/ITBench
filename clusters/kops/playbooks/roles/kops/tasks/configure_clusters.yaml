@@ -8,7 +8,40 @@
 - name: Create kOps cluster configuration for {{ cluster_name }}
   ansible.builtin.command:
     argv:
-
+      - kops
+      - create
+      - cluster
+      - "{{ cluster_name }}"
+      - --cloud
+      - aws
+      - --topology
+      - "{{ 'private' if kops_ec2_vpc_nat_gateway.result | ansible.builtin.length > 0 else 'public' }}"
+      - --network-id
+      - "{{ kops_ec2_vpc_net.vpcs[0].vpc_id }}"
+      - --subnets
+      - "{{ kops_subnet_ids.private[name_index] }}"
+      - --utility-subnets
+      - "{{ kops_subnet_ids.public[name_index] }}"
+      - --zones
+      - "{{ kops_configuration.aws.zones | join(',') }}"
+      - --ssh-public-key
+      - "{{ kops_configuration.ssh_keys.public }}"
+      - --control-plane-size
+      - "{{ kops_configuration.cluster.nodes.control.instance_type }}"
+      - --control-plane-count
+      - "{{ kops_configuration.cluster.nodes.control.count }}"
+      - --node-size
+      - "{{ kops_configuration.cluster.nodes.worker.instance_type }}"
+      - --node-count
+      - "{{ kops_configuration.cluster.nodes.worker.count }}"
+      - --networking
+      - "{{ kops_configuration.cluster.networking.mode }}"
+      - --state
+      - "{{ kops_state_store }}"
+      - --channel
+      - stable
+      - --kubernetes-version
+      - "{{ kops_configuration.cluster.kubernetes.version }}"
   register: kops_create_cluster_results
   changed_when: kops_create_cluster_results.rc == 0
 
@@ -82,7 +115,7 @@
       - kops
       - replace
       - -f
-      - "{{ [kops_cluster_config.path, (cluster_name + '-config.yaml')] | ansible.builtin.path_join }}"
+      - "{{ kops_cluster_config.path }}"
       - --state
       - "{{ kops_state_store }}"
       - --force

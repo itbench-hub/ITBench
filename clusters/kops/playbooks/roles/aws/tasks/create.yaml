@@ -6,7 +6,7 @@
   ansible.builtin.set_fact:
     aws_vpc_cidr_base: |-
       {{
-        aws_configuration.networking.vpc.cidr |
+        aws_configuration.vpc.cidr |
         ansible.builtin.split(".") |
         ansible.builtin.batch(2) |
         ansible.builtin.first |
@@ -15,7 +15,7 @@
 
 - name: Create VPC
   amazon.aws.ec2_vpc_net:
-    cidr_block: "{{ aws_configuration.networking.vpc.cidr }}"
+    cidr_block: "{{ aws_configuration.vpc.cidr }}"
     name: "{{ aws_cluster_group.name.prefix }}-vpc"
     region: "{{ aws_configuration.region }}"
     state: present
@@ -46,7 +46,16 @@
     tags:
       ClusterGroup: "{{ aws_cluster_group.name.prefix }}"
       ManagedBy: ansible
-      Name: "{{ aws_cluster_group.name.prefix }}-public-subnet-{{ subnet_config[0] | string }}"
+      Name: |-
+        {{
+          [
+            aws_cluster_group.name.prefix,
+            "public" if subnet_config[1] else "private",
+            "subnet",
+            subnet_config[0] | string
+          ] |
+          ansible.builtin.join("-")
+        }}
     vpc_id: "{{ aws_vpc.vpc.id }}"
     wait: true
   loop: |-
@@ -78,15 +87,15 @@
     aws_vpc_subnet_ids:
       private: |-
         {{
-          aws_public_vpc_subnets.results |
+          aws_vpc_subnets.results |
           ansible.builtin.selectattr("subnet.map_public_ip_on_launch", "==", false) |
-          map(attribute='subnet.id')
+          map(attribute="subnet.id")
         }}
       public: |-
         {{
-          aws_public_vpc_subnets.results |
+          aws_vpc_subnets.results |
           ansible.builtin.selectattr("subnet.map_public_ip_on_launch", "==", true) |
-          map(attribute='subnet.id')
+          map(attribute="subnet.id")
         }}
 
 - name: Verify that all subnets were created

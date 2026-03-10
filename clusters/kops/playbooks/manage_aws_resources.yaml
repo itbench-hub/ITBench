@@ -1,0 +1,53 @@
+---
+- name: Manage AWS Resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Create role variables
+      tags:
+        - always
+      block:
+        - name: Create AWS configuration variable
+          ansible.builtin.set_fact:
+            aws_configuration:
+              region: "{{ aws.region }}"
+              vpc:
+                cidr: "{{ aws.vpc.cidr }}"
+                subnets:
+                  count: "{{ 1 if target == 'single-cluster' else stack.runners.count + 1 }}"
+              zones: "{{ aws.zones }}"
+
+        - name: Add NAT gateway information to configuration
+          ansible.builtin.set_fact:
+            aws_configuration: |-
+              {{
+                aws_configuration |
+                ansible.builtin.combine(
+                  {
+                    "vpc": {
+                      "nat_gateway": aws.vpc.nat_gateway
+                    }
+                  },
+                  recursive=true
+                )
+              }}
+          when:
+            - aws.vpc.nat_gateway is defined
+
+        - name: Create AWS cluster group variable
+          ansible.builtin.set_fact:
+            aws_cluster_group:
+              name:
+                prefix: "{{ runner.name.prefix if target == 'single_cluster' else stack.name.prefix }}"
+
+    - name: Import AWS role
+      ansible.builtin.import_role:
+        name: aws
+
+    - name: Create AWS S3 bucket
+      amazon.aws.s3_bucket:
+        name: "{{ aws.s3.bucket.name }}"
+        region: "{{ aws.region }}"
+        state: present
+      tags:
+        - create_clusters

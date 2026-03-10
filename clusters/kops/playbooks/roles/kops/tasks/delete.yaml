@@ -1,24 +1,12 @@
 ---
-- name: Import validation tasks
-  ansible.builtin.import_tasks:
-    file: validate_state_storage.yaml
-
 - name: Include cluster deletion tasks
   ansible.builtin.include_tasks:
     file: delete_clusters.yaml
+    apply:
+      tags:
+        - delete_clusters
   loop: "{{ kops_cluster_group.clusters | ansible.builtin.batch(20) }}"
   loop_control:
     label: batch-{{ batch_index + 1 }}
     loop_var: cluster_names
     index_var: batch_index
-
-- name: Import AWS role
-  ansible.builtin.import_role:
-    name: aws
-  vars:
-    aws_cluster_group:
-      name:
-        prefix: "{{ kops_cluster_group.name }}"
-    aws_configuration:
-      region: "{{ kops_configuration.aws.region }}"
-      zones: "{{ kops_configuration.aws.zones }}"

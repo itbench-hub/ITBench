@@ -40,7 +40,7 @@
 - name: Retrieve all Internet Gateways associated with VPCs
   amazon.aws.ec2_vpc_igw_info:
     filters:
-      vpc-id: "{{ vpc.vpc_id }}"
+      "attachment.vpc-id": "{{ vpc.vpc_id }}"
     region: "{{ aws_configuration.region }}"
   loop: "{{ aws_ec2_vpc_net.vpcs }}"
   loop_control:
@@ -128,7 +128,7 @@
     loop_var: vpc
   register: aws_ec2_vpc_route_tables
 
-- name: Delete associated non-main Route Tables # Main Route Tables are deleted when VPCs is deleted
+- name: Delete associated non-main Route Tables
   amazon.aws.ec2_vpc_route_table:
     lookup: id
     region: "{{ aws_configuration.region }}"
@@ -138,12 +138,13 @@
     {{
       aws_ec2_vpc_route_tables.results |
       map(attribute="route_tables") |
-      ansible.builtin.flatten(1) |
-      ansible.builtin.rejectattr('associations', 'any', attribute='main')
-    }}"
+      ansible.builtin.flatten(1)
+    }}
   loop_control:
     label: routetable/{{ route_table.route_table_id }}
     loop_var: route_table
+  when:
+    - route_table.associations | ansible.builtin.selectattr("main", "==", true) | ansible.builtin.length == 0
 
 - name: Delete all VPCs associated with cluster
   amazon.aws.ec2_vpc_net:

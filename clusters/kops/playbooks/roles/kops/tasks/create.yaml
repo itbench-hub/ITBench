@@ -3,20 +3,52 @@
   ansible.builtin.import_tasks:
     file: validate_configuration.yaml
 
-- name: Create AWS S3 bucket
-  amazon.aws.s3_bucket:
-    name: "{{ kops_configuration.aws.s3.bucket.name }}"
+- name: Retrieve VPC associated with cluster
+  amazon.aws.ec2_vpc_net_info:
+    filters:
+      "tag:ClusterGroup": "{{ kops_cluster_group.name }}"
+      "tag:ManagedBy": ansible
+      "tag:Name": "{{ kops_cluster_group.name }}-vpc"
     region: "{{ kops_configuration.aws.region }}"
-    state: present
+  register: kops_ec2_vpc_net
 
-- name: Import AWS role
-  ansible.builtin.import_role:
-    name: aws
-  vars:
-    aws_cluster_group:
-      name:
-        prefix: "{{ kops_cluster_group.name }}"
-    aws_configuration: "{{ lookup('ansible.builtin.template', 'templates/vars/aws_configuration.j2') }}"
+- name: Validate that VPC exists
+  ansible.builtin.assert:
+    that:
+      - kops_ec2_vpc_net.vpcs is defined
+      - kops_ec2_vpc_net.vpcs | ansible.builtin.length == 1
+    fail_msg: Failed to find VPC. Please ensure the AWS VPC resources were successfully created.
+    success_msg: Found VPC.
+
+- name: Retrieve all subnets associated with VPC
+  amazon.aws.ec2_vpc_subnet_info:
+    filters:
+      vpc-id: "{{ kops_ec2_vpc_net.vpcs[0].vpc_id }}"
+    region: "{{ kops_configuration.aws.region }}"
+  register: kops_ec2_vpc_subnets
+
+- name: Create subnet id lists by public availability
+  ansible.builtin.set_fact:
+    kops_subnet_ids:
+      private: |-
+        {{
+          kops_ec2_vpc_subnets.subnets |
+          ansible.builtin.selectattr("map_public_ip_on_launch", "==", false) |
+          map(attribute="subnet_id")
+        }}
+      public: |-
+        {{
+          kops_ec2_vpc_subnets.subnets |
+          ansible.builtin.selectattr("map_public_ip_on_launch", "==", true) |
+          map(attribute="subnet_id")
+        }}
+
+- name: Retrieve all NAT Gateways associated with VPC
+  amazon.aws.ec2_vpc_nat_gateway_info:
+    filters:
+      vpc-id: "{{ kops_ec2_vpc_net.vpcs[0].vpc_id }}"
+    region: "{{ kops_configuration.aws.region }}"
+  register: kops_ec2_vpc_nat_gateway
 
 - name: Include cluster configuration tasks
   ansible.builtin.include_tasks:

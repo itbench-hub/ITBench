@@ -28,6 +28,7 @@
         label: job/{{ delete_task.ansible_job_id }}
         loop_var: delete_task
       register: kops_delete_job_status
+      changed_when: kops_delete_job_status.rc == 0
       until: kops_delete_job_status.finished
       delay: 60
       retries: 15
@@ -35,7 +36,7 @@
     - name: Clean up ansychronous deletion jobs
       ansible.builtin.async_status:
         mode: cleanup
-        jid: "{{ item.ansible_job_id }}"
+        jid: "{{ delete_task.ansible_job_id }}"
       loop: "{{ kops_delete_cluster_result_async.results }}"
       loop_control:
         label: job/{{ delete_task.ansible_job_id }}

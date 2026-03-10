@@ -14,48 +14,47 @@ group-vars: ## Generates the group variables from templates
 	cp inventory/group_vars/awx/stack.yaml.example inventory/group_vars/awx/stack.yaml
 	cp inventory/group_vars/basic/runner.yaml.example inventory/group_vars/basic/runner.yaml
 
-.PHONY: create-kops-cluster
-create-kops-cluster: ## Creates a single cluster
-ifdef CLUSTER_NAME
-	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "create_clusters" \
-		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
-else
-	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "create_clusters"
-endif
+.PHONY: create-cluster
+create-cluster: ## Creates a single cluster
+	uv run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
+		--extra-vars "target=single-cluster"
+	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
+		--extra-vars "target=single-cluster"
 
-.PHONY: list-kops-clusters
-list-kops-clusters: ## Lists all active clusters
-	uv run ansible-playbook -i inventory playbooks/list_kops_clusters.yaml
+.PHONY: destroy-cluster
+destroy-cluster: ## Deletes a single cluster
+	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
+		--extra-vars "target=single-cluster"
+	uv run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
+		--extra-vars "target=single-cluster"
 
-.PHONY: download-kops-kubeconfig
-download-kops-kubeconfig: ## Exports the kubeconfig of a single cluster
-ifdef CLUSTER_NAME
-	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "export_clusters" \
-		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
-else
-	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "export_clusters"
-endif
-
-.PHONY: destroy-kops-cluster
-destroy-kops-cluster: ## Deletes a single cluster
-ifdef CLUSTER_NAME
-	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "delete_clusters" \
-		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
-else
-	uv run ansible-playbook -i inventory playbooks/manage_kops_cluster.yaml --tags "delete_clusters"
-endif
+.PHONY: get-cluster-kubeconfig
+get-cluster-kubeconfig: ## Exports the kubeconfig of a single cluster
+	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
+		--extra-vars "target=single-cluster"
 
 .PHONY: create-awx-stack
 create-awx-stack: ## Creates an AWX stack
-	uv run ansible-playbook -i inventory playbooks/manage_awx_stack.yaml --tags "create_clusters"
-
-.PHONY: download-awx-kubeconfigs
-download-awx-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
-	uv run ansible-playbook -i inventory playbooks/manage_awx_stack.yaml --tags "export_clusters"
+	uv run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
+		--extra-vars "target=awx-stack"
+	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
+		--extra-vars "target=awx-stack"
 
 .PHONY: destroy-awx-stack
 destroy-awx-stack: ## Destroy an AWX stack
-	uv run ansible-playbook -i inventory playbooks/manage_awx_stack.yaml --tags "delete_clusters"
+	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
+		--extra-vars "target=awx-stack"
+	uv run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
+		--extra-vars "target=awx-stack"
+
+.PHONY: get-stack-kubeconfigs
+get-stack-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
+	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
+		--extra-vars "target=awx-stack"
+
+.PHONY: list-clusters
+list-clusters: ## Lists all active clusters
+	uv run ansible-playbook -i inventory playbooks/list_kops_clusters.yaml
 
 .PHONY: check-awx-clusters
 check-awx-clusters: ## Check which AWX clusters have validation errors

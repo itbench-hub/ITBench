@@ -35,7 +35,7 @@
       poll: 0
       register: kops_validate_cluster_result_async
 
-    - name: Wait for asynchronous operations to complete
+    - name: Wait for asynchronous validation jobs to complete
       ansible.builtin.async_status:
         jid: "{{ validate_task.ansible_job_id }}"
       loop: "{{ kops_validate_cluster_result_async.results }}"
@@ -43,6 +43,7 @@
         label: job/{{ validate_task.ansible_job_id }}
         loop_var: validate_task
       register: kops_validate_job_status
+      changed_when: false
       until: kops_validate_job_status.finished
       delay: 60
       retries: 30
@@ -50,7 +51,7 @@
     - name: Clean up ansychronous operations
       ansible.builtin.async_status:
         mode: cleanup
-        jid: "{{ item.ansible_job_id }}"
+        jid: "{{ validate_task.ansible_job_id }}"
       loop: "{{ kops_validate_cluster_result_async.results }}"
       loop_control:
         label: job/{{ validate_task.ansible_job_id }}
