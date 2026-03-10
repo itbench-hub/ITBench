@@ -3,7 +3,7 @@
 [kOps](https://kops.sigs.k8s.io/) is a tool which create a [Kubernetes](https://kubernetes.io/) cluster using resources offered by cloud providers.
 
 > [!NOTE]
-> As of the time writing (**03/09/2026**) these playbooks in this directory use [Amazon Web Services (AWS)](https://docs.aws.amazon.com/#products) as the provisoner. While other cloud providers may supported by kOps, orchestrating the additional pieces from those provides is in instrumented here.
+> As of the time writing (**03/09/2026**) these playbooks in this directory use [Amazon Web Services (AWS)](https://docs.aws.amazon.com/#products) as the provisoner. While other cloud providers may supported by kOps, orchestrating the additional pieces from those provides is not instrumented here.
 
 ## Required Software
 
@@ -64,6 +64,17 @@ aws configure
 
 ## Cluster Management
 
+There are two management targets that are controlled by these playbooks: **AWX Stack** and **Single Cluster**.
+
+An AWX stack requires multiple clusters (one per scenario) and a controller cluster. The controller cluster is called the `head` and any cluster running a scenario is called a `runner`. To reduce resource complexity, only one [virtual private cloud (VPC)](https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html) object is created. From that VPC, several [subnets](https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html) (one per cluster) are created.
+
+A single cluster is only one `runner` cluster.
+
+For general development, most users will require only the single cluster target. The AWX stack is only recommended for running multiple scenarios with multiple trials simulatenously due to the intense amount of resources required.
+
+> [!NOTE]
+> If one requires a cluster have access to a private Docker registry, please configure the `inventory/group_vars/all/docker.yaml` file. Once deployed, [Kyverno](https://kyverno.io/) ensures that all the namespaces on the cluster will also be updated with the secret information.
+
 ### AWX Stack
 
 #### Creation
@@ -116,4 +127,22 @@ kubectl cluster-info
 1. Run the following command to delete a cluster
 ```shell
 make destroy-cluster
+```
+
+## Troubleshooting
+
+### AWS Resource Limits
+
+While the playbooks have some checking to avoid unclear gaps in execution, sometimes resource creation or deletion failures occur. Often times, this is because of a [lack of resources available](https://docs.aws.amazon.com/servicequotas/latest/userguide/intro.html) (ie, no VPCs availabilty in a region). In order to fix this, one must either [increase the service quotas](https://docs.aws.amazon.com/servicequotas/latest/userguide/request-quota-increase.html) for a given resource or remove unused resources.
+
+### Cluster Validation Errors
+
+Sometimes clusters may fail to validate for a variety of reasons. One is that a machine or machines may have failed to join the cluster as a node. Rather than delete all the clusters, one can utilize the following command which will remove the problematic machines from the cluster. This will allow a new machine to be generated, which will hopefully succeed.
+```shell
+CLUSTER_NAME=<cluster name> make remove-unjoined-nodes
+```
+
+To more generally view the validation status of a cluster, use the following command:
+```shell
+CLUSTER_NAME=<cluster name> make show_validation_status
 ```

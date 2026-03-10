@@ -1,16 +1,4 @@
 ---
-- name: Create temporary directory for kubeconfig exports
-  ansible.builtin.tempfile:
-    prefix: kops
-    state: directory
-  register: kops_temporary_directory
-
-- name: Import kubeconfig export tasks
-  ansible.builtin.import_tasks:
-    file: export_kubeconfigs.yaml
-  vars:
-    export_directory: "{{ kops_temporary_directory.path }}"
-
 - name: Asynchronously validate kOps cluster
   block:
     - name: Validate kOps managed clusters
@@ -23,8 +11,6 @@
           - "{{ cluster_name }}"
           - --state
           - "{{ kops_state_store }}"
-          - --kubeconfig
-          - "{{ [kops_temporary_directory.path, cluster_name] | ansible.builtin.path_join }}"
           - --wait
           - 20m
       async: 1800
@@ -56,8 +42,3 @@
       loop_control:
         label: job/{{ validate_task.ansible_job_id }}
         loop_var: validate_task
-
-- name: Delete temporary directory for kubeconfigs
-  ansible.builtin.file:
-    path: kops_temporary_directory.path
-    state: absent

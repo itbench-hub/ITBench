@@ -56,66 +56,20 @@ destroy-awx-stack: ## Destroy an AWX stack
 list-clusters: ## Lists all active clusters
 	uv run ansible-playbook -i inventory playbooks/list_kops_clusters.yaml
 
-.PHONY: check-awx-clusters
-check-awx-clusters: ## Check which AWX clusters have validation errors
-	@echo "Reading configuration..."
-	@BUCKET=$$(grep 'bucket_name:' group_vars/development/kops_cluster.yaml | awk '{print $$2}' | tr -d '"'); \
-	PREFIX=$$(grep 'name_prefix:' group_vars/development/awx_stack.yaml | head -1 | awk '{print $$2}'); \
-	echo "Checking clusters: $$PREFIX* (state: s3://$$BUCKET)"; \
-	echo ""; \
-	CLUSTERS=$$(kops get clusters --state=s3://$$BUCKET -o json 2>/dev/null | \
-		python3 -c "import sys, json; [print(c['metadata']['name']) for c in json.load(sys.stdin) if '$$PREFIX' in c['metadata']['name']]" 2>/dev/null); \
-	for cluster in $$CLUSTERS; do \
-		printf "%-60s " "$$cluster:"; \
-		kops validate cluster --name=$$cluster --state=s3://$$BUCKET --wait=0s >/dev/null 2>&1 \
-			&& echo "✓ OK" || echo "✗ FAILED"; \
-	done
+.PHONY: show-validation-status
+show-validation-status: ## Displays the validation status of a cluster
+ifdef CLUSTER_NAME
+	uv run ansible-playbook -i inventory playbooks/show_validation_status.yaml \
+		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
+else
+	@echo "Missing CLUSTER_NAME argument. Please run this command with this variable."
+endif
 
-.PHONY: debug-cluster
-debug-cluster: ## Debug a failed cluster (usage: CLUSTER_NAME=my-cluster.k8s.local make debug-cluster)
-	@if [ -z "$(CLUSTER_NAME)" ]; then \
-		echo "Error: CLUSTER_NAME is required"; \
-		echo "Usage: CLUSTER_NAME=my-cluster.k8s.local make debug-cluster"; \
-		exit 1; \
-	fi
-	@BUCKET=$$(grep 'bucket_name:' group_vars/development/kops_cluster.yaml | awk '{print $$2}' | tr -d '"'); \
-	echo "=== Cluster Validation Details ==="; \
-	kops validate cluster --name=$(CLUSTER_NAME) --state=s3://$$BUCKET --wait=0s || true; \
-	echo ""; \
-	echo "=== Exporting Kubeconfig ==="; \
-	kops export kubecfg --name=$(CLUSTER_NAME) --state=s3://$$BUCKET --admin --kubeconfig=/tmp/debug-$(CLUSTER_NAME).yaml 2>&1 || true; \
-	echo ""; \
-	echo "=== Node Status ==="; \
-	kubectl get nodes --kubeconfig=/tmp/debug-$(CLUSTER_NAME).yaml 2>&1 || echo "Failed to get nodes"; \
-	echo ""; \
-	echo "=== Non-Running Pods ==="; \
-	kubectl get pods --all-namespaces --kubeconfig=/tmp/debug-$(CLUSTER_NAME).yaml 2>&1 | grep -v "Running\|Completed" || echo "All pods are running"
-
-.PHONY: fix-cluster
-fix-cluster: ## Attempt to fix a cluster by removing unjoined nodes (usage: CLUSTER_NAME=my-cluster.k8s.local make fix-cluster)
-	@if [ -z "$(CLUSTER_NAME)" ]; then \
-		echo "Error: CLUSTER_NAME is required"; \
-		echo "Usage: CLUSTER_NAME=my-cluster.k8s.local make fix-cluster"; \
-		exit 1; \
-	fi
-	@BUCKET=$$(grep 'bucket_name:' group_vars/development/kops_cluster.yaml | awk '{print $$2}' | tr -d '"'); \
-	REGION=$$(grep 'region:' group_vars/development/kops_cluster.yaml | head -1 | awk '{print $$2}'); \
-	echo "Detecting problematic instances..."; \
-	INSTANCE_IDS=$$(kops validate cluster --name=$(CLUSTER_NAME) --state=s3://$$BUCKET --wait=0s 2>&1 | \
-		grep "has not yet joined cluster" | \
-		grep -o "i-[a-z0-9]*" | sort -u | tr '\n' ' '); \
-	if [ -z "$$INSTANCE_IDS" ]; then \
-		echo "No unjoined instances found. Cluster might be healthy or have different issues."; \
-		exit 1; \
-	fi; \
-	COUNT=$$(echo $$INSTANCE_IDS | wc -w); \
-	echo "Found $$COUNT problematic instance(s): $$INSTANCE_IDS(region: $$REGION)"; \
-	echo ""; \
-	echo "Terminating $$COUNT instance(s): $$INSTANCE_IDS"; \
-	AWS_PAGER="" aws ec2 terminate-instances --instance-ids $$INSTANCE_IDS --region $$REGION; \
-	echo ""; \
-	echo "Waiting for AWS Auto Scaling to create replacement(s) (5 minutes)..."; \
-	sleep 300; \
-	echo ""; \
-	echo "=== Validating cluster ==="; \
-	kops validate cluster --name=$(CLUSTER_NAME) --state=s3://$$BUCKET --wait=5m || echo "Cluster still has issues, may need more time"
+.PHONY: remove-unjoined-nodes
+remove-unjoined-nodes: ## Removes all unjoined nodes from a cluster
+ifdef CLUSTER_NAME
+	uv run ansible-playbook -i inventory playbooks/remove_unjoined_nodes.yaml \
+		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
+else
+	@echo "Missing CLUSTER_NAME argument. Please run this command with this variable."
+endif

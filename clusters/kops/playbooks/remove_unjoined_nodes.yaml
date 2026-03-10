@@ -1,0 +1,87 @@
+---
+- name: Remove unjoined nodes in kOps cluster
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+
+    - name: Import kOps validation tasks
+      ansible.builtin.import_role:
+        name: kops
+        tasks_from: set_state_storage
+      vars:
+        kops_configuration:
+          aws:
+            s3: "{{ aws.s3 }}"
+  tasks:
+    - name: Validate cluster
+      ansible.builtin.command:
+        argv:
+          - kops
+          - validate
+          - cluster
+          - --name
+          - "{{ kops_cluster_name }}"
+          - --state
+          - "{{ kops_state_store }}"
+          - --output
+          - json
+          - --wait
+          - 0s
+      register: kops_validate_result
+      changed_when: false
+      failed_when: false
+
+    - name: Display validation results
+      ansible.builtin.debug:
+        var: kops_validate_result.stdout | ansible.builtin.from_json
+
+    - name: Parse results for machine errors
+      ansible.builtin.set_fact:
+        machine_validation_errors: |-
+          {{
+            (
+              kops_validate_result.stdout | ansible.builtin.from_json
+            ).failures |
+            ansible.builtin.default([]) |
+            ansible.builtin.selectattr("kind", "==", "Machine")
+          }}
+
+    - name: Terminate machines with errors
+      when:
+        - machine_validation_errors | ansible.builtin.length > 0
+      block:
+        - name: Terminate unjoined EC2 instances
+          amazon.aws.ec2_instance:
+            instance_ids: "{{ machine_validation_errors | map(attribute='name') }}"
+            region: "{{ aws.region }}"
+            state: terminated
+            wait: wait
+
+        - name: Wait for AWS Autoscaler to create new instances
+          ansible.builtin.pause:
+            seconds: 300
+
+    - name: Validate cluster
+      ansible.builtin.command:
+        argv:
+          - kops
+          - validate
+          - cluster
+          - --name
+          - "{{ kops_cluster_name }}"
+          - --state
+          - "{{ kops_state_store }}"
+          - --output
+          - json
+          - --wait
+          - 5m
+      register: kops_revalidate_result
+      changed_when: false
+      failed_when: false
+
+    - name: Display re-validation results
+      ansible.builtin.debug:
+        var: kops_revalidate_result.stdout | ansible.builtin.from_json
