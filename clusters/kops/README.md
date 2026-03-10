@@ -1,237 +1,119 @@
-# Remote Cluster Setup
+# kOps Cluster Setup
 
-__Note: The following setup guide has been verified and tested on MacOS, Ubuntu, and Fedora using the perscribed details.__
+[kOps](https://kops.sigs.k8s.io/) is a tool which create a [Kubernetes](https://kubernetes.io/) cluster using resources offered by cloud providers.
 
-_Note: The following guide has been largely based on this [blog](https://aws.amazon.com/blogs/compute/kubernetes-clusters-aws-kops/)._
-
-_Note: The following setup guide presumes that the required software listed [here](../../README.md#required-software) has been installed along with [creating the virtual environment and installing the dependencies](../../README.md#installing-dependencies). If it has not, please go back and do so before following this document._
-
-## Recommended Software
-
-### MacOS
-
-- [Homebrew](https://brew.sh/)
+> [!NOTE]
+> As of the time writing (**03/09/2026**) these playbooks in this directory use [Amazon Web Services (AWS)](https://docs.aws.amazon.com/#products) as the provisoner. While other cloud providers may supported by kOps, orchestrating the additional pieces from those provides is in instrumented here.
 
 ## Required Software
 
 - [awscli](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) (v2)
 - [kOps](https://kops.sigs.k8s.io/getting_started/install/)
 
-### Installing Required Software via Homebrew (for MacOS)
+## Installation
 
-1. Install required software
-```bash
+### MacOS ([Homebrew](https://brew.sh/))
+
+1. Download the following packages
+```shell
 brew install awscli
 brew install kops
 ```
 
-### Installing Required Software (for Red Hat Enterprise Linux -- RHEL)
+### RHEL
 
-1. Install the AWS CLI v2, curl, and jq by running:
-```bash
+1. Download the following packages
+```shell
 sudo dnf install awscli
 sudo dnf install curl
 sudo dnf install jq
 ```
-2. Set up kops by following the instructions [here](https://kops.sigs.k8s.io/getting_started/install/#linux)
 
+2. Follow the instructions listed [here](https://kops.sigs.k8s.io/getting_started/install/#linux) to install `kops`
 
-## First Time Setup
+## Set Up
 
-1. Install Python dependencies. (Working directory is `remote_cluster`.)
-```bash
-cd ../.. && make deps && cd -
+The playbooks feature a number of [group variables](./inventory/group_vars/). Each one will be described here:
+
+| File Name | Function |
+| --- | --- |
+| [aws.yaml](./inventory/group_vars/all/aws.yaml.example) | Configures region, vpc, and s3 storage |
+| [cluster.yaml](./inventory/group_vars/all/cluster.yaml.example) | Configures the cluster itself |
+| [docker.yaml](./inventory/group_vars/all/docker.yaml.example) | Configures the registry secret |
+| [runner.yaml](./inventory/group_vars/basic/runner.yaml.example) | Configures the name prefix for a single cluster |
+| [ssh_keys.yaml](./inventory/group_vars/all/ssh_keys.yaml.example) | Configured the ssh key to access the cluster |
+| [stack.yaml](./inventory/group_vars/awx/stack.yaml) | Configures the name prefix and number of clusters in AWX stack |
+
+> [!NOTE]
+> Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
+
+1. Create the playbooks' group variables from the templates
+```shell
+make group-vars
 ```
 
-2. Create the group variables for the development host. The `kops_cluster.yaml` file contains the configuration needed to customize the kops deployment.
-```bash
-make group_vars
-```
+2. Edit the group variables files accordingly
 
-3. The following variables are to be set in `group_vars/development/kops_cluster.yaml`
-```
-cluster:
-  s3:
-    bucket_name: "" # Bucket to which kOps will post cluster configurations in; bucket will be created if it does not exist
-  ssh:
-    public_key_path: "" # Public SSH key to be placed on the cluster nodes allowing for the nodes to be SSHed into; must be set if clusters are to be created.
-```
-A guide to creating SSH keys can be found [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).
+> [!NOTE]
+> Before or during this step, one should create an SSH key. This will allow ssh access to the cluster after creation. A guide to making an ssh key can be found [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).
 
-4. Set up AWS credentials by running the following command. Enter the AWS access key ID and security access key when requested.
-```bash
+3. Configure the AWS CLI tool
+```shell
 aws configure
 ```
 
-To create a single cluster head to the next section [here](#cluster-management---single-cluster). If you are here to create multiple identical clusters to orchestrate a large-scale AWX experiment head [here](#cluster-management---multiple-cluster)
+## Cluster Management
 
-## Cluster Management - Single Cluster
+### AWX Stack
 
-### 1. Create the Cluster
-Create a new Kubernetes cluster using EC2 resources. Skip this step if you already have a cluster running.
+#### Creation
 
-The cluster configuration is defined in `group_vars/development/kops_cluster.yaml`.
-
-```bash
-make create_kops_cluster
+1. Run the following command to create a "stack" of clusters
+```shell
+make create-awx-stack
 ```
 
-### 2. Export Kubeconfig
-Export the cluster's kubeconfig to access the remote Kubernetes cluster:
-
-```bash
-make export_kops_kubeconfig
+2. Once the previous command successfully completes, run the following command to export the kubeconfig:
+```shell
+make get-stack-kubeconfigs
 ```
 
-To export a cluster other than the one defined in `group_vars/development/kops_cluster.yaml`, get the full name of the cluster by running the following command:
-
-```bash
-make list_kops_clusters
+3. To access the cluster from a terminal window, use the following command:
+```shell
+export KUBECONFIG=$(pwd)/kubeconfigs/<cluster name>
+kubectl cluster-info
 ```
 
-Then, run the following command with the CLUSTER_NAME argument:
+### Deletion
 
-```bash
-CLUSTER_NAME=<full name of cluster> make export_kops_kubeconfig
+1. Run the following command to delete a cluster
+```shell
+make destroy-awx-stack
 ```
 
-### 3. Verify Cluster Access
-Test your connection to the cluster:
+### Single Cluster
 
-```bash
-export KUBECONFIG=/tmp/<cluster_name>.yaml
-kubectl get pods --all-namespaces
+#### Creation
+
+1. Run the following command to create a cluster
+```shell
+make create-cluster
 ```
 
-**Example:**
-```bash
-export KUBECONFIG="/tmp/development-m5.xlarge-aws.k8s.local.yaml"
-kubectl get pods --all-namespaces
+2. Once the previous command successfully completes, run the following command to export the kubeconfig:
+```shell
+make get-cluster-kubeconfig
 ```
 
-### 4. Update Global Configuration
-Update the `kubeconfig` path in your global configuration:
-
-```bash
-vim ../../group_vars/environment/cluster.yaml
+3. To access the cluster from a terminal window, use the following command:
+```shell
+export KUBECONFIG=$(pwd)/kubeconfigs/<cluster name>
+kubectl cluster-info
 ```
 
-Set the absolute path where the kubeconfig should be downloaded:
-```yaml
-kubeconfig: "/absolute/path/to/kubeconfig.yaml"
-```
+### Deletion
 
-**Example:**
-```yaml
-kubeconfig: "/tmp/development-m5-xlarge-aws.k8s.local.yaml"
-```
-
-### 5. The cluster has been set up. Now let's head back to the [parent README](../../README.md#running-incident-scenarios---quick-start) to deploy the incidents.
-
-### Delete the Cluster
-To delete the cluster, run the following command:
-
-```bash
-make destroy_kops_cluster
-```
-
-To delete a cluster other than the one defined in `group_vars/development/kops_cluster.yaml`, get the full name of the cluster by running the following command:
-
-```bash
-make list_kops_clusters
-```
-
-Then, run the following command with the CLUSTER_NAME argument:
-
-```bash
-CLUSTER_NAME=<full name of cluster> make destroy_kops_cluster
-```
-
-## Cluster Management - Multiple Clusters
-
-Continuing from the first-time setup (#first-time-setup) section this is primarily intended for AWX-based runs spanning the run of multiple scenarios in parallel.
-
-In addition to the variables set in the first time setup section, thhe following variables are to be set in `group_vars/development/awx_stack.yaml`
-```
-stack:
-  name_prefix: awx-exp-runner # an identifier name for the set of kOps cluster(s) which are to be orchestrated as a part of the experiment
-  runners:
-    aws:
-      vpc:
-        cidr: "10.0.0.0/16"
-      subnet:
-        public_base: "10.0"
-        private_base: "10.0"
-      elastic_ip_allocation_id: "" # (Optional; allocation ID associated with an AWS ElasticIP; can be used when a static IP for external connections is needed)
-    count: 20 # number of scenarios which are going to be run.
-```
-
-### Optional: Private Docker Registry
-
-If your container images are hosted in a private Docker registry, you can configure the clusters to automatically set up registry access across all namespaces.
-
-Add the following to `group_vars/development/awx_stack.yaml`:
-
-```yaml
-docker_registry:
-  server: "docker.io"
-  username: "your-docker-username"
-  password: "your-docker-token-or-password" # pragma: allowlist secret
-  email: "your-email@example.com"
-```
-
-When configured, cluster creation will automatically:
-
-1. Create a `regcred` image pull secret in the `default` namespace
-2. Install [Kyverno](https://kyverno.io/) to sync the `regcred` secret to all new namespaces
-3. Mutate all `ServiceAccount` resources to include `regcred` in their `imagePullSecrets`
-
-This step is optional. If `docker_registry` is not defined, the setup is skipped.
-
-### 1. Create the clusters
-
-Let's say the count value in the above set was set to 20. This creation step leads to the creation of 21 clustes. One Kubernetes cluster referred to as the `head` cluster to which AWX would be installed to and then a cluster per scenario.
-
-```bash
-make create_awx_stack
-```
-
-### 2. Export the Kubeconfigs
-
-Exports the kubeconfig associated with the clusters orchestrated for the AWX run.
-
-```bash
-make export_awx_kubeconfigs
-```
-
-### 3. Check cluster status (for debugging)
-
-If cluster creation encounters errors, you can check which clusters are problematic:
-
-```bash
-make check_awx_clusters
-```
-
-This command validates all AWX stack clusters and shows which ones have issues.
-
-To investigate a specific failed cluster:
-
-```bash
-CLUSTER_NAME=awx-exp-runner-head-aws.k8s.local make debug_cluster
-```
-
-This shows detailed validation output, node status, and non-running pods for the specified cluster.
-
-To fix a cluster by removing unjoined nodes:
-
-```bash
-CLUSTER_NAME=awx-exp-runner-rohan-runner-4-aws.k8s.local make fix_cluster
-```
-
-This automatically detects and removes nodes that haven't joined, then waits for kOps to create replacements.
-
-### 4. Delete the clusters
-
-```bash
-make destroy_awx_stack
+1. Run the following command to delete a cluster
+```shell
+make destroy-cluster
 ```

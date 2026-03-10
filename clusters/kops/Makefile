@@ -21,16 +21,16 @@ create-cluster: ## Creates a single cluster
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
 		--extra-vars "target=single-cluster"
 
+.PHONY: get-cluster-kubeconfig
+get-cluster-kubeconfig: ## Exports the kubeconfig of a single cluster
+	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
+		--extra-vars "target=single-cluster"
+
 .PHONY: destroy-cluster
 destroy-cluster: ## Deletes a single cluster
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
 		--extra-vars "target=single-cluster"
 	uv run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
-		--extra-vars "target=single-cluster"
-
-.PHONY: get-cluster-kubeconfig
-get-cluster-kubeconfig: ## Exports the kubeconfig of a single cluster
-	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
 		--extra-vars "target=single-cluster"
 
 .PHONY: create-awx-stack
@@ -40,16 +40,16 @@ create-awx-stack: ## Creates an AWX stack
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
 		--extra-vars "target=awx-stack"
 
+.PHONY: get-stack-kubeconfigs
+get-stack-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
+	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
+		--extra-vars "target=awx-stack"
+
 .PHONY: destroy-awx-stack
 destroy-awx-stack: ## Destroy an AWX stack
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
 		--extra-vars "target=awx-stack"
 	uv run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
-		--extra-vars "target=awx-stack"
-
-.PHONY: get-stack-kubeconfigs
-get-stack-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
-	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
 		--extra-vars "target=awx-stack"
 
 .PHONY: list-clusters
