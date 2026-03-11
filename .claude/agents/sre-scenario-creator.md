@@ -1,7 +1,7 @@
 ---
-name: scenario-creator
+name: sre-scenario-creator
 description: |
-  Assists with the complete workflow of creating new ITBench scenarios,
+  Assists with the complete workflow of creating new ITBench SRE scenarios,
   from initial fault scaffolding through final documentation generation.
 
   Usage examples:
@@ -196,10 +196,10 @@ cat docs/scenarios.md | grep -A 50 "Scenario [ID]"
 4. **Integration test** (if cluster available):
 ```bash
 # Deploy application
-make deploy_applications
+make deploy-applications
 
 # Inject fault
-SCENARIO_ID=[new-id] make inject_scenario
+SCENARIO_ID=[new-id] make inject-scenario-faults
 
 # Verify fault manifests
 kubectl get pods -A
@@ -209,7 +209,7 @@ kubectl get events -A
 # ... execute solution steps ...
 
 # Cleanup
-make undeploy_applications
+make undeploy-applications
 ```
 
 ## Step 8: Final Review

@@ -60,6 +60,18 @@ if [ -f "$SCENARIO_INDEX" ]; then
     fi
 fi
 
+# Check for trial-verifier activation
+if echo "$PROMPT" | grep -Eq "(verify|validate).*(trial|experiment)|(trial|experiment).*(valid|check)|(check|verify).*alert"; then
+    ACTIVATED_SKILLS+=("trial-verifier")
+fi
+
+# Also activate trial-verifier if working with alerts directory
+if find "$CWD" -name "alerts_at_*.json" -maxdepth 5 2>/dev/null | grep -q .; then
+    if [[ ! " ${ACTIVATED_SKILLS[@]} " =~ " trial-verifier " ]]; then
+        ACTIVATED_SKILLS+=("trial-verifier")
+    fi
+fi
+
 # Check prompt keywords
 if echo "$PROMPT" | grep -Eq "(fault|scenario).*(scaffold|todo|complete|fill)"; then
     if echo "$PROMPT" | grep -Eq "fault"; then

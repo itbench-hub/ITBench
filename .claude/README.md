@@ -9,12 +9,16 @@ Inspired by the [Langfuse .claude structure](https://github.com/langfuse/langfus
 ```
 .claude/
 ├── agents/              # Complex, multi-step workflows
-│   └── scenario-creator.md
+│   └── sre-scenario-creator.md
 ├── skills/              # Reusable knowledge blocks
-│   ├── fault-scaffolding/
-│   │   └── SKILL.md
-│   ├── scenario-scaffolding/
-│   │   └── SKILL.md
+│   ├── sre/             # SRE-specific skills
+│   │   ├── fault-scaffolding/
+│   │   │   └── SKILL.md
+│   │   ├── scenario-scaffolding/
+│   │   │   └── SKILL.md
+│   │   └── trial-verifier/
+│   │       ├── SKILL.md
+│   │       └── trial_verifier_service_aware.py
 │   └── skill-rules.json
 ├── hooks/               # Automation scripts
 │   └── skill-activation-prompt.sh
@@ -42,7 +46,7 @@ Inspired by the [Langfuse .claude structure](https://github.com/langfuse/langfus
 
 **Agents orchestrate complete workflows** from start to finish:
 
-1. **`scenario-creator`** - Full workflow for creating new scenarios
+1. **`sre-scenario-creator`** - Full workflow for creating new scenarios
    - Step-by-step guidance from concept to documentation
    - Integration with scaffolding commands
    - Quality validation checklists
@@ -76,7 +80,7 @@ Agents provide comprehensive workflows:
 
 ```bash
 # For complete scenario creation
-/agent scenario-creator
+/agent sre-scenario-creator
 ```
 
 Then describe what you want to create:
@@ -233,7 +237,7 @@ The `settings.json` allows:
 
 ## 💡 Tips
 
-- **Start with the agent** (`scenario-creator`) for complete workflows
+- **Start with the agent** (`sre-scenario-creator`) for complete workflows
 - **Use skills directly** when you just need quick patterns
 - **Reference existing implementations** - Search before creating
 - **Test in a cluster** - Don't trust untested solutions
@@ -254,6 +258,6 @@ When adding new skills or agents:
 - **2026-02-20**: Initial structure created
   - Added fault-scaffolding skill
   - Added scenario-scaffolding skill
-  - Added scenario-creator agent
+  - Added sre-scenario-creator agent
   - Added skill-activation hook
   - Configured permissions and settings
