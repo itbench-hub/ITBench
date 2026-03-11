@@ -39,17 +39,6 @@
       kubeconfig: "{{ applications_cluster.kubeconfig }}"
       platform: "{{ applications_cluster.platform }}"
 
-- name: Merge component defaults with scenario overrides
-  ansible.builtin.set_fact:
-    applications_otel_demo_configuration: |-
-      {{
-        applications_component_defaults.otel_demo |
-        combine(
-          applications_configuration.opentelemetryDemo.configuration | default({}),
-          recursive=True
-        )
-      }}
-
 - name: Install OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
     chart_ref: "{{ applications_managers.opentelemetry_demo.helm.chart.reference }}"
