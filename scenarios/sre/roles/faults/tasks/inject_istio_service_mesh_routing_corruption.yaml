@@ -1,20 +1,27 @@
 ---
-# Istio Service Mesh Routing Corruption
-# Simulates the November 2023 Optus BGP routing storm by creating a VirtualService
-# that routes traffic to non-existent destinations, causing cascading connection failures
+# Istio Service Mesh Routing Corruption (ztunnel L4 approach)
+# Simulates the November 2023 Optus BGP routing storm by corrupting service
+# discovery routing, causing cascading connection failures
 #
-# IMPORTANT: Istio Ambient Mode Architecture
-# ------------------------------------------
+# IMPORTANT: Istio Ambient Mode - ztunnel Layer Implementation
+# -----------------------------------------------------------
 # Istio Ambient mode uses a two-layer architecture:
-# 1. ztunnel (L4): Handles TCP-level routing - always present
-# 2. waypoint proxy (L7): Handles HTTP-level routing policies (VirtualService, etc.) - optional
+# 1. ztunnel (L4): Handles TCP-level routing, service discovery - always present
+# 2. waypoint proxy (L7): Handles HTTP-level routing policies - optional
 #
-# VirtualServices require L7 processing, which only waypoint proxies provide.
-# Without a waypoint proxy, VirtualServices are ignored and traffic flows directly via ztunnel.
-# Therefore, this fault MUST deploy a waypoint proxy to enable VirtualService-based routing corruption.
+# IMPLEMENTATION DECISION (Istio 1.29):
+# This fault operates at the ztunnel (L4) layer by corrupting the Kubernetes
+# Service selector to point to non-existent pods. When ztunnel attempts to
+# route traffic, it finds no endpoints and connection establishment fails.
 #
-# This mirrors real-world scenarios where routing infrastructure (waypoint) is required
-# for advanced routing policies, similar to how BGP routers are required for BGP routing.
+# This L4 approach achieves the same observable behavior:
+# - Connection failures (similar to unreachable routing destinations)
+# - Error metrics and alerts fire correctly
+# - Reliable and consistent across Istio versions
+# - Simulates BGP-style routing corruption at service discovery layer
+#
+# This mirrors real-world scenarios where routing infrastructure failures
+# cause services to become unreachable, similar to BGP routing table corruption.
 
 - name: Retrieve service
   kubernetes.core.k8s_info:
@@ -33,106 +40,51 @@
     fail_msg: Unable to find service. Please verify that the service exists.
     success_msg: Found service.
 
-# Deploy waypoint proxy to enable L7 routing policies (VirtualService)
-- name: Create waypoint gateway for L7 routing
-  kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: gateway.networking.k8s.io/v1
-      kind: Gateway
-      metadata:
-        name: waypoint
-        namespace: "{{ faults_service.resources[0].metadata.namespace }}"
-        labels:
-          app.kubernetes.io/managed-by: ITBench
-      spec:
-        gatewayClassName: istio-waypoint
-        listeners:
-          - name: mesh
-            port: 15008
-            protocol: HBONE
-    state: present
+- name: Store original service selector for restoration
+  ansible.builtin.set_fact:
+    faults_original_selector: "{{ faults_service.resources[0].spec.selector }}"
 
-- name: Wait for waypoint gateway to be ready
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    api_version: gateway.networking.k8s.io/v1
-    kind: Gateway
-    name: waypoint
-    namespace: "{{ faults_service.resources[0].metadata.namespace }}"
-  register: faults_waypoint
-  until:
-    - faults_waypoint.api_found
-    - faults_waypoint.resources | ansible.builtin.length == 1
-    - faults_waypoint.resources[0].status.conditions is defined
-    - faults_waypoint.resources[0].status.conditions | selectattr('type', 'equalto', 'Programmed') | selectattr('status', 'equalto', 'True') | list | length > 0
-  delay: 5
-  retries: 24
-
-- name: Label namespace to use waypoint for L7 routing
+- name: Corrupt service selector to point to non-existent pods
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
-      kind: Namespace
+      kind: Service
       metadata:
-        name: "{{ faults_service.resources[0].metadata.namespace }}"
-        labels:
-          istio.io/use-waypoint: waypoint
+        name: "{{ faults_service.resources[0].metadata.name }}"
+        namespace: "{{ faults_service.resources[0].metadata.namespace }}"
+        annotations:
+          # Store original selector for fault removal/restoration
+          itbench.io/original-selector: "{{ faults_original_selector | to_json }}"
+          itbench.io/fault-type: "istio-service-mesh-routing-corruption"
+          itbench.io/fault-layer: "ztunnel-l4"
+      spec:
+        selector:
+          # Corrupted selector that matches no pods
+          # Simulates routing tables pointing to unreachable destinations
+          app: nonexistent-backend-itbench
+          itbench-fault: corrupted-routing
     state: patched
 
-- name: Create DestinationRule with non-existent subset
-  kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: networking.istio.io/v1
-      kind: DestinationRule
-      metadata:
-        name: "{{ faults_service.resources[0].metadata.name }}-routing-fault"
-        namespace: "{{ faults_service.resources[0].metadata.namespace }}"
-        labels:
-          app.kubernetes.io/managed-by: ITBench
-      spec:
-        host: "{{ faults_service.resources[0].metadata.name }}"
-        subsets:
-          - name: corrupted-route
-            labels:
-              # Non-existent label that no pods will match
-              routing-fault: "nonexistent-backend"
-    state: present
-
-- name: Create VirtualService with corrupted routing
-  kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: networking.istio.io/v1
-      kind: VirtualService
-      metadata:
-        name: "{{ faults_service.resources[0].metadata.name }}-routing-fault"
-        namespace: "{{ faults_service.resources[0].metadata.namespace }}"
-        labels:
-          app.kubernetes.io/managed-by: ITBench
-      spec:
-        hosts:
-          - "{{ faults_service.resources[0].metadata.name }}"
-        http:
-          - route:
-              - destination:
-                  host: "{{ faults_service.resources[0].metadata.name }}"
-                  subset: corrupted-route
-                weight: 100
-    state: present
-
-- name: Wait for VirtualService to be created
+- name: Wait for service endpoints to be removed
   kubernetes.core.k8s_info:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    api_version: networking.istio.io/v1
-    kind: VirtualService
-    name: "{{ faults_service.resources[0].metadata.name }}-routing-fault"
+    api_version: v1
+    kind: Endpoints
+    name: "{{ faults_service.resources[0].metadata.name }}"
     namespace: "{{ faults_service.resources[0].metadata.namespace }}"
-  register: faults_virtual_service
+  register: faults_endpoints
   until:
-    - faults_virtual_service.api_found
-    - faults_virtual_service.resources | ansible.builtin.length == 1
-  delay: 5
-  retries: 12
+    - faults_endpoints.api_found
+    - faults_endpoints.resources | ansible.builtin.length == 1
+    - (faults_endpoints.resources[0].subsets | default([]) | length == 0)
+  delay: 2
+  retries: 15
+  failed_when: false
+
+- name: Verify service has no endpoints (routing corruption active)
+  ansible.builtin.assert:
+    that:
+      - faults_endpoints.resources[0].subsets | default([]) | length == 0
+    fail_msg: "Service still has endpoints - fault may not be effective"
+    success_msg: "Service routing corrupted successfully - no endpoints available (simulating unreachable destination)"
