@@ -57,6 +57,122 @@ jobs:
             quay.io/it-bench/awx-ee:2.0.0
             quay.io/it-bench/awx-ee:latest
 
+  exporter-clickhouse:
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v6.0.2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4.0.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+      - name: Build Clickhouse Exporter image
+        uses: docker/build-push-action@v7.0.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: scenarios/sre/tools/exporters/clickhouse
+          platforms: |
+            ${{ matrix.platform }}
+          push: false
+          tags: |
+            quay.io/it-bench/clickhouse-exporter:2.0.0
+            quay.io/it-bench/clickhouse-exporter:latest
+
+  exporter-jaeger:
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v6.0.2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4.0.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+      - name: Build Jaeger Collector image
+        uses: docker/build-push-action@v7.0.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: scenarios/sre/tools/exporters/jaeger
+          platforms: |
+            ${{ matrix.platform }}
+          push: false
+          tags: |
+            quay.io/it-bench/jaeger-exporter:2.0.0
+            quay.io/it-bench/jaeger-exporter:latest
+
+  exporter-kubernetes-topology-monitor:
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v6.0.2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4.0.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+      - name: Build Kubernetes Topology Monitor Exporter image
+        uses: docker/build-push-action@v7.0.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: scenarios/sre/tools/exporters/kubernetes_topology_monitor
+          platforms: |
+            ${{ matrix.platform }}
+          push: false
+          tags: |
+            quay.io/it-bench/kubernetes-topology-monitor-exporter:0.0.4
+            quay.io/it-bench/kubernetes-topology-monitor-exporter:latest
+
+  exporter-prometheus:
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v6.0.2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4.0.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.0.0
+      - name: Build Prometheus Exporter image
+        uses: docker/build-push-action@v7.0.0
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: scenarios/sre/tools/exporters/prometheus
+          platforms: |
+            ${{ matrix.platform }}
+          push: false
+          tags: |
+            quay.io/it-bench/prometheus-exporter:2.0.0
+            quay.io/it-bench/prometheus-exporter:latest
+
   hello-bench-amd64:
     runs-on: ubuntu-24.04
     steps:
