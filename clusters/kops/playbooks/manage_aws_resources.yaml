@@ -2,6 +2,19 @@
 - name: Manage AWS Resources
   hosts:
     - localhost
+  pre_tasks:
+    - name: Validate target variable
+      ansible.builtin.assert:
+        that:
+          - target in ["awx-stack", "single-cluster"]
+        fail_msg: Invalid target provided. Please provide valid target.
+        success_msg: Valid target provided.
+      tags:
+        - always
+
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
   tasks:
     - name: Create role variables
       tags:

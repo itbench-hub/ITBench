@@ -40,7 +40,7 @@ The playbooks feature a number of [group variables](./inventory/group_vars/). Ea
 | [aws.yaml](./inventory/group_vars/all/aws.yaml.example) | Configures region, vpc, and s3 storage |
 | [cluster.yaml](./inventory/group_vars/all/cluster.yaml.example) | Configures the cluster itself |
 | [docker.yaml](./inventory/group_vars/all/docker.yaml.example) | Configures the registry secret |
-| [runner.yaml](./inventory/group_vars/basic/runner.yaml.example) | Configures the name prefix for a single cluster |
+| [runner.yaml](./inventory/group_vars/single/runner.yaml.example) | Configures the name prefix for a single cluster |
 | [ssh_keys.yaml](./inventory/group_vars/all/ssh_keys.yaml.example) | Configured the ssh key to access the cluster |
 | [stack.yaml](./inventory/group_vars/awx/stack.yaml) | Configures the name prefix and number of clusters in AWX stack |
 
