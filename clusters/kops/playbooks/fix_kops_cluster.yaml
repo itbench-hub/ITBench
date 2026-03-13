@@ -1,5 +1,5 @@
 ---
-- name: Remove unjoined nodes in kOps cluster
+- name: Fix kOps cluster
   hosts:
     - localhost
   pre_tasks:
@@ -16,7 +16,7 @@
           aws:
             s3: "{{ aws.s3 }}"
   tasks:
-    - name: Validate cluster
+    - name: Retrieve cluster validation errors
       ansible.builtin.command:
         argv:
           - kops
@@ -34,37 +34,30 @@
       changed_when: false
       failed_when: false
 
-    - name: Display validation results
-      ansible.builtin.debug:
-        var: kops_validate_result.stdout | ansible.builtin.from_json
-
-    - name: Parse results for machine errors
+    - name: Parse validation failures
       ansible.builtin.set_fact:
-        machine_validation_errors: |-
-          {{
-            (
-              kops_validate_result.stdout | ansible.builtin.from_json
-            ).failures |
-            ansible.builtin.default([]) |
-            ansible.builtin.selectattr("kind", "==", "Machine")
-          }}
+        validation_failures: "{{ validation_output.failures | ansible.builtin.default([]) }}"
+      vars:
+        validation_output: "{{ (kops_validate_result.stdout | ansible.builtin.from_json) }}"
 
     - name: Terminate machines with errors
+      vars:
+        machine_failures: "{{ validation_failures | ansible.builtin.selectattr('kind', '==', 'Machine') }}"
       when:
-        - machine_validation_errors | ansible.builtin.length > 0
+        - machine_failures | ansible.builtin.length > 0
       block:
         - name: Terminate unjoined EC2 instances
           amazon.aws.ec2_instance:
-            instance_ids: "{{ machine_validation_errors | map(attribute='name') }}"
+            instance_ids: "{{ machine_failures | map(attribute='name') }}"
             region: "{{ aws.region }}"
             state: terminated
-            wait: wait
+            wait: true
 
         - name: Wait for AWS Autoscaler to create new instances
           ansible.builtin.pause:
             seconds: 300
 
-    - name: Validate cluster
+    - name: Re-attempt to validate cluster
       ansible.builtin.command:
         argv:
           - kops
@@ -82,6 +75,6 @@
       changed_when: false
       failed_when: false
 
-    - name: Display re-validation results
+    - name: Display validation results
       ansible.builtin.debug:
         var: kops_revalidate_result.stdout | ansible.builtin.from_json

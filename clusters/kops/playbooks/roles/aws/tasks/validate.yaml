@@ -55,12 +55,56 @@
       ansible.builtin.set_fact:
         aws_vpc_service_quotas: "{{ (aws_vpc_service_quotas_output.stdout | ansible.builtin.from_json).Quotas }}"
 
-    - name: Validate subnet count
+    - name: Retrieve all VPCs in region
+      amazon.aws.ec2_vpc_net_info:
+        region: "{{ aws_configuration.region }}"
+      register: aws_ec2_vpc_nets
+
+    - name: Validate that VPC creation is possible
+      ansible.builtin.assert:
+        that:
+          - (aws_ec2_vpc_nets.vpcs | ansible.builtin.length) + 1 <= vpc_quota[0].Value
+        fail_msg: Unable to allocate resources to create VPC. Please either raise the account quota or delete unneeded vpcs in region.
+        success_msg: VPC resource allocation possible.
+      vars:
+        vpc_quota: |-
+          {{
+            aws_vpc_service_quotas |
+            ansible.builtin.selectattr(
+              "QuotaName",
+              "==",
+              "VPCs per Region"
+            )
+          }}
+
+    - name: Retrieve all Internet Gateways in region
+      amazon.aws.ec2_vpc_igw_info:
+        region: "{{ aws_configuration.region }}"
+      register: aws_ec2_vpc_igw_gateways
+
+    - name: Validate that Internet Gateway creation is possible
+      ansible.builtin.assert:
+        that:
+          - (aws_ec2_vpc_igw_gateways.internet_gateways | ansible.builtin.length) + 1 <= gateway_quota[0].Value
+        fail_msg: Unable to allocate resources to create Intergent Gateway. Please either raise the account quota or delete unneeded gateways in region.
+        success_msg: Internet Gateway resource allocation possible.
+      vars:
+        gateway_quota: |-
+          {{
+            aws_vpc_service_quotas |
+            ansible.builtin.selectattr(
+              "QuotaName",
+              "==",
+              "Internet gateways per Region"
+            )
+          }}
+
+    - name: Validate VPC subnet creation is possible
       ansible.builtin.assert:
         that:
           - (aws_configuration.vpc.subnets.count * 2) <= subnet_quota[0].Value
         fail_msg: Requested number of subnets is over region's quota limit (subnet_quota.Value). Please lower the amount or change the quota.
-        success_msg: Requested number of subnets within region's quota limit.
+        success_msg: VPC subnet resource allocation possible.
       vars:
         subnet_quota: |-
           {{

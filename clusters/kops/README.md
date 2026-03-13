@@ -137,12 +137,16 @@ While the playbooks have some checking to avoid unclear gaps in execution, somet
 
 ### Cluster Validation Errors
 
-Sometimes clusters may fail to validate for a variety of reasons. One is that a machine or machines may have failed to join the cluster as a node. Rather than delete all the clusters, one can utilize the following command which will remove the problematic machines from the cluster. This will allow a new machine to be generated, which will hopefully succeed.
+Before use, kOps cluster must pass a validation step. This step is run as part of the creation process. After the cluster is built, the results of the validation can be checked using the following command:
 ```shell
-CLUSTER_NAME=<cluster name> make remove-unjoined-nodes
+CLUSTER_NAME=<cluster name> make validate-cluster
 ```
 
-To more generally view the validation status of a cluster, use the following command:
+> [!NOTE]
+> Generally speaking, the validation results only need to be checked in the case of a validation failure. This will result in the creation command failing.
+
+
+Clusters may fail to validate for a variety of reasons. While not complete, the following command can be used to attempt remidiation of a cluster with validation failures. **This command is not guarenteed to result in a working cluster, but may help recover the cluster in response to a known validation failure.**
 ```shell
-CLUSTER_NAME=<cluster name> make show_validation_status
+CLUSTER_NAME=<cluster name> make fix-cluster
 ```

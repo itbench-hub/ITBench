@@ -1,0 +1,69 @@
+---
+- name: Validate kOps cluster
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Validate target variable
+      ansible.builtin.assert:
+        that:
+          - kops_cluster_name is defined
+        fail_msg: Cluster name variable is not defined. Please execute playbook with variable via CLI.
+        success_msg: Cluster name variable is defined.
+      tags:
+        - always
+
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+
+    - name: Import kOps validation tasks
+      ansible.builtin.import_role:
+        name: kops
+        tasks_from: set_state_storage
+      vars:
+        kops_configuration:
+          aws:
+            s3: "{{ aws.s3 }}"
+  tasks:
+    - name: Retrieve information about cluster
+      ansible.builtin.command:
+        argv:
+          - kops
+          - get
+          - cluster
+          - --name
+          - "{{ kops_cluster_name }}"
+          - --state
+          - "{{ kops_state_store }}"
+      register: kops_get_cluster_result
+      changed_when: false
+      failed_when: false
+
+    - name: Validate cluster retrieval succeeded
+      ansible.builtin.assert:
+        that:
+          - kops_get_cluster_result.rc == 0
+        fail_msg: Failed to retrieve cluster information. Please verify that cluster exists.
+        success_msg: Retrieved cluster information.
+
+    - name: Validate cluster
+      ansible.builtin.command:
+        argv:
+          - kops
+          - validate
+          - cluster
+          - --name
+          - "{{ kops_cluster_name }}"
+          - --state
+          - "{{ kops_state_store }}"
+          - --output
+          - json
+          - --wait
+          - 0s
+      register: kops_validate_result
+      changed_when: false
+      failed_when: false
+
+    - name: Display validation results
+      ansible.builtin.debug:
+        var: kops_validate_result.stdout | ansible.builtin.from_json

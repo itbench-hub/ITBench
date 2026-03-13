@@ -56,19 +56,19 @@ destroy-awx-stack: ## Destroy an AWX stack
 list-clusters: ## Lists all active clusters
 	uv run ansible-playbook -i inventory playbooks/list_kops_clusters.yaml
 
-.PHONY: show-validation-status
-show-validation-status: ## Displays the validation status of a cluster
+.PHONY: validate-cluster
+validate-cluster: ## Displays the validation status of a cluster
 ifdef CLUSTER_NAME
-	uv run ansible-playbook -i inventory playbooks/show_validation_status.yaml \
+	uv run ansible-playbook -i inventory playbooks/validate_kops_cluster.yaml \
 		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
 else
 	@echo "Missing CLUSTER_NAME argument. Please run this command with this variable."
 endif
 
-.PHONY: remove-unjoined-nodes
-remove-unjoined-nodes: ## Removes all unjoined nodes from a cluster
+.PHONY: fix-cluster
+fix-cluster: ## Attempts to fix a failing cluster
 ifdef CLUSTER_NAME
-	uv run ansible-playbook -i inventory playbooks/remove_unjoined_nodes.yaml \
+	uv run ansible-playbook -i inventory playbooks/fix_kops_cluster.yaml \
 		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
 else
 	@echo "Missing CLUSTER_NAME argument. Please run this command with this variable."
