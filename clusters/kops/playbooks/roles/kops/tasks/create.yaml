@@ -85,18 +85,3 @@
     label: batch-{{ batch_index + 1 }}
     loop_var: cluster_names
     index_var: batch_index
-
-- name: Include Docker role
-  ansible.builtin.include_role:
-    name: docker
-    apply:
-      vars:
-        docker_cluster:
-          kubeconfig: "{{ [kops_temporary_directory.path, cluster_name] | ansible.builtin.path_join }}"
-        docker_registry: "{{ kops_configuration.docker.registry }}"
-  loop: "{{ kops_cluster_group.clusters }}"
-  loop_control:
-    label: cluster/{{ cluster_name }}
-    loop_var: cluster_name
-  when:
-    - kops_configuration.docker is defined
