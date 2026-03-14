@@ -14,6 +14,8 @@
       }}
 
 - name: Validate NAT Gateway Elastic IP configuration
+  when:
+    - aws_configuration.vpc.nat_gateway is defined
   block:
     - name: Validate Elastic IP allocation
       amazon.aws.ec2_eip_info:
@@ -34,8 +36,6 @@
         success_msg: >-
           Elastic IP {{ aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id }}
           verified in region {{ aws_configuration.region }}.
-  when:
-    - aws_configuration.vpc.nat_gateway is defined
 
 - name: Create VPC
   amazon.aws.ec2_vpc_net:
@@ -158,6 +158,8 @@
     pause: 2
 
 - name: Configure NAT Gateway with private subnets
+  when:
+    - aws_configuration.vpc.nat_gateway is defined
   block:
     - name: Create VPC NAT Gateway
       amazon.aws.ec2_vpc_nat_gateway:
@@ -198,10 +200,10 @@
       loop: "{{ aws_vpc_subnet_ids.private | ansible.builtin.batch(10) }}"
       loop_control:
         pause: 2
-  when:
-    - aws_configuration.vpc.nat_gateway is defined
 
 - name: Configure Route Table with Internet Gateway
+  when:
+    - aws_configuration.vpc.nat_gateway is not defined
   block:
     - name: Create VPC route table for private subnets
       amazon.aws.ec2_vpc_route_table:
@@ -229,5 +231,3 @@
       loop: "{{ aws_vpc_subnet_ids.private | ansible.builtin.batch(10) }}"
       loop_control:
         pause: 2
-  when:
-    - aws_configuration.vpc.nat_gateway is not defined
