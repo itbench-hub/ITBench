@@ -1,0 +1,46 @@
+---
+- name: Asynchronously delete kOps clusters
+  block:
+    - name: Delete kOps managed clusters
+      ansible.builtin.command:
+        argv:
+          - kops
+          - delete
+          - cluster
+          - --name
+          - "{{ cluster_name }}"
+          - --yes
+          - --state
+          - "{{ kops_state_store }}"
+      async: 900
+      loop: "{{ cluster_names }}"
+      loop_control:
+        label: cluster/{{ cluster_name }}
+        loop_var: cluster_name
+      poll: 0
+      register: kops_delete_cluster_result_async
+
+    - name: Wait for asynchronous delete jobs to complete
+      ansible.builtin.async_status:
+        jid: "{{ delete_task.ansible_job_id }}"
+      loop: "{{ kops_delete_cluster_result_async.results }}"
+      loop_control:
+        label: job/{{ delete_task.ansible_job_id }}
+        loop_var: delete_task
+      register: kops_delete_job_status
+      changed_when: kops_delete_job_status.rc == 0
+      failed_when:
+        - kops_delete_job_status.rc != 0
+        - '"not found" not in kops_delete_job_status.stderr'
+      until: kops_delete_job_status.finished
+      delay: 60
+      retries: 15
+  always:
+    - name: Clean up ansychronous deletion jobs
+      ansible.builtin.async_status:
+        mode: cleanup
+        jid: "{{ delete_task.ansible_job_id }}"
+      loop: "{{ kops_delete_cluster_result_async.results }}"
+      loop_control:
+        label: job/{{ delete_task.ansible_job_id }}
+        loop_var: delete_task

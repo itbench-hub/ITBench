@@ -1,0 +1,12 @@
+---
+- name: Include cluster deletion tasks
+  ansible.builtin.include_tasks:
+    file: delete_clusters.yaml
+    apply:
+      tags:
+        - delete_clusters
+  loop: "{{ kops_cluster_group.clusters | ansible.builtin.batch(20) }}"
+  loop_control:
+    label: batch-{{ batch_index + 1 }}
+    loop_var: cluster_names
+    index_var: batch_index

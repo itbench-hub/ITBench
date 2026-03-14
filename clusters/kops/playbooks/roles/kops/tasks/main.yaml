@@ -1,0 +1,51 @@
+---
+- name: Set kOps state storage
+  ansible.builtin.import_tasks:
+    file: set_state_storage.yaml
+  tags:
+    - always
+
+- name: Import validation tasks
+  ansible.builtin.import_tasks:
+    file: validate_state_storage.yaml
+  tags:
+    - export_clusters
+    - delete_clusters
+
+- name: Import cluster creation tasks
+  ansible.builtin.import_tasks:
+    file: create.yaml
+  tags:
+    - create_clusters
+
+- name: Import kubeconfig export tasks
+  ansible.builtin.import_tasks:
+    file: export_kubeconfigs.yaml
+  vars:
+    export_directory: "{{ playbook_dir }}/../kubeconfigs"
+  tags:
+    - create_clusters
+    - export_clusters
+
+- name: Include Docker role
+  ansible.builtin.include_role:
+    name: docker
+    apply:
+      vars:
+        docker_cluster:
+          kubeconfig: "{{ [kops_export_directory.path, cluster_name] | ansible.builtin.path_join }}"
+        docker_registry: "{{ kops_configuration.docker.registry }}"
+  loop: "{{ kops_cluster_group.clusters }}"
+  loop_control:
+    label: cluster/{{ cluster_name }}
+    loop_var: cluster_name
+  tags:
+    - create_clusters
+  when:
+    - kops_configuration.docker is defined
+
+- name: Import cluster deletion tasks
+  ansible.builtin.import_tasks:
+    file: delete.yaml
+  tags:
+    - delete_clusters

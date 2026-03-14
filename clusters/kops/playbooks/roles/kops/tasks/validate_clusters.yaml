@@ -1,0 +1,44 @@
+---
+- name: Asynchronously validate kOps cluster
+  block:
+    - name: Validate kOps managed clusters
+      ansible.builtin.command:
+        argv:
+          - kops
+          - validate
+          - cluster
+          - --name
+          - "{{ cluster_name }}"
+          - --state
+          - "{{ kops_state_store }}"
+          - --wait
+          - 20m
+      async: 1800
+      loop: "{{ cluster_names }}"
+      loop_control:
+        label: cluster/{{ cluster_name }}
+        loop_var: cluster_name
+      poll: 0
+      register: kops_validate_cluster_result_async
+
+    - name: Wait for asynchronous validation jobs to complete
+      ansible.builtin.async_status:
+        jid: "{{ validate_task.ansible_job_id }}"
+      loop: "{{ kops_validate_cluster_result_async.results }}"
+      loop_control:
+        label: job/{{ validate_task.ansible_job_id }}
+        loop_var: validate_task
+      register: kops_validate_job_status
+      changed_when: false
+      until: kops_validate_job_status.finished
+      delay: 60
+      retries: 30
+  always:
+    - name: Clean up ansychronous operations
+      ansible.builtin.async_status:
+        mode: cleanup
+        jid: "{{ validate_task.ansible_job_id }}"
+      loop: "{{ kops_validate_cluster_result_async.results }}"
+      loop_control:
+        label: job/{{ validate_task.ansible_job_id }}
+        loop_var: validate_task

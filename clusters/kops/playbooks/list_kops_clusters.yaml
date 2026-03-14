@@ -1,0 +1,75 @@
+---
+- name: Display managed kOps AWS clusters
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+
+    - name: Import kOps validation tasks
+      ansible.builtin.import_role:
+        name: kops
+        tasks_from: validate_state_storage
+      vars:
+        kops_configuration:
+          aws:
+            region: "{{ aws.region }}"
+            s3: "{{ aws.s3 }}"
+  tasks:
+    - name: Import kOps variable setting tasks
+      ansible.builtin.import_role:
+        name: kops
+        tasks_from: set_state_storage
+      vars:
+        kops_configuration:
+          aws:
+            s3: "{{ aws.s3 }}"
+
+    - name: Retrieve all clusters from state storage
+      ansible.builtin.command:
+        argv:
+          - kops
+          - get
+          - clusters
+          - --state
+          - "{{ kops_state_store }}"
+      register: kops_get_clusters_result
+      changed_when: false
+      failed_when: false
+
+    - name: Parse successful output from kops
+      when:
+        - kops_get_clusters_result.stdout_lines | ansible.builtin.length > 0
+      block:
+        - name: Format as output table
+          ansible.builtin.shell:
+            cmd: |
+              set -o pipefail
+              echo "{{ kops_get_clusters_result.stdout }}" | column -t
+          register: formatted_output
+          changed_when: false
+
+        - name: Show all clusters in formatted table
+          ansible.builtin.debug:
+            var: formatted_output.stdout_lines
+
+    - name: Parse unsuccessful output from kops
+      when:
+        - kops_get_clusters_result.stderr_lines | ansible.builtin.length > 0
+      block:
+        - name: Display "No Cluster" error
+          when:
+            - "kops_get_clusters_result.stderr == 'Error: no clusters found'"
+          block:
+            - name: Show all clusters in formatted table
+              ansible.builtin.debug:
+                msg: "No clusters found."
+
+        - name: Display all other errors
+          when:
+            - "kops_get_clusters_result.stderr != 'Error: no clusters found'"
+          block:
+            - name: Display error
+              ansible.builtin.debug:
+                var: kops_get_clusters_result.stderr_lines

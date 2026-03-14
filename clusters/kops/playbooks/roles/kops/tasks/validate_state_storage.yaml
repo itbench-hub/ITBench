@@ -1,0 +1,13 @@
+---
+- name: Retrieve AWS S3 bucket (state store)
+  amazon.aws.s3_bucket_info:
+    name: "{{ kops_configuration.aws.s3.bucket.name }}"
+    region: "{{ kops_configuration.aws.region }}"
+  register: kops_aws_buckets
+
+- name: Assert bucket exists
+  ansible.builtin.assert:
+    that:
+      - kops_configuration.aws.s3.bucket.name in (kops_aws_buckets.buckets | map(attribute="name"))
+    fail_msg: Unable to find AWS S3 bucket. Please ensure that S3 bucket exists.
+    success_msg: Found AWS S3 bucket.

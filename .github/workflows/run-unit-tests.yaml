@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - clusters/kind/go.*
       - scenarios/sre/roles/agent/**
       - scenarios/sre/roles/faults/**
       - scenarios/sre/roles/tools/**
@@ -23,8 +24,8 @@ jobs:
       - uses: astral-sh/setup-uv@v7.5.0
       - uses: actions/setup-go@v6.3.0
         with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
+          go-version-file: clusters/kind/go.mod
+          cache-dependency-path: clusters/kind/go.sum
       - uses: azure/setup-helm@v4.3.1
         with:
           version: v3.19.0
@@ -36,13 +37,13 @@ jobs:
           make -C scenarios/sre group-vars
       - name: Create Kind cluster
         run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
+          make -C clusters/kind create-simple-cluster
       - name: Run unit tests
         run: |
           make -C scenarios/sre test-unit-tools
       - name: Destroy Kind cluster
         run: |
-          make -C scenarios/sre/dev/local_cluster destroy-simple-cluster
+          make -C clusters/kind destroy-simple-cluster
   sre-agent:
     name: SRE Agent Access Tests
     runs-on: ubuntu-24.04
@@ -51,8 +52,8 @@ jobs:
       - uses: astral-sh/setup-uv@v7.5.0
       - uses: actions/setup-go@v6.3.0
         with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
+          go-version-file: clusters/kind/go.mod
+          cache-dependency-path: clusters/kind/go.sum
       - name: Install project dependencies
         run: |
           make deps
@@ -61,13 +62,13 @@ jobs:
           make -C scenarios/sre group-vars
       - name: Create Kind cluster
         run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
+          make -C clusters/kind create-simple-cluster
       - name: Run unit tests
         run: |
           make -C scenarios/sre test-unit-agent
       - name: Destroy Kind cluster
         run: |
-          make -C scenarios/sre/dev/local_cluster destroy-simple-cluster
+          make -C clusters/kind destroy-simple-cluster
   sre-faults:
     name: SRE Fault Injection Tests
     runs-on: ubuntu-24.04
@@ -76,8 +77,8 @@ jobs:
       - uses: astral-sh/setup-uv@v7.5.0
       - uses: actions/setup-go@v6.3.0
         with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
+          go-version-file: clusters/kind/go.mod
+          cache-dependency-path: clusters/kind/go.sum
       - name: Install project dependencies
         run: |
           make deps
@@ -86,13 +87,13 @@ jobs:
           make -C scenarios/sre group-vars
       - name: Create Kind cluster
         run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
+          make -C clusters/kind create-simple-cluster
       - name: Run unit tests
         run: |
           make -C scenarios/sre test-unit-faults
       - name: Destroy Kind cluster
         run: |
-          make -C scenarios/sre/dev/local_cluster destroy-simple-cluster
+          make -C clusters/kind destroy-simple-cluster
   sre-waiters:
     name: SRE Waiters Tests
     runs-on: ubuntu-24.04
@@ -101,8 +102,8 @@ jobs:
       - uses: astral-sh/setup-uv@v7.5.0
       - uses: actions/setup-go@v6.3.0
         with:
-          go-version-file: scenarios/sre/dev/local_cluster/go.mod
-          cache-dependency-path: scenarios/sre/dev/local_cluster/go.sum
+          go-version-file: clusters/kind/go.mod
+          cache-dependency-path: clusters/kind/go.sum
       - name: Install project dependencies
         run: |
           make deps
@@ -111,10 +112,10 @@ jobs:
           make -C scenarios/sre group-vars
       - name: Create Kind cluster
         run: |
-          make -C scenarios/sre/dev/local_cluster create-simple-cluster
+          make -C clusters/kind create-simple-cluster
       - name: Run unit tests
         run: |
           make -C scenarios/sre test-unit-waiters
       - name: Destroy Kind cluster
         run: |
-          make -C scenarios/sre/dev/local_cluster destroy-simple-cluster
+          make -C clusters/kind destroy-simple-cluster
