@@ -13,6 +13,30 @@
         ansible.builtin.join(".")
       }}
 
+- name: Validate NAT Gateway Elastic IP configuration
+  block:
+    - name: Validate Elastic IP allocation
+      amazon.aws.ec2_eip_info:
+        filters:
+          allocation-id: "{{ aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id }}"
+        region: "{{ aws_configuration.region }}"
+      register: aws_eip_info
+
+    - name: Verify Elastic IP exists and is available
+      ansible.builtin.assert:
+        that:
+          - aws_eip_info.addresses | length > 0
+          - aws_eip_info.addresses[0].allocation_id == aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id
+        fail_msg: >-
+          Elastic IP {{ aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id }}
+          not found in region {{ aws_configuration.region }}.
+          Please verify the allocation ID is correct and exists in the target region.
+        success_msg: >-
+          Elastic IP {{ aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id }}
+          verified in region {{ aws_configuration.region }}.
+  when:
+    - aws_configuration.vpc.nat_gateway is defined
+
 - name: Create VPC
   amazon.aws.ec2_vpc_net:
     cidr_block: "{{ aws_configuration.vpc.cidr }}"
@@ -108,28 +132,39 @@
 
 - name: Create VPC route table for public subnets
   amazon.aws.ec2_vpc_route_table:
+    vpc_id: "{{ aws_vpc.vpc.id }}"
     region: "{{ aws_configuration.region }}"
     routes:
       - dest: "0.0.0.0/0"
         gateway_id: "{{ aws_igw.gateway_id }}"
-    state: present
-    subnets: "{{ aws_vpc_subnet_ids.public }}"
     tags:
       ClusterGroup: "{{ aws_cluster_group.name.prefix }}"
       ManagedBy: ansible
       Name: "{{ aws_cluster_group.name.prefix }}-public-route-table"
+    state: present
+  register: aws_public_route_table
+
+- name: Associate public subnets in batches of 10
+  amazon.aws.ec2_vpc_route_table:
     vpc_id: "{{ aws_vpc.vpc.id }}"
+    region: "{{ aws_configuration.region }}"
+    route_table_id: "{{ aws_public_route_table.route_table.id }}"
+    lookup: id
+    subnets: "{{ item }}"
+    purge_subnets: false
+    purge_routes: false
+  loop: "{{ aws_vpc_subnet_ids.public | ansible.builtin.batch(10) }}"
+  loop_control:
+    pause: 2
 
 - name: Configure NAT Gateway with private subnets
-  when:
-    - aws_configuration.vpc.nat_gateway is defined
   block:
     - name: Create VPC NAT Gateway
       amazon.aws.ec2_vpc_nat_gateway:
         allocation_id: "{{ aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id }}"
         region: "{{ aws_configuration.region }}"
         state: present
-        subnet_id: "{{ aws_public_vpc_subnets.results[0].subnet.id }}"
+        subnet_id: "{{ aws_vpc_subnet_ids.public | first }}"
         tags:
           ClusterGroup: "{{ aws_cluster_group.name.prefix }}"
           ManagedBy: ansible
@@ -139,32 +174,60 @@
 
     - name: Create VPC route table for private subnets
       amazon.aws.ec2_vpc_route_table:
+        vpc_id: "{{ aws_vpc.vpc.id }}"
         region: "{{ aws_configuration.region }}"
         routes:
           - dest: "0.0.0.0/0"
             nat_gateway_id: "{{ aws_nat_gateway.nat_gateway_id }}"
-        state: present
-        subnets: "{{ aws_vpc_subnet_ids.private }}"
         tags:
           ClusterGroup: "{{ aws_cluster_group.name.prefix }}"
           ManagedBy: ansible
           Name: "{{ aws_cluster_group.name.prefix }}-nat-private-route-table"
+        state: present
+      register: aws_private_route_table_nat
+
+    - name: Associate private subnets with NAT route table in batches of 10
+      amazon.aws.ec2_vpc_route_table:
         vpc_id: "{{ aws_vpc.vpc.id }}"
+        region: "{{ aws_configuration.region }}"
+        route_table_id: "{{ aws_private_route_table_nat.route_table.id }}"
+        lookup: id
+        subnets: "{{ item }}"
+        purge_subnets: false
+        purge_routes: false
+      loop: "{{ aws_vpc_subnet_ids.private | ansible.builtin.batch(10) }}"
+      loop_control:
+        pause: 2
+  when:
+    - aws_configuration.vpc.nat_gateway is defined
 
 - name: Configure Route Table with Internet Gateway
-  when:
-    - aws_configuration.vpc.nat_gateway is undefined
   block:
     - name: Create VPC route table for private subnets
       amazon.aws.ec2_vpc_route_table:
+        vpc_id: "{{ aws_vpc.vpc.id }}"
         region: "{{ aws_configuration.region }}"
         routes:
           - dest: "0.0.0.0/0"
             gateway_id: "{{ aws_igw.gateway_id }}"
-        state: present
-        subnets: "{{ aws_vpc_subnet_ids.private }}"
         tags:
           ClusterGroup: "{{ aws_cluster_group.name.prefix }}"
           ManagedBy: ansible
           Name: "{{ aws_cluster_group.name.prefix }}-igw-private-route-table"
+        state: present
+      register: aws_private_route_table_igw
+
+    - name: Associate private subnets with IGW route table in batches of 10
+      amazon.aws.ec2_vpc_route_table:
         vpc_id: "{{ aws_vpc.vpc.id }}"
+        region: "{{ aws_configuration.region }}"
+        route_table_id: "{{ aws_private_route_table_igw.route_table.id }}"
+        lookup: id
+        subnets: "{{ item }}"
+        purge_subnets: false
+        purge_routes: false
+      loop: "{{ aws_vpc_subnet_ids.private | ansible.builtin.batch(10) }}"
+      loop_control:
+        pause: 2
+  when:
+    - aws_configuration.vpc.nat_gateway is not defined

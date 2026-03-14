@@ -12,7 +12,7 @@ group-vars: ## Generates the group variables from templates
 	cp inventory/group_vars/all/docker.yaml.example inventory/group_vars/all/docker.yaml
 	cp inventory/group_vars/all/ssh_keys.yaml.example inventory/group_vars/all/ssh_keys.yaml
 	cp inventory/group_vars/awx/stack.yaml.example inventory/group_vars/awx/stack.yaml
-	cp inventory/group_vars/basic/runner.yaml.example inventory/group_vars/basic/runner.yaml
+	cp inventory/group_vars/single/runner.yaml.example inventory/group_vars/single/runner.yaml
 
 .PHONY: create-cluster
 create-cluster: ## Creates a single cluster
