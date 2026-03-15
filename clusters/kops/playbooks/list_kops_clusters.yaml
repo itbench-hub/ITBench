@@ -42,17 +42,16 @@
       when:
         - kops_get_clusters_result.stdout_lines | ansible.builtin.length > 0
       block:
-        - name: Format as output table
-          ansible.builtin.shell:
-            cmd: |
-              set -o pipefail
-              echo "{{ kops_get_clusters_result.stdout }}" | column -t
-          register: formatted_output
+        - name: Format kops output as table
+          ansible.builtin.command:
+            cmd: column -t
+            stdin: "{{ kops_get_clusters_result.stdout }}"
+          register: kops_clusters_formatted
           changed_when: false
 
         - name: Show all clusters in formatted table
           ansible.builtin.debug:
-            var: formatted_output.stdout_lines
+            var: kops_clusters_formatted.stdout_lines
 
     - name: Parse unsuccessful output from kops
       when:

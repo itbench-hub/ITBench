@@ -74,28 +74,51 @@
           ansible.builtin.debug:
             msg:
               - "Found {{ cluster_instances.instances | length }} instance(s) for {{ kops_cluster_name }}"
-              - "{% for instance in cluster_instances.instances %}  - {{ instance.tags.Name }}: {{ instance.state.name }} ({{ instance.instance_id }}){% endfor %}"
+              - >-
+                {% for instance in cluster_instances.instances %}
+                - {{ instance.tags.Name }}: {{ instance.state.name }} ({{ instance.instance_id }})
+                {% endfor %}
 
         - name: Count running instances
           ansible.builtin.set_fact:
             running_instances: "{{ cluster_instances.instances | selectattr('state.name', '==', 'running') | list }}"
 
-        - name: Check for cluster ELB
-          ansible.builtin.shell:
-            cmd: |
-              aws elb describe-load-balancers --region {{ aws.region }} --output json | \
-              jq -r '.LoadBalancerDescriptions[] | select(.DNSName | contains("{{ kops_cluster_name.split(".")[0] }}")) | .LoadBalancerName'
-          register: cluster_elb_check
+        - name: List all ELBs in region
+          ansible.builtin.command:
+            argv:
+              - aws
+              - elb
+              - describe-load-balancers
+              - --region
+              - "{{ aws.region }}"
+              - --output
+              - json
+          register: elb_list_result
           changed_when: false
           failed_when: false
 
+        - name: Filter ELB for cluster
+          ansible.builtin.set_fact:
+            cluster_elb_name: |-
+              {{
+                (elb_list_result.stdout | ansible.builtin.from_json).LoadBalancerDescriptions |
+                selectattr('DNSName', 'search', kops_cluster_name.split('.')[0]) |
+                map(attribute='LoadBalancerName') |
+                list |
+                first |
+                default('')
+              }}
+
         - name: Recreate cluster resources if missing
           when:
-            - cluster_instances.instances | length == 0 or cluster_elb_check.stdout | length == 0
+            - cluster_instances.instances | length == 0 or cluster_elb_name | length == 0
           block:
             - name: Display recreation message
               ansible.builtin.debug:
-                msg: "{{ 'No instances found' if cluster_instances.instances | length == 0 else 'Instances exist but ELB missing' }} for {{ kops_cluster_name }}. Recreating cluster resources..."
+                msg: >-
+                  {{ 'No instances found' if cluster_instances.instances | length == 0
+                  else 'Instances exist but ELB missing' }} for {{ kops_cluster_name }}.
+                  Recreating cluster resources...
 
             - name: Run kops update cluster
               ansible.builtin.command:
