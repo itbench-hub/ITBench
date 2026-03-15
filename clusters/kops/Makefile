@@ -21,6 +21,11 @@ create-cluster: ## Creates a single cluster
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
 		--extra-vars "target=single-cluster"
 
+.PHONY: setup-docker-single
+setup-docker-single: ## Configures Docker registry and Kyverno on a single cluster
+	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "setup_docker" \
+		--extra-vars "target=single-cluster"
+
 .PHONY: get-cluster-kubeconfig
 get-cluster-kubeconfig: ## Exports the kubeconfig of a single cluster
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
@@ -40,6 +45,11 @@ create-awx-stack: ## Creates an AWX stack
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
 		--extra-vars "target=awx-stack"
 
+.PHONY: setup-docker
+setup-docker: ## Configures Docker registry and Kyverno on AWX stack clusters
+	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "setup_docker" \
+		--extra-vars "target=awx-stack"
+
 .PHONY: get-stack-kubeconfigs
 get-stack-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
@@ -57,12 +67,12 @@ list-clusters: ## Lists all active clusters
 	uv run ansible-playbook -i inventory playbooks/list_kops_clusters.yaml
 
 .PHONY: validate-cluster
-validate-cluster: ## Displays the validation status of a cluster
+validate-cluster: ## Displays the validation status of a cluster (or all clusters if CLUSTER_NAME not provided)
 ifdef CLUSTER_NAME
 	uv run ansible-playbook -i inventory playbooks/validate_kops_cluster.yaml \
 		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
 else
-	@echo "Missing CLUSTER_NAME argument. Please run this command with this variable."
+	uv run ansible-playbook -i inventory playbooks/validate_kops_cluster.yaml
 endif
 
 .PHONY: fix-cluster
