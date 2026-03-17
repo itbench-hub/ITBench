@@ -17,14 +17,14 @@ spec:
       id: NoRequestsReceived
       metadata:
         description: Frontend receives no requests - NetworkPolicy blocking ingress
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend service experiencing errors from failed connection attempts due to NetworkPolicy
     - group_id: ad-service-1
       id: NoRequestsReceived
       metadata:
         description: Ad service receives no requests - frontend blocked
-    - group_id: cart-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Cart service receives no requests - frontend blocked
     - group_id: checkout-service-1
       id: NoRequestsReceived
       metadata:
@@ -80,8 +80,6 @@ spec:
       - frontend-proxy-pod-1
     - - ad-service-1
       - ad-pod-1
-    - - cart-service-1
-      - cart-pod-1
     - - checkout-service-1
       - checkout-pod-1
     - - currency-service-1
@@ -147,16 +145,6 @@ spec:
     - filter:
         - ad\b
       id: ad-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - cart-.*
-      id: cart-pod-1
-      kind: Pod
-      namespace: otel-demo
-    - filter:
-        - cart\b
-      id: cart-service-1
       kind: Service
       namespace: otel-demo
     - filter:
@@ -286,14 +274,14 @@ spec:
       effect: Frontend proxy experiences high latency from repeated connection attempts and timeouts
       source: frontend-service-1
       target: frontend-proxy-service-1
+    - condition: NetworkPolicy blocking ingress causes failed connection attempts
+      effect: Frontend service logs errors from rejected connections
+      source: frontend-pod-1
+      target: frontend-service-1
     - condition: Frontend service completely unavailable
       effect: Ad service receives no requests from frontend
       source: frontend-service-1
       target: ad-service-1
-    - condition: Frontend service completely unavailable
-      effect: Cart service receives no requests from frontend
-      source: frontend-service-1
-      target: cart-service-1
     - condition: Frontend service completely unavailable
       effect: Checkout service receives no requests from frontend
       source: frontend-service-1

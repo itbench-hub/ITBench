@@ -17,9 +17,19 @@ spec:
       id: KubeDeploymentRolloutStuck
       metadata:
         description: Checkout deployment rollout stuck - new pods fail while old pods continue serving
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend occasionally experiences errors during checkout rolling update when old pod is overloaded
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy experiences cascading errors during rolling update
   aliases:
     - - checkout-pod-1
       - checkout-deployment-1
+    - - frontend-service-1
+    - - frontend-proxy-service-1
   fault:
     - category: Change
       condition: Invalid architecture image specified in deployment during rolling update
@@ -40,6 +50,16 @@ spec:
       id: checkout-pod-1
       kind: Pod
       namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
     - condition: checkout deployment updated to point to an invalid architecture image
       effect: new checkout pod enters ImagePullBackOff state while old pod continues serving traffic
@@ -49,6 +69,14 @@ spec:
       effect: deployment rollout cannot complete and becomes stuck
       source: checkout-pod-1
       target: checkout-deployment-1
+    - condition: during rolling update, single old checkout pod becomes overloaded handling all traffic
+      effect: frontend experiences occasional errors when calling overloaded checkout pod
+      source: checkout-pod-1
+      target: frontend-service-1
+    - condition: frontend experiencing errors from overloaded checkout
+      effect: frontend-proxy experiences cascading errors
+      source: frontend-service-1
+      target: frontend-proxy-service-1
   recommended_actions:
     - solution:
         actions:
