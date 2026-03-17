@@ -6,7 +6,7 @@ help: ## Display this help.
 
 .PHONY: group-vars
 group-vars: ## Generates the group variables
-	echo "---\nansible_python_interpreter: $(shell uv python find)" > inventory/inventory/group_vars/all/python.yaml
+	echo "---\nansible_python_interpreter: $(shell uv python find)" > inventory/group_vars/all/python.yaml
 	cp inventory/group_vars/all/storage.yaml.example inventory/group_vars/all/storage.yaml
 	cp inventory/group_vars/environment/applications.yaml.example inventory/group_vars/environment/applications.yaml
 	cp inventory/group_vars/environment/cluster.yaml.example inventory/group_vars/environment/cluster.yaml
@@ -141,11 +141,11 @@ disable-agent-access: ## Removes access controls for llm agent
 
 .PHONY: test-unit-agent
 test-unit-agent: ## Runs agent access unit tests
-	cd roles/agent && uv run molecule test --all --report --command-borders
+	cd project/roles/agent && uv run molecule test --all --report --command-borders
 
 .PHONY: test-unit-faults
 test-unit-faults: ## Runs fault injection unit tests
-	cd roles/faults && uv run molecule test --all --report --command-borders
+	cd project/roles/faults && uv run molecule test --all --report --command-borders
 
 .PHONY: test-unit-recorders
 test-unit-recorders: ## Runs recorder installation unit tests
@@ -153,11 +153,11 @@ test-unit-recorders: ## Runs recorder installation unit tests
 
 .PHONY: test-unit-tools
 test-unit-tools: ## Runs tool installation unit tests
-	cd roles/tools && uv run molecule test --all --report --command-borders
+	cd project/roles/tools && uv run molecule test --all --report --command-borders
 
 .PHONY: test-unit-waiters
 test-unit-waiters: ## Runs waiter unit tests
-	cd roles/waiters && uv run molecule test --all --report --command-borders
+	cd project/roles/waiters && uv run molecule test --all --report --command-borders
 
 .PHONY: generate-agent-bundle
 generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with
