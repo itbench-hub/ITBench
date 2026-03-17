@@ -3,6 +3,15 @@
   hosts:
     - localhost
   pre_tasks:
+    - name: Validate faults_index variable
+      ansible.builtin.assert:
+        that:
+          - faults_index is defined
+        fail_msg: Invalid index provided. Please provide valid index.
+        success_msg: Valid index provided.
+      tags:
+        - inject_faults
+
     - name: Import system role
       ansible.builtin.import_role:
         name: system
@@ -15,6 +24,8 @@
     - name: Import role variables from scenario
       tags:
         - inject_faults
+      vars:
+        faults_idx: "{{ faults_index | ansible.builtin.default('0') | ansible.builtin.int }}"
       when:
         - scenario_id is defined
       block:
@@ -27,8 +38,7 @@
         - name: Validate injection index
           ansible.builtin.assert:
             that:
-              - faults_index is defined
-              - faults_index < (scenarios_scenario.spec.faults | ansible.builtin.length)
+              - faults_idx < (scenarios_scenario.spec.faults | ansible.builtin.length)
             fail_msg: Invalid fault index. Please ensure that the index is correct.
             success_msg: Valid fault index.
 
@@ -36,7 +46,7 @@
           ansible.builtin.set_fact:
             faults_injection_tasks: |-
               {{
-                scenarios_scenario.spec.faults[faults_index].injections |
+                scenarios_scenario.spec.faults[faults_idx].injections |
                 ansible.builtin.default([])
               }}
 
@@ -44,12 +54,12 @@
           ansible.builtin.set_fact:
             waiters_pre_injection_tasks: |-
               {{
-                scenarios_scenario.spec.faults[faults_index].waitFor.preInjection |
+                scenarios_scenario.spec.faults[faults_idx].waitFor.preInjection |
                 ansible.builtin.default([])
               }}
             waiters_post_injection_tasks: |-
               {{
-                scenarios_scenario.spec.faults[faults_index].waitFor.postInjection |
+                scenarios_scenario.spec.faults[faults_idx].waitFor.postInjection |
                 ansible.builtin.default([])
               }}
 
