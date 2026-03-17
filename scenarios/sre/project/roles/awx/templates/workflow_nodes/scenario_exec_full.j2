@@ -81,13 +81,21 @@
     failure_nodes:
       - identifier: node-remove-access-from-agent
     success_nodes:
-      - identifier: node-inject-fault
+{% if scenario_fault_count == 0 %}
+      - identifier: node-install-run-topology-recorder-post-fault-injection
+{% else %}
+{% for index in range(0, scenario_fault_count) %}
+      - identifier: node-inject-fault-{{ index + 1 }}
+{% endfor %}
+{% endif %}
   unified_job_template:
     name: Grant-Access-To-Agent
     type: job_template
-- identifier: node-inject-fault
+{% for index in range(0, scenario_fault_count) %}
+- identifier: node-inject-fault-{{ index + 1 }}
   extra_data:
     scenario_id: {{ scenario_id }}
+    faults_index: {{ index }}
   related:
     credentials:
       - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
@@ -101,6 +109,7 @@
   unified_job_template:
     name: Inject-Faults
     type: job_template
+{% endfor %}
 - identifier: node-install-run-topology-recorder-post-fault-injection
   extra_data:
     benchmark_phase: post-fault-injection

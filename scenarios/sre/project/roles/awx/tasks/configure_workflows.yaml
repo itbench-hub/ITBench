@@ -1,4 +1,12 @@
 ---
+- name: Load scenario library index map
+  ansible.builtin.set_fact:
+    awx_library_map: |-
+      {{
+        lookup('ansible.builtin.file', 'files/library/map.json') |
+        ansible.builtin.from_json
+      }}
+
 - name: Create all scenario workflows in parallel (throttled)
   awx.awx.workflow_job_template:
     controller_host: "{{ awx_controller_host }}"
@@ -14,6 +22,7 @@
   loop_control:
     label: "Scenario-{{ item.1 }}{{ item.0.suffix }}"
   vars:
+    scenario_fault_count: "{{ awx_library_map[item.1 | ansible.builtin.string].faultCount }}"
     scenario_id: "{{ item.1 }}"
     scenario_index: "{{ awx_experiments.scenarios.index(item.1) }}"
     cluster_index: "{{ scenario_index | int % (awx_runners.kubeconfigs | length) }}"
