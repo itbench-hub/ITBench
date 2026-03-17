@@ -21,11 +21,19 @@
           vars:
             scenarios_identifier: "{{ scenario_id }}"
 
+        - name: Validate injection index
+          ansible.builtin.assert:
+            that:
+              - faults_index is defined
+              - faults_index < (scenarios_scenario.spec.faults | ansible.builtin.length)
+            fail_msg: Invalid fault index. Please ensure that the index is correct.
+            success_msg: Valid fault index.
+
         - name: Create fault injections variable
           ansible.builtin.set_fact:
             faults_injection_tasks: |-
               {{
-                scenarios_scenario.spec.faults[0].injections |
+                scenarios_scenario.spec.faults[faults_index].injections |
                 ansible.builtin.default([])
               }}
 
@@ -33,12 +41,12 @@
           ansible.builtin.set_fact:
             waiters_pre_injection_tasks: |-
               {{
-                scenarios_scenario.spec.faults[0].waitFor.preInjection |
+                scenarios_scenario.spec.faults[faults_index].waitFor.preInjection |
                 ansible.builtin.default([])
               }}
             waiters_post_injection_tasks: |-
               {{
-                scenarios_scenario.spec.faults[0].waitFor.postInjection |
+                scenarios_scenario.spec.faults[faults_index].waitFor.postInjection |
                 ansible.builtin.default([])
               }}
 
