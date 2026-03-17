@@ -52,22 +52,29 @@ def main():
 
     runners = []
 
-    for fault_index in range(0, len(spec["spec"]["faults"])):
-        logger.info("start fault tasks for group {0}".format(fault_index + 1))
+    for faults_index in range(0, len(spec["spec"]["faults"])):
+        logger.info("start fault tasks for group {0}".format(faults_index + 1))
 
         _, runner = ansible_runner.interface.run_async(
             private_data_dir=args.private_project_directory,
             playbook="manage_faults.yaml",
             ident="scenario-{0}-fault-{1}".format(
                 args.scenario_id,
-                fault_index
+                faults_index
             ),
-            cmdline="--tags inject_faults --extra-vars scenario_id={0} --extra-vars fault_index={1}".format(
+            cmdline="--tags inject_faults --extra-vars scenario_id={0} --extra-vars faults_index={1}".format(
                 args.scenario_id,
-                fault_index
+                faults_index
             )
         )
         runners.append(runner)
+
+        is_async_task = spec["spec"]["faults"][faults_index].get("async", True)
+
+        if not is_async_task:
+            while runner[-1].status not in ["canceled", "successful", "timeout", "failed"]:
+                time.sleep(1)
+                continue
 
     for r in runners:
         logger.debug("waiting for runner to complete tasks")
