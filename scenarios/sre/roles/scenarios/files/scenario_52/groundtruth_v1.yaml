@@ -10,6 +10,50 @@ spec:
       id: KubePodNotReady
       metadata:
         description: "checkout deployment pods cannot be scheduled due to insufficient resource quota, preventing them from reaching Ready state"
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend experiencing errors when calling overloaded checkout service
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy experiencing cascading errors from frontend failures
+    - group_id: checkout-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Checkout service unable to process requests due to scaling issues
+    - group_id: payment-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Payment receives no requests - checkout flow blocked
+    - group_id: shipping-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Shipping receives no requests - checkout flow blocked
+    - group_id: email-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Email receives no requests - checkout flow never completes
+    - group_id: currency-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Currency receives no requests - checkout flow blocked
+    - group_id: accounting-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Accounting receives no requests - no orders created
+    - group_id: accounting-service-1
+      id: NoDatabaseOperations
+      metadata:
+        description: Accounting performs no database operations - no orders to process
+    - group_id: fraud-detection-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Fraud detection receives no requests - checkout flow blocked
+    - group_id: quote-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Quote receives no requests - shipping blocked
 
   # Resource groups representing affected Kubernetes resources
   groups:
@@ -55,12 +99,82 @@ spec:
       filter:
         - load-generator-.*
 
+    - id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - checkout\b
+
+    - id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - frontend\b
+
+    - id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - frontend-proxy\b
+
+    - id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - payment\b
+
+    - id: shipping-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - shipping\b
+
+    - id: email-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - email\b
+
+    - id: currency-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - currency\b
+
+    - id: accounting-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - accounting\b
+
+    - id: fraud-detection-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - fraud-detection\b
+
+    - id: quote-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - quote\b
+
   # Logical relationships between groups
   aliases:
     - - checkout-deployment-1
       - checkout-pod-1
+      - checkout-service-1
     - - load-generator-deployment-1
       - load-generator-pod-1
+    - - frontend-service-1
+    - - frontend-proxy-service-1
+    - - payment-service-1
+    - - shipping-service-1
+    - - email-service-1
+    - - currency-service-1
+    - - accounting-service-1
+    - - fraud-detection-service-1
+    - - quote-service-1
 
   # Fault propagation chains showing how the resource constraint cascades
   propagations:
@@ -81,6 +195,62 @@ spec:
       target: checkout-pod-1
       condition: "strict-resource-quota in otel-demo namespace has insufficient memory/CPU limits available"
       effect: "New checkout pods cannot be scheduled due to namespace resource quota exceeded, resulting in KubePodNotReady alert"
+
+    # Checkout service degradation cascades
+    - source: checkout-pod-1
+      target: checkout-service-1
+      condition: "Checkout pods not ready due to resource quota"
+      effect: "Checkout service unable to handle requests, experiences failures"
+
+    - source: checkout-service-1
+      target: frontend-service-1
+      condition: "Checkout service failing or overloaded"
+      effect: "Frontend experiences errors when calling checkout"
+
+    - source: frontend-service-1
+      target: frontend-proxy-service-1
+      condition: "Frontend experiencing errors from checkout failures"
+      effect: "Frontend-proxy experiences cascading errors"
+
+    - source: checkout-service-1
+      target: payment-service-1
+      condition: "Checkout failing - flow never reaches payment stage"
+      effect: "Payment service receives no requests"
+
+    - source: checkout-service-1
+      target: shipping-service-1
+      condition: "Checkout failing - flow never reaches shipping stage"
+      effect: "Shipping service receives no requests"
+
+    - source: checkout-service-1
+      target: currency-service-1
+      condition: "Checkout failing - flow never reaches currency conversion"
+      effect: "Currency service receives no requests"
+
+    - source: checkout-service-1
+      target: email-service-1
+      condition: "Checkout failing - no orders completed to send emails"
+      effect: "Email service receives no requests"
+
+    - source: checkout-service-1
+      target: accounting-service-1
+      condition: "No orders created due to checkout failure"
+      effect: "Accounting service receives no order events"
+
+    - source: checkout-service-1
+      target: fraud-detection-service-1
+      condition: "No orders created due to checkout failure"
+      effect: "Fraud detection receives no order events"
+
+    - source: shipping-service-1
+      target: quote-service-1
+      condition: "Shipping service receives no requests"
+      effect: "Quote service receives no shipping quote requests"
+
+    - source: checkout-service-1
+      target: accounting-service-1
+      condition: "Accounting receives no order events"
+      effect: "Accounting performs no database operations"
 
   # Fault metadata describing the root causes
   fault:

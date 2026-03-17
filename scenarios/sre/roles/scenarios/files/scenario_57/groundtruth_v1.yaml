@@ -13,6 +13,10 @@ spec:
       id: KubeContainerWaiting
       metadata:
         description: Checkout container waiting due to unsupported architecture image
+    - group_id: checkout-deployment-1
+      id: KubeDeploymentRolloutStuck
+      metadata:
+        description: Checkout deployment rollout stuck - new pods fail while old pods continue serving
   aliases:
     - - checkout-pod-1
       - checkout-deployment-1
@@ -41,6 +45,10 @@ spec:
       effect: new checkout pod enters ImagePullBackOff state while old pod continues serving traffic
       source: checkout-deployment-1
       target: checkout-pod-1
+    - condition: new pods stuck in ImagePullBackOff unable to reach Ready state
+      effect: deployment rollout cannot complete and becomes stuck
+      source: checkout-pod-1
+      target: checkout-deployment-1
   recommended_actions:
     - solution:
         actions:

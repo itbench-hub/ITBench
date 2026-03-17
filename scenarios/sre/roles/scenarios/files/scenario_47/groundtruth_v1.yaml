@@ -9,6 +9,14 @@ spec:
       id: HighRequestErrorRate
       metadata:
         description: Increased error rate for bookinfo gateway service due to denied GET requests
+    - group_id: bookinfo-gateway-service
+      id: NoRequestsOpened
+      metadata:
+        description: Bookinfo gateway stops opening connections to productpage due to authorization denial
+    - group_id: bookinfo-gateway-service
+      id: NoRequestsReceived
+      metadata:
+        description: Productpage receives no requests from bookinfo gateway due to authorization denial
   aliases:
     - []
   fault:
@@ -34,6 +42,14 @@ spec:
   propagations:
     - condition: Authorization policy 'deny-method-get' is applied to httpbin service in foo namespace
       effect: GET requests to httpbin service are denied, leading to an increased error rate.
+      source: bookinfo-gateway-service
+      target: bookinfo-gateway
+    - condition: GET requests denied by authorization policy
+      effect: Bookinfo gateway cannot establish successful connections, stops sending requests
+      source: bookinfo-gateway
+      target: bookinfo-gateway-service
+    - condition: Bookinfo gateway stops sending requests due to authorization failures
+      effect: Downstream services receive no requests
       source: bookinfo-gateway-service
       target: bookinfo-gateway-service
   recommendedActions:

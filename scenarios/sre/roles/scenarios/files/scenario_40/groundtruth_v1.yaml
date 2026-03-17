@@ -5,6 +5,10 @@ metadata:
   name: scenario-40
 spec:
   alerts:
+    - group_id: valkey-pod-1
+      id: KubePodCrashLooping
+      metadata:
+        description: Valkey-cart pod crashing due to storage exhaustion
     - group_id: cart-service-1
       id: HighRequestErrorRate
       metadata:
@@ -109,6 +113,10 @@ spec:
       kind: Pod
       namespace: otel-demo
   propagations:
+    - condition: Storage filled to 90% capacity by sidecar container
+      effect: Valkey pod crashes repeatedly due to storage exhaustion
+      source: valkey-pod-1
+      target: valkey-pod-1
     - condition: Valkey storage full, unable to write new cart data
       effect: Cart service experiences write failures and errors when storing cart items
       source: valkey-pod-1

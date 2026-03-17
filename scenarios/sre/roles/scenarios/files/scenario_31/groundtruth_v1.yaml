@@ -9,6 +9,10 @@ spec:
       id: HighRequestErrorRate
       metadata:
         description: Frontend proxy experiencing connection errors to frontend
+    - group_id: frontend-proxy-service-1
+      id: HighRequestLatency
+      metadata:
+        description: Frontend proxy experiencing high latency when attempting to connect to blocked frontend
     - group_id: frontend-service-1
       id: NoRequestsReceived
       metadata:
@@ -65,6 +69,10 @@ spec:
       id: NoRequestsReceived
       metadata:
         description: Quote service receives no requests - shipping blocked
+    - group_id: accounting-service-1
+      id: NoDatabaseOperations
+      metadata:
+        description: Accounting service performing no database operations - no orders to process
   aliases:
     - - frontend-service-1
       - frontend-pod-1
@@ -274,6 +282,10 @@ spec:
       effect: All user requests through proxy fail with connection errors
       source: frontend-service-1
       target: frontend-proxy-service-1
+    - condition: Frontend proxy experiencing connection failures to frontend
+      effect: Frontend proxy experiences high latency from repeated connection attempts and timeouts
+      source: frontend-service-1
+      target: frontend-proxy-service-1
     - condition: Frontend service completely unavailable
       effect: Ad service receives no requests from frontend
       source: frontend-service-1
@@ -326,6 +338,10 @@ spec:
       effect: Quote service receives no requests
       source: shipping-service-1
       target: quote-service-1
+    - condition: Checkout flow never initiated due to frontend unavailability
+      effect: Accounting service performs no database operations as no orders are created
+      source: checkout-service-1
+      target: accounting-service-1
   recommended_actions:
     - solution:
         actions:

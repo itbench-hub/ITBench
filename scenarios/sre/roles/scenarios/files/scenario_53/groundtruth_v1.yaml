@@ -10,6 +10,10 @@ spec:
       id: KubePodNotReady
       metadata:
         description: "reviews-v3 pods cannot start due to nonexistent PersistentVolumeClaim, preventing them from reaching Ready state"
+    - group_id: reviews-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: "reviews-v3 service receives no requests due to pods stuck in pending state"
 
   # Resource groups representing affected Kubernetes resources
   groups:
@@ -65,6 +69,10 @@ spec:
       target: reviews-service-1
       condition: "reviews-v3 pods are not in Ready state"
       effect: "reviews service (v3 subset) has no healthy endpoints, potentially causing request failures if traffic is routed to v3"
+    - source: reviews-v3-pod-1
+      target: reviews-service-1
+      condition: "reviews-v3 service has no healthy endpoints"
+      effect: "reviews service receives no requests from upstream services due to endpoint unavailability"
 
   # Fault metadata describing the root cause
   fault:

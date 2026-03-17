@@ -13,6 +13,30 @@ spec:
       id: HighRequestErrorRate
       metadata:
         description: Frontend-proxy service experiences errors due to cart service unavailability from pod crashes
+    - group_id: frontend-proxy-service-1
+      id: HighRequestLatency
+      metadata:
+        description: Frontend-proxy experiences latency waiting for cart responses
+    - group_id: frontend-service-1
+      id: HighRequestLatency
+      metadata:
+        description: Frontend experiences latency waiting for cart responses
+    - group_id: ad-service-1
+      id: HighRequestLatency
+      metadata:
+        description: Ad service experiences latency when cart is unavailable
+    - group_id: ad-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Ad service experiences errors when cart is unavailable
+    - group_id: payment-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Payment receives no requests - checkout flow blocked by cart unavailability
+    - group_id: shipping-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Shipping receives no requests - checkout flow blocked by cart unavailability
   aliases:
     - - cart-service-1
       - cart-pod-1
@@ -42,6 +66,26 @@ spec:
       id: frontend-proxy-service-1
       kind: Service
       namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - ad\b
+      id: ad-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - shipping\b
+      id: shipping-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
     - condition: Memory stress applied to cart pod without resource limits
       effect: Cart pod consumes excessive memory and gets OOMKilled by Kubernetes
@@ -55,6 +99,26 @@ spec:
       effect: Frontend-proxy experiences request errors when serving pages requiring cart functionality
       source: cart-service-1
       target: frontend-proxy-service-1
+    - condition: Cart service timeouts while attempting connections
+      effect: Frontend-proxy experiences high latency waiting for cart responses
+      source: cart-service-1
+      target: frontend-proxy-service-1
+    - condition: Frontend calls cart service which is unavailable
+      effect: Frontend experiences high latency waiting for cart responses
+      source: cart-service-1
+      target: frontend-service-1
+    - condition: Ad service depends on cart availability
+      effect: Ad service experiences latency and errors when cart is unavailable
+      source: cart-service-1
+      target: ad-service-1
+    - condition: Checkout flow fails when cart is unavailable
+      effect: Payment service receives no checkout requests
+      source: cart-service-1
+      target: payment-service-1
+    - condition: Checkout flow fails when cart is unavailable
+      effect: Shipping service receives no checkout requests
+      source: cart-service-1
+      target: shipping-service-1
   recommendedActions:
     - solution:
         actions:

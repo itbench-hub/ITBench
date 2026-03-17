@@ -6,13 +6,17 @@ metadata:
 spec:
   alerts:
     - group_id: product-catalog-pod-1
-      id: PodCrashLoopBackOff
+      id: KubePodCrashLooping
       metadata:
         description: Product catalog pod is in CrashLoopBackOff state
-    - group_id: checkout-service-1
+    - group_id: frontend-service-1
       id: HighRequestErrorRate
       metadata:
-        description: Checkout service experiencing connection failures to product-catalog
+        description: Frontend experiencing errors when checkout service fails
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy experiencing errors cascading from frontend failures
     - group_id: payment-service-1
       id: NoRequestsReceived
       metadata:
@@ -42,6 +46,8 @@ spec:
       - product-catalog-pod-1
     - - checkout-service-1
       - checkout-pod-1
+    - - frontend-service-1
+    - - frontend-proxy-service-1
     - - payment-service-1
       - payment-pod-1
     - - shipping-service-1
@@ -90,6 +96,16 @@ spec:
         - checkout-.*
       id: checkout-pod-1
       kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
       namespace: otel-demo
     - filter:
         - payment\b
@@ -170,10 +186,14 @@ spec:
       effect: Product catalog service becomes unavailable
       source: product-catalog-pod-1
       target: product-catalog-service-1
-    - condition: Checkout service cannot validate products via product-catalog
-      effect: Checkout operations fail early in the process
+    - condition: Product catalog unavailable when frontend calls checkout (which internally calls product-catalog)
+      effect: Frontend experiences errors on checkout endpoint
       source: product-catalog-service-1
-      target: checkout-service-1
+      target: frontend-service-1
+    - condition: Frontend experiencing errors from checkout failures
+      effect: Frontend-proxy experiences cascading errors
+      source: frontend-service-1
+      target: frontend-proxy-service-1
     - condition: Checkout process never reaches payment stage due to product validation failure
       effect: Payment service receives zero requests
       source: checkout-service-1

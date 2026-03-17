@@ -13,6 +13,10 @@ spec:
       id: HighRequestLatency
       metadata:
         description: Checkout service latency increases when email service fails
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend errors cascade from checkout service failures
     - group_id: frontend-proxy-service-1
       id: HighRequestErrorRate
       metadata:
@@ -58,6 +62,11 @@ spec:
       kind: Pod
       namespace: otel-demo
     - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
         - frontend-proxy
       id: frontend-proxy-service-1
       kind: Service
@@ -75,9 +84,13 @@ spec:
       effect: Checkout service experiences increased latency from email service retries
       source: email-service-1
       target: checkout-service-1
-    - condition: Checkout service errors and latency from email failures
-      effect: Frontend-proxy experiences errors from checkout service failures
+    - condition: Checkout service errors from email failures
+      effect: Frontend experiences errors when calling checkout
       source: checkout-service-1
+      target: frontend-service-1
+    - condition: Frontend errors from checkout failures
+      effect: Frontend-proxy experiences cascading errors
+      source: frontend-service-1
       target: frontend-proxy-service-1
   recommendedActions:
     - solution:

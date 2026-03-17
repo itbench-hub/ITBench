@@ -21,6 +21,10 @@ spec:
       id: HighRequestErrorRate
       metadata:
         description: Error rate is above threshold for shipping service
+    - group_id: accounting-service-1
+      id: HighRequestLatency
+      metadata:
+        description: Accounting experiences latency during order processing issues
   aliases:
     - - quote-service-1
       - quote-pod-1
@@ -32,6 +36,7 @@ spec:
       - frontend-pod-1
     - - frontend-proxy-service-1
       - frontend-proxy-pod-1
+    - - accounting-service-1
   fault:
     - category: Chaos
       condition: HTTP Chaos fault aborting POST requests to quote service /getquote endpoint
@@ -97,6 +102,11 @@ spec:
       id: frontend-proxy-pod-1
       kind: Pod
       namespace: otel-demo
+    - filter:
+        - accounting\b
+      id: accounting-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
     - condition: HTTP Chaos aborts all POST requests to quote service /getquote endpoint
       effect: Quote service becomes unavailable for shipping quote requests
@@ -118,6 +128,10 @@ spec:
       effect: Frontend-proxy service experiences errors when proxying requests
       source: frontend-service-1
       target: frontend-proxy-service-1
+    - condition: Checkout failures cause order processing delays
+      effect: Accounting experiences latency processing incomplete order events
+      source: checkout-service-1
+      target: accounting-service-1
   recommended_actions:
     - solution:
         actions:

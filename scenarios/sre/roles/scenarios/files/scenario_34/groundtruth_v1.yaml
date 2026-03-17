@@ -37,6 +37,38 @@ spec:
       id: HighRequestErrorRate
       metadata:
         description: Request error rate in service frontend-proxy in namespace otel-demo is above 0
+    - group_id: payment-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Payment receives no requests - checkout flow blocked by cart failures
+    - group_id: shipping-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Shipping receives no requests - checkout flow blocked by cart failures
+    - group_id: email-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Email receives no requests - checkout flow blocked by cart failures
+    - group_id: currency-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Currency receives no requests - checkout flow blocked by cart failures
+    - group_id: fraud-detection-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Fraud detection receives no requests - no orders created due to checkout failures
+    - group_id: quote-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Quote receives no requests - shipping blocked by checkout failures
+    - group_id: accounting-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Accounting receives no requests - no orders created due to checkout failures
+    - group_id: accounting-service-1
+      id: NoDatabaseOperations
+      metadata:
+        description: Accounting performs no database operations - no orders to process
   aliases:
     - - valkey-service-1
       - valkey-pod-1
@@ -108,6 +140,41 @@ spec:
       id: frontend-proxy-pod-1
       kind: Pod
       namespace: otel-demo
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - shipping\b
+      id: shipping-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - email\b
+      id: email-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - currency\b
+      id: currency-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - fraud-detection\b
+      id: fraud-detection-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - quote\b
+      id: quote-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - accounting\b
+      id: accounting-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
     - condition: Cart service cannot authenticate to valkey-cart due to password mismatch
       effect: Cart service experiences high latency and errors when accessing cart data
@@ -125,6 +192,38 @@ spec:
       effect: Frontend-proxy service experiences errors when proxying requests
       source: frontend-service-1
       target: frontend-proxy-service-1
+    - condition: Checkout fails due to cart service errors
+      effect: Payment service receives no requests from checkout
+      source: checkout-service-1
+      target: payment-service-1
+    - condition: Checkout fails due to cart service errors
+      effect: Shipping service receives no requests from checkout
+      source: checkout-service-1
+      target: shipping-service-1
+    - condition: Checkout fails due to cart service errors
+      effect: Email service receives no order confirmation requests
+      source: checkout-service-1
+      target: email-service-1
+    - condition: Checkout fails due to cart service errors
+      effect: Currency service receives no conversion requests
+      source: checkout-service-1
+      target: currency-service-1
+    - condition: No orders created due to checkout failure
+      effect: Fraud detection receives no order events
+      source: checkout-service-1
+      target: fraud-detection-service-1
+    - condition: Shipping receives no requests
+      effect: Quote service receives no shipping quote requests
+      source: shipping-service-1
+      target: quote-service-1
+    - condition: No orders created due to checkout failure
+      effect: Accounting service receives no order events
+      source: checkout-service-1
+      target: accounting-service-1
+    - condition: Accounting receives no order events
+      effect: Accounting performs no database operations
+      source: checkout-service-1
+      target: accounting-service-1
   recommendedActions:
     - solution:
         actions:

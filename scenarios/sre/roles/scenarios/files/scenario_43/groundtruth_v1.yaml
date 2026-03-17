@@ -6,16 +6,85 @@ metadata:
 spec:
   alerts:
     - group_id: frontend-service-1
-      id: HighRequestLatency
-      metadata:
-        description: Latency in service frontend in namespace otel-demo is above 1500ms
-    - group_id: frontend-service-1
       id: NoRequestsReceived
       metadata:
         description: No requests detected in service frontend in namespace otel-demo
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend may experience errors due to DNS resolution timeouts
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy may experience timeout errors when frontend latency is high
+    - group_id: product-catalog-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Product catalog receives no requests - frontend blocked
+    - group_id: checkout-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Checkout receives no requests - frontend blocked
+    - group_id: payment-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Payment receives no requests - checkout flow blocked
+    - group_id: recommendation-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Recommendation receives no requests - frontend blocked
+    - group_id: quote-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Quote receives no requests - shipping blocked
+    - group_id: fraud-detection-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Fraud detection receives no requests - checkout flow blocked
+    - group_id: shipping-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Shipping receives no requests - checkout flow blocked
+    - group_id: product-reviews-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Product reviews receives no requests - frontend blocked
+    - group_id: ad-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Ad service receives no requests - frontend blocked
+    - group_id: accounting-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Accounting receives no requests - no orders created
+    - group_id: accounting-service-1
+      id: NoDatabaseOperations
+      metadata:
+        description: Accounting performs no database operations - no orders to process
+    - group_id: currency-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Currency receives no requests - checkout flow blocked
+    - group_id: email-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Email receives no requests - checkout flow never completes
   aliases:
     - - frontend-service-1
       - frontend-pod-1
+    - - frontend-proxy-service-1
+    - - product-catalog-service-1
+    - - checkout-service-1
+    - - payment-service-1
+    - - recommendation-service-1
+    - - quote-service-1
+    - - fraud-detection-service-1
+    - - shipping-service-1
+    - - product-reviews-service-1
+    - - ad-service-1
+    - - accounting-service-1
+    - - currency-service-1
+    - - email-service-1
   fault:
     - category: Configuration
       condition: DNS configuration misconfigured with excessive ndots value causing DNS query overload
@@ -36,11 +105,136 @@ spec:
       id: frontend-service-1
       kind: Service
       namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - product-catalog\b
+      id: product-catalog-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - recommendation\b
+      id: recommendation-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - quote\b
+      id: quote-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - fraud-detection\b
+      id: fraud-detection-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - shipping\b
+      id: shipping-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - product-reviews\b
+      id: product-reviews-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - ad\b
+      id: ad-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - accounting\b
+      id: accounting-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - currency\b
+      id: currency-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - email\b
+      id: email-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
-    - condition: Frontend pod experiencing slow DNS resolution due to excessive DNS queries from high ndots value
-      effect: Frontend service experiences high latency when resolving service names
+    - condition: Frontend pod experiencing severe DNS resolution failures due to excessive DNS queries from high ndots value
+      effect: Frontend service fails to process requests, resulting in zero traffic
       source: frontend-pod-1
       target: frontend-service-1
+    - condition: Frontend service experiencing complete DNS resolution failure
+      effect: Requests timeout completely, causing error responses
+      source: frontend-pod-1
+      target: frontend-service-1
+    - condition: Frontend service failing due to DNS issues
+      effect: Frontend-proxy may experience timeout errors when calling failed frontend service
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+    - condition: Frontend service unable to process requests
+      effect: Product catalog receives no requests from frontend
+      source: frontend-service-1
+      target: product-catalog-service-1
+    - condition: Frontend service unable to process requests
+      effect: Checkout receives no requests from frontend
+      source: frontend-service-1
+      target: checkout-service-1
+    - condition: Frontend service unable to process requests
+      effect: Recommendation receives no requests from frontend
+      source: frontend-service-1
+      target: recommendation-service-1
+    - condition: Frontend service unable to process requests
+      effect: Product reviews receives no requests from frontend
+      source: frontend-service-1
+      target: product-reviews-service-1
+    - condition: Frontend service unable to process requests
+      effect: Ad service receives no requests from frontend
+      source: frontend-service-1
+      target: ad-service-1
+    - condition: Checkout flow never initiated due to frontend failure
+      effect: Payment service receives no checkout requests
+      source: checkout-service-1
+      target: payment-service-1
+    - condition: Checkout flow never initiated due to frontend failure
+      effect: Shipping service receives no checkout requests
+      source: checkout-service-1
+      target: shipping-service-1
+    - condition: Checkout flow never initiated due to frontend failure
+      effect: Currency service receives no conversion requests
+      source: checkout-service-1
+      target: currency-service-1
+    - condition: Checkout flow never initiated due to frontend failure
+      effect: Email service receives no order confirmation requests
+      source: checkout-service-1
+      target: email-service-1
+    - condition: No orders created due to checkout flow failure
+      effect: Accounting service receives no order events
+      source: checkout-service-1
+      target: accounting-service-1
+    - condition: No orders created due to checkout flow failure
+      effect: Fraud detection receives no order events to analyze
+      source: checkout-service-1
+      target: fraud-detection-service-1
+    - condition: Shipping service receives no requests
+      effect: Quote service receives no shipping quote requests
+      source: shipping-service-1
+      target: quote-service-1
+    - condition: Accounting service receives no order events
+      effect: Accounting performs no database operations
+      source: checkout-service-1
+      target: accounting-service-1
   recommendedActions:
     - solution:
         actions:

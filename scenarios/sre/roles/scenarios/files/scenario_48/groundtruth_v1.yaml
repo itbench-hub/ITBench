@@ -9,6 +9,10 @@ spec:
       id: NoRequestsOpened
       metadata:
         description: No requests detected for services in book-info due to ambient mode being disabled
+    - group_id: bookinfo-namespace-1
+      id: NoRequestsReceived
+      metadata:
+        description: Services show as unknown and receive no requests when ambient mode disabled
   aliases:
     - - bookinfo-namespace-1
   fault:
@@ -29,6 +33,10 @@ spec:
   propagations:
     - condition: Ambient mode is disabled for book-info namespace
       effect: Pods in the book-info namespace will not be in the service mesh, leading to no traffic.
+      source: bookinfo-namespace-1
+      target: bookinfo-namespace-1
+    - condition: Services not in mesh appear as unknown destinations
+      effect: Service mesh observability shows no requests opened or received
       source: bookinfo-namespace-1
       target: bookinfo-namespace-1
   recommendedActions:

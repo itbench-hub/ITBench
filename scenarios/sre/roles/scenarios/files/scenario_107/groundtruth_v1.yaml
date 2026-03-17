@@ -17,6 +17,10 @@ spec:
       id: NoDatabaseOperations
       metadata:
         description: Accounting service stopped performing database write operations
+    - group_id: accounting-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Accounting service receives no requests - no pods available to serve traffic
   aliases:
     - - accounting-deployment-1
       - accounting-pod-1
@@ -39,6 +43,11 @@ spec:
       id: accounting-pod-1
       kind: Pod
       namespace: otel-demo
+    - filter:
+        - accounting\b
+      id: accounting-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
     - condition: Deployment scaled to zero replicas
       effect: All pods for the workload are terminated
@@ -56,6 +65,10 @@ spec:
       effect: Database write operations from accounting service stop
       source: accounting-pod-1
       target: accounting-deployment-1
+    - condition: Accounting service has no healthy endpoints
+      effect: Accounting service receives no requests - all connections refused
+      source: accounting-pod-1
+      target: accounting-service-1
   recommendedActions:
     - solution:
         actions:

@@ -4,12 +4,21 @@ kind: GroundTruth
 metadata:
   name: scenario-3
 spec:
-  alerts: []
+  alerts:
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend experiencing errors when calling ad service with high CPU
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy experiencing cascading errors from frontend failures
   aliases:
     - - flagd-pod-1
       - flagd-service-1
     - - frontend-service-1
       - frontend-pod-1
+    - - frontend-proxy-service-1
     - - ad-service-1
       - ad-pod-1
   fault:
@@ -110,6 +119,11 @@ spec:
       id: frontend-pod-1
       kind: Pod
       namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
     - condition: flagd-config ConfigMap adHighCpu feature flag set
       effect: flagd enables injection
@@ -123,6 +137,10 @@ spec:
       effect: frontend Error Rate is Above Threshold
       source: ad-service-1
       target: frontend-service-1
+    - condition: frontend experiencing errors from ad service
+      effect: frontend-proxy experiences cascading errors
+      source: frontend-service-1
+      target: frontend-proxy-service-1
   recommendedActions:
     - solution:
         actions:

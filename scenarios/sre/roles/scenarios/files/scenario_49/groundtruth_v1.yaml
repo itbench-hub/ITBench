@@ -5,10 +5,6 @@ metadata:
   name: scenario-49
 spec:
   alerts:
-    - group_id: cart-deployment-1
-      id: KubeDeploymentRolloutStuck
-      metadata:
-        description: Cart deployment rollout stuck due to misconfigured readiness probe
     - group_id: cart-service-1
       id: NoRequestsReceived
       metadata:
@@ -17,11 +13,60 @@ spec:
       id: HighRequestErrorRate
       metadata:
         description: Frontend experiencing high error rate when calling cart service
+    - group_id: checkout-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Checkout experiencing errors when cart service is unavailable
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy may experience errors cascading from frontend failures
+    - group_id: payment-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Payment service receives no requests - checkout flow blocked by cart unavailability
+    - group_id: shipping-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Shipping service receives no requests - checkout flow blocked
+    - group_id: email-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Email service receives no requests - checkout flow never completes
+    - group_id: currency-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Currency service receives no requests - checkout flow blocked
+    - group_id: accounting-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Accounting service receives no requests - no orders created
+    - group_id: accounting-service-1
+      id: NoDatabaseOperations
+      metadata:
+        description: Accounting performs no database operations - no orders to process
+    - group_id: quote-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Quote service receives no requests - shipping never processes
+    - group_id: fraud-detection-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Fraud detection receives no requests - no orders to analyze
   aliases:
     - - cart-pod-1
       - cart-service-1
       - cart-deployment-1
     - - frontend-service-1
+    - - checkout-service-1
+    - - frontend-proxy-service-1
+    - - payment-service-1
+    - - shipping-service-1
+    - - email-service-1
+    - - currency-service-1
+    - - accounting-service-1
+    - - quote-service-1
+    - - fraud-detection-service-1
   fault:
     - category: Configuration
       condition: Cart deployment has misconfigured readiness probe (wrong port)
@@ -52,13 +97,54 @@ spec:
       id: frontend-service-1
       kind: Service
       namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - shipping\b
+      id: shipping-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - email\b
+      id: email-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - currency\b
+      id: currency-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - accounting\b
+      id: accounting-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - quote\b
+      id: quote-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - fraud-detection\b
+      id: fraud-detection-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
     - condition: Deployment has misconfigured readiness probe on port 40 (incorrect)
-      effect: Deployment rollout stuck trying to verify pod readiness
-      source: cart-deployment-1
-      target: cart-deployment-1
-    - condition: Deployment rollout stuck
-      effect: New pods created but never become ready
+      effect: Pods created but fail readiness checks
       source: cart-deployment-1
       target: cart-pod-1
     - condition: Pods not ready due to failing readiness probe
@@ -69,4 +155,44 @@ spec:
       effect: Frontend receives errors when calling cart API
       source: cart-service-1
       target: frontend-service-1
+    - condition: Cart service unavailable
+      effect: Checkout receives errors when trying to retrieve cart contents
+      source: cart-service-1
+      target: checkout-service-1
+    - condition: Frontend experiencing errors
+      effect: Frontend-proxy may experience cascading errors from frontend failures
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+    - condition: Checkout service fails early when cart is unavailable
+      effect: Payment service receives no checkout requests
+      source: checkout-service-1
+      target: payment-service-1
+    - condition: Checkout service fails early when cart is unavailable
+      effect: Shipping service receives no checkout requests
+      source: checkout-service-1
+      target: shipping-service-1
+    - condition: Checkout service fails early - no orders completed
+      effect: Email service receives no order confirmation requests
+      source: checkout-service-1
+      target: email-service-1
+    - condition: Checkout service fails early - no currency conversions needed
+      effect: Currency service receives no conversion requests
+      source: checkout-service-1
+      target: currency-service-1
+    - condition: No completed orders to process via Kafka queue
+      effect: Accounting service receives no order events
+      source: checkout-service-1
+      target: accounting-service-1
+    - condition: Shipping service receives no requests from checkout
+      effect: Quote service receives no shipping quote requests
+      source: shipping-service-1
+      target: quote-service-1
+    - condition: No completed orders to analyze via Kafka queue
+      effect: Fraud detection receives no order events
+      source: checkout-service-1
+      target: fraud-detection-service-1
+    - condition: Accounting service receives no order events
+      effect: Accounting performs no database operations
+      source: checkout-service-1
+      target: accounting-service-1
   recommendedActions: []
