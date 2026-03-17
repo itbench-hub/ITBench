@@ -39,7 +39,7 @@ def main():
             "roles",
             "scenarios",
             "files",
-            "scenario_".format(args.scenario_id),
+            "scenario_{0}".format(args.scenario_id),
             "scenario.yaml"
         )
 
