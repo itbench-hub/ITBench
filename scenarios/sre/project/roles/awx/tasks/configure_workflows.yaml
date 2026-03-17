@@ -1,4 +1,12 @@
 ---
+- name: Load scenario library index map
+  ansible.builtin.set_fact:
+    awx_library_map: |-
+      {{
+        lookup('ansible.builtin.file', 'files/library/map.json') |
+        ansible.builtin.from_json
+      }}
+      
 - name: Generate workflow credentials for each runner
   ansible.builtin.set_fact:
     awx_workflow_node_credentials: |-

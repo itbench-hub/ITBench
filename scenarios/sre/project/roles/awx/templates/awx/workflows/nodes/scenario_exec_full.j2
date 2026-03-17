@@ -63,12 +63,20 @@
     failure_nodes:
       - identifier: node-remove-access-from-agent
     success_nodes:
-      - identifier: node-inject-fault
+{% if awx_library_map[(workflow_configuration[1][0] | ansible.builtin.string)].faultCount == 0 %}
+      - identifier: node-install-run-topology-recorder-post-fault-injection
+{% else %}
+{% for index in range(0, awx_library_map[(workflow_configuration[1][0] | ansible.builtin.string)].faultCount) %}
+      - identifier: node-inject-fault-{{ index + 1 }}
+{% endfor %}
+{% endif %}
   unified_job_template:
     name: Grant-Access-To-Agent
     type: job_template
-- identifier: node-inject-fault
+{% for index in range(0, awx_library_map[(workflow_configuration[1][0] | ansible.builtin.string)].faultCount) %}
+- identifier: node-inject-fault-{{ index + 1 }}
   extra_data:
+    faults_index: {{ index }}
     scenario_id: {{ workflow_configuration[1][0] }}
   related:
     credentials: {{ workflow_configuration[1][1] }}
@@ -79,6 +87,7 @@
   unified_job_template:
     name: Inject-Faults
     type: job_template
+{% endfor %}
 - identifier: node-install-run-topology-recorder-post-fault-injection
   extra_data:
     scenario_id: {{ workflow_configuration[1][0] }}
