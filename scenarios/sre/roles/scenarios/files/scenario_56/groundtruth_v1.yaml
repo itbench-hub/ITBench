@@ -13,6 +13,10 @@ spec:
       id: KubeContainerWaiting
       metadata:
         description: Product catalog container waiting due to image pull failure
+    - group_id: productcatalog-deployment-1
+      id: KubeDeploymentRolloutStuck
+      metadata:
+        description: Product catalog deployment rollout stuck - new pods fail while old pods continue serving
   aliases:
     - - productcatalog-pod-1
       - productcatalog-deployment-1
@@ -41,6 +45,10 @@ spec:
       effect: new product-catalog pod enters ImagePullBackOff state while old pod continues serving traffic
       source: productcatalog-deployment-1
       target: productcatalog-pod-1
+    - condition: new pods stuck in ImagePullBackOff unable to reach Ready state
+      effect: deployment rollout cannot complete and becomes stuck
+      source: productcatalog-pod-1
+      target: productcatalog-deployment-1
   recommended_actions:
     - solution:
         actions:

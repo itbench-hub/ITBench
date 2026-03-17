@@ -21,6 +21,10 @@ spec:
       id: HighRequestErrorRate
       metadata:
         description: Request error rate in service frontend-proxy in namespace otel-demo is above 3
+    - group_id: recommendationservice-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Recommendation service receives no requests - pod not ready due to config validation failure
   aliases:
     - - recommendationservice-configmap-1
       - recommendationservice-pod-1
@@ -45,12 +49,12 @@ spec:
       name: features
       root_cause: true
     - filter:
-        - .*recommendation-.*
+        - recommendation-.*
       id: recommendationservice-pod-1
       kind: Pod
       namespace: otel-demo
     - filter:
-        - .*recommendation\b
+        - recommendation\b
       id: recommendationservice-service-1
       kind: Service
       namespace: otel-demo
@@ -65,12 +69,12 @@ spec:
       kind: Pod
       namespace: otel-demo
     - filter:
-        - .*frontend-proxy\b
+        - frontend-proxy\b
       id: frontendproxy-service-1
       kind: Service
       namespace: otel-demo
     - filter:
-        - .*frontend-proxy-.*
+        - frontend-proxy-.*
       id: frontendproxy-pod-1
       kind: Pod
       namespace: otel-demo
@@ -91,6 +95,10 @@ spec:
       effect: Frontend-proxy observes and propagates error responses from frontend, triggering RequestErrorRate alert
       source: frontend-service-1
       target: frontendproxy-service-1
+    - condition: Recommendation service has no healthy endpoints
+      effect: Recommendation service receives no requests - all connections refused
+      source: recommendationservice-pod-1
+      target: recommendationservice-service-1
   recommendedActions:
     - solution:
         actions:

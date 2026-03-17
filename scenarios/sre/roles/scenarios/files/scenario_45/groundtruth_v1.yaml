@@ -9,13 +9,32 @@ spec:
       id: KubePodNotReady
       metadata:
         description: Emailservice pod stuck in Init phase due to hanging init container
+    - group_id: email-pod-1
+      id: KubeContainerWaiting
+      metadata:
+        description: Email container waiting for init container to complete - stuck in PodInitializing
     - group_id: email-service-1
       id: NoRequestsReceived
       metadata:
         description: No incoming requests handled by emailservice because pods are pending
+    - group_id: checkout-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Checkout service experiences errors when attempting to send order confirmation emails
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend experiences errors when calling checkout
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy experiences cascading errors from frontend failures
   aliases:
     - - email-pod-1
       - email-service-1
+    - - checkout-service-1
+    - - frontend-service-1
+    - - frontend-proxy-service-1
   fault:
     - category: Custom
       condition: Init container stuck in sleep loop, preventing pod from starting
@@ -36,11 +55,42 @@ spec:
       id: email-service-1
       kind: Service
       namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
+    - condition: Init container stuck in sleep loop
+      effect: Email container remains in waiting state indefinitely
+      source: email-pod-1
+      target: email-pod-1
     - condition: Init container prevents pod startup
       effect: Emailservice endpoint unavailable
       source: email-pod-1
       target: email-service-1
+    - condition: Email service unavailable with no healthy endpoints
+      effect: Checkout service experiences errors when attempting to send order confirmation emails
+      source: email-service-1
+      target: checkout-service-1
+    - condition: Checkout service errors from email failures
+      effect: Frontend experiences errors when calling checkout
+      source: checkout-service-1
+      target: frontend-service-1
+    - condition: Frontend errors from checkout failures
+      effect: Frontend-proxy experiences cascading errors
+      source: frontend-service-1
+      target: frontend-proxy-service-1
   recommendedActions:
     - solution:
         actions:
