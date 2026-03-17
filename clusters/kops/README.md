@@ -2,6 +2,8 @@
 
 [kOps](https://kops.sigs.k8s.io/) is a tool which create a [Kubernetes](https://kubernetes.io/) cluster using resources offered by cloud providers.
 
+[Kyverno](https://kyverno.io/) ensures that registry secrets (used to access private Docker registries) are configured in every namespace on the cluster.
+
 > [!NOTE]
 > As of the time writing (**03/09/2026**) these playbooks in this directory use [Amazon Web Services (AWS)](https://docs.aws.amazon.com/#products) as the provisoner. While other cloud providers may supported by kOps, orchestrating the additional pieces from those provides is not instrumented here.
 
@@ -72,9 +74,6 @@ A single cluster is only one `runner` cluster.
 
 For general development, most users will require only the single cluster target. The AWX stack is only recommended for running multiple scenarios with multiple trials simulatenously due to the intense amount of resources required.
 
-> [!NOTE]
-> If one requires a cluster have access to a private Docker registry, please configure the `inventory/group_vars/all/docker.yaml` file. Once deployed, [Kyverno](https://kyverno.io/) ensures that all the namespaces on the cluster will also be updated with the secret information.
-
 ### AWX Stack
 
 #### Creation
@@ -93,6 +92,16 @@ make get-stack-kubeconfigs
 ```shell
 export KUBECONFIG=$(pwd)/kubeconfigs/<cluster name>
 kubectl cluster-info
+```
+
+4. To create or re-crete the kubeconfig group variables for use in the SRE scenarios, use the following command:
+```shell
+make sync-stack-group-vars
+```
+
+5. **(Optional)**: To install a Docker registry secret into the AWX stack clusters, use the following command:
+```shell
+make install-stack-docker-registry
 ```
 
 ### Deletion
@@ -120,6 +129,16 @@ make get-cluster-kubeconfig
 ```shell
 export KUBECONFIG=$(pwd)/kubeconfigs/<cluster name>
 kubectl cluster-info
+```
+
+4. To create or re-crete the kubeconfig group variables for use in the SRE scenarios, use the following command:
+```shell
+make sync-cluster-group-vars
+```
+
+5. **(Optional)**: To install a Docker registry secret into a single cluster, use the following command:
+```shell
+make install-cluster-docker-registry
 ```
 
 ### Deletion

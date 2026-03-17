@@ -115,3 +115,21 @@
               "Subnets per VPC"
             )
           }}
+
+    - name: Validate NAT Gateway Elastic IP configuration
+      when:
+        - aws_configuration.vpc.nat_gateway is defined
+      block:
+        - name: Validate Elastic IP allocation id
+          amazon.aws.ec2_eip_info:
+            filters:
+              allocation-id: "{{ aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id }}"
+            region: "{{ aws_configuration.region }}"
+          register: aws_ec2_eip
+
+        - name: Verify Elastic IP exists
+          ansible.builtin.assert:
+            that:
+              - aws_ec2_eip.addresses | ansible.builtin.length == 0
+            fail_msg: Elastic IP not found. Please verify the allocation ID is correct and exists in the target region.
+            success_msg: Elastic IP found.

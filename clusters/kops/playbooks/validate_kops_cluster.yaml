@@ -3,6 +3,15 @@
   hosts:
     - localhost
   pre_tasks:
+    - name: Validate target variable
+      ansible.builtin.assert:
+        that:
+          - kops_cluster_name is defined
+        fail_msg: Cluster name variable is not defined. Please execute playbook with variable via CLI.
+        success_msg: Cluster name variable is defined.
+      tags:
+        - always
+
     - name: Import system role
       ansible.builtin.import_role:
         name: system
@@ -16,159 +25,45 @@
           aws:
             s3: "{{ aws.s3 }}"
   tasks:
-    - name: Retrieve all clusters when specific cluster not provided
-      when:
-        - kops_cluster_name is not defined
-      block:
-        - name: Retrieve all clusters from state storage
-          ansible.builtin.command:
-            argv:
-              - kops
-              - get
-              - clusters
-              - --state
-              - "{{ kops_state_store }}"
-              - --output
-              - json
-          register: kops_get_clusters_result
-          changed_when: false
-          failed_when: false
-
-        - name: Parse cluster names from JSON output
-          ansible.builtin.set_fact:
-            kops_cluster_names: "{{ (kops_get_clusters_result.stdout | ansible.builtin.from_json) | map(attribute='metadata.name') | list }}"
-          when:
-            - kops_get_clusters_result.rc == 0
-            - kops_get_clusters_result.stdout | ansible.builtin.length > 0
-
-        - name: Display clusters to validate
-          ansible.builtin.debug:
-            msg: "Validating {{ kops_cluster_names | ansible.builtin.length }} cluster(s)"
-          when:
-            - kops_cluster_names is defined
-            - kops_cluster_names | ansible.builtin.length > 0
-
-    - name: Set cluster list for single cluster validation
-      when:
-        - kops_cluster_name is defined
-      ansible.builtin.set_fact:
-        kops_cluster_names:
+    - name: Retrieve information about cluster
+      ansible.builtin.command:
+        argv:
+          - kops
+          - get
+          - cluster
+          - --name
           - "{{ kops_cluster_name }}"
+          - --state
+          - "{{ kops_state_store }}"
+      register: kops_get_cluster_result
+      changed_when: false
+      failed_when: false
 
-    - name: Validate clusters
-      when:
-        - kops_cluster_names is defined
-        - kops_cluster_names | ansible.builtin.length > 0
-      block:
-        - name: Retrieve information about cluster
-          ansible.builtin.command:
-            argv:
-              - kops
-              - get
-              - cluster
-              - --name
-              - "{{ cluster_name }}"
-              - --state
-              - "{{ kops_state_store }}"
-          loop: "{{ kops_cluster_names }}"
-          loop_control:
-            label: cluster/{{ cluster_name }}
-            loop_var: cluster_name
-          register: kops_get_cluster_results
-          changed_when: false
-          failed_when: false
+    - name: Validate cluster retrieval succeeded
+      ansible.builtin.assert:
+        that:
+          - kops_get_cluster_result.rc == 0
+        fail_msg: Failed to retrieve cluster information. Please verify that cluster exists.
+        success_msg: Retrieved cluster information.
 
-        - name: Validate cluster
-          ansible.builtin.command:
-            argv:
-              - kops
-              - validate
-              - cluster
-              - --name
-              - "{{ cluster_name }}"
-              - --state
-              - "{{ kops_state_store }}"
-              - --output
-              - json
-              - --wait
-              - 0s
-          loop: "{{ kops_cluster_names }}"
-          loop_control:
-            label: cluster/{{ cluster_name }}
-            loop_var: cluster_name
-          register: kops_validate_results
-          changed_when: false
-          failed_when: false
+    - name: Validate cluster
+      ansible.builtin.command:
+        argv:
+          - kops
+          - validate
+          - cluster
+          - --name
+          - "{{ kops_cluster_name }}"
+          - --state
+          - "{{ kops_state_store }}"
+          - --output
+          - json
+          - --wait
+          - 0s
+      register: kops_validate_result
+      changed_when: false
+      failed_when: false
 
-        - name: Display validation results
-          ansible.builtin.debug:
-            msg:
-              - "Cluster: {{ item.cluster_name }}"
-              - "{{ item.stdout | ansible.builtin.from_json }}"
-          loop: "{{ kops_validate_results.results }}"
-          loop_control:
-            label: cluster/{{ item.cluster_name }}
-          when:
-            - item.rc == 0
-            - item.stdout | ansible.builtin.length > 0
-          failed_when: false
-
-        - name: Collect failed clusters
-          ansible.builtin.set_fact:
-            failed_clusters: |-
-              {{
-                kops_validate_results.results |
-                selectattr('rc', '!=', 0) |
-                list +
-                kops_validate_results.results |
-                selectattr('rc', '==', 0) |
-                selectattr('stdout', '==', '') |
-                list
-              }}
-
-        - name: Display failed cluster summary
-          when:
-            - failed_clusters | ansible.builtin.length > 0
-          ansible.builtin.debug:
-            msg: |-
-
-              ==========================================
-              VALIDATION FAILURES SUMMARY
-              ==========================================
-              {{ failed_clusters | ansible.builtin.length }} cluster(s) failed validation:
-
-              {% for cluster in failed_clusters %}  - {{ cluster.cluster_name }}
-              {% endfor %}
-
-              Details:
-              {% for cluster in failed_clusters %}
-
-              Cluster: {{ cluster.cluster_name }}
-              Exit Code: {{ cluster.rc }}
-              {% if cluster.stderr | ansible.builtin.length > 0 %}
-              Error: {{ cluster.stderr }}
-              {% elif cluster.stdout | ansible.builtin.length > 0 %}
-              Output: {{ cluster.stdout }}
-              {% else %}
-              Error: No output received from validation (cluster may not be ready yet)
-              {% endif %}
-              {% endfor %}
-
-        - name: Display success summary
-          when:
-            - failed_clusters | ansible.builtin.length == 0
-          ansible.builtin.debug:
-            msg: |-
-
-              ==========================================
-              ✓ ALL CLUSTERS VALIDATED SUCCESSFULLY
-              ==========================================
-              {{ kops_validate_results.results | ansible.builtin.length }} cluster(s) passed validation
-
-    - name: Handle no clusters found
-      when:
-        - kops_cluster_names is not defined or kops_cluster_names | ansible.builtin.length == 0
-      block:
-        - name: Display message
-          ansible.builtin.debug:
-            msg: "No clusters found in state store."
+    - name: Display validation results
+      ansible.builtin.debug:
+        var: kops_validate_result.stdout | ansible.builtin.from_json

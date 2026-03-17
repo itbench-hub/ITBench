@@ -21,14 +21,19 @@ create-cluster: ## Creates a single cluster
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
 		--extra-vars "target=single-cluster"
 
-.PHONY: setup-docker-single
-setup-docker-single: ## Configures Docker registry and Kyverno on a single cluster
-	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "setup_docker" \
-		--extra-vars "target=single-cluster"
-
 .PHONY: get-cluster-kubeconfig
 get-cluster-kubeconfig: ## Exports the kubeconfig of a single cluster
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
+		--extra-vars "target=single-cluster"
+
+.PHONY: install-cluster-docker-registry
+install-cluster-docker-registry: get-cluster-kubeconfig ## Installs docker registry into single cluster
+	uv run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
+		--extra-vars "target=single-cluster"
+
+.PHONY: sync-cluster-group-vars
+sync-cluster-group-vars: get-cluster-kubeconfig ## Syncs the kubeconfig with the scenarios group variables
+	uv run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=single-cluster"
 
 .PHONY: destroy-cluster
@@ -45,14 +50,19 @@ create-awx-stack: ## Creates an AWX stack
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
 		--extra-vars "target=awx-stack"
 
-.PHONY: setup-docker
-setup-docker: ## Configures Docker registry and Kyverno on AWX stack clusters
-	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "setup_docker" \
-		--extra-vars "target=awx-stack"
-
 .PHONY: get-stack-kubeconfigs
 get-stack-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
 	uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
+		--extra-vars "target=awx-stack"
+
+.PHONY: install-stack-docker-registry
+install-stack-docker-registry: get-stack-kubeconfigs ## Installs docker registry into AWX stack clusters
+	uv run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
+		--extra-vars "target=awx-stack"
+
+.PHONY: sync-stack-group-vars
+sync-stack-group-vars: get-stack-kubeconfigs ## Syncs the kubeconfig with the scenarios group variables
+	uv run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=awx-stack"
 
 .PHONY: destroy-awx-stack
@@ -67,12 +77,12 @@ list-clusters: ## Lists all active clusters
 	uv run ansible-playbook -i inventory playbooks/list_kops_clusters.yaml
 
 .PHONY: validate-cluster
-validate-cluster: ## Displays the validation status of a cluster (or all clusters if CLUSTER_NAME not provided)
+validate-cluster: ## Displays the validation status of a cluster
 ifdef CLUSTER_NAME
 	uv run ansible-playbook -i inventory playbooks/validate_kops_cluster.yaml \
 		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
 else
-	uv run ansible-playbook -i inventory playbooks/validate_kops_cluster.yaml
+	@echo "Missing CLUSTER_NAME argument. Please run this command with this variable."
 endif
 
 .PHONY: fix-cluster

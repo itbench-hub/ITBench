@@ -12,6 +12,15 @@
       tags:
         - always
 
+    - name: Validate cluster name prefixs
+      ansible.builtin.assert:
+        that:
+          - runner.name.prefix != stack.name.prefix
+          - runner.name.prefix != (stack.name.prefix + "-head")
+          - runner.name.prefix != (stack.name.prefix + "-runner")
+        fail_msg: Invalid name prefix. Ensure that the stack and runner name prefixes are differnt.
+        success_msg: Name prefixes are valid.
+
     - name: Validate runners cluster count
       ansible.builtin.assert:
         that:

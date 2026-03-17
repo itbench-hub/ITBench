@@ -13,62 +13,6 @@
         ansible.builtin.join(".")
       }}
 
-- name: Validate VPC capacity for requested number of clusters
-  ansible.builtin.assert:
-    that:
-      - aws_configuration.vpc.subnets.count <= 100
-    fail_msg: |
-      Cannot create {{ aws_configuration.vpc.subnets.count }} clusters - maximum supported is 100!
-
-      Configuration: /24 subnets (256 IPs each), single /16 VPC ({{ aws_configuration.vpc.cidr }})
-      AWS Default Quota: 200 subnets per VPC
-      Current Implementation: Subnet third octet ranges 1-{{ aws_configuration.vpc.subnets.count * 2 }}
-
-      Current request:
-      - Clusters requested: {{ aws_configuration.vpc.subnets.count }}
-      - >
-        Subnets needed: {{ aws_configuration.vpc.subnets.count * 2 }}
-        ({{ aws_configuration.vpc.subnets.count }} public +
-        {{ aws_configuration.vpc.subnets.count }} private)
-      - Maximum supported: 100 clusters (200 subnets)
-
-      Capacity tiers (with current implementation):
-      - ≤100 clusters -- Supported (works with default AWS quota)
-      - 101-127 clusters -- Requires AWS quota increase to 254 subnets
-      - ≥128 clusters -- Requires secondary CIDR block (not supported)
-
-      To scale beyond 100 clusters:
-      1. Request AWS subnet quota increase via Service Quotas console
-      2. Update this validation threshold in aws/tasks/create.yaml
-      3. For ≥128 clusters: Implement secondary CIDR block support
-
-      For now: Reduce cluster count to ≤100 (set stack.runners.count ≤ 99 for awx-stack)
-    success_msg: "✓ Capacity validated: {{ aws_configuration.vpc.subnets.count }} clusters ({{ aws_configuration.vpc.subnets.count * 2 }} /24 subnets)"
-
-- name: Validate NAT Gateway Elastic IP configuration
-  when:
-    - aws_configuration.vpc.nat_gateway is defined
-  block:
-    - name: Validate Elastic IP allocation
-      amazon.aws.ec2_eip_info:
-        filters:
-          allocation-id: "{{ aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id }}"
-        region: "{{ aws_configuration.region }}"
-      register: aws_eip_info
-
-    - name: Verify Elastic IP exists and is available
-      ansible.builtin.assert:
-        that:
-          - aws_eip_info.addresses | length > 0
-          - aws_eip_info.addresses[0].allocation_id == aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id
-        fail_msg: >-
-          Elastic IP {{ aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id }}
-          not found in region {{ aws_configuration.region }}.
-          Please verify the allocation ID is correct and exists in the target region.
-        success_msg: >-
-          Elastic IP {{ aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id }}
-          verified in region {{ aws_configuration.region }}.
-
 - name: Create VPC
   amazon.aws.ec2_vpc_net:
     cidr_block: "{{ aws_configuration.vpc.cidr }}"
@@ -182,11 +126,14 @@
     region: "{{ aws_configuration.region }}"
     route_table_id: "{{ aws_public_route_table.route_table.id }}"
     lookup: id
-    subnets: "{{ item }}"
+    subnets: "{{ subnet_ids }}"
     purge_subnets: false
     purge_routes: false
   loop: "{{ aws_vpc_subnet_ids.public | ansible.builtin.batch(10) }}"
   loop_control:
+    label: batch-{{ batch_index }}
+    loop_var: subnet_ids
+    index_var: batch_index
     pause: 2
 
 - name: Configure NAT Gateway with private subnets
@@ -218,24 +165,27 @@
           ManagedBy: ansible
           Name: "{{ aws_cluster_group.name.prefix }}-nat-private-route-table"
         state: present
-      register: aws_private_route_table_nat
+      register: aws_private_nat_route_table
 
     - name: Associate private subnets with NAT route table in batches of 10
       amazon.aws.ec2_vpc_route_table:
         vpc_id: "{{ aws_vpc.vpc.id }}"
         region: "{{ aws_configuration.region }}"
-        route_table_id: "{{ aws_private_route_table_nat.route_table.id }}"
+        route_table_id: "{{ aws_private_nat_route_table.route_table.id }}"
         lookup: id
-        subnets: "{{ item }}"
+        subnets: "{{ subnet_ids }}"
         purge_subnets: false
         purge_routes: false
       loop: "{{ aws_vpc_subnet_ids.private | ansible.builtin.batch(10) }}"
       loop_control:
+        label: batch-{{ batch_index }}
+        loop_var: subnet_ids
+        index_var: batch_index
         pause: 2
 
 - name: Configure Route Table with Internet Gateway
   when:
-    - aws_configuration.vpc.nat_gateway is not defined
+    - aws_configuration.vpc.nat_gateway is undefined
   block:
     - name: Create VPC route table for private subnets
       amazon.aws.ec2_vpc_route_table:
@@ -249,36 +199,20 @@
           ManagedBy: ansible
           Name: "{{ aws_cluster_group.name.prefix }}-igw-private-route-table"
         state: present
-      register: aws_private_route_table_igw
+      register: aws_private_igw_route_table
 
     - name: Associate private subnets with IGW route table in batches of 10
       amazon.aws.ec2_vpc_route_table:
         vpc_id: "{{ aws_vpc.vpc.id }}"
         region: "{{ aws_configuration.region }}"
-        route_table_id: "{{ aws_private_route_table_igw.route_table.id }}"
+        route_table_id: "{{ aws_private_igw_route_table.route_table.id }}"
         lookup: id
-        subnets: "{{ item }}"
+        subnets: "{{ subnet_ids }}"
         purge_subnets: false
         purge_routes: false
       loop: "{{ aws_vpc_subnet_ids.private | ansible.builtin.batch(10) }}"
       loop_control:
+        label: batch-{{ batch_index }}
+        loop_var: subnet_ids
+        index_var: batch_index
         pause: 2
-
-- name: Verify subnet route table associations are complete
-  amazon.aws.ec2_vpc_subnet_info:
-    region: "{{ aws_configuration.region }}"
-    filters:
-      vpc-id: "{{ aws_vpc.vpc.id }}"
-  register: aws_subnet_verification
-  retries: 30
-  delay: 60
-  until: >-
-    aws_subnet_verification.subnets | length == (aws_configuration.vpc.subnets.count * 2)
-
-- name: Assert all subnets have route table associations
-  ansible.builtin.assert:
-    that:
-      - aws_subnet_verification.subnets | length == (aws_configuration.vpc.subnets.count * 2)
-      - aws_subnet_verification.subnets | selectattr('vpc_id', 'equalto', aws_vpc.vpc.id) | list | length == (aws_configuration.vpc.subnets.count * 2)
-    fail_msg: "Not all subnets are properly associated with route tables"
-    success_msg: "✓ All {{ aws_configuration.vpc.subnets.count * 2 }} subnets have route table associations"

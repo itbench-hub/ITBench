@@ -34,29 +34,13 @@
       changed_when: false
       failed_when: false
 
-    - name: Display validation command output for debugging
+    - name: Display revalidation results
       ansible.builtin.debug:
-        msg:
-          - "Exit Code: {{ kops_validate_result.rc }}"
-          - "Stdout Length: {{ kops_validate_result.stdout | length }}"
-          - "Stdout Content: {{ kops_validate_result.stdout }}"
-          - "Stderr: {{ kops_validate_result.stderr }}"
-
-    - name: Parse validation failures
-      ansible.builtin.set_fact:
-        kops_validation_failures: |-
-          {{
-            (kops_validate_result.stdout | ansible.builtin.from_json).failures | default([])
-            if kops_validate_result.stdout | length > 0
-            else []
-          }}
-
-    - name: Display stderr if validation failed
-      ansible.builtin.debug:
-        msg: "Validation error: {{ kops_validate_result.stderr }}"
-      when:
-        - kops_validate_result.rc != 0
-        - kops_validate_result.stderr | length > 0
+        var: displayed_results
+      vars:
+        displayed_results:
+          output: "{{ kops_validate_result.stdout | ansible.builtin.from_json }}"
+          error: "{{ kops_validate_result.stderr }}"
 
     - name: Check if cluster resources exist
       when:
@@ -65,61 +49,41 @@
       block:
         - name: Check for cluster instances
           amazon.aws.ec2_instance_info:
-            region: "{{ aws.region }}"
             filters:
               "tag:KubernetesCluster": "{{ kops_cluster_name }}"
-          register: cluster_instances
+            region: "{{ aws.region }}"
+          register: ec2_instances
 
-        - name: Display found instances
-          ansible.builtin.debug:
-            msg:
-              - "Found {{ cluster_instances.instances | length }} instance(s) for {{ kops_cluster_name }}"
-              - >-
-                {% for instance in cluster_instances.instances %}
-                - {{ instance.tags.Name }}: {{ instance.state.name }} ({{ instance.instance_id }})
-                {% endfor %}
+        - name: Retrieve all related network and application load balancers
+          amazon.aws.elb_application_lb_info:
+            region: "{{ aws.region }}"
+          register: elb_application_lbs
 
-        - name: Count running instances
+        - name: Gather information about all ELBs
+          amazon.aws.elb_classic_lb_info:
+            region: "{{ aws.region }}"
+          register: elb_classic_lbs
+
+        - name: Parse load balancers by cluster
           ansible.builtin.set_fact:
-            running_instances: "{{ cluster_instances.instances | selectattr('state.name', '==', 'running') | list }}"
-
-        - name: List all ELBs in region
-          ansible.builtin.command:
-            argv:
-              - aws
-              - elb
-              - describe-load-balancers
-              - --region
-              - "{{ aws.region }}"
-              - --output
-              - json
-          register: elb_list_result
-          changed_when: false
-          failed_when: false
-
-        - name: Filter ELB for cluster
-          ansible.builtin.set_fact:
-            cluster_elb_name: |-
+            load_balancers: |-
               {{
-                (elb_list_result.stdout | ansible.builtin.from_json).LoadBalancerDescriptions |
-                selectattr('DNSName', 'search', kops_cluster_name.split('.')[0]) |
-                map(attribute='LoadBalancerName') |
-                list |
-                first |
-                default('')
+                [
+                  elb_application_lbs.load_balancers |
+                  ansible.builtin.selectattr("tags.KubernetesCluster", defined) |
+                  ansible.builtin.selectattr("tags.KubernetesCluster", "==", kops_cluster_name)
+                ] +
+                [
+                  elb_classic_lbs.load_balancers |
+                  ansible.builtin.selectattr("tags.KubernetesCluster", defined) |
+                  ansible.builtin.selectattr("tags.KubernetesCluster", "==", kops_cluster_name)
+                ]
               }}
 
         - name: Recreate cluster resources if missing
           when:
-            - cluster_instances.instances | length == 0 or cluster_elb_name | length == 0
+            - (ec2_instances.instances | ansible.builtin.length == 0) or (load_balancers | ansible.builtin.length == 0)
           block:
-            - name: Display recreation message
-              ansible.builtin.debug:
-                msg: >-
-                  {{ 'No instances found' if cluster_instances.instances | length == 0
-                  else 'Instances exist but ELB missing' }} for {{ kops_cluster_name }}.
-                  Recreating cluster resources...
-
             - name: Run kops update cluster
               ansible.builtin.command:
                 argv:
@@ -131,16 +95,22 @@
                   - --state
                   - "{{ kops_state_store }}"
                   - --yes
-              register: kops_update_result
               changed_when: true
-
-            - name: Display update result
-              ansible.builtin.debug:
-                msg: "Cluster resources created. Waiting 5 minutes for instances to launch..."
 
             - name: Wait for instances to launch
               ansible.builtin.pause:
                 minutes: 5
+
+    - name: Parse validation failures
+      ansible.builtin.set_fact:
+        kops_validation_failures: |-
+          {{
+            (
+              kops_validate_result.stdout |
+              ansible.builtin.from_json
+            ).failures |
+            ansible.builtin.default([])
+          }}
 
     - name: Terminate machines with errors
       vars:
@@ -177,15 +147,10 @@
       changed_when: false
       failed_when: false
 
-    - name: Display validation results
+    - name: Display revalidation results
       ansible.builtin.debug:
-        msg: "{{ kops_revalidate_result.stdout | ansible.builtin.from_json }}"
-      when:
-        - kops_revalidate_result.stdout | length > 0
-
-    - name: Display revalidation error if failed
-      ansible.builtin.debug:
-        msg: "Revalidation error: {{ kops_revalidate_result.stderr }}"
-      when:
-        - kops_revalidate_result.rc != 0
-        - kops_revalidate_result.stderr | length > 0
+        var: displayed_results
+      vars:
+        displayed_results:
+          output: "{{ kops_revalidate_result.stdout | ansible.builtin.from_json }}"
+          error: "{{ kops_revalidate_result.stderr }}"

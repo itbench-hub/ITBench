@@ -1,0 +1,93 @@
+---
+- name: Sync kubeconfig with scenarios group variables
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Validate target variable
+      ansible.builtin.assert:
+        that:
+          - target in ["awx-stack", "single-cluster"]
+        fail_msg: Invalid target provided. Please provide valid target.
+        success_msg: Valid target provided.
+  tasks:
+    - name: Retrieve exported kubeconfig(s)
+      ansible.builtin.find:
+        path: "{{ kubeconfig_directory | ansible.builtin.realpath }}"
+        patterns:
+          - "{{ filename_prefix }}-*"
+      register: kubeconfig_paths
+      vars:
+        filename_prefix: "{{ runner.name.prefix if target == 'single-cluster' else stack.name.prefix }}"
+        kubeconfig_directory: "{{ playbook_dir }}/../kubeconfigs"
+
+    - name: Write environment group variables
+      when:
+        - target == "single-cluster"
+      block:
+        - name: Validate the existence of kubeconfig
+          ansible.builtin.assert:
+            that:
+              - kubeconfig_paths.matched == 1
+            fail_msg: Unable to find kubeconfig. Please ensure that cluster kubeconfig has been exported.
+            success_msg: Located kubeconfig.
+
+        - name: Write environment group variables
+          ansible.builtin.copy:
+            content: |-
+              {{
+                (
+                  {
+                    "cluster": {
+                      "kubeconfig": kubeconfig_paths.files[0].path
+                    }
+                  }
+                ) |
+                ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
+              }}
+            dest: "{{ group_vars_path | ansible.builtin.realpath }}"
+            mode: "0644"
+          vars:
+            group_vars_path: "{{ playbook_dir }}/../../../scenarios/sre/group_vars/environment/cluster.yaml"
+
+    - name: Write runner group variables
+      when:
+        - target == "awx-stack"
+      block:
+        - name: Validate the existence of kubeconfig
+          ansible.builtin.assert:
+            that:
+              - kubeconfig_paths.matched == 1 + stack.runners.count
+            fail_msg: Unable to find kubeconfigs. Please ensure that cluster kubeconfigs has been exported.
+            success_msg: Located kubeconfigs.
+
+        - name: Write runner group variables
+          ansible.builtin.copy:
+            content: |-
+              {{
+                (
+                  {
+                    "stack": {
+                      "awx": {
+                        "kubeconfig": (
+                          kubeconfig_paths.files |
+                          ansible.builtin.selectattr("path", "search", stack.name.prefix + "-head") |
+                          map(attribute="path") |
+                          ansible.builtin.first
+                        )
+                      },
+                      "runners": {
+                        "kubeconfigs": (
+                          kubeconfig_paths.files |
+                          ansible.builtin.select("search", stack.name.prefix + "-runner") |
+                          map(attribute="path")
+                        )
+                      }
+                    }
+                  }
+                ) |
+                ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
+              }}
+            dest: "{{ group_vars_path | ansible.builtin.realpath }}"
+            mode: "0644"
+          vars:
+            group_vars_path: "{{ playbook_dir }}/../../../scenarios/sre/group_vars/runner/stack.yaml"
