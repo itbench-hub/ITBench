@@ -1,28 +1,5 @@
 ---
-- name: Retrieve the Jaeger traces recorder StatefulSet
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: StatefulSet
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    namespace: "{{ recorders_namespace.name }}"
-    name: jaeger-traces-recorder
-  register: recorders_jaeger_statefulset_info
-
-- name: Scale down Jaeger traces recorder to stop writes
-  kubernetes.core.k8s:
-    api_version: apps/v1
-    kind: StatefulSet
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    name: jaeger-traces-recorder
-    namespace: "{{ recorders_namespace.name }}"
-    definition:
-      spec:
-        replicas: 0
-    state: patched
-  when:
-    - recorders_jaeger_statefulset_info.resources | length == 1
-
-- name: Wait for recorder pod to terminate
+- name: Retrieve the traces recorder pod name
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Pod
@@ -31,82 +8,18 @@
     label_selectors:
       - app.kubernetes.io/name = jaeger-traces-recorder
       - app.kubernetes.io/part-of = it-bench
-  register: recorders_jaeger_pods_check
-  until: recorders_jaeger_pods_check.resources | length == 0
-  retries: 60
-  delay: 5
-  when:
-    - recorders_jaeger_statefulset_info.resources | length == 1
+  register: recorders_jaeger_pods_info
 
-- name: Ensure local directory exists
-  ansible.builtin.file:
-    path: /tmp/traces
-    state: directory
-    mode: "0755"
-  when:
-    - recorders_jaeger_statefulset_info.resources | length == 1
-
-- name: Create temporary pod to access PVC
-  kubernetes.core.k8s:
+- name: Copy records directory from pod
+  kubernetes.core.k8s_cp:
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    definition:
-      apiVersion: v1
-      kind: Pod
-      metadata:
-        name: jaeger-data-exporter
-        namespace: "{{ recorders_namespace.name }}"
-        labels:
-          app.kubernetes.io/name: jaeger-data-exporter
-          app.kubernetes.io/part-of: it-bench
-      spec:
-        restartPolicy: Never
-        containers:
-          - name: exporter
-            image: registry.access.redhat.com/ubi9/python-312:9.7-1771432204
-            command: ["sleep", "3600"]
-            volumeMounts:
-              - name: data
-                mountPath: /data
-        volumes:
-          - name: data
-            persistentVolumeClaim:
-              claimName: jaeger-trace-records-jaeger-traces-recorder-0
-    state: present
-    wait: true
-    wait_condition:
-      type: Ready
-      status: "True"
-    wait_timeout: 120
+    local_path: /tmp/traces
+    namespace: "{{ recorders_jaeger_pods_info.resources[0].metadata.namespace }}"
+    pod: "{{ recorders_jaeger_pods_info.resources[0].metadata.name }}"
+    remote_path: /opt/app-root/src/records
+    state: from_pod
   when:
-    - recorders_jaeger_statefulset_info.resources | length == 1
-
-- name: Copy records directory from temporary pod
-  ansible.builtin.shell: |
-    set -o pipefail
-    kubectl exec \
-      --kubeconfig={{ recorders_cluster.kubeconfig | ansible.builtin.expanduser }} \
-      -n {{ recorders_namespace.name }} \
-      jaeger-data-exporter \
-      -- tar cf - -C /data --exclude='lost+found' . | \
-    tar xf - -C /tmp/traces/
-  args:
-    executable: /bin/bash
-  register: recorders_jaeger_copy_output
-  changed_when: recorders_jaeger_copy_output.rc == 0
-  when:
-    - recorders_jaeger_statefulset_info.resources | length == 1
-
-- name: Delete temporary exporter pod
-  kubernetes.core.k8s:
-    api_version: v1
-    kind: Pod
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    name: jaeger-data-exporter
-    namespace: "{{ recorders_namespace.name }}"
-    state: absent
-    wait: true
-  when:
-    - recorders_jaeger_statefulset_info.resources | length == 1
+    - recorders_jaeger_pods_info.resources | length == 1
 
 - name: Uninstall Jaeger Traces Recorder
   kubernetes.core.k8s:

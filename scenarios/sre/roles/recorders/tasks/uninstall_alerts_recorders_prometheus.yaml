@@ -1,28 +1,5 @@
 ---
-- name: Retrieve the Prometheus alert recorder StatefulSet
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: StatefulSet
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    namespace: "{{ recorders_namespace.name }}"
-    name: prometheus-alert-recorder
-  register: recorders_prometheus_statefulset_info
-
-- name: Scale down Prometheus alert recorder to stop writes
-  kubernetes.core.k8s:
-    api_version: apps/v1
-    kind: StatefulSet
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    name: prometheus-alert-recorder
-    namespace: "{{ recorders_namespace.name }}"
-    definition:
-      spec:
-        replicas: 0
-    state: patched
-  when:
-    - recorders_prometheus_statefulset_info.resources | length == 1
-
-- name: Wait for recorder pod to terminate
+- name: Retrieve the alert recorder pod name
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Pod
@@ -31,82 +8,18 @@
     label_selectors:
       - app.kubernetes.io/name = prometheus-alert-recorder
       - app.kubernetes.io/part-of = it-bench
-  register: recorders_prometheus_pods_check
-  until: recorders_prometheus_pods_check.resources | length == 0
-  retries: 60
-  delay: 5
-  when:
-    - recorders_prometheus_statefulset_info.resources | length == 1
+  register: recorders_prometheus_pods_info
 
-- name: Ensure local directory exists
-  ansible.builtin.file:
-    path: /tmp/alerts
-    state: directory
-    mode: "0755"
-  when:
-    - recorders_prometheus_statefulset_info.resources | length == 1
-
-- name: Create temporary pod to access PVC
-  kubernetes.core.k8s:
+- name: Copy records directory from pod
+  kubernetes.core.k8s_cp:
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    definition:
-      apiVersion: v1
-      kind: Pod
-      metadata:
-        name: prometheus-data-exporter
-        namespace: "{{ recorders_namespace.name }}"
-        labels:
-          app.kubernetes.io/name: prometheus-data-exporter
-          app.kubernetes.io/part-of: it-bench
-      spec:
-        restartPolicy: Never
-        containers:
-          - name: exporter
-            image: registry.access.redhat.com/ubi9/python-312:9.7-1771432204
-            command: ["sleep", "3600"]
-            volumeMounts:
-              - name: data
-                mountPath: /data
-        volumes:
-          - name: data
-            persistentVolumeClaim:
-              claimName: prometheus-alert-records-prometheus-alert-recorder-0
-    state: present
-    wait: true
-    wait_condition:
-      type: Ready
-      status: "True"
-    wait_timeout: 120
+    local_path: /tmp/alerts
+    namespace: "{{ recorders_prometheus_pods_info.resources[0].metadata.namespace }}"
+    pod: "{{ recorders_prometheus_pods_info.resources[0].metadata.name }}"
+    remote_path: /opt/app-root/src/records
+    state: from_pod
   when:
-    - recorders_prometheus_statefulset_info.resources | length == 1
-
-- name: Copy records directory from temporary pod
-  ansible.builtin.shell: |
-    set -o pipefail
-    kubectl exec \
-      --kubeconfig={{ recorders_cluster.kubeconfig | ansible.builtin.expanduser }} \
-      -n {{ recorders_namespace.name }} \
-      prometheus-data-exporter \
-      -- tar cf - -C /data --exclude='lost+found' . | \
-    tar xf - -C /tmp/alerts/
-  args:
-    executable: /bin/bash
-  register: recorders_prometheus_copy_output
-  changed_when: recorders_prometheus_copy_output.rc == 0
-  when:
-    - recorders_prometheus_statefulset_info.resources | length == 1
-
-- name: Delete temporary exporter pod
-  kubernetes.core.k8s:
-    api_version: v1
-    kind: Pod
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    name: prometheus-data-exporter
-    namespace: "{{ recorders_namespace.name }}"
-    state: absent
-    wait: true
-  when:
-    - recorders_prometheus_statefulset_info.resources | length == 1
+    - recorders_prometheus_pods_info.resources | length == 1
 
 - name: Uninstall Prometheus Alert Recorder
   kubernetes.core.k8s:
