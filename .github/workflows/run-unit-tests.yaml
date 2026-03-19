@@ -17,6 +17,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  environment-recorders:
+    name: ITBench Environment Recorders Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: astral-sh/setup-uv@v7.6.0
+      - uses: actions/setup-go@v6.3.0
+        with:
+          go-version-file: clusters/kind/go.mod
+          cache-dependency-path: clusters/kind/go.sum
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Create group vars
+        run: |
+          make -C scenarios/sre group-vars
+      - name: Create Kind cluster
+        run: |
+          make -C clusters/kind create-simple-cluster
+      - name: Run unit tests
+        run: |
+          make -C scenarios/sre test-unit-recorders
+      - name: Destroy Kind cluster
+        run: |
+          make -C clusters/kind destroy-simple-cluster
   environment-tools:
     name: ITBench Environment Tools Tests
     runs-on: ubuntu-24.04
@@ -95,31 +120,6 @@ jobs:
       - name: Run unit tests
         run: |
           make -C scenarios/sre test-unit-faults
-      - name: Destroy Kind cluster
-        run: |
-          make -C clusters/kind destroy-simple-cluster
-  sre-recorders:
-    name: SRE Recorders Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6.0.2
-      - uses: astral-sh/setup-uv@v7.6.0
-      - uses: actions/setup-go@v6.3.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-      - name: Create Kind cluster
-        run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Run unit tests
-        run: |
-          make -C scenarios/sre test-unit-recorders
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
