@@ -69,6 +69,11 @@
                     memory: 1Gi
                   limits:
                     memory: 15Gi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
                 volumeMounts:
                   - name: dependencies
                     mountPath: /opt/app-root/src/deps
@@ -81,6 +86,9 @@
             restartPolicy: Never
             securityContext:
               fsGroup: 1001
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
             volumes:
               - name: scripts
                 configMap:
@@ -101,6 +109,9 @@
     deps_basename: "{{ python_recorder.scripts.requirements_file_path | ansible.builtin.basename }}"
     script_basename: "{{ python_recorder.scripts.scripts_file_path | ansible.builtin.basename }}"
 
+# NOTE: Always deploy a job to begin data collection immediately.
+#       The CronJob will only begin collect according to the schedule.
+
 - name: Install Kubernetes Job for {{ python_recorder.name }}
   kubernetes.core.k8s:
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
@@ -116,8 +127,6 @@
           ansible.builtin.combine({"ttlSecondsAfterFinished": 10})
         }}
     state: present
-  when:
-    - python_recorder.job.schedule is undefined
 
 - name: Install Kubernetes CronJob for {{ python_recorder.name }}
   kubernetes.core.k8s:

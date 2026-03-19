@@ -59,11 +59,20 @@
                         memory: 50Mi
                       limits:
                         memory: 100Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop:
+                          - ALL
                     volumeMounts:
                       - name: records
                         mountPath: /opt/app-root/src/records
                 securityContext:
                   fsGroup: 1001
+                  runAsUser: 1001
+                  runAsNonRoot: true
+                  seccompProfile:
+                    type: RuntimeDefault
                 volumes:
                   - name: records
                     persistentVolumeClaim:
@@ -92,14 +101,19 @@
         fail_msg: Unable to find recorder exporter pod. Please ensure deployment exists.
         success_msg: Found recorder exporter pod.
 
-    - name: Copy records directory from pod
-      kubernetes.core.k8s_cp:
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-        local_path: "{{ recorders_export_directory.path }}"
-        namespace: "{{ recorders_pods.resources[0].metadata.namespace }}"
-        pod: "{{ recorders_pods.resources[0].metadata.name }}"
-        remote_path: /opt/app-root/src/records
-        state: from_pod
+    # NOTE: `kubectl` is used in place of the `kubernetes.core` module because
+    #       the copy command produces an error.
+
+    - name: Copy records from pod
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - cp
+          - "{{ recorders_pods.resources[0].metadata.namespace }}/{{ recorders_pods.resources[0].metadata.name }}:/opt/app-root/src/records"
+          - "{{ recorders_export_directory.path }}"
+          - --kubeconfig={{ recorders_cluster.kubeconfig | ansible.builtin.expanduser }}
+      register: recorders_copy_result
+      changed_when: recorders_copy_result.rc == 0
 
     - name: Delete Deployment
       kubernetes.core.k8s:
@@ -119,24 +133,39 @@
   register: recorders_exported_files
 
 - name: Copy exported data into local directory
-  ansible.builtin.copy:
-    dest: |-
-      {{
-        [
-          recorders_storage.local.directory,
-          python_recorder.export.path,
-          (record.path | ansible.builtin.basename)
-        ] |
-        ansible.builtin.path_join
-      }}
-    mode: "0644"
-    src: "{{ record.path }}"
-  loop: "{{ recorders_exported_files.files }}"
-  loop_control:
-    label: file/{{ record.path | ansible.builtin.basename }}
-    loop_var: record
   when:
     - recorders_storage.local is defined
+  block:
+    - name: Create local directory for exported data
+      ansible.builtin.file:
+        mode: "0755"
+        path: |-
+          {{
+            [
+              recorders_storage.local.directory,
+              python_recorder.export.path
+            ] |
+            ansible.builtin.path_join
+          }}
+        state: directory
+      register: recorders_local_directory
+
+    - name: Copy exported data into local directory
+      ansible.builtin.copy:
+        dest: |-
+          {{
+            [
+              recorders_local_directory.path,
+              (record.path | ansible.builtin.basename)
+            ] |
+            ansible.builtin.path_join
+          }}
+        mode: "0644"
+        src: "{{ record.path }}"
+      loop: "{{ recorders_exported_files.files }}"
+      loop_control:
+        label: file/{{ record.path | ansible.builtin.basename }}
+        loop_var: record
 
 - name: Upload exported data to S3 bucket
   amazon.aws.s3_object:

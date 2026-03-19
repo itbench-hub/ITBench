@@ -998,6 +998,9 @@ def main():
     # Clean up the endpoint if it has protocol
     endpoint = endpoint.replace("https://", "").replace("http://", "")
 
+    # Clean up the endpoint if it has port
+    endpoint = endpoint.replace(":8123", "")
+
     if endpoint is None or username is None or password is None:
         sys.exit(
             "error: CLICKHOUSE_ENDPOINT, USERNAME and PASSWORD environment variables are not set"
