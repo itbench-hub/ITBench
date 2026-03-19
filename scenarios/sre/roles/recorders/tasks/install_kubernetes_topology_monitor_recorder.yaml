@@ -1,0 +1,31 @@
+---
+- name: Wait for any ongoing jobs to be removed
+  kubernetes.core.k8s_info:
+    api_version: batch/v1
+    kind: Job
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    name: "{{ recorders_managers.data_recorders.instances.kubernetes_topology_monitor }}"
+    namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+  register: recorders_job
+  until:
+    - recorders_job.resources | ansible.builtin.length == 0
+  retries: 8
+  delay: 15
+
+- name: Import recorder deployment tasks
+  ansible.builtin.import_tasks:
+    file: deploy_python_recorder.yaml
+  vars:
+    python_recorder:
+      job:
+        environment_variables:
+          - name: FILENAME_ANNOTATION
+            value: "{{ recorders_file_name_prefixes.kubernetes_topology_monitor[recorders_configuration.phase] }}"
+          - name: KUBERNETES_TOPOLOGY_MONITOR_ENDPOINT
+            value: "{{ tools_kubernetes_topology_monitor_endpoint.http }}"
+      name: "{{ recorders_managers.data_recorders.instances.kubernetes_topology_monitor }}"
+      scripts:
+        requirements_file_path: "files/scripts/kubernetes_topology_monitor/requirements.txt"
+        scripts_file_path: "files/scripts/kubernetes_topology_monitor/gather.py"
+      volume:
+        size: 5Gi

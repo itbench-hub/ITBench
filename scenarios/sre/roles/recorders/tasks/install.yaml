@@ -6,38 +6,52 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ recorders_namespace.name }}"
+        labels:
+          "pod-security.kubernetes.io/audit": restricted
+          "pod-security.kubernetes.io/audit-version": v1.35
+          "pod-security.kubernetes.io/enforce": restricted
+          "pod-security.kubernetes.io/enforce-version": v1.35
+          "pod-security.kubernetes.io/warn": restricted
+          "pod-security.kubernetes.io/warn-version": v1.35
+        name: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
     state: present
 
-- name: Import tools role for variable setting tasks
-  ansible.builtin.import_role:
-    name: tools
-    tasks_from: set_internal_endpoints
-  vars:
-    tools_cluster:
-      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-      platform: "{{ recorders_cluster.platform }}"
-
-- name: Import alert recorder installation tasks
-  ansible.builtin.import_tasks:
-    file: install_alerts_recorders.yaml
+- name: Create SRE and FinOps related recorders
   when:
-    - recorders_required.alerts is defined
+    - (
+        (recorders_configuration.tools.finops.enabled | ansible.builtin.default(false)) or
+        (recorders_configuration.tools.sre.enabled | ansible.builtin.default(false))
+      )
+  block:
+    - name: Import tools role for variable setting tasks
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: set_internal_endpoints
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+          platform: "{{ recorders_cluster.platform }}"
 
-- name: Import topology recorder installation tasks
-  ansible.builtin.import_tasks:
-    file: install_topology_recorders.yaml
-  when:
-    - recorders_required.topology is defined
+    - name: Import Clickhouse Recorder installation tasks
+      ansible.builtin.import_tasks:
+        file: install_clickhouse_recorder.yaml
 
-- name: Import traces recorder installation tasks
-  ansible.builtin.import_tasks:
-    file: install_traces_recorders.yaml
-  when:
-    - recorders_required.traces is defined
+    - name: Import Jaeger Recorder installation tasks
+      ansible.builtin.import_tasks:
+        file: install_jaeger_recorder.yaml
+      when:
+        - recorders_configuration.phase == "pre-fault-injection"
 
-- name: Import unified recorders installation tasks
-  ansible.builtin.import_tasks:
-    file: install_unified_recorders.yaml
-  when:
-    - recorders_required.unified is defined
+    - name: Import Prometheus Recorder installation tasks
+      ansible.builtin.import_tasks:
+        file: install_prometheus_recorder.yaml
+      when:
+        - recorders_configuration.phase == "pre-fault-injection"
+
+    - name: Install SRE specific recorders
+      when:
+        - tools_configuration.sre.enabled | ansible.builtin.default(false)
+      block:
+        - name: Import Kubernetes Topology Monitor Recorder installation tasks
+          ansible.builtin.import_tasks:
+            file: install_kubernetes_topology_monitor_recorder.yaml

@@ -88,42 +88,35 @@ def main():
     session.mount("http://", adapter)
     session.mount("https://", adapter)
 
-    while True:
-        current_datetime = datetime.now()
-        last_datetime = current_datetime - timedelta(seconds=300)
-        next_datetime = current_datetime + timedelta(seconds=300)
+    current_datetime = datetime.now()
+    last_datetime = current_datetime - timedelta(seconds=300)
 
-        traces = []
+    time_window = (
+        "{0}000Z".format(last_datetime.isoformat(timespec='microseconds')),
+        "{0}000Z".format(current_datetime.isoformat(timespec='microseconds'))
+    )
 
-        time_window = (
-            "{0}000Z".format(last_datetime.isoformat(timespec='microseconds')),
-            "{0}000Z".format(current_datetime.isoformat(timespec='microseconds'))
-        )
+    services = get_services(session, endpoint, headers)
+    logger.info("retrieved {0} services from jaeger".format(len(services)))
 
-        services = get_services(session, endpoint, headers)
-        logger.info("retrieved {0} services from jaeger".format(len(services)))
+    traces = []
 
-        for service in services:
-            operations = get_operations(session, endpoint, headers, service)
-            logger.info("retrieved {0} operations from jaeger".format(len(operations)))
+    for service in services:
+        operations = get_operations(session, endpoint, headers, service)
+        logger.info("retrieved {0} operations from jaeger".format(len(operations)))
 
-            for operation in operations:
-                t = get_traces(session, endpoint, headers, service, operation, time_window)
-                logger.info("retrieved {0} traces from jaeger".format(len(t)))
+        for operation in operations:
+            t = get_traces(session, endpoint, headers, service, operation, time_window)
+            logger.info("retrieved {0} traces from jaeger".format(len(t)))
 
-                traces.extend(t)
+            traces.extend(t)
 
-        if len(traces) > 0:
-            timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H-%M-%S.%f')
-            file_path = os.path.join(os.path.expanduser("~"), "records", "traces_at_{0}.json".format(timestamp))
+    if len(traces) > 0:
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H-%M-%S.%f')
+        file_path = os.path.join(os.path.expanduser("~"), "records", "traces_at_{0}.json".format(timestamp))
 
-            with open(file_path, "w") as f:
-                json.dump(traces, f, indent=4)
-
-        sleep_interval = (next_datetime - datetime.now()).total_seconds()
-        if sleep_interval > 0:
-            logger.debug("sleep for {0} seconds".format(sleep_interval))
-            time.sleep(sleep_interval)
+        with open(file_path, "w") as f:
+            json.dump(traces, f, indent=4)
 
 if __name__ == "__main__":
     main()

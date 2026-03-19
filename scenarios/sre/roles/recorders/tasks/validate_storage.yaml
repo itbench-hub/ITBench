@@ -1,0 +1,33 @@
+---
+- name: Validate that at least one storage option is defined
+  ansible.builtin.assert:
+    that:
+      - recorders_storage.local is defined or recorders_storage.s3 is defined
+    fail_msg: Storage options incorrectly configured. Please ensure at least one option is defined.
+    success_msg: Storage options configured correctly.
+
+- name: Validate that local directory exists
+  ansible.builtin.assert:
+    that:
+      - recorders_storage.local.directory is ansible.builtin.directory
+    fail_msg: Local storage options incorrectly configured. Please ensure directory exists.
+    success_msg: Local storage options configured correctly.
+  when:
+    - recorders_storage.local is defined
+
+- name: Validate that s3 bucket exists
+  when:
+    - recorders_storage.s3 is defined
+  block:
+    - name: Retrieve AWS S3 bucket
+      amazon.aws.s3_bucket_info:
+        endpoint_url: "{{ recorders_storage.s3.endpoint }}"
+        name: "{{ recorders_storage.s3.bucket }}"
+      register: recorders_aws_buckets
+
+    - name: Assert bucket exists
+      ansible.builtin.assert:
+        that:
+          - recorders_storage.s3.bucket in (recorders_aws_buckets.buckets | map(attribute="name"))
+        fail_msg: Unable to find AWS S3 bucket. Please ensure that S3 bucket exists.
+        success_msg: Found AWS S3 bucket.

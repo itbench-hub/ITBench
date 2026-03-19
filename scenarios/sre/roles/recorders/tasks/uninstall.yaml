@@ -1,27 +1,80 @@
 ---
-- name: Import alert recorder uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_alerts_recorders.yaml
-  when:
-    - recorders_required.alerts is defined
+- name: Retrieve CronJobs
+  kubernetes.core.k8s_info:
+    api_version: batch/v1
+    kind: CronJob
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+  register: recorders_cronjobs
 
-- name: Import topology recorder uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_topology_recorders.yaml
-  when:
-    - recorders_required.topology is defined
+- name: Suspend all CronJobs
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ cronjob.apiVersion }}"
+      kind: "{{ cronjob.kind }}"
+      metadata:
+        name: "{{ cronjob.metadata.name }}"
+        namespace: "{{ cronjob.metadata.namespace }}"
+      spec:
+        suspend: true
+    state: patched
+  loop: "{{ recorders_cronjobs.resources }}"
+  loop_control:
+    label: cronjob/{{ cronjob.metadata.name }}
+    loop_var: cronjob
 
-- name: Import traces recorder uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_traces_recorders.yaml
-  when:
-    - recorders_required.traces is defined
+- name: Wait for any ongoing jobs to be removed
+  kubernetes.core.k8s_info:
+    api_version: batch/v1
+    kind: Job
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+  register: recorders_job
+  until:
+    - recorders_job.resources | ansible.builtin.length == 0
+  retries: 8
+  delay: 15
 
-- name: Import unified recorders uninstallation tasks
+- name: Import storage validation tasks
   ansible.builtin.import_tasks:
-    file: uninstall_unified_recorders.yaml
-  when:
-    - recorders_required.unified is defined
+    file: validate_storage.yaml
+
+- name: Import recorder export tasks
+  ansible.builtin.import_tasks:
+    file: copy_python_recorder_files.yaml
+  vars:
+    python_recorder:
+      export:
+        path: observability_information_from_clickhouse
+      name: "{{ recorders_managers.data_recorders.instances.clickhouse }}"
+
+- name: Import recorder export tasks
+  ansible.builtin.import_tasks:
+    file: copy_python_recorder_files.yaml
+  vars:
+    python_recorder:
+      export:
+        path: trace_information
+      name: "{{ recorders_managers.data_recorders.instances.jaeger }}"
+
+- name: Import recorder export tasks
+  ansible.builtin.import_tasks:
+    file: copy_python_recorder_files.yaml
+  vars:
+    python_recorder:
+      export:
+        path: topology_information
+      name: "{{ recorders_managers.data_recorders.instances.kubernetes_topology_monitor }}"
+
+- name: Import recorder export tasks
+  ansible.builtin.import_tasks:
+    file: copy_python_recorder_files.yaml
+  vars:
+    python_recorder:
+      export:
+        path: alerts
+      name: "{{ recorders_managers.data_recorders.instances.prometheus }}"
 
 - name: Delete the namespace
   kubernetes.core.k8s:
@@ -30,6 +83,6 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ recorders_namespace.name }}"
+        name: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
     state: absent
     wait: true

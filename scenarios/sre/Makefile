@@ -131,6 +131,10 @@ test-unit-agent: ## Runs agent access unit tests
 test-unit-faults: ## Runs fault injection unit tests
 	cd roles/faults && uv run molecule test --all --report --command-borders
 
+.PHONY: test-unit-recorders
+test-unit-recorders: ## Runs recorder installation unit tests
+	cd roles/recorders && uv run molecule test --all --report --command-borders
+
 .PHONY: test-unit-tools
 test-unit-tools: ## Runs tool installation unit tests
 	cd roles/tools && uv run molecule test --all --report --command-borders
