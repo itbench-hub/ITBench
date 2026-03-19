@@ -1,0 +1,30 @@
+---
+- name: Uninstall recorders
+  hosts:
+    - environment
+  tasks:
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: false
+
+    - name: Import recorders role
+      ansible.builtin.import_role:
+        name: recorders
+        tasks_from: uninstall.yaml
+      vars:
+        recorders_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+        recorders_storage:
+          local:
+            directory: /tmp/recorders-test
+
+    - name: Delete temporary directory
+      ansible.builtin.file:
+        path: /tmp/recorders-test
+        state: absent

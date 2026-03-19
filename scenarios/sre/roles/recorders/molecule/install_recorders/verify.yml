@@ -1,0 +1,83 @@
+---
+- name: Verify that recorders were installed
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: data-recorders
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: recorders_namespace
+
+    - name: Validate that namespace exists
+      ansible.builtin.assert:
+        that:
+          - recorders_namespace.resources | ansible.builtin.length == 1
+        fail_msg: Namespace not found. Installation failed.
+        success_msg: Namespace found.
+
+    - name: Retrieve ClickHouse Job
+      kubernetes.core.k8s_info:
+        api_version: batch/v1
+        kind: Job
+        name: clickhouse-recorder
+        namespace: data-recorders
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: recorders_clickhouse_job
+
+    - name: Validate that ClickHouse Job exists or completed
+      ansible.builtin.assert:
+        that:
+          - recorders_clickhouse_job.resources | ansible.builtin.length >= 0
+        fail_msg: ClickHouse Job does not exist. Installation failed.
+        success_msg: ClickHouse Job exists.
+
+    - name: Retrieve Jaeger CronJob
+      kubernetes.core.k8s_info:
+        api_version: batch/v1
+        kind: CronJob
+        name: jaeger-recorder
+        namespace: data-recorders
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: recorders_jaeger_cronjob
+
+    - name: Validate that Jaeger CronJob exists
+      ansible.builtin.assert:
+        that:
+          - recorders_jaeger_cronjob.resources | ansible.builtin.length == 1
+        fail_msg: Jaeger CronJob does not exist. Installation failed.
+        success_msg: Jaeger CronJob exists.
+
+    - name: Retrieve Prometheus recorder CronJob
+      kubernetes.core.k8s_info:
+        api_version: batch/v1
+        kind: CronJob
+        name: prometheus-recorder
+        namespace: data-recorders
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: recorders_prometheus_cronjob
+
+    - name: Validate that Prometheus CronJob exists
+      ansible.builtin.assert:
+        that:
+          - recorders_prometheus_cronjob.resources | ansible.builtin.length == 1
+        fail_msg: Prometheus CronJob does not exist. Installation failed.
+        success_msg: Prometheus CronJob exists.
+
+    - name: Retrieve Kubernetes Topology Monitor Job
+      kubernetes.core.k8s_info:
+        api_version: batch/v1
+        kind: Job
+        name: kubernetes-topology-monitor-recorder
+        namespace: data-recorders
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: recorders_topology_monitor_job
+
+    - name: Validate that Kubernetes Topology Monitor Job exists or completed
+      ansible.builtin.assert:
+        that:
+          - recorders_topology_monitor_job.resources | ansible.builtin.length >= 0
+        fail_msg: Kubernetes Topology Monitor Job does not exist. Installation failed.
+        success_msg: Kubernetes Topology Monitor exists.

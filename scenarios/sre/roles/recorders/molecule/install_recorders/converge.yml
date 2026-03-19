@@ -1,0 +1,26 @@
+---
+- name: Install recorders
+  hosts:
+    - environment
+  tasks:
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: false
+
+    - name: Import recorders role
+      ansible.builtin.import_role:
+        name: recorders
+      vars:
+        recorders_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+        recorders_configuration:
+          phase: pre-fault-injection
+          tools:
+            sre:
+              enabled: true
