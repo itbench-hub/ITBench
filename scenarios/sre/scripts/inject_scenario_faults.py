@@ -69,13 +69,6 @@ def main():
         )
         runners.append(runner)
 
-        is_async_task = spec["spec"]["faults"][faults_index].get("async", True)
-
-        if not is_async_task:
-            while runner[-1].status not in ["canceled", "successful", "timeout", "failed"]:
-                time.sleep(1)
-                continue
-
     for r in runners:
         logger.debug("waiting for runner to complete tasks")
 
