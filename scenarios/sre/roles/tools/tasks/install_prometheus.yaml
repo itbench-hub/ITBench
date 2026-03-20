@@ -30,6 +30,14 @@
             enabled: false
           grafana:
             enabled: false
+          kube-state-metrics:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.itbench.io/sandbox
+                          operator: DoesNotExist
           prometheusOperator:
             admissionWebhooks:
               affinity:
@@ -71,6 +79,8 @@
               routePrefix: /prometheus
           customRules:
             KubeContainerWaiting:
+              for: 5m
+            KubeDeploymentRolloutStuck:
               for: 5m
             KubeHpaMaxedOut:
               for: 5m
