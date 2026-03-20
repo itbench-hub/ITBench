@@ -109,40 +109,66 @@
     deps_basename: "{{ python_recorder.scripts.requirements_file_path | ansible.builtin.basename }}"
     script_basename: "{{ python_recorder.scripts.scripts_file_path | ansible.builtin.basename }}"
 
-# NOTE: Always deploy a job to begin data collection immediately.
-#       The CronJob will only begin collect according to the schedule.
+- name: Install Job for {{ python_recorder.name }}
+  when:
+    - python_recorder.job.schedule is undefined
+  block:
+    - name: Install Kubernetes Job for {{ python_recorder.name }}
+      kubernetes.core.k8s:
+        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            labels:
+              "app.kubernetes.io/managed-by": ITBench
+              "app.kubernetes.io/name": "{{ python_recorder.name }}"
+            name: "{{ python_recorder.name }}"
+            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+          spec: |-
+            {{
+              recorders_job_spec.spec |
+              ansible.builtin.combine({"ttlSecondsAfterFinished": 10})
+            }}
+        state: present
 
-- name: Install Kubernetes Job for {{ python_recorder.name }}
-  kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: batch/v1
-      kind: Job
-      metadata:
-        name: "{{ python_recorder.name }}"
-        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
-      spec: |-
-        {{
-          recorders_job_spec.spec |
-          ansible.builtin.combine({"ttlSecondsAfterFinished": 10})
-        }}
-    state: present
-
-- name: Install Kubernetes CronJob for {{ python_recorder.name }}
-  kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: batch/v1
-      kind: CronJob
-      metadata:
-        name: "{{ python_recorder.name }}"
-        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
-      spec:
-        failedJobsHistoryLimit: 0
-        jobTemplate:
-          spec: "{{ recorders_job_spec.spec }}"
-        schedule: "{{ python_recorder.job.schedule }}"
-        successfulJobsHistoryLimit: 0
-    state: present
+- name: Install Scheduled Jobs for {{ python_recorder.name }}
   when:
     - python_recorder.job.schedule is defined
+  block:
+    # NOTE: Always deploy a job to begin data collection immediately.
+    #       The CronJob will only begin collect according to the schedule.
+
+    - name: Install Kubernetes Job for {{ python_recorder.name }}
+      kubernetes.core.k8s:
+        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            labels:
+              "app.kubernetes.io/component": "{{ python_recorder.name }}"
+              "app.kubernetes.io/managed-by": ITBench
+              "app.kubernetes.io/name": "{{ python_recorder.name }}-init"
+            name: "{{ python_recorder.name }}-init"
+            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+          spec: "{{ recorders_job_spec.spec }}"
+        state: present
+
+    - name: Install Kubernetes CronJob for {{ python_recorder.name }}
+      kubernetes.core.k8s:
+        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: batch/v1
+          kind: CronJob
+          metadata:
+            labels:
+              "app.kubernetes.io/managed-by": ITBench
+              "app.kubernetes.io/name": "{{ python_recorder.name }}"
+            name: "{{ python_recorder.name }}"
+            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+          spec:
+            jobTemplate:
+              spec: "{{ recorders_job_spec.spec }}"
+            schedule: "{{ python_recorder.job.schedule }}"
+        state: present

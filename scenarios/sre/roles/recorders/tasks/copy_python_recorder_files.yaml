@@ -101,8 +101,8 @@
         fail_msg: Unable to find recorder exporter pod. Please ensure deployment exists.
         success_msg: Found recorder exporter pod.
 
-    # NOTE: `kubectl` is used in place of the `kubernetes.core` module because
-    #       the copy command produces an error.
+    # NOTE: `kubectl` is used in place of the `kubernetes.core` collection because
+    #       the `k8_cp` module has an internal error when using it.
 
     - name: Copy records from pod
       ansible.builtin.command:
@@ -114,6 +114,8 @@
           - --kubeconfig={{ recorders_cluster.kubeconfig | ansible.builtin.expanduser }}
       register: recorders_copy_result
       changed_when: recorders_copy_result.rc == 0
+      retries: 8
+      delay: 15
 
     - name: Delete Deployment
       kubernetes.core.k8s:
