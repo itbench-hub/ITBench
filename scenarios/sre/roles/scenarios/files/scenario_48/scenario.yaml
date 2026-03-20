@@ -16,6 +16,16 @@ spec:
               metadata:
                 name: book-info
           id: disabled-istio-ambient-mode-kubernetes-namespace
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: productpage-v1
+                  namespace: book-info
+            id: delete-workload-pods
   tools:
     sre:
       enabled: true

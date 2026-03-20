@@ -19,6 +19,16 @@ spec:
                 name: frontend
                 namespace: otel-demo
           id: misconfigured-kubernetes-workload-container-readiness-probe
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: cart
+                  namespace: otel-demo
+            id: delete-workload-pods
   tools:
     sre:
       enabled: true

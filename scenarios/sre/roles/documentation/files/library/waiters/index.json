@@ -3,6 +3,60 @@
         "arguments": {
             "jsonSchema": {
                 "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "Deletes all the pods associated with a Kubernetes workload.",
+        "id": "delete-workload-pods",
+        "name": "Delete Workload Pods",
+        "platform": "Kubernetes"
+    },
+    {
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
                     "seconds": {
                         "minimum": 0,
                         "type": "integer"

@@ -158,6 +158,16 @@
               name: product-catalog
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: nonexistent-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: product-catalog
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: delete-workload-pods
   environment:
     applications:
       - id: opentelemetry-demo
@@ -182,6 +192,16 @@
               name: checkout
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: unsupported-architecture-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: checkout
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: delete-workload-pods
   environment:
     applications:
       - id: opentelemetry-demo
@@ -519,6 +539,16 @@
                   workers: 10
               duration: 55s
         id: scheduled-chaos-mesh-experiment
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: cart
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: delete-workload-pods
   environment:
     applications:
       - id: opentelemetry-demo
@@ -693,6 +723,16 @@
             metadata:
               name: {{ applications_managers.book_info.kubernetes.namespace }}
         id: disabled-istio-ambient-mode-kubernetes-namespace
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: productpage-v1
+                  namespace: {{ applications_managers.book_info.kubernetes.namespace }}
+            id: delete-workload-pods
   environment:
     applications:
       - id: book-info
@@ -717,6 +757,16 @@
               name: frontend
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: misconfigured-kubernetes-workload-container-readiness-probe
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: cart
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: delete-workload-pods
   environment:
     applications:
       - id: opentelemetry-demo

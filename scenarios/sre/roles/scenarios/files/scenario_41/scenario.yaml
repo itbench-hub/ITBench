@@ -41,6 +41,16 @@ spec:
                     workers: 10
               type: StressChaos
           id: scheduled-chaos-mesh-experiment
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: cart
+                  namespace: otel-demo
+            id: delete-workload-pods
   tools:
     sre:
       enabled: true

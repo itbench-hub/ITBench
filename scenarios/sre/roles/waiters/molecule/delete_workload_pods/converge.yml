@@ -1,0 +1,36 @@
+---
+- name: Run waiter tasks
+  hosts:
+    - environment
+  tasks:
+    - name: Import waiters role for Deployment
+      ansible.builtin.import_role:
+        name: waiters
+      vars:
+        waiters_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        waiters_tasks:
+          - id: delete-workload-pods
+            args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: test-deployment
+                  namespace: delete-workload-pods-test
+
+    - name: Import waiters role for StatefulSet
+      ansible.builtin.import_role:
+        name: waiters
+      vars:
+        waiters_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        waiters_tasks:
+          - id: delete-workload-pods
+            args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: StatefulSet
+                metadata:
+                  name: test-statefulset
+                  namespace: delete-workload-pods-test
