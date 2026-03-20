@@ -16,64 +16,26 @@
     fail_msg: Unable to find workload. Please ensure that workload exists.
     success_msg: Workload verified.
 
-- name: Delete Deployment pods
-  when:
-    - waiters_workload.resources[0].kind == "Deployment"
-  block:
-    - name: Update Deployment with `Recreate` strategy
-      kubernetes.core.k8s:
-        kubeconfig: "{{ waiters_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: "{{ waiters_workload.resources[0].apiVersion }}"
-          kind: "{{ waiters_workload.resources[0].kind }}"
-          metadata:
-            name: "{{ waiters_workload.resources[0].metadata.name }}"
-            namespace: "{{ waiters_workload.resources[0].metadata.namespace }}"
-          spec:
-            strategy:
-              type: Recreate
-              rollingUpdate:
-        state: patched
+- name: Scale workload to 0 replicas
+  kubernetes.core.k8s_scale:
+    api_version: "{{ waiters_workload.resources[0].apiVersion }}"
+    kind: "{{ waiters_workload.resources[0].kind }}"
+    kubeconfig: "{{ waiters_cluster.kubeconfig }}"
+    name: "{{ waiters_workload.resources[0].metadata.name }}"
+    namespace: "{{ waiters_workload.resources[0].metadata.namespace }}"
+    replicas: 0
+    wait: true
+    wait_timeout: 120
 
-    - name: Update Deployment with original strategy
-      kubernetes.core.k8s:
-        kubeconfig: "{{ waiters_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: "{{ waiters_workload.resources[0].apiVersion }}"
-          kind: "{{ waiters_workload.resources[0].kind }}"
-          metadata:
-            name: "{{ waiters_workload.resources[0].metadata.name }}"
-            namespace: "{{ waiters_workload.resources[0].metadata.namespace }}"
-          spec:
-            strategy: "{{ waiters_workload.resources[0].spec.strategy }}"
-        state: patched
+# NOTE: Since the workload may not be in a working state, the
+#       following action does not wait for a success.
 
-- name: Delete StatefulSet pods
-  when:
-    - waiters_workload.resources[0].kind == "StatefulSet"
-  block:
-    - name: Retrieve associated Kubernetes Pods
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Pod
-        kubeconfig: "{{ waiters_cluster.kubeconfig }}"
-        label_selectors: "{{ waiters_workload.resources[0].spec.selector.matchLabels.items() | map('join', ' = ') }}"
-        namespace: "{{ waiters_workload.resources[0].metadata.namespace }}"
-      register: waiters_pods
-
-    - name: Delete associated Kubernetes Pods
-      kubernetes.core.k8s:
-        kubeconfig: "{{ waiters_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: "{{ pod.apiVersion }}"
-          kind: "{{ pod.kind }}"
-          metadata:
-            name: "{{ pod.metadata.name }}"
-            namespace: "{{ pod.metadata.namespace }}"
-        state: absent
-      loop: "{{ waiters_pods.resources }}"
-      loop_control:
-        label: pod/{{ pod.metadata.name }}
-        loop_var: pod
-      when:
-        - pod.status.phase == "Running"
+- name: Scale workload to original replica count
+  kubernetes.core.k8s_scale:
+    api_version: "{{ waiters_workload.resources[0].apiVersion }}"
+    kind: "{{ waiters_workload.resources[0].kind }}"
+    kubeconfig: "{{ waiters_cluster.kubeconfig }}"
+    name: "{{ waiters_workload.resources[0].metadata.name }}"
+    namespace: "{{ waiters_workload.resources[0].metadata.namespace }}"
+    replicas: "{{ waiters_workload.resources[0].spec.replicas }}"
+    wait: false

@@ -3,76 +3,138 @@
   hosts:
     - environment
   tasks:
-    - name: Retrieve Deployment after pod deletion
+    - name: Retrieve standard Deployment after pod deletion
       kubernetes.core.k8s_info:
         kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: apps/v1
         kind: Deployment
-        name: test-deployment
+        name: test-deployment-standard
         namespace: delete-workload-pods-test
-      register: waiters_deployment
+      register: waiters_deployment_standard
 
-    - name: Validate that Deployment exists
+    - name: Validate that standard Deployment exists
       ansible.builtin.assert:
         that:
-          - waiters_deployment.resources | ansible.builtin.length == 1
-        fail_msg: Deployment not found after pod deletion.
-        success_msg: Deployment still exists after pod deletion.
+          - waiters_deployment_standard.resources | ansible.builtin.length == 1
+        fail_msg: Standard Deployment not found after pod deletion.
+        success_msg: Standard Deployment still exists after pod deletion.
 
-    - name: Retrieve Deployment pods after deletion
+    - name: Retrieve standard Deployment pods after deletion
       kubernetes.core.k8s_info:
         kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: v1
         kind: Pod
         namespace: delete-workload-pods-test
         label_selectors:
-          - app.kubernetes.io/name = test-deployment
-      register: waiters_deployment_pods
+          - app.kubernetes.io/name = test-deployment-standard
+      register: waiters_deployment_standard_pods
 
-    - name: Validate that Deployment pods were recreated and do not exceed replica count
+    - name: Validate that standard Deployment pods were recreated and do not exceed replica count
       ansible.builtin.assert:
         that:
-          - waiters_deployment_pods.resources | ansible.builtin.length > 0
-          - (
-              waiters_deployment_pods.resources | ansible.builtin.length
-            ) <=
-            (
-              waiters_deployment.resources[0].status.unavailableReplicas +
-              waiters_deployment.resources[0].status.replicas
-            )
-        fail_msg: Deployment pod count validation failed. Found {{ waiters_deployment_pods.resources | ansible.builtin.length }} pods.
-        success_msg: Deployment pods were deleted and new pods exist within replica count limits.
+          - waiters_deployment_standard_pods.resources | ansible.builtin.length > 0
+          - waiters_deployment_standard_pods.resources | ansible.builtin.length <= waiters_deployment_standard.resources[0].status.replicas
+        fail_msg: Standard Deployment pod count validation failed. Found {{ waiters_deployment_standard_pods.resources | ansible.builtin.length }} pods.
+        success_msg: Standard Deployment pods were deleted and new pods exist within replica count limits.
 
-    - name: Retrieve StatefulSet after pod deletion
+    - name: Retrieve pending Deployment after pod deletion
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: test-deployment-pending
+        namespace: delete-workload-pods-test
+      register: waiters_deployment_pending
+
+    - name: Validate that pending Deployment exists
+      ansible.builtin.assert:
+        that:
+          - waiters_deployment_pending.resources | ansible.builtin.length == 1
+        fail_msg: Pending Deployment not found after pod deletion.
+        success_msg: Pending Deployment still exists after pod deletion.
+
+    - name: Retrieve pending Deployment pods after deletion
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Pod
+        namespace: delete-workload-pods-test
+        label_selectors:
+          - app.kubernetes.io/name = test-deployment-pending
+      register: waiters_deployment_pending_pods
+
+    - name: Validate that pending Deployment pods were recreated and do not exceed replica count
+      ansible.builtin.assert:
+        that:
+          - waiters_deployment_pending_pods.resources | ansible.builtin.length > 0
+          - waiters_deployment_pending_pods.resources | ansible.builtin.length <= waiters_deployment_pending.resources[0].status.replicas
+        fail_msg: Pending Deployment pod count validation failed. Found {{ waiters_deployment_pending_pods.resources | ansible.builtin.length }} pods.
+        success_msg: Pending Deployment pods were deleted and new pods exist within replica count limits.
+
+    - name: Retrieve standard StatefulSet after pod deletion
       kubernetes.core.k8s_info:
         kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: apps/v1
         kind: StatefulSet
-        name: test-statefulset
+        name: test-statefulset-standard
         namespace: delete-workload-pods-test
-      register: waiters_statefulset
+      register: waiters_statefulset_standard
 
-    - name: Validate that StatefulSet exists
+    - name: Validate that standard StatefulSet exists
       ansible.builtin.assert:
         that:
-          - waiters_statefulset.resources | ansible.builtin.length == 1
-        fail_msg: StatefulSet not found after pod deletion.
-        success_msg: StatefulSet still exists after pod deletion.
+          - waiters_statefulset_standard.resources | ansible.builtin.length == 1
+        fail_msg: Standard StatefulSet not found after pod deletion.
+        success_msg: Standard StatefulSet still exists after pod deletion.
 
-    - name: Retrieve StatefulSet pods after deletion
+    - name: Retrieve standard StatefulSet pods after deletion
       kubernetes.core.k8s_info:
         kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: v1
         kind: Pod
         namespace: delete-workload-pods-test
         label_selectors:
-          - app.kubernetes.io/name = test-statefulset
-      register: waiters_statefulset_pods
+          - app.kubernetes.io/name = test-statefulset-standard
+      register: waiters_statefulset_standard_pods
 
-    - name: Validate that StatefulSet pods were recreated and do not exceed replica count
+    - name: Validate that standard StatefulSet pods were recreated and do not exceed replica count
       ansible.builtin.assert:
         that:
-          - waiters_statefulset_pods.resources | ansible.builtin.length > 0
-          - waiters_statefulset_pods.resources | ansible.builtin.length <= waiters_statefulset.resources[0].status.replicas
-        fail_msg: StatefulSet pod count validation failed. Found {{ waiters_statefulset_pods.resources | ansible.builtin.length }} pods.
-        success_msg: StatefulSet pods were deleted and new pods exist within replica count limits.
+          - waiters_statefulset_standard_pods.resources | ansible.builtin.length > 0
+          - waiters_statefulset_standard_pods.resources | ansible.builtin.length <= waiters_statefulset_standard.resources[0].status.replicas
+        fail_msg: Standard StatefulSet pod count validation failed. Found {{ waiters_statefulset_standard_pods.resources | ansible.builtin.length }} pods.
+        success_msg: Standard StatefulSet pods were deleted and new pods exist within replica count limits.
+
+    - name: Retrieve pending StatefulSet after pod deletion
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: StatefulSet
+        name: test-statefulset-pending
+        namespace: delete-workload-pods-test
+      register: waiters_statefulset_pending
+
+    - name: Validate that pending StatefulSet exists
+      ansible.builtin.assert:
+        that:
+          - waiters_statefulset_pending.resources | ansible.builtin.length == 1
+        fail_msg: Pending StatefulSet not found after pod deletion.
+        success_msg: Pending StatefulSet still exists after pod deletion.
+
+    - name: Retrieve pending StatefulSet pods after deletion
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Pod
+        namespace: delete-workload-pods-test
+        label_selectors:
+          - app.kubernetes.io/name = test-statefulset-pending
+      register: waiters_statefulset_pending_pods
+
+    - name: Validate that pending StatefulSet pods were recreated and do not exceed replica count
+      ansible.builtin.assert:
+        that:
+          - waiters_statefulset_pending_pods.resources | ansible.builtin.length > 0
+          - waiters_statefulset_pending_pods.resources | ansible.builtin.length <= waiters_statefulset_pending.resources[0].status.replicas
+        fail_msg: Pending StatefulSet pod count validation failed. Found {{ waiters_statefulset_pending_pods.resources | ansible.builtin.length }} pods.
+        success_msg: Pending StatefulSet pods were deleted and new pods exist within replica count limits.
