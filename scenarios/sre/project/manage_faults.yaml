@@ -1,0 +1,87 @@
+---
+- name: Manage SRE and FinOps Scenario Faults
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Validate faults_index variable
+      ansible.builtin.assert:
+        that:
+          - faults_index is defined
+        fail_msg: Invalid index provided. Please provide valid index.
+        success_msg: Valid index provided.
+      tags:
+        - inject_faults
+
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+      tags:
+        - always
+      vars:
+        system_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+  tasks:
+    - name: Import role variables from scenario
+      tags:
+        - inject_faults
+      vars:
+        faults_idx: "{{ faults_index | ansible.builtin.default('0') | ansible.builtin.int }}"
+      when:
+        - scenario_id is defined
+      block:
+        - name: Import scenarios role
+          ansible.builtin.import_role:
+            name: scenarios
+          vars:
+            scenarios_identifier: "{{ scenario_id }}"
+
+        - name: Validate injection index
+          ansible.builtin.assert:
+            that:
+              - faults_idx < (scenarios_scenario.spec.faults | ansible.builtin.length)
+            fail_msg: Invalid fault index. Please ensure that the index is correct.
+            success_msg: Valid fault index.
+
+        - name: Create fault injections variable
+          ansible.builtin.set_fact:
+            faults_injection_tasks: |-
+              {{
+                scenarios_scenario.spec.faults[faults_idx].injections |
+                ansible.builtin.default([])
+              }}
+
+        - name: Create waiter variables
+          ansible.builtin.set_fact:
+            waiters_pre_injection_tasks: |-
+              {{
+                scenarios_scenario.spec.faults[faults_idx].waitFor.preInjection |
+                ansible.builtin.default([])
+              }}
+            waiters_post_injection_tasks: |-
+              {{
+                scenarios_scenario.spec.faults[faults_idx].waitFor.postInjection |
+                ansible.builtin.default([])
+              }}
+
+    - name: Import waiters role
+      ansible.builtin.import_role:
+        name: waiters
+      vars:
+        waiters_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        waiters_tasks: "{{ waiters_pre_injection_tasks | ansible.builtin.default([]) }}"
+
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import waiters role
+      ansible.builtin.import_role:
+        name: waiters
+      vars:
+        waiters_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        waiters_tasks: "{{ waiters_post_injection_tasks | ansible.builtin.default([]) }}"
