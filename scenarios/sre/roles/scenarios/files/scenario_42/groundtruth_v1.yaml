@@ -6,49 +6,21 @@ metadata:
 spec:
   alerts:
     - group_id: payment-service-1
-      id: NoRequestsReceived
+      id: NoRequestsDetected
       metadata:
         description: Payment service receiving no requests after pod eviction
     - group_id: checkout-service-1
-      id: HighRequestErrorRate
+      id: RequestErrorRate
       metadata:
         description: Checkout service experiencing connection failures to payment
     - group_id: frontend-service-1
-      id: HighRequestErrorRate
+      id: RequestErrorRate
       metadata:
         description: Frontend service errors due to payment unavailability
-    - group_id: frontend-proxy-service-1
-      id: HighRequestErrorRate
-      metadata:
-        description: Frontend-proxy errors cascade from frontend service failures
     - group_id: payment-pod-1
-      id: KubePodNotReady
+      id: PendingPodsDetected
       metadata:
         description: Payment pods stuck in Pending state after eviction
-    - group_id: shipping-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Shipping receives no requests - checkout flow blocked
-    - group_id: email-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Email receives no requests - checkout flow blocked
-    - group_id: accounting-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Accounting receives no requests - no orders created
-    - group_id: fraud-detection-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Fraud detection receives no requests - checkout flow blocked
-    - group_id: quote-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Quote receives no requests - shipping blocked
-    - group_id: accounting-service-1
-      id: NoDatabaseOperations
-      metadata:
-        description: Accounting performs no database operations - no orders to process
   aliases:
     - - payment-service-1
       - payment-pod-1
@@ -56,12 +28,6 @@ spec:
       - checkout-pod-1
     - - frontend-service-1
       - frontend-pod-1
-    - - frontend-proxy-service-1
-    - - shipping-service-1
-    - - email-service-1
-    - - accounting-service-1
-    - - fraud-detection-service-1
-    - - quote-service-1
   fault:
     - category: Resource
       condition: High-priority pods deployed causing eviction of lower-priority payment pods
@@ -107,36 +73,6 @@ spec:
       id: frontend-pod-1
       kind: Pod
       namespace: otel-demo
-    - filter:
-        - frontend-proxy\b
-      id: frontend-proxy-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - shipping\b
-      id: shipping-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - email\b
-      id: email-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - accounting\b
-      id: accounting-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - fraud-detection\b
-      id: fraud-detection-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - quote\b
-      id: quote-service-1
-      kind: Service
-      namespace: otel-demo
   propagations:
     - condition: High-priority pods consume resources causing payment pod eviction
       effect: Payment pods evicted and unable to reschedule
@@ -154,34 +90,6 @@ spec:
       effect: Frontend displays payment errors to users
       source: payment-service-1
       target: frontend-service-1
-    - condition: Frontend experiencing errors from checkout failures
-      effect: Frontend-proxy experiences cascading errors
-      source: frontend-service-1
-      target: frontend-proxy-service-1
-    - condition: Checkout fails due to payment unavailability
-      effect: Shipping service receives no requests from checkout
-      source: checkout-service-1
-      target: shipping-service-1
-    - condition: Checkout fails due to payment unavailability
-      effect: Email service receives no order confirmation requests
-      source: checkout-service-1
-      target: email-service-1
-    - condition: Checkout fails due to payment unavailability
-      effect: Accounting service receives no order events
-      source: checkout-service-1
-      target: accounting-service-1
-    - condition: Checkout fails due to payment unavailability
-      effect: Fraud detection receives no order events
-      source: checkout-service-1
-      target: fraud-detection-service-1
-    - condition: Shipping receives no requests
-      effect: Quote service receives no shipping quote requests
-      source: shipping-service-1
-      target: quote-service-1
-    - condition: Accounting receives no order events
-      effect: Accounting performs no database operations
-      source: checkout-service-1
-      target: accounting-service-1
   recommendedActions:
     - solution:
         actions:

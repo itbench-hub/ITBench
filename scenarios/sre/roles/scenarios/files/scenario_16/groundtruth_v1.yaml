@@ -6,62 +6,13 @@ metadata:
 spec:
   alerts:
     - group_id: shipping-service-1
-      id: HighRequestErrorRate
+      id: RequestLatency
       metadata:
-        description: Shipping service errors due to connection failures to quote service
-    - group_id: checkout-service-1
-      id: HighRequestErrorRate
-      metadata:
-        description: Checkout errors cascade from shipping service failures
-    - group_id: frontend-service-1
-      id: HighRequestErrorRate
-      metadata:
-        description: Frontend errors cascade from checkout service failures
-    - group_id: frontend-proxy-service-1
-      id: HighRequestErrorRate
-      metadata:
-        description: Frontend-proxy errors cascade from frontend service failures
-    - group_id: payment-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Payment receives no requests - checkout flow blocked by shipping failure
-    - group_id: email-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Email receives no requests - checkout flow never completes
-    - group_id: currency-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Currency receives no requests - checkout flow blocked
-    - group_id: fraud-detection-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Fraud detection receives no requests - no orders created
-    - group_id: quote-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Quote receives no requests - shipping cannot call it
-    - group_id: accounting-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Accounting receives no requests - no orders created
-    - group_id: accounting-service-1
-      id: NoDatabaseOperations
-      metadata:
-        description: Accounting performs no database operations - no orders to process
+        description: Latency in service shipping in namespace otel-demo is above 1500ms
   aliases:
     - - shipping-service-1
       - shipping-pod-1
       - shipping-deployment-1
-    - - checkout-service-1
-    - - frontend-service-1
-    - - frontend-proxy-service-1
-    - - payment-service-1
-    - - email-service-1
-    - - currency-service-1
-    - - fraud-detection-service-1
-    - - quote-service-1
-    - - accounting-service-1
   fault:
     - category: Change
       condition: QUOTE_ADDR environment variable set to incorrect port 0000
@@ -87,96 +38,11 @@ spec:
       id: shipping-pod-1
       kind: Pod
       namespace: otel-demo
-    - filter:
-        - checkout\b
-      id: checkout-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - frontend\b
-      id: frontend-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - frontend-proxy
-      id: frontend-proxy-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - payment\b
-      id: payment-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - email\b
-      id: email-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - currency\b
-      id: currency-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - fraud-detection\b
-      id: fraud-detection-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - quote\b
-      id: quote-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - accounting\b
-      id: accounting-service-1
-      kind: Service
-      namespace: otel-demo
   propagations:
     - condition: Shipping service cannot connect to quote service due to incorrect QUOTE_ADDR port configuration
       effect: Shipping service experiences high latency while attempting to connect to invalid port
       source: shipping-deployment-1
       target: shipping-service-1
-    - condition: Shipping service latency causes connection failures
-      effect: Checkout service experiences errors when calling shipping service
-      source: shipping-service-1
-      target: checkout-service-1
-    - condition: Checkout service errors from shipping failures
-      effect: Frontend service experiences errors when calling checkout service
-      source: checkout-service-1
-      target: frontend-service-1
-    - condition: Frontend service errors from checkout failures
-      effect: Frontend-proxy experiences errors from frontend service failures
-      source: frontend-service-1
-      target: frontend-proxy-service-1
-    - condition: Checkout fails due to shipping service errors
-      effect: Payment service receives no requests from checkout
-      source: checkout-service-1
-      target: payment-service-1
-    - condition: Checkout fails due to shipping service errors
-      effect: Email service receives no order confirmation requests
-      source: checkout-service-1
-      target: email-service-1
-    - condition: Checkout fails due to shipping service errors
-      effect: Currency service receives no conversion requests
-      source: checkout-service-1
-      target: currency-service-1
-    - condition: Checkout fails due to shipping service errors
-      effect: Fraud detection receives no order events
-      source: checkout-service-1
-      target: fraud-detection-service-1
-    - condition: Shipping cannot connect to quote service
-      effect: Quote service receives no shipping quote requests
-      source: shipping-service-1
-      target: quote-service-1
-    - condition: No orders created due to checkout failure
-      effect: Accounting service receives no order events
-      source: checkout-service-1
-      target: accounting-service-1
-    - condition: Accounting receives no order events
-      effect: Accounting performs no database operations
-      source: checkout-service-1
-      target: accounting-service-1
   recommendedActions:
     - solution:
         actions:

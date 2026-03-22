@@ -6,13 +6,9 @@ metadata:
 spec:
   alerts:
     - group_id: payment-pod-1
-      id: KubePodNotReady
+      id: PendingPodsDetected
       metadata:
         description: Payment pods stuck in Pending state due to unsatisfiable anti-affinity rules
-    - group_id: payment-deployment-1
-      id: KubeDeploymentRolloutStuck
-      metadata:
-        description: Payment deployment rollout stuck due to pods unable to schedule
   aliases:
     - - payment-service-1
       - payment-pod-1
@@ -31,11 +27,6 @@ spec:
       kind: Service
       namespace: otel-demo
     - filter:
-        - payment\b
-      id: payment-deployment-1
-      kind: Deployment
-      namespace: otel-demo
-    - filter:
         - payment-.*
       id: payment-pod-1
       kind: Pod
@@ -46,10 +37,6 @@ spec:
       effect: Pods unable to schedule and stuck in Pending state
       source: payment-anti-affinity
       target: payment-pod-1
-    - condition: New pods cannot be scheduled due to anti-affinity constraints
-      effect: Deployment rollout becomes stuck unable to create required replicas
-      source: payment-pod-1
-      target: payment-deployment-1
     - condition: Reduced number of payment pods available to serve traffic
       effect: Payment service has insufficient capacity
       source: payment-pod-1

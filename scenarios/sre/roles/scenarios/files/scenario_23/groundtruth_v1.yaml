@@ -5,71 +5,21 @@ metadata:
   name: scenario-23
 spec:
   alerts:
-    - group_id: frontend-service-1
-      id: HighRequestErrorRate
-      metadata:
-        description: Frontend service error rate above threshold due to checkout unavailability
-    - group_id: frontend-proxy-service-1
-      id: HighRequestErrorRate
-      metadata:
-        description: Frontend-proxy service error rate above threshold due to checkout unavailability
     - group_id: checkout-pod-1
-      id: KubePodNotReady
+      id: PendingPodsDetected
       metadata:
-        description: Pods in not ready state for checkout service
-    - group_id: checkout-pod-1
-      id: KubeContainerWaiting
-      metadata:
-        description: Checkout container waiting due to unsupported architecture image
-    - group_id: payment-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Payment receives no requests - checkout unavailable
-    - group_id: shipping-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Shipping receives no requests - checkout unavailable
-    - group_id: email-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Email receives no requests - checkout unavailable
-    - group_id: checkout-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Checkout receives no requests - service has no healthy endpoints
-    - group_id: currency-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Currency receives no requests - checkout unavailable
-    - group_id: fraud-detection-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Fraud detection receives no requests - no orders created
-    - group_id: quote-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Quote receives no requests - shipping blocked
-    - group_id: accounting-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Accounting receives no requests - no orders created
-    - group_id: accounting-service-1
-      id: NoDatabaseOperations
-      metadata:
-        description: Accounting performs no database operations - no orders to process
+        description: Pods in pending state for checkout service
   aliases:
     - - checkout-service-1
       - checkout-pod-1
-    - - checkout-pod-1
-      - checkout-deployment-1
   fault:
     - category: Change
-      condition: Invalid architecture image specified in deployment
+      condition: To Be Specified
       entity:
-        group_id: checkout-deployment-1
-        kind: Deployment
-        name: checkout
-      fault_mechanism: unsupported-architecture-kubernetes-workload-container-image
+        group_id: checkout-pod-1
+        kind: Pod
+        name: checkout-pod-1
+      fault_mechanism: custom
   groups:
     - filter:
         - checkout-.*
@@ -87,100 +37,15 @@ spec:
       id: checkout-service-1
       kind: Service
       namespace: otel-demo
-    - filter:
-        - frontend\b
-      id: frontend-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - frontend-proxy\b
-      id: frontend-proxy-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - payment\b
-      id: payment-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - shipping\b
-      id: shipping-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - email\b
-      id: email-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - currency\b
-      id: currency-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - fraud-detection\b
-      id: fraud-detection-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - quote\b
-      id: quote-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - accounting\b
-      id: accounting-service-1
-      kind: Service
-      namespace: otel-demo
   propagations:
-    - condition: checkout deployment updated to point to an invalid architecture image
-      effect: checkout pod enters ImagePullBackOff state
+    - condition: checkout deployment updated to point to an invalid image - incorrect architecture
+      effect: checkout pod is in ImagePullBackOff error
       source: checkout-deployment-1
       target: checkout-pod-1
-    - condition: checkout service has zero healthy endpoints after forced restart
-      effect: frontend service experiences request errors when calling checkout
-      source: checkout-pod-1
-      target: frontend-service-1
-    - condition: checkout service has zero healthy endpoints
-      effect: checkout service receives no requests - all connections refused
+    - condition: checkout pod is in ImagePullBackOff error
+      effect: ""
       source: checkout-pod-1
       target: checkout-service-1
-    - condition: frontend service experiences errors
-      effect: frontend-proxy service experiences request errors
-      source: frontend-service-1
-      target: frontend-proxy-service-1
-    - condition: Checkout service unavailable - no healthy endpoints
-      effect: Payment service receives no requests from checkout
-      source: checkout-service-1
-      target: payment-service-1
-    - condition: Checkout service unavailable - no healthy endpoints
-      effect: Shipping service receives no requests from checkout
-      source: checkout-service-1
-      target: shipping-service-1
-    - condition: Checkout service unavailable - no healthy endpoints
-      effect: Email service receives no order confirmation requests
-      source: checkout-service-1
-      target: email-service-1
-    - condition: Checkout service unavailable - no healthy endpoints
-      effect: Currency service receives no conversion requests
-      source: checkout-service-1
-      target: currency-service-1
-    - condition: No orders created due to checkout unavailability
-      effect: Fraud detection receives no order events
-      source: checkout-service-1
-      target: fraud-detection-service-1
-    - condition: Shipping receives no requests
-      effect: Quote service receives no shipping quote requests
-      source: shipping-service-1
-      target: quote-service-1
-    - condition: No orders created due to checkout unavailability
-      effect: Accounting service receives no order events
-      source: checkout-service-1
-      target: accounting-service-1
-    - condition: Accounting receives no order events
-      effect: Accounting performs no database operations
-      source: checkout-service-1
-      target: accounting-service-1
   recommended_actions:
     - solution:
         actions:

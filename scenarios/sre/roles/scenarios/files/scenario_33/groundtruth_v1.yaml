@@ -6,19 +6,15 @@ metadata:
 spec:
   alerts:
     - group_id: ad-pod-1
-      id: KubePodNotReady
+      id: PendingPodsDetected
       metadata:
         description: Ad pods stuck in Pending state due to invalid node selector
-    - group_id: ad-service-1
-      id: NoRequestsReceived
-      metadata:
-        description: Ad service receives no requests - service has no healthy endpoints
     - group_id: frontend-service-1
-      id: HighRequestErrorRate
+      id: RequestErrorRate
       metadata:
         description: Frontend service experiencing connection failures to ad service
     - group_id: frontend-proxy-service-1
-      id: HighRequestErrorRate
+      id: RequestErrorRate
       metadata:
         description: Frontend proxy experiencing errors when serving pages that require ads functionality
   aliases:
@@ -73,10 +69,6 @@ spec:
       effect: Ad service has no healthy endpoints, becomes completely unavailable
       source: ad-pod-1
       target: ad-service-1
-    - condition: Ad service has no healthy endpoints
-      effect: Ad service receives no requests - all connections refused
-      source: ad-pod-1
-      target: ad-service-1
     - condition: Frontend service cannot connect to ad service with no available endpoints
       effect: Frontend fails to retrieve ads and displays pages with missing ad content
       source: ad-service-1
@@ -84,7 +76,7 @@ spec:
     - condition: Frontend service returns degraded responses with missing ads errors
       effect: Frontend service has slower and incorrect responses
       source: frontend-service-1
-      target: frontend-proxy-service-1
+      target: frontend-proxy-1
   recommendedActions:
     - solution:
         actions:

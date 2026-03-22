@@ -6,39 +6,35 @@ metadata:
 spec:
   alerts:
     - group_id: product-catalog-pod-1
-      id: KubePodCrashLooping
+      id: PodCrashLoopBackOff
       metadata:
         description: Product catalog pod is in CrashLoopBackOff state
-    - group_id: frontend-service-1
-      id: HighRequestErrorRate
+    - group_id: checkout-service-1
+      id: RequestErrorRate
       metadata:
-        description: Frontend experiencing errors when checkout service fails
-    - group_id: frontend-proxy-service-1
-      id: HighRequestErrorRate
-      metadata:
-        description: Frontend-proxy experiencing errors cascading from frontend failures
+        description: Checkout service experiencing connection failures to product-catalog
     - group_id: payment-service-1
-      id: NoRequestsReceived
+      id: NoRequestsDetected
       metadata:
         description: Payment service receiving no requests - checkout flow blocked
     - group_id: shipping-service-1
-      id: NoRequestsReceived
+      id: NoRequestsDetected
       metadata:
         description: Shipping service receiving no requests - checkout flow blocked
     - group_id: email-service-1
-      id: NoRequestsReceived
+      id: NoRequestsDetected
       metadata:
         description: Email service receiving no requests - checkout flow blocked
     - group_id: currency-service-1
-      id: NoRequestsReceived
+      id: NoRequestsDetected
       metadata:
         description: Currency service receiving no requests - checkout flow blocked
     - group_id: accounting-service-1
-      id: NoRequestsReceived
+      id: NoRequestsDetected
       metadata:
         description: Accounting service receiving no requests - order processing blocked
     - group_id: fraud-detection-service-1
-      id: NoRequestsReceived
+      id: NoRequestsDetected
       metadata:
         description: Fraud detection service receiving no requests - order processing blocked
   aliases:
@@ -46,8 +42,6 @@ spec:
       - product-catalog-pod-1
     - - checkout-service-1
       - checkout-pod-1
-    - - frontend-service-1
-    - - frontend-proxy-service-1
     - - payment-service-1
       - payment-pod-1
     - - shipping-service-1
@@ -96,16 +90,6 @@ spec:
         - checkout-.*
       id: checkout-pod-1
       kind: Pod
-      namespace: otel-demo
-    - filter:
-        - frontend\b
-      id: frontend-service-1
-      kind: Service
-      namespace: otel-demo
-    - filter:
-        - frontend-proxy\b
-      id: frontend-proxy-service-1
-      kind: Service
       namespace: otel-demo
     - filter:
         - payment\b
@@ -186,14 +170,10 @@ spec:
       effect: Product catalog service becomes unavailable
       source: product-catalog-pod-1
       target: product-catalog-service-1
-    - condition: Product catalog unavailable when frontend calls checkout (which internally calls product-catalog)
-      effect: Frontend experiences errors on checkout endpoint
+    - condition: Checkout service cannot validate products via product-catalog
+      effect: Checkout operations fail early in the process
       source: product-catalog-service-1
-      target: frontend-service-1
-    - condition: Frontend experiencing errors from checkout failures
-      effect: Frontend-proxy experiences cascading errors
-      source: frontend-service-1
-      target: frontend-proxy-service-1
+      target: checkout-service-1
     - condition: Checkout process never reaches payment stage due to product validation failure
       effect: Payment service receives zero requests
       source: checkout-service-1

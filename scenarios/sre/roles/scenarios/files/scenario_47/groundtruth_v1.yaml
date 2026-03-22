@@ -6,25 +6,9 @@ metadata:
 spec:
   alerts:
     - group_id: bookinfo-gateway
-      id: HighRequestErrorRate
+      id: RequestErrorRate
       metadata:
-        description: Increased error rate for bookinfo gateway service due to denied GET requests (403 errors)
-    - group_id: bookinfo-gateway-service
-      id: NoRequestsOpened
-      metadata:
-        description: Bookinfo gateway stops opening TCP connections to productpage due to authorization denial
-    - group_id: bookinfo-gateway-service
-      id: NoRequestsReceived
-      metadata:
-        description: Productpage receives no requests from bookinfo gateway due to authorization denial
-    - group_id: productpage-service
-      id: NoRequestsOpened
-      metadata:
-        description: Productpage stops opening TCP connections to reviews and details (cascade effect)
-    - group_id: reviews-service
-      id: NoRequestsOpened
-      metadata:
-        description: Reviews stops opening TCP connections to ratings (cascade effect)
+        description: Increased error rate for bookinfo gateway service due to denied GET requests
   aliases:
     - []
   fault:
@@ -37,45 +21,23 @@ spec:
       fault_mechanism: misconfigured_service_mesh
   groups:
     - filter:
-        - bookinfo-gateway-istio
+        - bookinfo-gateway
       id: bookinfo-gateway
-      kind: Service
-      namespace: book-info
+      kind: Gateway
+      namespace: bookinfo
     - filter:
-        - bookinfo-gateway-istio
+        - bookinfo-gateway-*
       id: bookinfo-gateway-service
       kind: Service
-      namespace: book-info
+      namespace: bookinfo
       root_cause: true
-    - filter:
-        - productpage
-      id: productpage-service
-      kind: Service
-      namespace: book-info
-    - filter:
-        - reviews
-      id: reviews-service
-      kind: Service
-      namespace: book-info
   propagations:
-    - condition: Authorization policy denying GET requests is applied to bookinfo-gateway in book-info namespace
-      effect: GET requests through the gateway are denied with 403 errors, leading to an increased error rate
+    - condition: Authorization policy 'deny-method-get' is applied to httpbin service in foo namespace
+      effect: GET requests to httpbin service are denied, leading to an increased error rate.
       source: bookinfo-gateway-service
-      target: bookinfo-gateway
-    - condition: GET requests denied by authorization policy
-      effect: Gateway cannot forward successful requests to productpage, stops sending valid traffic
-      source: bookinfo-gateway
-      target: productpage-service
-    - condition: Productpage receives no valid requests from gateway
-      effect: Productpage stops making requests to downstream services (reviews, details)
-      source: productpage-service
-      target: reviews-service
-    - condition: Reviews receives no requests from productpage
-      effect: Reviews stops making requests to ratings service
-      source: reviews-service
-      target: reviews-service
+      target: bookinfo-gateway-service
   recommendedActions:
     - solution:
         actions:
-          - Remove the 'bookinfo-gateway-deny' AuthorizationPolicy from the 'book-info' namespace.
+          - Remove the 'deny-method-get' AuthorizationPolicy from the 'foo' namespace.
         id: remove_deny_authorization_policy
