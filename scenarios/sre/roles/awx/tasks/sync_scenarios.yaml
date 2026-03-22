@@ -1,12 +1,4 @@
 ---
-- name: Import variable setting tasks
-  ansible.builtin.import_tasks:
-    file: set_awx_controller_host.yaml
-
-- name: Import variable setting tasks
-  ansible.builtin.import_tasks:
-    file: set_awx_controller_password.yaml
-
 - name: Sync the project and wait for completion
   awx.awx.project_update:
     controller_host: "{{ awx_controller_host }}"
@@ -41,7 +33,7 @@
     awx_warmup_playbook_path: >-
       {{
         [
-          'ITBench-Scenarios/sre/playbooks/warmup_awx.yaml',
+          'ITBench/scenarios/sre/playbooks/warmup_awx.yaml',
           'sre/playbooks/warmup_awx.yaml'
         ] | select('in', awx_playbooks_list.json) | first
       }}
@@ -83,7 +75,7 @@
   kubernetes.core.k8s_info:
     kubeconfig: "{{ awx_cluster.kubeconfig }}"
     kind: Pod
-    namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+    namespace: "{{ awx_managers.awx_operator.kubernetes.namespace }}"
     label_selectors:
       - "app.kubernetes.io/name=awx-deployment-task"
     field_selectors:
@@ -93,7 +85,7 @@
 - name: Run sync script in all task pods
   kubernetes.core.k8s_exec:
     kubeconfig: "{{ awx_cluster.kubeconfig }}"
-    namespace: "{{ awx_helm_releases.awx_operator.namespace }}"
+    namespace: "{{ awx_managers.awx_operator.kubernetes.namespace }}"
     pod: "{{ item }}"
     container: awx-deployment-task
     command: |

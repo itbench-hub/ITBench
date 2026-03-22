@@ -1,0 +1,20 @@
+---
+- name: Uninstall AWX operator
+  kubernetes.core.helm:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    release_name: "{{ awx_managers.awx_operator.helm.release.name }}"
+    release_namespace: "{{ awx_managers.awx_operator.kubernetes.namespace }}"
+    release_state: absent
+    timeout: 10m0s
+    wait: true
+
+- name: Delete the operator namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: v1
+      kind: Namespace
+      metadata:
+        name: "{{ awx_managers.awx_operator.kubernetes.namespace }}"
+    state: absent
+    wait: true
