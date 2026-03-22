@@ -7,6 +7,7 @@ metadata:
   namespace: [[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]
 spec:
   groups:
+
     - name: opentelemetrydemo.workloads
       rules:
         - alert: FailedPodsDetected
@@ -38,7 +39,7 @@ spec:
               ) by(le, service_name, namespace)
             )
             > 1500
-          for: 1m
+          for: 3m
           labels:
             severity: critical
           annotations:
@@ -55,7 +56,7 @@ spec:
               )
             ) by (service_name, namespace)
             > 0
-          for: 1m
+          for: 3m
           labels:
             severity: critical
           annotations:
@@ -76,7 +77,7 @@ spec:
               ) by(le, service_name, namespace)
             )
             > 1500
-          for: 1m
+          for: 3m
           labels:
             severity: critical
           annotations:
@@ -93,11 +94,23 @@ spec:
               )
             ) by (service_name, namespace)
             > 0
-          for: 1m
+          for: 3m
           labels:
             severity: critical
           annotations:
             description: "Request error rate in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 1 (current: {{ $value }})"
+    - name: opentelemetrydemo.kafka
+      rules:
+        - alert: KafkaConsumerGroupInactive
+          expr: |
+            kafka_consumergroup_members{
+              namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
+            } == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            description: "Kafka consumer group {{ $labels.consumergroup }} in namespace {{ $labels.namespace }} has no active members (current: {{ $value }})"
         - alert: HighKafkaConnectionClosureRate
           expr: |
             sum by (job) (
@@ -112,6 +125,16 @@ spec:
             severity: warning
           annotations:
             description: "Job {{ $labels.job }} has a closure rate above 0 (current: {{ $value }})"
+        - alert: HighKafkaConsumerLag
+          expr: |
+            kafka_consumergroup_lag_sum{
+              namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
+            } > 100
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Kafka consumer group {{ $labels.consumergroup }} has high lag on topic {{ $labels.topic }} (current: {{ $value }} messages)"
     - name: opentelemetrydemo.requests
       rules:
         - alert: NoRequestsReceived
@@ -122,12 +145,65 @@ spec:
                   service_name!~"flagd|load-generator",
                   status_code=~"STATUS_CODE_UNSET|STATUS_CODE_OK",
                   namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
-                }[10m]
+                }[5m]
               )
             ) by (service_name, namespace)
             == 0
-          for: 10m
+          for: 5m
           labels:
             severity: critical
           annotations:
             description: "Service {{ $labels.service_name }} in namespace {{ $labels.namespace }} has received no requests"
+    - name: opentelemetrydemo.database
+      rules:
+        - alert: NoDatabaseOperations
+          expr: |
+            sum by (service_name, namespace) (
+              rate(
+                traces_span_metrics_calls_total{
+                  service_name="accounting",
+                  span_name="postgresql",
+                  span_kind="SPAN_KIND_CLIENT",
+                  namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
+                }[5m]
+              )
+            ) == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Service {{ $labels.service_name }} in namespace {{ $labels.namespace }} has stopped performing database operations"
+    # - name: opentelemetry_demo.cost
+    #   interval: 1m
+    #   rules:
+    #     - alert: CPUSpedn
+    #       expr: sum by (namespace) (container_namespace_node:container_cpu_allocation_cost_per_node:avg5m{container!="load-generator", namespace="otel-demo"}) > 3
+    #       for: 1m
+    #       labels:
+    #         severity: warning
+    #       annotations:
+    #         description: "{{ $labels.namespace }} has exceeded the allocated budget for vCPU for 5m (current: ${{ $value }})"
+    #     - alert: MemorySpend
+    #       expr: sum by (namespace) (container_namespace_node:container_memory_allocation_gigabytes_cost_per_node:avg5m{container!="load-generator", namespace="otel-demo"}) > 9
+    #       for: 1m
+    #       labels:
+    #         severity: warning
+    #       annotations:
+    #         description: "{{ $labels.namespace }} has exceeded the allocated budget for RAM for 5m (current: ${{ $value }})"
+    # - name: opentelemetry_demo.efficency
+    #   interval: 1m
+    #   rules:
+    #     - alert: CPUEfficiency
+    #       expr: round(avg by (container, namespace) (container_namespace:container_cpu_usage_seconds_per_requests:ratio_irate1m{container!="load-generator", namespace="otel-demo"}) * 100) < 65
+    #       for: 2m
+    #       labels:
+    #         severity: info
+    #       annotations:
+    #         description: "{{ $labels.container }} in {{ $labels.namespace }} has a cpu efficiency below 65% for 5m (current: {{ $value }}%)"
+    #     - alert: MemoryEfficiency
+    #       expr: round(avg by (container, namespace) (container_namespace:container_memory_working_set_bytes_per_requests_bytes:ratio_avg1m{container!~"load-generator|flagd-ui", namespace="otel-demo"}) * 100) < 75
+    #       for: 2m
+    #       labels:
+    #         severity: info
+    #       annotations:
+    #         description: "{{ $labels.container }} in {{ $labels.namespace }} has a memory efficiency below 75% for 5m (current: {{ $value }}%)"

@@ -13,7 +13,13 @@
 - name: Create Namespace
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    template: templates/kubernetes/otel_demo/namespace.j2
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        labels:
+          prometheus.itbench.io/monitor: "true"
+        name: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
     state: present
 
 - name: Import tools role for variable setting tasks
@@ -123,11 +129,11 @@
             selectPolicy: Min
     state: present
   loop: |-
-      {{
-        applications_otel_demo_deployments.resources |
-        ansible.builtin.rejectattr('metadata.name', '==', 'load-generator') |
-        ansible.builtin.rejectattr('metadata.name', '==', 'opentelemetry-collector')
-      }}
+    {{
+      applications_otel_demo_deployments.resources |
+      ansible.builtin.rejectattr('metadata.name', '==', 'load-generator') |
+      ansible.builtin.rejectattr('metadata.name', '==', 'opentelemetry-collector')
+    }}
   loop_control:
     label: deployment/{{ workload.metadata.name }}
     loop_var: workload
