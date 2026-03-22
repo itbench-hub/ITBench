@@ -149,7 +149,7 @@ test-unit-faults: ## Runs fault injection unit tests
 
 .PHONY: test-unit-recorders
 test-unit-recorders: ## Runs recorder installation unit tests
-	cd roles/recorders && uv run molecule test --all --report --command-borders
+	cd project/roles/recorders && uv run molecule test --all --report --command-borders
 
 .PHONY: test-unit-tools
 test-unit-tools: ## Runs tool installation unit tests
