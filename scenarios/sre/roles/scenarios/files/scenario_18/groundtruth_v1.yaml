@@ -6,9 +6,49 @@ metadata:
 spec:
   alerts:
     - group_id: frontend-service-1
-      id: RequestErrorRate
+      id: HighRequestErrorRate
       metadata:
         description: Error Rate is Above Threshold
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy errors cascade from frontend service failures
+    - group_id: checkout-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Checkout receives no requests - product catalog delays block flow
+    - group_id: payment-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Payment receives no requests - checkout flow blocked
+    - group_id: shipping-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Shipping receives no requests - checkout flow blocked
+    - group_id: email-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Email receives no requests - checkout flow never completes
+    - group_id: currency-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Currency receives no requests - checkout flow blocked
+    - group_id: fraud-detection-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Fraud detection receives no requests - no orders created
+    - group_id: quote-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Quote receives no requests - shipping blocked
+    - group_id: accounting-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Accounting receives no requests - no orders created
+    - group_id: accounting-service-1
+      id: NoDatabaseOperations
+      metadata:
+        description: Accounting performs no database operations - no orders to process
   aliases:
     - - checkout-service-1
       - checkout-pod-1
@@ -16,6 +56,14 @@ spec:
       - frontend-pod-1
     - - otel-demo-product-catalog-network-delay
       - otel-demo-product-catalog-network-delay-1
+    - - frontend-proxy-service-1
+    - - payment-service-1
+    - - shipping-service-1
+    - - email-service-1
+    - - currency-service-1
+    - - fraud-detection-service-1
+    - - quote-service-1
+    - - accounting-service-1
   fault:
     - category: Resource Unavailable
       condition: To Be Specified
@@ -52,6 +100,11 @@ spec:
       kind: Service
       namespace: otel-demo
     - filter:
+        - frontend-proxy
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
         - checkout\b
       id: checkout-service-1
       kind: Service
@@ -60,6 +113,41 @@ spec:
         - frontend-.*
       id: frontend-pod-1
       kind: Pod
+      namespace: otel-demo
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - shipping\b
+      id: shipping-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - email\b
+      id: email-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - currency\b
+      id: currency-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - fraud-detection\b
+      id: fraud-detection-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - quote\b
+      id: quote-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - accounting\b
+      id: accounting-service-1
+      kind: Service
       namespace: otel-demo
   propagations:
     - condition: set pod-failure on checkoutservice
@@ -70,6 +158,46 @@ spec:
       effect: frontend service Error Rate is Above Threshold
       source: checkout-pod-1
       target: frontend-service-1
+    - condition: frontend service Error Rate is Above Threshold
+      effect: frontend-proxy errors cascade from frontend failures
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+    - condition: Product catalog delays cause checkout failures
+      effect: Checkout service receives no requests
+      source: checkout-pod-1
+      target: checkout-service-1
+    - condition: Checkout fails due to product catalog delays
+      effect: Payment service receives no requests from checkout
+      source: checkout-service-1
+      target: payment-service-1
+    - condition: Checkout fails due to product catalog delays
+      effect: Shipping service receives no requests from checkout
+      source: checkout-service-1
+      target: shipping-service-1
+    - condition: Checkout fails due to product catalog delays
+      effect: Email service receives no order confirmation requests
+      source: checkout-service-1
+      target: email-service-1
+    - condition: Checkout fails due to product catalog delays
+      effect: Currency service receives no conversion requests
+      source: checkout-service-1
+      target: currency-service-1
+    - condition: No orders created due to checkout failure
+      effect: Fraud detection receives no order events
+      source: checkout-service-1
+      target: fraud-detection-service-1
+    - condition: Shipping receives no requests
+      effect: Quote service receives no shipping quote requests
+      source: shipping-service-1
+      target: quote-service-1
+    - condition: No orders created due to checkout failure
+      effect: Accounting service receives no order events
+      source: checkout-service-1
+      target: accounting-service-1
+    - condition: Accounting receives no order events
+      effect: Accounting performs no database operations
+      source: checkout-service-1
+      target: accounting-service-1
   recommended_actions:
     - solution:
         actions:

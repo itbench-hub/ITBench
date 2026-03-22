@@ -6,13 +6,13 @@ metadata:
 spec:
   alerts:
     - group_id: frontend-proxy-service-1
-      id: RequestErrorRate
+      id: HighRequestErrorRate
       metadata:
         description: Error rate is above threshold for frontend-proxy service
-    - group_id: frontend-proxy-service-1
-      id: RequestLatency
+    - group_id: accounting-service-1
+      id: NoDatabaseOperations
       metadata:
-        description: Latency is above threshold for frontend-proxy service
+        description: Accounting service stops performing database operations due to request starvation from frontend-proxy overload
   aliases:
     - - load-generator-service-1
       - load-generator-pod-1
@@ -48,6 +48,11 @@ spec:
       id: frontend-proxy-pod-1
       kind: Pod
       namespace: otel-demo
+    - filter:
+        - accounting\b
+      id: accounting-service-1
+      kind: Service
+      namespace: otel-demo
   propagations:
     - condition: load-generator pod is configured with a higher number of users
       effect: load-generator creates a high number of requests as a result
@@ -61,6 +66,10 @@ spec:
       effect: frontend-proxy service latency is above threshold
       source: load-generator-service-1
       target: frontend-proxy-service-1
+    - condition: frontend-proxy service error rate above threshold prevents request forwarding
+      effect: Accounting service receives no requests and stops performing database operations
+      source: frontend-proxy-service-1
+      target: accounting-service-1
   recommendedActions:
     - solution:
         actions:

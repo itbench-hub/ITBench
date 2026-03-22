@@ -9,32 +9,28 @@ spec:
       id: CPUSpend
       metadata:
         description: Cost has increased significantly despite having low utilization
+    - group_id: otel-demo-namespace-1
+      id: MemorySpend
+      metadata:
+        description: Memory cost has increased due to HPA misconfiguration
   aliases:
-    - - fraud-detection-horizontal-pod-autoscalers-1
-    - - frontend-horizontal-pod-autoscalers-1
-    - - image-provider-horizontal-pod-autoscalers-1
+    - - accounting-horizontal-pod-autoscaler-1
+    - - ad-horizontal-pod-autoscaler-1
     - - otel-demo-namespace-1
   fault:
     - category: Other
       condition: Misconfigured HPA
       entity:
-        group_id: fraud-detection-horizontal-pod-autoscalers-1
+        group_id: accounting-horizontal-pod-autoscaler-1
         kind: HorizontalPodAutoscaler
-        name: fraud-detection-horizontal-pod-autoscalers-1
+        name: accounting-horizontal-pod-autoscaler-1
       fault_mechanism: custom
     - category: Other
       condition: Misconfigured HPA
       entity:
-        group_id: frontend-horizontal-pod-autoscalers-1
+        group_id: ad-horizontal-pod-autoscaler-1
         kind: HorizontalPodAutoscaler
-        name: frontend-horizontal-pod-autoscalers-1
-      fault_mechanism: custom
-    - category: Other
-      condition: Misconfigured HPA
-      entity:
-        group_id: image-provider-horizontal-pod-autoscalers-1
-        kind: HorizontalPodAutoscaler
-        name: image-provider-horizontal-pod-autoscalers-1
+        name: ad-horizontal-pod-autoscaler-1
       fault_mechanism: custom
   groups:
     - id: otel-demo-namespace-1
@@ -43,23 +39,25 @@ spec:
       namespace: otel-demo
     - filter:
         - "*.*"
-      id: fraud-detection-horizontal-pod-autoscalers-1
+      id: accounting-horizontal-pod-autoscaler-1
       kind: HorizontalPodAutoscaler
       namespace: otel-demo
       root_cause: true
     - filter:
         - "*.*"
-      id: frontend-horizontal-pod-autoscalers-1
+      id: ad-horizontal-pod-autoscaler-1
       kind: HorizontalPodAutoscaler
       namespace: otel-demo
       root_cause: true
-    - filter:
-        - "*.*"
-      id: image-provider-horizontal-pod-autoscalers-1
-      kind: HorizontalPodAutoscaler
-      namespace: otel-demo
-      root_cause: true
-  propagations: []
+  propagations:
+    - condition: HPA misconfigured to scale up aggressively but not scale down
+      effect: Excessive pod replicas remain running causing increased CPU and memory costs
+      source: accounting-horizontal-pod-autoscaler-1
+      target: otel-demo-namespace-1
+    - condition: HPA misconfigured to scale up aggressively but not scale down
+      effect: Excessive pod replicas remain running causing increased CPU and memory costs
+      source: ad-horizontal-pod-autoscaler-1
+      target: otel-demo-namespace-1
   recommendedActions:
     - solution:
         actions:
