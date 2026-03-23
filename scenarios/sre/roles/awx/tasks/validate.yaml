@@ -13,7 +13,7 @@
     - name: Validate that every runner kubeconfig exists
       ansible.builtin.assert:
         that:
-          - kubeconfig is file
+          - (kubeconfig | ansible.builtin.expanduser) is ansible.builtin.file
         fail_msg: Kubeconfig not found at given path. Please provide correct file path.
         success_msg: Kubeconfig found.
       loop: "{{ awx_configuration.runners.kubeconfigs }}"
@@ -24,7 +24,7 @@
     - name: Validate that ITBench Repository private key exists
       ansible.builtin.assert:
         that:
-          - awx_configuration.github.itbench.ssh.private_key_path is file
+          - (awx_configuration.github.itbench.ssh.private_key_path | ansible.builtin.expanduser) is ansible.builtin.file
         fail_msg: Private key not found at given path. Please provide correct file path.
         success_msg: Private key found.
       when:
@@ -33,7 +33,7 @@
     - name: Validate that LLM Agent Repository private key exists
       ansible.builtin.assert:
         that:
-          - awx_configuration.github.agent.ssh.private_key_path is file
+          - (awx_configuration.github.agent.ssh.private_key_path | ansible.builtin.expanduser) is ansible.builtin.file
         fail_msg: Private key not found at given path. Please provide correct file path.
         success_msg: Private key found.
       when:
