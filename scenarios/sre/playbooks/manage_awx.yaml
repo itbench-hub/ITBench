@@ -23,6 +23,39 @@
         cluster_tools_enabled:
           oc: "{{ system_oc_exists }}"
   tasks:
+    - name: Import role variables
+      tags:
+        - configure_pipeline
+      block:
+        - name: Create configuration variable
+          ansible.builtin.set_fact:
+            awx_configuration:
+              agent: "{{ agent_configuration.configuration }}"
+              github: "{{ github }}"
+              runners:
+                kubeconfigs: "{{ stack.runners.kubeconfigs }}"
+
+        - name: Add providers variable
+          ansible.builtin.set_fact:
+            awx_configuration: "{{ awx_configuration | combine({'providers': {'aws': {'enabled': true}}}) }}"
+          when:
+            - cluster_provider != "kind"
+
+    - name: Import role variables
+      tags:
+        - configure_pipeline
+        - launch_workflows
+      block:
+        - name: Create experiments variable
+          ansible.builtin.set_fact:
+            awx_experiments:
+              agent:
+                version: "{{ agent_configuration.version }}"
+              phase: "{{ run_phase | default(omit) }}"
+              scenarios: "{{ experiments.scenarios }}"
+              storage: "{{ storage }}"
+              trials: "{{ experiments.trials }}"
+
     - name: Import awx role
       ansible.builtin.import_role:
         name: awx
@@ -30,15 +63,3 @@
         awx_cluster:
           kubeconfig: "{{ stack.awx.kubeconfig }}"
           provider: "{{ cluster_provider }}"
-        awx_credentials: "{{ credentials }}"
-        awx_experiments:
-          phase: "{{ run_phase | default(omit) }}"
-          scenarios: "{{ experiments.scenarios }}"
-          storage: "{{ storage }}"
-          trials: "{{ experiments.trials }}"
-        awx_github: "{{ github }}"
-        awx_runners:
-          kubeconfigs: "{{ stack.runners.kubeconfigs }}"
-        awx_agent:
-          version: "{{ agent_configuration.version }}"
-          configuration: "{{ agent_configuration.configuration }}"

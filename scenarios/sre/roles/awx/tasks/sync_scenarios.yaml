@@ -35,7 +35,9 @@
         [
           'ITBench/scenarios/sre/playbooks/warmup_awx.yaml',
           'sre/playbooks/warmup_awx.yaml'
-        ] | select('in', awx_playbooks_list.json) | first
+        ] |
+        ansbile.builtin.select('in', awx_playbooks_list.json) |
+        ansible.builtin.first
       }}
 
 - name: Create a dummy job template for warming
@@ -108,7 +110,7 @@
           echo "Copy script not found in $PROJECT_DIR, skipping"
         fi
       '
-  loop: "{{ awx_task_pods.resources | map(attribute='metadata.name') | list }}"
+  loop: "{{ awx_task_pods.resources | map(attribute='metadata.name') }}"
   loop_control:
     label: "{{ item }}"
   register: awx_sync_results
