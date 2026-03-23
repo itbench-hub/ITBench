@@ -10,7 +10,7 @@
         name: "{{ awx_managers.awx_operator.instances.names.main }}"
         namespace: "{{ awx_managers.awx_operator.instances.kubernetes.namespace }}"
       spec:
-        replicas: 3
+        replicas: "{{ 1 if awx_cluster.provider == 'kind' else 3 }}"
         service_type: loadbalancer
         postgres_data_volume_init: true
         postgres_init_container_commands: |
