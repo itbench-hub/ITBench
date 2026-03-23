@@ -3,37 +3,8 @@
 - name: Install AWX
   kubernetes.core.k8s:
     kubeconfig: "{{ awx_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: awx.ansible.com/v1beta1
-      kind: AWX
-      metadata:
-        name: "{{ awx_managers.awx_operator.instances.names.main }}"
-        namespace: "{{ awx_managers.awx_operator.instances.kubernetes.namespace }}"
-      spec:
-        replicas: "{{ 1 if awx_cluster.provider == 'kind' else 3 }}"
-        service_type: loadbalancer
-        postgres_data_volume_init: true
-        postgres_init_container_commands: |
-          chown 26:0 /var/lib/pgsql/data
-          chmod 700 /var/lib/pgsql/data
-        postgres_storage_requirements:
-          requests:
-            storage: "{{ '4Gi' if awx_cluster.provider == 'kind' else '32Gi' }}"
-        task_resource_requirements:
-          requests:
-            cpu: "{{ '250m' if awx_cluster.provider == 'kind' else '1000m' }}"
-            memory: "{{ '512Mi' if awx_cluster.provider == 'kind' else '2Gi' }}"
-          limits:
-            cpu: "{{ '500m' if awx_cluster.provider == 'kind' else '2000m' }}"
-            memory: "{{ '1Gi' if awx_cluster.provider == 'kind' else '4Gi' }}"
-        web_resource_requirements:
-          requests:
-            cpu: "{{ '100m' if awx_cluster.provider == 'kind' else '500m' }}"
-            memory: "{{ '256Mi' if awx_cluster.provider == 'kind' else '1Gi' }}"
-          limits:
-            cpu: "{{ '250m' if awx_cluster.provider == 'kind' else '1000m' }}"
-            memory: "{{ '512Mi' if awx_cluster.provider == 'kind' else '2Gi' }}"
     state: present
+    template: templates/kubernetes/awx.j2
     wait: true
     wait_condition:
       reason: Successful
