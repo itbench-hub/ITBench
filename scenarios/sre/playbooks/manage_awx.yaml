@@ -30,7 +30,8 @@
         - name: Create configuration variable
           ansible.builtin.set_fact:
             awx_configuration:
-              agent: "{{ agent_configuration.configuration }}"
+              agent:
+                configuration: "{{ agent_configuration.configuration }}"
               github: "{{ github }}"
               runners:
                 kubeconfigs: "{{ stack.runners.kubeconfigs }}"
@@ -51,7 +52,7 @@
             awx_experiments:
               agent:
                 version: "{{ agent_configuration.version }}"
-              phase: "{{ run_phase | default(omit) }}"
+              phase: "{{ run_phase | ansible.builtin.default('full') }}"
               scenarios: "{{ experiments.scenarios }}"
               storage: "{{ storage }}"
               trials: "{{ experiments.trials }}"
