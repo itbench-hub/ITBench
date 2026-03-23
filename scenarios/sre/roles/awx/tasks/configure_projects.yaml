@@ -23,7 +23,7 @@
           multiline: true
       required:
         - kubeconfig
-    injectors: "{{ lookup('ansible.builtin.file', 'files/credential_type/kubeconfig_injectors.json') }}"
+    injectors: "{{ lookup('ansible.builtin.file', 'files/awx/credential_types/kubeconfig_injectors.json') }}"
     kind: cloud
     name: Kubeconfig
     state: present
@@ -36,12 +36,14 @@
     credential_type: Kubeconfig
     description: Kubeconfig file for a Kubernetes cluster
     inputs:
-      kubeconfig: "{{ lookup('ansible.builtin.file', item) }}"
-    name: Cluster-{{ runner_index + 1 }}-Kubeconfig
+      kubeconfig: "{{ lookup('ansible.builtin.file', kubeconfig) }}"
+    name: Cluster-{{ kubeconfig_index + 1 }}-Kubeconfig
     organization: ITBench
-  loop: "{{ awx_runners.kubeconfigs }}"
+  loop: "{{ awx_configuration.runners.kubeconfigs }}"
   loop_control:
-    index_var: runner_index
+    index_var: kubeconfig_index
+    label: kubeconfig/{{ kubeconfig | ansible.builtin.basename }}
+    loop_var: kubeconfig
 
 - name: Create credentials for ITBench Repository
   awx.awx.credential:
@@ -51,14 +53,13 @@
     credential_type: Source Control
     description: SSH Credentials for ITBench GitHub repository
     inputs:
-      ssh_key_data: "{{ lookup('ansible.builtin.file', awx_github.it_bench.ssh.private_key_path) }}"
-      ssh_key_unlock: "{{ awx_github.it_bench.ssh.private_key_passphrase }}"
+      ssh_key_data: "{{ lookup('ansible.builtin.file', awx_configuration.github.itbench.ssh.private_key_path) }}"
+      ssh_key_unlock: "{{ awx_configuration.github.itbench.ssh.private_key_passphrase }}"
     name: GitHub-ITBench
     organization: ITBench
     state: present
   when:
-    - awx_github.it_bench.ssh is defined
-    - awx_github.it_bench.ssh.private_key_path is file
+    - awx_configuration.github.itbench.ssh is defined
 
 - name: Create credentials for LLM Agent
   awx.awx.credential:
@@ -68,47 +69,68 @@
     credential_type: Source Control
     description: SSH Credentials for LLM agent repository
     inputs:
-      ssh_key_data: "{{ lookup('ansible.builtin.file', awx_github.llm_agent.ssh.private_key_path) }}"
-      ssh_key_unlock: "{{ awx_github.llm_agent.ssh.private_key_passphrase }}"
+      ssh_key_data: "{{ lookup('ansible.builtin.file', awx_configuration.github.agent.ssh.private_key_path) }}"
+      ssh_key_unlock: "{{ awx_configuration.github.agent.ssh.private_key_passphrase }}"
     name: GitHub-LLM-Agent
     organization: ITBench
     state: present
   when:
-    - awx_github.llm_agent.ssh is defined
-    - awx_github.llm_agent.ssh.private_key_path is file
+    - awx_configuration.github.agent.ssh is defined
 
-- name: Create credentials for AWS
-  awx.awx.credential:
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    credential_type: Amazon Web Services
-    description: Credentials for AWS
-    inputs:
-      username: "{{ awx_credentials.aws.access_key_id }}"
-      password: "{{ awx_credentials.aws.secret_access_key }}" # pragma: allowlist secret
-    name: AWS
-    organization: ITBench
-    state: present
+- name: Create credentials for AWS Cloud Provider
   when:
-    - awx_credentials.aws is defined
+    - awx_configuration.providers.aws.enabled | ansible.builtin.default(false)
+  block:
+    - name: Retrieve AWS access key id
+      ansible.builtin.command:
+        argv:
+          - aws
+          - configure
+          - get
+          - aws_access_key_id
+      register: awx_aws_access_key_id_output
+      changed_when: false
+
+    - name: Retrieve AWS secret access ke
+      ansible.builtin.command:
+        argv:
+          - aws
+          - configure
+          - get
+          - aws_secret_access_key
+      register: awx_secret_access_key_output
+      changed_when: false
+
+    - name: Create credentials for AWS
+      awx.awx.credential:
+        controller_host: "{{ awx_controller_host }}"
+        controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+        controller_username: admin
+        credential_type: Amazon Web Services
+        description: Credentials for AWS
+        inputs:
+          username: "{{ awx_aws_access_key_id_output.stdout }}"
+          password: "{{ awx_secret_access_key_output.stdout }}" # pragma: allowlist secret
+        name: AWS
+        organization: ITBench
+        state: present
 
 - name: Create project for ITBench Repository
   awx.awx.project:
     controller_host: "{{ awx_controller_host }}"
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
-    credential: "{{ 'GitHub-ITBench' if awx_github.it_bench.ssh is defined else omit }}"
+    credential: "{{ 'GitHub-ITBench' if awx_configuration.github.itbench.ssh is defined else omit }}"
     description: ITBench GitHub repository
     name: GitHub-ITBench
     organization: ITBench
     scm_allow_override: true
-    scm_branch: "{{ awx_github.it_bench.branch | default('main') }}"
+    scm_branch: "{{ awx_configuration.github.itbench.branch }}"
     scm_clean: true
     scm_delete_on_update: true
     scm_track_submodules: true
     scm_type: git
-    scm_url: "{{ awx_github.it_bench.url }}"
+    scm_url: "{{ awx_configuration.github.itbench.url }}"
     state: present
 
 - name: Create project for LLM Agent Repository
@@ -116,17 +138,17 @@
     controller_host: "{{ awx_controller_host }}"
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
-    credential: "{{ 'GitHub-LLM-Agent' if awx_github.llm_agent.ssh is defined else omit }}"
+    credential: "{{ 'GitHub-LLM-Agent' if awx_configuration.github.agent.ssh is defined else omit }}"
     description: LLM Agent GitHub repository
     name: GitHub-LLM-Agent
     organization: ITBench
     scm_allow_override: true
-    scm_branch: "{{ awx_github.llm_agent.branch | default('main') }}"
+    scm_branch: "{{ awx_configuration.github.agent.branch }}"
     scm_clean: true
     scm_delete_on_update: true
     scm_track_submodules: false
     scm_type: git
-    scm_url: "{{ awx_github.llm_agent.url }}"
+    scm_url: "{{ awx_configuration.github.agent.url }}"
     state: present
 
 - name: Create ITBench inventory
@@ -155,7 +177,7 @@
     controller_host: "{{ awx_controller_host }}"
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
     controller_username: admin
-    name: "{{ item }}"
+    name: "{{ group_vars_name }}"
     inventory: ITBench
     hosts:
       - localhost
@@ -163,6 +185,9 @@
   loop:
     - environment
     - runner
+  loop_control:
+    label: group_vars/{{ group_vars_name }}
+    loop_var: group_vars_name
 
 # ToDo: Revert back to this instead of static allocation once upstream AWX issue on syncing inventories is resolved
 # - name: Create ITBench inventory source
@@ -188,7 +213,7 @@
 #     wait: true
 #     timeout: 300
 
-- name: Custom environment for running ITBench scenarios
+- name: Add custom environment for running ITBench scenarios
   awx.awx.execution_environment:
     controller_host: "{{ awx_controller_host }}"
     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret

@@ -1,13 +1,9 @@
 ---
 - identifier: node-deploy-tools
   extra_data:
-    scenario_id: {{ scenario_id }}
+    scenario_id: {{ workflow_configuration.1 }}
   related:
-    credentials:
-      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
-{% if requires_aws_credentials %}
-      - name: AWS
-{% endif %}
+    credentials: {{ workflow_configuration.2 }}
     success_nodes:
       - identifier: node-deploy-applications
   unified_job_template:
@@ -15,13 +11,9 @@
     type: job_template
 - identifier: node-deploy-applications
   extra_data:
-    scenario_id: {{ scenario_id }}
+    scenario_id: {{ workflow_configuration.1 }}
   related:
-    credentials:
-      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
-{% if requires_aws_credentials %}
-      - name: AWS
-{% endif %}
+    credentials: {{ workflow_configuration.2 }}
     success_nodes:
       - identifier: node-install-recorders
   unified_job_template:
@@ -29,14 +21,10 @@
     type: job_template
 - identifier: node-install-recorders
   extra_data:
-    scenario_id: {{ scenario_id }}
+    scenario_id: {{ workflow_configuration.1 }}
     benchmark_phase: pre-fault-injection
   related:
-    credentials:
-      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
-{% if requires_aws_credentials %}
-      - name: AWS
-{% endif %}
+    credentials: {{ workflow_configuration.2 }}
     success_nodes:
       - identifier: node-clear-kubernetes-events
   unified_job_template:
@@ -44,11 +32,7 @@
     type: job_template
 - identifier: node-clear-kubernetes-events
   related:
-    credentials:
-      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
-{% if requires_aws_credentials %}
-      - name: AWS
-{% endif %}
+    credentials: {{ workflow_configuration.2 }}
     success_nodes:
       - identifier: node-pause-at-start
   unified_job_template:
@@ -65,11 +49,7 @@
     duration_in_minutes: 5
 - identifier: node-grant-access-to-agent
   related:
-    credentials:
-      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
-{% if requires_aws_credentials %}
-      - name: AWS
-{% endif %}
+    credentials: {{ workflow_configuration.2 }}
     success_nodes:
       - identifier: node-inject-fault
   unified_job_template:
@@ -77,13 +57,9 @@
     type: job_template
 - identifier: node-inject-fault
   extra_data:
-    scenario_id: {{ scenario_id }}
+    scenario_id: {{ workflow_configuration.1 }}
   related:
-    credentials:
-      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
-{% if requires_aws_credentials %}
-      - name: AWS
-{% endif %}
+    credentials: {{ workflow_configuration.2 }}
     success_nodes:
       - identifier: node-install-run-topology-recorder-post-fault-injection
   unified_job_template:
@@ -93,15 +69,11 @@
   extra_data:
     benchmark_phase: post-fault-injection
   related:
-    credentials:
-      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
-{% if requires_aws_credentials %}
-      - name: AWS
-{% endif %}
+    credentials: {{ workflow_configuration.2 }}
     success_nodes:
       - identifier: node-pause-post-fault-injection
   unified_job_template:
-    name: Run-Topology-Data-Recorder
+    name: Run-Kubernetes-Topology-Monitor-Data-Recorder
     type: job_template
 - identifier: node-pause-post-fault-injection
   related:
@@ -112,11 +84,7 @@
     type: job_template
 - identifier: node-check-for-alerts
   related:
-    credentials:
-      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
-{% if requires_aws_credentials %}
-      - name: AWS
-{% endif %}
+    credentials: {{ workflow_configuration.2 }}
     success_nodes:
       - identifier: node-handover-to-agent
     failure_nodes:
@@ -139,23 +107,15 @@
   related:
     always_nodes:
       - identifier: node-uninstall-recorders
-    credentials:
-      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
-{% if requires_aws_credentials %}
-      - name: AWS
-{% endif %}
+    credentials: {{ workflow_configuration.2 }}
   unified_job_template:
-    name: Run-Unified-ClickHouse-Recorder
+    name: Run-ClickHouse-Data-Recorder
     type: job_template
 - identifier: node-uninstall-recorders
   extra_data:
-    scenario_id: {{ scenario_id }}
+    scenario_id: {{ workflow_configuration.1 }}
   related:
-    credentials:
-      - name: Cluster-{{ cluster_index + 1 }}-Kubeconfig
-{% if requires_aws_credentials %}
-      - name: AWS
-{% endif %}
+    credentials: {{ workflow_configuration.2 }}
   unified_job_template:
     name: Uninstall-Data-Recorders
     type: job_template

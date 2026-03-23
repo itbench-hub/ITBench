@@ -1,0 +1,36 @@
+---
+- name: Validate that at least one runner is defined
+  ansible.builtin.assert:
+    that:
+      - awx_configuration.runners | ansible.builtin.length > 0
+    fail_msg: No runners are defined. Please define at least one runner.
+    success_msg: "{{ awx_configuration.runners | ansible.builtin.length }} runners defined."
+
+- name: Validate that every runner kubeconfig exists
+  ansible.builtin.assert:
+    that:
+      - kubeconfig is file
+    fail_msg: Kubeconfig not found at given path. Please provide correct file path.
+    success_msg: Kubeconfig found.
+  loop: "{{ awx_configuration.runners.kubeconfigs }}"
+  loop_control:
+    label: kubeconfig/{{ kubeconfig | ansible.builtin.basename }}
+    loop_var: kubeconfig
+
+- name: Validate that ITBench Repository private key exists
+  ansible.builtin.assert:
+    that:
+      - awx_configuration.github.itbench.ssh.private_key_path is file
+    fail_msg: Private key not found at given path. Please provide correct file path.
+    success_msg: Private key found.
+  when:
+    - awx_configuration.github.itbench.ssh is defined
+
+- name: Validate that LLM Agent Repository private key exists
+  ansible.builtin.assert:
+    that:
+      - awx_configuration.github.agent.ssh.private_key_path is file
+    fail_msg: Private key not found at given path. Please provide correct file path.
+    success_msg: Private key found.
+  when:
+    - awx_configuration.github.agent.ssh is defined
