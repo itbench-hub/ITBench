@@ -1,12 +1,13 @@
 import json
+import os
 import sys
 
 def main()
     try:
-        with open('/etc/app-config/config.json', 'r') as f:
+        with open(os.path.expanduser("~/config/config.json"), "r") as f:
             data = json.load(f)
 
-        items_count = len(data.get('configuration_items', []))
+        items_count = len(data.get("configuration_items", []))
 
         print(f"Config loaded successfully with {items_count} configuration items")
         sys.exit(0)
