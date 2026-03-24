@@ -1,13 +1,6 @@
 ---
 components:
   accounting:
-    resources:
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 250m
-        memory: 256Mi
 {% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
@@ -15,7 +8,18 @@ components:
     podSecurityContext:
       runAsNonRoot: true
       runAsUser: 1654
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
   ad:
+{% if applications_cluster.platform == "openshift" %}
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
     resources:
       limits:
         cpu: 150m
@@ -24,57 +28,52 @@ components:
         cpu: 50m
         memory: 256Mi
 {% if applications_cluster.platform == "openshift" %}
-    podAnnotations:
-      openshift.io/required-scc: restricted-v2
-{% endif %}
   cart:
-{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
+{% if applications_cluster.platform == "openshift" %}
   checkout:
-{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
+{% if applications_cluster.platform == "openshift" %}
   currency:
-{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
+{% if applications_cluster.platform == "openshift" %}
   email:
-{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
-  flagd:
 {% if applications_cluster.platform == "openshift" %}
+  flagd:
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
   fraud-detection:
+{% if applications_cluster.platform == "openshift" %}
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
     resources:
       limits:
         memory: 512Mi
       requests:
         memory: 256Mi
-{% endif %}
 {% if applications_cluster.platform == "openshift" %}
-    podAnnotations:
-      openshift.io/required-scc: restricted-v2
-{% endif %}
   frontend:
-{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
+{% if applications_cluster.platform == "openshift" %}
   frontend-proxy:
-{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
-  image-provider:
 {% if applications_cluster.platform == "openshift" %}
+  image-provider:
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
@@ -82,35 +81,35 @@ components:
       runAsNonRoot: true
       runAsUser: 101
   kafka:
+{% if applications_cluster.platform == "openshift" %}
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
     resources:
       limits:
         memory: 1024Mi
       requests:
         memory: 512Mi
-{% if applications_cluster.platform == "openshift" %}
-    podAnnotations:
-      openshift.io/required-scc: restricted-v2
-{% endif %}
   load-generator:
     envOverrides:
       - name: LOCUST_BROWSER_TRAFFIC_ENABLED
         value: |-
           {{
-            applications_configuration.opentelemetryDemo.configuration.load_generator.browser_traffic_enabled |
+            applications_configuration.opentelemetryDemo.options.loadGeneration.browserTraffic |
             ansible.builtin.default(false) |
             ansible.builtin.string
           }}
       - name: LOCUST_SPAWN_RATE
         value: |-
           {{
-            applications_configuration.opentelemetryDemo.configuration.load_generator.users_spawn_rate |
+            applications_configuration.opentelemetryDemo.options.loadGeneration.usersSpawnRate |
             ansible.builtin.default(5) |
             ansible.builtin.string
           }}
       - name: LOCUST_USERS
         value: |-
           {{
-            applications_configuration.opentelemetryDemo.configuration.load_generator.users |
+            applications_configuration.opentelemetryDemo.options.loadGeneration.users |
             ansible.builtin.default(50) |
             ansible.builtin.string
           }}
@@ -118,40 +117,34 @@ components:
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
- llm:
 {% if applications_cluster.platform == "openshift" %}
-    podAnnotations:
-      openshift.io/required-scc: restricted-v2
-{% endif %}
   payment:
-{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
-  postgresql:
 {% if applications_cluster.platform == "openshift" %}
+  postgresql:
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
   product-catalog:
+{% if applications_cluster.platform == "openshift" %}
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
     resources:
       limits:
         memory: 160Mi
 {% if applications_cluster.platform == "openshift" %}
-    podAnnotations:
-      openshift.io/required-scc: restricted-v2
-{% endif %}
-  product-reviews:
-{% if applications_cluster.platform == "openshift" %}
-    podAnnotations:
-      openshift.io/required-scc: restricted-v2
-{% endif %}
   quote:
-{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
   recommendation:
+{% if applications_cluster.platform == "openshift" %}
+    podAnnotations:
+      openshift.io/required-scc: restricted-v2
+{% endif %}
     resources:
       limits:
         cpu: 200m
@@ -160,16 +153,12 @@ components:
         cpu: 50m
         memory: 128Mi
 {% if applications_cluster.platform == "openshift" %}
-    podAnnotations:
-      openshift.io/required-scc: restricted-v2
-{% endif %}
   shipping:
-{% if applications_cluster.platform == "openshift" %}
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
-  valkey-cart:
 {% if applications_cluster.platform == "openshift" %}
+  valkey-cart:
     podAnnotations:
       openshift.io/required-scc: restricted-v2
 {% endif %}
@@ -179,15 +168,6 @@ components:
       runAsUser: 999
 opentelemetry-collector:
   config:
-    processors:
-      memory_limiter:
-        check_interval: 1s
-        limit_percentage: 75
-        spike_limit_percentage: 25
-      batch:
-        timeout: 10s
-        send_batch_size: 1024
-        send_batch_max_size: 2048
     connectors:
       spanmetrics:
         dimensions:
@@ -200,73 +180,31 @@ opentelemetry-collector:
         endpoint: {{ tools_clickhouse_endpoint.http }}
         logs_table_name: otel_demo_logs
         traces_table_name: otel_demo_traces
-        timeout: 30s
-        retry_on_failure:
-          enabled: true
-          initial_interval: 5s
-          max_interval: 30s
-          max_elapsed_time: 5m
-        sending_queue:
-          enabled: true
-          num_consumers: 10
-          queue_size: 10000
-          storage: file_storage
       opensearch:
         http:
           endpoint: http://opensearch-master.opensearch.svc.cluster.local:9200
       otlp:
         endpoint: {{ tools_jaeger_endpoint.collector.grpc }}
-        tls:
-          insecure: true
       otlphttp/prometheus:
         endpoint: {{ tools_prometheus_endpoint.http }}
       prometheus:
         endpoint: 0.0.0.0:8888
-    extensions:
-      health_check:
-        endpoint: 0.0.0.0:13133
-      file_storage:
-        directory: /var/lib/otelcol
-        timeout: 10s
     service:
-      extensions:
-        - health_check
-        - file_storage
       pipelines:
         logs:
-          receivers:
-            - otlp
-          processors:
-            - memory_limiter
-            - batch
           exporters:
             - clickhouse
             - debug
         metrics:
-          receivers:
-            - otlp
-          processors:
-            - memory_limiter
-            - batch
           exporters:
             - debug
             - prometheus
         traces:
-          receivers:
-            - otlp
-          processors:
-            - memory_limiter
-            - batch
           exporters:
             - clickhouse
             - debug
             - otlp
             - spanmetrics
-        metrics/spanmetrics:
-          receivers:
-            - spanmetrics
-          exporters:
-            - prometheus
       telemetry:
         metrics:
           level: detailed
@@ -289,14 +227,6 @@ opentelemetry-collector:
     metricsEndpoints:
       - port: metrics
       - port: telemetry
-  resources:
-    limits:
-      memory: 1Gi
-    requests:
-      cpu: 250m
-      memory: 512Mi
-  podSecurityContext:
-    fsGroup: 10001
 {% if applications_cluster.platform == "openshift" %}
   podAnnotations:
     openshift.io/required-scc: restricted-v2
