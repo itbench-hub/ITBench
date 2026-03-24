@@ -2,20 +2,21 @@
 apiVersion: itbench.io/v2
 kind: Scenario
 metadata:
-  name: scenario-48
+  name: scenario-58
 spec:
   applications:
-    bookInfo:
+    opentelemetryDemo:
       enabled: true
   faults:
     - injections:
         - args:
             kubernetesObject:
-              apiVersion: v1
-              kind: Namespace
+              apiVersion: apps/v1
+              kind: Deployment
               metadata:
-                name: book-info
-          id: disabled-istio-ambient-mode-kubernetes-namespace
+                name: accounting
+                namespace: otel-demo
+          id: scaled-to-zero-kubernetes-workload
   tools:
     sre:
       enabled: true

@@ -10,14 +10,25 @@ spec:
   faults:
     - injections:
         - args:
-            configMapName: features
+            container:
+              name: checkout
             kubernetesObject:
               apiVersion: apps/v1
               kind: Deployment
               metadata:
-                name: recommendation
+                name: checkout
                 namespace: otel-demo
-          id: crashing-kubernetes-workload-init-container
+          id: unsupported-architecture-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: checkout
+                  namespace: otel-demo
+            id: delete-workload-pods
   tools:
     sre:
       enabled: true

@@ -10,13 +10,25 @@ spec:
   faults:
     - injections:
         - args:
+            container:
+              name: product-catalog
             kubernetesObject:
               apiVersion: apps/v1
               kind: Deployment
               metadata:
-                name: accounting
+                name: product-catalog
                 namespace: otel-demo
-          id: scaled-to-zero-kubernetes-workload
+          id: nonexistent-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: checkout
+                  namespace: otel-demo
+            id: delete-workload-pods
   tools:
     sre:
       enabled: true

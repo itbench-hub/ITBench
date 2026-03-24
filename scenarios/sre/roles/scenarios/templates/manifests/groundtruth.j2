@@ -21,7 +21,13 @@ spec:
 {% for injection in disruption.injections %}
 {% if injection.args.kubernetesObject is defined %}
     - {{ injection.args.kubernetesObject }}
-{% if injection.id == "ingress-port-blocking-network-policy" %}
+{% if injection.id == "crashing-kubernetes-workload-init-container" %}
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: {{ [injection.args.kubernetesObject.metadata.name, "config"] | ansible.builtin.join("-") }}
+        namespace: {{ injection.args.kubernetesObject.metadata.namespace }}
+{% elif injection.id == "ingress-port-blocking-network-policy" %}
     - apiVersion: networking.k8s.io/v1
       kind: NetworkPolicy
       metadata:
