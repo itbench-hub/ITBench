@@ -7,6 +7,10 @@ spec:
   applications:
     opentelemetryDemo:
       enabled: true
+      options:
+        autoscaling:
+          kubernetes:
+            hpa: true
   faults:
     - injections:
         - args:
@@ -14,7 +18,7 @@ spec:
               apiVersion: apps/v1
               kind: Deployment
               metadata:
-                name: accounting
+                name: fraud-detection
                 namespace: otel-demo
           id: misconfigured-kubernetes-horizontal-pod-autoscaler
         - args:
@@ -22,7 +26,15 @@ spec:
               apiVersion: apps/v1
               kind: Deployment
               metadata:
-                name: ad
+                name: frontend
+                namespace: otel-demo
+          id: misconfigured-kubernetes-horizontal-pod-autoscaler
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: image-provider
                 namespace: otel-demo
           id: misconfigured-kubernetes-horizontal-pod-autoscaler
   tools:

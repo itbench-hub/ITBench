@@ -7,6 +7,10 @@ spec:
   applications:
     opentelemetryDemo:
       enabled: true
+      options:
+        autoscaling:
+          kubernetes:
+            hpa: true
   faults:
     - injections:
         - args:
@@ -14,7 +18,7 @@ spec:
               apiVersion: apps/v1
               kind: Deployment
               metadata:
-                name: checkout
+                name: checking
                 namespace: otel-demo
           id: insufficient-kubernetes-resource-quota
         - args:
@@ -46,14 +50,15 @@ spec:
                   name: load-generator
                   namespace: otel-demo
             id: restart-kubernetes-workload
-          - args:
-              kubernetesObject:
-                apiVersion: apps/v1
-                kind: Deployment
-                metadata:
-                  name: checkout
-                  namespace: otel-demo
-            id: force-workload-restart-by-scaling
   tools:
-    sre:
-      enabled: true
+    chaosEngineering:
+      chaosMesh:
+        enabled: false
+    costMonitoring:
+      opencost:
+        enabled: false
+    observability:
+      topology:
+        enabled: true
+      traces:
+        enabled: true

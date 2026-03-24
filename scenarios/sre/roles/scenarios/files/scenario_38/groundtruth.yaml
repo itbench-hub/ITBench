@@ -11,27 +11,40 @@ spec:
     - apiVersion: apps/v1
       kind: Deployment
       metadata:
-        name: accounting
+        name: fraud-detection
         namespace: otel-demo
     - apiVersion: autoscaling/v2
       kind: HorizontalPodAutoscaler
       metadata:
-        name: accounting
+        name: fraud-detection
         namespace: otel-demo
     - apiVersion: apps/v1
       kind: Deployment
       metadata:
-        name: ad
+        name: frontend
         namespace: otel-demo
     - apiVersion: autoscaling/v2
       kind: HorizontalPodAutoscaler
       metadata:
-        name: ad
+        name: frontend
+        namespace: otel-demo
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: image-provider
+        namespace: otel-demo
+    - apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: image-provider
         namespace: otel-demo
   solutions:
     - - steps:
-          - command: kubectl -n otel-demo edit horizontalpodautoscaler accounting
+          - command: kubectl -n otel-demo edit horizontalpodautoscaler fraud-detection
             text: Manually edit the manifest and replace the utilization values with the correct values.
     - - steps:
-          - command: kubectl -n otel-demo edit horizontalpodautoscaler ad
+          - command: kubectl -n otel-demo edit horizontalpodautoscaler frontend
+            text: Manually edit the manifest and replace the utilization values with the correct values.
+    - - steps:
+          - command: kubectl -n otel-demo edit horizontalpodautoscaler image-provider
             text: Manually edit the manifest and replace the utilization values with the correct values.

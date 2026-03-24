@@ -104,109 +104,6 @@
         "alerts": {
             "application": [
                 "NoRequestsReceived"
-            ],
-            "goldenSignal": [
-                "HighRequestErrorRate"
-            ]
-        },
-        "arguments": {
-            "jsonSchema": {
-                "properties": {
-                    "kubernetesObject": {
-                        "properties": {
-                            "apiVersion": {
-                                "enum": [
-                                    "v1"
-                                ],
-                                "type": "string"
-                            },
-                            "kind": {
-                                "enum": [
-                                    "Service"
-                                ],
-                                "type": "string"
-                            },
-                            "metadata": {
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "namespace": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "namespace"
-                                ],
-                                "type": "object"
-                            }
-                        },
-                        "required": [
-                            "apiVersion",
-                            "kind",
-                            "metadata"
-                        ],
-                        "type": "object"
-                    }
-                },
-                "required": [
-                    "kubernetesObject"
-                ],
-                "type": "object"
-            }
-        },
-        "description": "This fault deletes a Kubernetes Service resource, causing DNS resolution failures and preventing workloads from discovering or connecting to the target pods.",
-        "expectation": "Applications attempting to connect to the deleted service will experience DNS resolution failures or connection refused errors. This simulates incidents like Azure's Traffic Manager profile deletion (PSM0-BQ8) where DNS-based service discovery was broken, causing widespread unavailability of dependent services.",
-        "id": "deleted-kubernetes-service",
-        "name": "Deleted Kubernetes Service",
-        "platform": "Kubernetes",
-        "resources": [
-            "https://kubernetes.io/docs/concepts/services-networking/service/",
-            "https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/",
-            "https://kubernetes.io/docs/tasks/access-application-cluster/connecting-frontend-backend/",
-            "https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/"
-        ],
-        "solutions": {
-            "templates": [
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get pods -l app.kubernetes.io/component={{ args.kubernetesObject.metadata.name }}",
-                            "text": "Identify the pods that should be targeted by the deleted service by checking pod labels."
-                        },
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} expose deployment {{ args.kubernetesObject.metadata.name }} --port=8080 --target-port=8080 --name={{ args.kubernetesObject.metadata.name }}",
-                            "text": "Recreate the deleted service by exposing the underlying deployment. Adjust port and target-port values to match the original service configuration."
-                        },
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get svc {{ args.kubernetesObject.metadata.name }}",
-                            "text": "Verify that the service has been recreated successfully and has a valid cluster IP."
-                        }
-                    ]
-                },
-                {
-                    "steps": [
-                        {
-                            "text": "If the service manifest is available in version control or backup, restore it directly."
-                        },
-                        {
-                            "command": "kubectl apply -f service-backup.yaml",
-                            "text": "Apply the backed-up service manifest to restore the deleted service."
-                        }
-                    ]
-                }
-            ]
-        },
-        "tags": [
-            "Networking",
-            "Deployment"
-        ]
-    },
-    {
-        "alerts": {
-            "application": [
-                "NoRequestsReceived"
             ]
         },
         "arguments": {
@@ -866,112 +763,9 @@
     {
         "alerts": {
             "goldenSignal": [
-                "HighRequestErrorRate"
+                "HighRequestLatency"
             ]
         },
-        "arguments": {
-            "jsonSchema": {
-                "properties": {
-                    "kubernetesObject": {
-                        "properties": {
-                            "apiVersion": {
-                                "enum": [
-                                    "v1"
-                                ],
-                                "type": "string"
-                            },
-                            "kind": {
-                                "enum": [
-                                    "Service"
-                                ],
-                                "type": "string"
-                            },
-                            "metadata": {
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "namespace": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "namespace"
-                                ],
-                                "type": "object"
-                            }
-                        },
-                        "required": [
-                            "apiVersion",
-                            "kind",
-                            "metadata"
-                        ],
-                        "type": "object"
-                    }
-                },
-                "required": [
-                    "kubernetesObject"
-                ],
-                "type": "object"
-            }
-        },
-        "description": "This fault corrupts a Kubernetes Service selector to point to non-existent pods, simulating routing corruption at the ztunnel (L4) layer in Istio Ambient mode. This mirrors the November 2023 Optus BGP routing storm where routing tables became corrupted, disconnecting services from the network. The fault operates at the service discovery layer, causing connection establishment failures when ztunnel cannot find valid endpoints.",
-        "expectation": "Services attempting to communicate with the faulted service will experience immediate connection failures. The service will have no endpoints available, causing ztunnel to reject connection attempts with \"Operation not permitted\" or similar errors. HTTP clients will see connection errors or timeouts, triggering error rate alerts.",
-        "id": "istio-service-mesh-routing-corruption",
-        "name": "Istio Service Mesh Routing Corruption",
-        "platform": "Kubernetes",
-        "resources": [
-            "https://istio.io/latest/docs/concepts/traffic-management/",
-            "https://istio.io/latest/docs/reference/config/networking/virtual-service/",
-            "https://istio.io/latest/docs/reference/config/networking/destination-rule/",
-            "https://istio.io/latest/docs/ops/common-problems/network-issues/"
-        ],
-        "solutions": {
-            "templates": [
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get service {{ args.kubernetesObject.metadata.name }} -o jsonpath=\"{.spec.selector}\"",
-                            "text": "Check the current service selector to identify the corrupted configuration."
-                        },
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get endpoints {{ args.kubernetesObject.metadata.name }}",
-                            "text": "Verify that the service has no endpoints due to selector mismatch."
-                        },
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} patch service {{ args.kubernetesObject.metadata.name }} --type=merge -p '{\"spec\":{\"selector\":{\"app\":\"{{ args.kubernetesObject.metadata.name }}\"}}}'",
-                            "text": "Restore the service selector (assuming standard app label)."
-                        }
-                    ]
-                },
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit service {{ args.kubernetesObject.metadata.name }}",
-                            "text": "Manually edit the service and restore the correct selector labels."
-                        }
-                    ]
-                },
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get pods --show-labels",
-                            "text": "List pods with their labels to identify the correct selector."
-                        },
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} describe service {{ args.kubernetesObject.metadata.name }}",
-                            "text": "Check service details and compare with pod labels to determine correct selector."
-                        }
-                    ]
-                }
-            ]
-        },
-        "tags": [
-            "Networking"
-        ]
-    },
-    {
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -1014,7 +808,7 @@
                                 "properties": {
                                     "requestsPerSecond": {
                                         "minimum": 1,
-                                        "type": "number"
+                                        "type": "integer"
                                     }
                                 },
                                 "required": [
@@ -1036,149 +830,38 @@
                 "type": "object"
             }
         },
-        "description": "This fault generates a high volume of requests to the Kubernetes API server by deploying multiple load generator pods that continuously query cluster resources. The surge in API requests can overwhelm the API server and impact cluster control plane performance.",
-        "expectation": "The Kubernetes API server experiences increased load from continuous resource queries. This may cause API latency, rate limiting, or impact other control plane operations. Applications relying on the Kubernetes API may experience slower response times or failures.",
+        "description": "This fault injects a workload which causes a surge in requests to the API server, causing performance degredation.",
+        "expectation": "Workloads will be to experience high latency and new workloads may not be able to be scheduled.",
         "id": "kubernetes-api-server-request-surge",
         "name": "Kubernetes API Server Request Surge",
         "platform": "Kubernetes",
         "resources": [
-            "https://kubernetes.io/docs/reference/command-line-tools-reference/kube-apiserver/",
-            "https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/",
-            "https://kubernetes.io/docs/concepts/cluster-administration/flow-control/"
+            "https://kubernetes.io/docs/concepts/overview/components/",
+            "https://kubernetes.io/docs/concepts/architecture/#kube-apiserver"
         ],
         "solutions": {
             "templates": [
                 {
                     "steps": [
                         {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} get deployments",
-                            "text": "List all deployments in the namespace to identify the load generator."
-                        },
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} edit deployment workload-scanner",
+                            "text": "Manually edit the manifest and lower the request rate."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
                         {
                             "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} delete deployment workload-scanner",
-                            "text": "Delete the workload-scanner deployment that is generating the API load."
-                        },
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} delete clusterrole workload-scanner",
-                            "text": "Clean up the associated ClusterRole."
-                        },
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.name }} delete clusterrolebinding workload-scanner",
-                            "text": "Clean up the associated ClusterRoleBinding."
+                            "text": "Delete the injected load generator deployment."
                         }
                     ]
                 }
             ]
         },
         "tags": [
-            "Control Plane",
+            "Deployment",
             "Performance"
-        ]
-    },
-    {
-        "alerts": {
-            "application": [
-                "KubePodCrashLooping"
-            ]
-        },
-        "arguments": {
-            "jsonSchema": {
-                "properties": {
-                    "configMapName": {
-                        "type": "string"
-                    },
-                    "kubernetesObject": {
-                        "properties": {
-                            "apiVersion": {
-                                "enum": [
-                                    "apps/v1"
-                                ],
-                                "type": "string"
-                            },
-                            "kind": {
-                                "enum": [
-                                    "Deployment",
-                                    "StatefulSet"
-                                ],
-                                "type": "string"
-                            },
-                            "metadata": {
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "namespace": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "namespace"
-                                ],
-                                "type": "object"
-                            }
-                        },
-                        "required": [
-                            "apiVersion",
-                            "kind",
-                            "metadata"
-                        ],
-                        "type": "object"
-                    }
-                },
-                "required": [
-                    "kubernetesObject",
-                    "configMapName"
-                ],
-                "type": "object"
-            }
-        },
-        "description": "This fault injects a malformed ConfigMap (truncated JSON) into any Kubernetes workload and adds an initContainer that validates the configuration during pod startup. The initContainer crashes when attempting to parse the invalid JSON, preventing the main application container from starting. This simulates incidents like Cloudflare's November 2025 outage where malformed config files caused application crashes.",
-        "expectation": "The pod will fail to start and enter Init:CrashLoopBackOff state as the validation initContainer repeatedly crashes when parsing the malformed configuration. The workload becomes unavailable, returning HTTP 5xx errors or no response. Dependent services may experience cascading failures as requests to the affected service fail.",
-        "id": "malformed-configmap-causing-service-crash",
-        "name": "Malformed ConfigMap Causing Service Crash",
-        "platform": "Kubernetes",
-        "resources": [
-            "https://kubernetes.io/docs/concepts/configuration/configmap/",
-            "https://kubernetes.io/docs/concepts/workloads/",
-            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
-            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/",
-            "https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/config-map-v1/"
-        ],
-        "solutions": {
-            "templates": [
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
-                            "text": "Revert the last change done to the manifest."
-                        }
-                    ]
-                },
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
-                            "text": "Manually edit the manifest and remove the malformed ConfigMap volumes."
-                        },
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete configmap {{ args.configMapName }}",
-                            "text": "Delete the injected malformed ConfigMap object."
-                        }
-                    ]
-                },
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit configmap {{ args.configMapName }}",
-                            "text": "Manually edit the ConfigMap and reduce its size to acceptable limits."
-                        }
-                    ]
-                }
-            ]
-        },
-        "tags": [
-            "Code"
         ]
     },
     {
@@ -2064,96 +1747,6 @@
         ]
     },
     {
-        "alerts": {
-            "application": [
-                "KafkaConsumerGroupInactive"
-            ]
-        },
-        "arguments": {
-            "jsonSchema": {
-                "properties": {
-                    "kubernetesObject": {
-                        "properties": {
-                            "apiVersion": {
-                                "enum": [
-                                    "apps/v1"
-                                ],
-                                "type": "string"
-                            },
-                            "kind": {
-                                "enum": [
-                                    "Deployment",
-                                    "StatefulSet"
-                                ],
-                                "type": "string"
-                            },
-                            "metadata": {
-                                "properties": {
-                                    "name": {
-                                        "type": "string"
-                                    },
-                                    "namespace": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "name",
-                                    "namespace"
-                                ],
-                                "type": "object"
-                            }
-                        },
-                        "required": [
-                            "apiVersion",
-                            "kind",
-                            "metadata"
-                        ],
-                        "type": "object"
-                    }
-                },
-                "required": [
-                    "kubernetesObject"
-                ],
-                "type": "object"
-            }
-        },
-        "description": "This fault scales a Kubernetes workload to zero replicas, simulating scenarios where worker services, queue processors, or event consumers are deliberately paused or stopped as part of incident mitigation or maintenance.",
-        "expectation": "All pods for the workload will be terminated. The deployment will show 0/0 ready replicas. Services depending on this workload will experience failures, timeouts, or event processing backlogs. Kafka consumer groups will become inactive with zero members.",
-        "id": "scaled-to-zero-kubernetes-workload",
-        "name": "Scaled to Zero Kubernetes Workload",
-        "platform": "Kubernetes",
-        "resources": [
-            "https://kubernetes.io/docs/concepts/workloads/",
-            "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
-            "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#scaling-to-0",
-            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
-        ],
-        "solutions": {
-            "templates": [
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} scale {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} --replicas=1",
-                            "text": "Scale the workload back to 1 replica to restore service."
-                        }
-                    ]
-                },
-                {
-                    "steps": [
-                        {
-                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
-                            "text": "Revert the last change done to the manifest to restore the original replica count."
-                        }
-                    ]
-                }
-            ]
-        },
-        "tags": [
-            "Deployment",
-            "Performance"
-        ]
-    },
-    {
         "arguments": {
             "jsonSchema": {
                 "properties": {
@@ -2193,15 +1786,6 @@
                             "metadata"
                         ],
                         "type": "object"
-                    },
-                    "schedule": {
-                        "description": "Cron expression for when the experiment should run. Defaults to every minute (* * * * *).",
-                        "examples": [
-                            "*/10 * * * *",
-                            "0 * * * *",
-                            "0 */24 * * *"
-                        ],
-                        "type": "string"
                     },
                     "scheduleSpec": {
                         "properties": {

@@ -10,13 +10,13 @@
         namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
       spec: |-
         {{
-          {
-            "concurrencyPolicy": "Forbid",
-            "historyLimit": 1,
-            "schedule": injection_task.args.schedule | default("* * * * *")
-          } |
+          injection_task.args.scheduleSpec |
           ansible.builtin.combine(
-            injection_task.args.scheduleSpec
+            {
+              "concurrencyPolicy": "Forbid",
+              "historyLimit": 1,
+              "schedule": "* * * * *"
+            }
           )
         }}
     state: present
