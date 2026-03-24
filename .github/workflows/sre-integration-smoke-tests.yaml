@@ -6,14 +6,15 @@ on:
       - main
     paths:
       - clusters/kind/go.*
-      - scenarios/sre/playbooks/manage_agent_access.yaml
-      - scenarios/sre/playbooks/manage_applications.yaml
-      - scenarios/sre/playbooks/manage_documentation.yaml
-      - scenarios/sre/playbooks/manage_faults.yaml
-      - scenarios/sre/playbooks/manage_recorders.yaml
-      - scenarios/sre/playbooks/manage_tools.yaml
-      - scenarios/sre/roles/**
-      - '!scenarios/sre/roles/awx/**'
+      - scenarios/sre/project/anage_applications.yaml
+      - scenarios/sre/project/manage_faults.yaml
+      - scenarios/sre/project/manage_recorders.yaml
+      - scenarios/sre/project/roles/**
+      - '!scenarios/sre/project/roles/agent/**'
+      - '!scenarios/sre/project/roles/awx/**'
+      - '!scenarios/sre/project/roles/documentation/**'
+      - '!scenarios/sre/project/roles/tools/**'
+      - '!scenarios/sre/project/roles/waiters/**'
 
 concurrency:
   group: ci-integration-${{ github.ref }}
@@ -45,12 +46,12 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
-          cat <<EOF > scenarios/sre/group_vars/environment/tools.yaml
+          cat <<EOF > scenarios/sre/inventory/group_vars/environment/tools.yaml
           ---
           tools:
             sre: true
           EOF
-          cat <<EOF > scenarios/sre/group_vars/environment/applications.yaml
+          cat <<EOF > scenarios/sre/inventory/group_vars/environment/applications.yaml
           ---
           applications:
             book_info: true
@@ -89,12 +90,12 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
-          cat <<EOF > scenarios/sre/group_vars/environment/tools.yaml
+          cat <<EOF > scenarios/sre/inventory/group_vars/environment/tools.yaml
           ---
           tools:
             sre: true
           EOF
-          cat <<EOF > scenarios/sre/group_vars/environment/applications.yaml
+          cat <<EOF > scenarios/sre/inventory/group_vars/environment/applications.yaml
           ---
           applications:
             otel_demo: true
