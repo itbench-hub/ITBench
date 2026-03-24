@@ -38,7 +38,7 @@ spec:
               ) by(le, service_name, namespace)
             )
             > 1500
-          for: 3m
+          for: 1m
           labels:
             severity: critical
           annotations:
@@ -55,7 +55,7 @@ spec:
               )
             ) by (service_name, namespace)
             > 0
-          for: 3m
+          for: 1m
           labels:
             severity: critical
           annotations:
@@ -69,37 +69,18 @@ spec:
               sum (
                 rate(
                   traces_span_metrics_duration_milliseconds_bucket{
-                    service_name!~"flagd|load-generator|frontend*|accounting",
+                    service_name!~"flagd|load-generator|frontend*",
                     namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
                   }[2m]
                 )
               ) by(le, service_name, namespace)
             )
             > 1500
-          for: 3m
+          for: 1m
           labels:
             severity: critical
           annotations:
-            description: "Latency in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 1500ms (current: {{ $value }}s)"
-        - alert: HighRequestLatency
-          expr: |
-            histogram_quantile(
-              0.95,
-              sum (
-                rate(
-                  traces_span_metrics_duration_milliseconds_bucket{
-                    service_name="accounting",
-                    namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
-                  }[5m]
-                )
-              ) by(le, service_name, namespace)
-            )
-            > 5000
-          for: 5m
-          labels:
-            severity: warning
-          annotations:
-            description: "Latency in accounting service in namespace {{ $labels.namespace }} is above 5000ms (current: {{ $value }}s)"
+            description: "Latency in service {{ $labels.service_name }} in namespace {{ $labels.namespace }} is above 15000ms (current: {{ $value }}s)"
         - alert: HighRequestErrorRate
           expr: |
             sum (
@@ -112,7 +93,7 @@ spec:
               )
             ) by (service_name, namespace)
             > 0
-          for: 3m
+          for: 1m
           labels:
             severity: critical
           annotations:
@@ -126,7 +107,7 @@ spec:
                 }[2m]
               )
             ) > 0
-          for: 3m
+          for: 1m
           labels:
             severity: warning
           annotations:
@@ -141,53 +122,12 @@ spec:
                   service_name!~"flagd|load-generator",
                   status_code=~"STATUS_CODE_UNSET|STATUS_CODE_OK",
                   namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
-                }[5m]
+                }[10m]
               )
             ) by (service_name, namespace)
             == 0
-          for: 5m
+          for: 10m
           labels:
             severity: critical
           annotations:
             description: "Service {{ $labels.service_name }} in namespace {{ $labels.namespace }} has received no requests"
-    - name: opentelemetrydemo.kafka
-      rules:
-        - alert: KafkaConsumerGroupInactive
-          expr: |
-            kafka_consumergroup_members{
-              namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
-            } == 0
-          for: 2m
-          labels:
-            severity: critical
-          annotations:
-            description: "Kafka consumer group {{ $labels.consumergroup }} in namespace {{ $labels.namespace }} has no active members (current: {{ $value }})"
-        - alert: HighKafkaConsumerLag
-          expr: |
-            kafka_consumergroup_lag_sum{
-              namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
-            } > 100
-          for: 5m
-          labels:
-            severity: warning
-          annotations:
-            description: "Kafka consumer group {{ $labels.consumergroup }} has high lag on topic {{ $labels.topic }} (current: {{ $value }} messages)"
-    - name: opentelemetrydemo.database
-      rules:
-        - alert: NoDatabaseOperations
-          expr: |
-            sum by (service_name, namespace) (
-              rate(
-                traces_span_metrics_calls_total{
-                  service_name="accounting",
-                  span_name="postgresql",
-                  span_kind="SPAN_KIND_CLIENT",
-                  namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
-                }[5m]
-              )
-            ) == 0
-          for: 5m
-          labels:
-            severity: warning
-          annotations:
-            description: "Service {{ $labels.service_name }} in namespace {{ $labels.namespace }} has stopped performing database operations"

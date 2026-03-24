@@ -16,11 +16,11 @@ spec:
                 request_result_total{
                   response_code!~"20*",
                   namespace="[[ applications_managers.book_info.kubernetes.namespace ]]"
-                }[2m]
+                }[5m]
               )
             ) by (destination_app, response_code, namespace)
             > 0
-          for: 3m
+          for: 5m
           labels:
             severity: critical
           annotations:
@@ -52,12 +52,12 @@ spec:
                 rate(
                   istio_request_duration_milliseconds_bucket{
                     source_workload_namespace="[[ applications_managers.book_info.kubernetes.namespace ]]"
-                  }[2m]
+                  }[5m]
                 )
               ) by(le, destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace)
             )
             > 1500
-          for: 3m
+          for: 5m
           labels:
             severity: warning
           annotations:
@@ -69,11 +69,11 @@ spec:
                 istio_requests_total{
                   response_code!~"20*",
                   source_workload_namespace="[[ applications_managers.book_info.kubernetes.namespace ]]"
-                }[2m]
+                }[5m]
               )
             ) by (destination_canonical_service, destination_workload_namespace, source_canonical_service, source_workload_namespace, response_code)
             > 0
-          for: 3m
+          for: 5m
           labels:
             severity: warning
           annotations:

@@ -18,14 +18,14 @@ spec:
           labels:
             severity: warning
           annotations:
-            description: "{{ $labels.namespace }} has exceeded the allocated budget for vCPU for 1 minute (current: ${{ $value }})"
+            description: "{{ $labels.namespace }} has exceeded the allocated budget for vCPU for 5m (current: ${{ $value }})"
         - alert: MemorySpend
           expr: sum by (namespace) (container_namespace_node:container_memory_allocation_gigabytes_cost_per_node:avg5m{container!="load-generator", namespace="otel-demo"}) > 9
           for: 1m
           labels:
             severity: warning
           annotations:
-            description: "{{ $labels.namespace }} has exceeded the allocated budget for RAM for 1 minute (current: ${{ $value }})"
+            description: "{{ $labels.namespace }} has exceeded the allocated budget for RAM for 5m (current: ${{ $value }})"
     - name: EfficiencyAlerts
       interval: 1m
       rules:
@@ -35,11 +35,11 @@ spec:
           labels:
             severity: info
           annotations:
-            description: "{{ $labels.container }} in {{ $labels.namespace }} has a cpu efficiency below 65% for 2 minutes (current: {{ $value }}%)"
+            description: "{{ $labels.container }} in {{ $labels.namespace }} has a cpu efficiency below 65% for 5m (current: {{ $value }}%)"
         - alert: MemoryEfficiency
           expr: round(avg by (container, namespace) (container_namespace:container_memory_working_set_bytes_per_requests_bytes:ratio_avg1m{container!~"load-generator|flagd-ui", namespace="otel-demo"}) * 100) < 75
           for: 2m
           labels:
             severity: info
           annotations:
-            description: "{{ $labels.container }} in {{ $labels.namespace }} has a memory efficiency below 75% for 2 minutes (current: {{ $value }}%)"
+            description: "{{ $labels.container }} in {{ $labels.namespace }} has a memory efficiency below 75% for 5m (current: {{ $value }}%)"
