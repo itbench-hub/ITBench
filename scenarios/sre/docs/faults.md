@@ -1168,13 +1168,13 @@ See the scenario ground truth file where this fault is invoked.
     "type": "object"
 }
 ```
-### Modify Kubernetes Workload Container Image
+### Nonexistent Kubernetes Workload Container Image
 
-**Description:** This fault modifies the container image of a designated Kubernetes workload. It can be used to inject a nonexistent image, a custom invalid image, or any other image for testing purposes.
+**Description:** This fault injects an nonexistent image into a designated Kubernetes workload's container.
 
-**Expectation:** Depending on the image specified, the faulted pod(s) may enter various states. For nonexistent images, pods will enter the `Pending` state due to an `ImagePullBackOff` error. For custom images, behavior depends on the image contents.
+**Expectation:** The faulted pod(s) will enter the `Pending` state due to an `ImagePullBackOff` error. The workload will become unable to function.
 
-**[Implementation](../roles/faults/tasks/inject_modify_kubernetes_workload_container_image.yaml)**
+**[Implementation](../roles/faults/tasks/inject_nonexistent_kubernetes_workload_container_image.yaml)**
 
 **Firing Alerts**
 
@@ -1190,10 +1190,6 @@ See the scenario ground truth file where this fault is invoked.
     "properties": {
         "container": {
             "properties": {
-                "image": {
-                    "description": "Optional custom image to use. Defaults to 'quay.io/it-bench/hello-bench-invalid:1.0.0' if not provided.",
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 }
