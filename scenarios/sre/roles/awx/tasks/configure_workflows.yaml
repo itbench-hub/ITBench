@@ -8,7 +8,8 @@
           ansible.builtin.default([])
         ) +
         [
-          lookup("ansible.builtin.template", "templates/awx/workflows/credentials.j2")
+          lookup("ansible.builtin.template", "templates/awx/workflows/credentials.j2") |
+          ansible.builtin.from_yaml
         ]
       }}
   loop: "{{ awx_configuration.runners.kubeconfigs }}"
@@ -62,7 +63,7 @@
         controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
         controller_username: admin
         inventory: ITBench
-        name: Scenario-{{ workflow_configuration.1 }}{{ workflow_configuration.0.suffix }}
+        name: Scenario-{{ workflow_configuration.1[0] }}{{ workflow_configuration.0.suffix }}
         request_timeout: 120
         state: present
         workflow_nodes: |-
@@ -72,7 +73,7 @@
           }}
       loop: "{{ workflow_types | product(awx_batched_scenarios) }}"
       loop_control:
-        label: workflow/scenario-{{ workflow_configuration.1 }}{{ workflow_configuration.0.suffix }}
+        label: workflow/scenario-{{ workflow_configuration.1[0] }}{{ workflow_configuration.0.suffix }}
         loop_var: workflow_configuration
       vars:
         workflow_types:
