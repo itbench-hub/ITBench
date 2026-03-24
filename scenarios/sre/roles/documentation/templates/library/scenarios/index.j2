@@ -963,6 +963,29 @@
   tags: {{ documentation_faults["scaled-to-zero-kubernetes-workload"].tags }}
 - category: sre
   complexity: medium
+  description: This scenario simulates OpenTelemetry Demo's `recommendation` service crashing due to a malformed ConfigMap.
+  disruptions:
+    - injections:
+      - args:
+          configMapName: features
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: recommendation
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: crashing-kubernetes-workload-init-container
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 57
+  platforms: {{ [documentation_faults["crashing-kubernetes-workload-init-container"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["crashing-kubernetes-workload-init-container"].tags }}
+- category: sre
+  complexity: medium
   description: This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.
   disruptions:
     - injections:

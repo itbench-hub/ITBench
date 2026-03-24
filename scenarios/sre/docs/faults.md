@@ -8,6 +8,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | Name | Platform | Tags |
 | --- | --- | --- |
 | [Cordoned Kubernetes Worker Node](#Cordoned-Kubernetes-Worker-Node) | Kubernetes | Deployment, Performance |
+| [Crashing Kubernetes Workload Init Container](#Crashing-Kubernetes-Workload-Init-Container) | Kubernetes | Code, Deployment, Performance |
 | [Disabled Istio Ambient Mode Kubernetes Namespace](#Disabled-Istio-Ambient-Mode-Kubernetes-Namespace) | Kubernetes | Deployment, Networking |
 | [Failing Name Resolution Kubernetes Workload DNS Policy](#Failing-Name-Resolution-Kubernetes-Workload-DNS-Policy) | Kubernetes | Deployment, Networking |
 | [Hanging Kubernetes Workload Init Container](#Hanging-Kubernetes-Workload-Init-Container) | Kubernetes | Deployment, Performance |
@@ -51,6 +52,71 @@ A fault is a solvable issue injected into an environment to create an incident.
 - https://kubernetes.io/docs/concepts/architecture/nodes/
 - https://kubernetes.io/docs/concepts/workloads/
 - https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/
+- https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+
+**Arguments Schema:**
+```json
+{
+    "properties": {
+        "kubernetesObject": {
+            "properties": {
+                "apiVersion": {
+                    "enum": [
+                        "apps/v1"
+                    ],
+                    "type": "string"
+                },
+                "kind": {
+                    "enum": [
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "required": [
+        "kubernetesObject"
+    ],
+    "type": "object"
+}
+```
+### Crashing Kubernetes Workload Init Container
+
+**Description:** This fault injects an init container that crashes due to a bad script.
+
+**Expectation:** The faulted pod will enter the `Pending` state. All containers will be in the `Waiting` state. The hanging init container will be in the `CrashBackOffLoop` state.
+
+**[Implementation](../roles/faults/tasks/inject_crashing_kubernetes_workload_init_container.yaml)**
+
+**Firing Alerts**
+
+**Resources:**
+- https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+- https://kubernetes.io/docs/concepts/workloads/
+- https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
 - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
 
 **Arguments Schema:**

@@ -41,6 +41,7 @@ The following scenarios are being open-sourced at this time and their implementa
 | [54](#Scenario-54) | sre | low | Kubernetes | Deployment, Performance |
 | [55](#Scenario-55) | sre | low | Kubernetes | Deployment, Performance |
 | [56](#Scenario-56) | sre | low | Kubernetes | Deployment, Performance |
+| [57](#Scenario-57) | sre | medium | Kubernetes | Code, Deployment, Performance |
 | [102](#Scenario-102) | sre | medium | Kubernetes | Deployment, Performance |
 | [105](#Scenario-105) | sre | medium | Kubernetes | Deployment, Performance |
 
@@ -50,19 +51,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 4 | 30 |
+| 4 | 31 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 32 |
+| 2 | 33 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 15 | 18 | 1 |
+| 15 | 19 | 1 |
 
 ## Detailed Summary of Scenarios
 
@@ -1097,6 +1098,43 @@ OR
 
 ```shell
 kubectl -n otel-demo edit deployment accounting
+```
+### Scenario 57
+
+**Description:** This scenario simulates OpenTelemetry Demo's `recommendation` service crashing due to a malformed ConfigMap.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Crashing Kubernetes Workload Init Container](./faults.md#Crashing-Kubernetes-Workload-Init-Container)
+
+**Solution:**
+
+Step 1
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n otel-demo rollout undo deployment/recommendation
+```
+
+OR
+
+- Manually edit the manifest and replace the script with a functioning one.
+
+```shell
+kubectl -n otel-demo edit configmap recommendation-config
+```
+
+OR
+
+- Manually edit the manifest and remove the faulty init container.
+
+```shell
+kubectl -n otel-demo edit deployment recommendation
 ```
 ### Scenario 102
 

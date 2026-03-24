@@ -1,0 +1,23 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-57
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            configMapName: features
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: recommendation
+                namespace: otel-demo
+          id: crashing-kubernetes-workload-init-container
+  tools:
+    sre:
+      enabled: true
