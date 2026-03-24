@@ -16,7 +16,7 @@
       ansible.builtin.assert:
         that:
           - faults_deployment.resources[0].spec.replicas == 0
-          - faults_deployment.resources[0].status.replicas == 0
+          - faults_deployment.resources[0].status.replicas is not defined or faults_deployment.resources[0].status.replicas == 0
           - faults_deployment.resources[0].status.availableReplicas is not defined or faults_deployment.resources[0].status.availableReplicas == 0
         fail_msg: Workload was not scaled to zero replicas. Fault injection failed.
         success_msg: Workload was successfully scaled to zero replicas.
