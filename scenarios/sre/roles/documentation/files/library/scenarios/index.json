@@ -350,24 +350,7 @@
                         },
                         "id": "nonexistent-kubernetes-workload-container-image"
                     }
-                ],
-                "waitFor": {
-                    "postInjection": [
-                        {
-                            "args": {
-                                "kubernetesObject": {
-                                    "apiVersion": "apps/v1",
-                                    "kind": "Deployment",
-                                    "metadata": {
-                                        "name": "product-catalog",
-                                        "namespace": "otel-demo"
-                                    }
-                                }
-                            },
-                            "id": "delete-workload-pods"
-                        }
-                    ]
-                }
+                ]
             }
         ],
         "environment": {
@@ -432,24 +415,7 @@
                         },
                         "id": "unsupported-architecture-kubernetes-workload-container-image"
                     }
-                ],
-                "waitFor": {
-                    "postInjection": [
-                        {
-                            "args": {
-                                "kubernetesObject": {
-                                    "apiVersion": "apps/v1",
-                                    "kind": "Deployment",
-                                    "metadata": {
-                                        "name": "checkout",
-                                        "namespace": "otel-demo"
-                                    }
-                                }
-                            },
-                            "id": "delete-workload-pods"
-                        }
-                    ]
-                }
+                ]
             }
         ],
         "environment": {
@@ -1288,24 +1254,7 @@
                         },
                         "id": "scheduled-chaos-mesh-experiment"
                     }
-                ],
-                "waitFor": {
-                    "postInjection": [
-                        {
-                            "args": {
-                                "kubernetesObject": {
-                                    "apiVersion": "apps/v1",
-                                    "kind": "Deployment",
-                                    "metadata": {
-                                        "name": "cart",
-                                        "namespace": "otel-demo"
-                                    }
-                                }
-                            },
-                            "id": "delete-workload-pods"
-                        }
-                    ]
-                }
+                ]
             }
         ],
         "environment": {
@@ -1784,24 +1733,7 @@
                         },
                         "id": "disabled-istio-ambient-mode-kubernetes-namespace"
                     }
-                ],
-                "waitFor": {
-                    "postInjection": [
-                        {
-                            "args": {
-                                "kubernetesObject": {
-                                    "apiVersion": "apps/v1",
-                                    "kind": "Deployment",
-                                    "metadata": {
-                                        "name": "productpage-v1",
-                                        "namespace": "book-info"
-                                    }
-                                }
-                            },
-                            "id": "delete-workload-pods"
-                        }
-                    ]
-                }
+                ]
             }
         ],
         "environment": {
@@ -1858,24 +1790,7 @@
                         },
                         "id": "misconfigured-kubernetes-workload-container-readiness-probe"
                     }
-                ],
-                "waitFor": {
-                    "postInjection": [
-                        {
-                            "args": {
-                                "kubernetesObject": {
-                                    "apiVersion": "apps/v1",
-                                    "kind": "Deployment",
-                                    "metadata": {
-                                        "name": "cart",
-                                        "namespace": "otel-demo"
-                                    }
-                                }
-                            },
-                            "id": "delete-workload-pods"
-                        }
-                    ]
-                }
+                ]
             }
         ],
         "environment": {
@@ -2058,7 +1973,7 @@
                                 "apiVersion": "apps/v1",
                                 "kind": "Deployment",
                                 "metadata": {
-                                    "name": "checking",
+                                    "name": "checkout",
                                     "namespace": "otel-demo"
                                 }
                             }
@@ -2400,6 +2315,77 @@
                         {
                             "command": "kubectl -n chaos-mesh delete schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'",
                             "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [
+            "NoRequestsReceived",
+            "HighRequestErrorRate"
+        ],
+        "category": "sre",
+        "complexity": "low",
+        "description": "This scenario simulates OpenTelemetry Demo's `accounting` service being scaled to zero replicas.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "accounting",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "scaled-to-zero-kubernetes-workload"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 56,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/accounting",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo scale --replicas=1 deployment/accounting",
+                            "text": "Manually scale the workload to the correct value."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment accounting",
+                            "text": "Manually edit the manifest and set the `replicas` field to the correct value."
                         }
                     ]
                 }

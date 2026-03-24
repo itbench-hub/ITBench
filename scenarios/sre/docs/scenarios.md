@@ -40,6 +40,7 @@ The following scenarios are being open-sourced at this time and their implementa
 | [53](#Scenario-53) | sre | medium | Kubernetes | Deployment |
 | [54](#Scenario-54) | sre | low | Kubernetes | Deployment, Performance |
 | [55](#Scenario-55) | sre | low | Kubernetes | Deployment, Performance |
+| [56](#Scenario-56) | sre | low | Kubernetes | Deployment, Performance |
 | [102](#Scenario-102) | sre | medium | Kubernetes | Deployment, Performance |
 | [105](#Scenario-105) | sre | medium | Kubernetes | Deployment, Performance |
 
@@ -49,19 +50,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 4 | 29 |
+| 4 | 30 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 31 |
+| 2 | 32 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 14 | 18 | 1 |
+| 15 | 18 | 1 |
 
 ## Detailed Summary of Scenarios
 
@@ -1059,6 +1060,43 @@ kubectl -n chaos-mesh get iochaos --selector='experiment.chaos-mesh.org/pause=tr
 
 ```shell
 kubectl -n chaos-mesh delete schedule api-server-memory-stress experiment.chaos-mesh.org/pause='true'
+```
+### Scenario 56
+
+**Description:** This scenario simulates OpenTelemetry Demo's `accounting` service being scaled to zero replicas.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Scaled To Zero Kubernetes Workload](./faults.md#Scaled-To-Zero-Kubernetes-Workload)
+
+**Solution:**
+
+Step 1
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n otel-demo rollout undo deployment/accounting
+```
+
+OR
+
+- Manually scale the workload to the correct value.
+
+```shell
+kubectl -n otel-demo scale --replicas=1 deployment/accounting
+```
+
+OR
+
+- Manually edit the manifest and set the `replicas` field to the correct value.
+
+```shell
+kubectl -n otel-demo edit deployment accounting
 ```
 ### Scenario 102
 

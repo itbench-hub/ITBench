@@ -1,0 +1,22 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - environment
+  tasks:
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: compromised-workload
+        namespace: scaled-to-zero-kubernetes-workload-test
+      register: faults_deployment
+
+    - name: Validate that workload was scaled to zero replicas
+      ansible.builtin.assert:
+        that:
+          - faults_deployment.resources[0].spec.replicas == 0
+          - faults_deployment.resources[0].status.replicas == 0
+          - faults_deployment.resources[0].status.availableReplicas is not defined or faults_deployment.resources[0].status.availableReplicas == 0
+        fail_msg: Workload was not scaled to zero replicas. Fault injection failed.
+        success_msg: Workload was successfully scaled to zero replicas.

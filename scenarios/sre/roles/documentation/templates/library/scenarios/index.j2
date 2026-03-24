@@ -158,16 +158,6 @@
               name: product-catalog
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: nonexistent-kubernetes-workload-container-image
-      waitFor:
-        postInjection:
-          - args:
-              kubernetesObject:
-                apiVersion: apps/v1
-                kind: Deployment
-                metadata:
-                  name: product-catalog
-                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
-            id: delete-workload-pods
   environment:
     applications:
       - id: opentelemetry-demo
@@ -192,16 +182,6 @@
               name: checkout
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: unsupported-architecture-kubernetes-workload-container-image
-      waitFor:
-        postInjection:
-          - args:
-              kubernetesObject:
-                apiVersion: apps/v1
-                kind: Deployment
-                metadata:
-                  name: checkout
-                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
-            id: delete-workload-pods
   environment:
     applications:
       - id: opentelemetry-demo
@@ -539,16 +519,6 @@
                   workers: 10
               duration: 55s
         id: scheduled-chaos-mesh-experiment
-      waitFor:
-        postInjection:
-          - args:
-              kubernetesObject:
-                apiVersion: apps/v1
-                kind: Deployment
-                metadata:
-                  name: cart
-                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
-            id: delete-workload-pods
   environment:
     applications:
       - id: opentelemetry-demo
@@ -723,16 +693,6 @@
             metadata:
               name: {{ applications_managers.book_info.kubernetes.namespace }}
         id: disabled-istio-ambient-mode-kubernetes-namespace
-      waitFor:
-        postInjection:
-          - args:
-              kubernetesObject:
-                apiVersion: apps/v1
-                kind: Deployment
-                metadata:
-                  name: productpage-v1
-                  namespace: {{ applications_managers.book_info.kubernetes.namespace }}
-            id: delete-workload-pods
   environment:
     applications:
       - id: book-info
@@ -757,16 +717,6 @@
               name: frontend
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: misconfigured-kubernetes-workload-container-readiness-probe
-      waitFor:
-        postInjection:
-          - args:
-              kubernetesObject:
-                apiVersion: apps/v1
-                kind: Deployment
-                metadata:
-                  name: cart
-                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
-            id: delete-workload-pods
   environment:
     applications:
       - id: opentelemetry-demo
@@ -832,7 +782,7 @@
             apiVersion: apps/v1
             kind: Deployment
             metadata:
-              name: checking
+              name: checkout
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: insufficient-kubernetes-resource-quota
       - args:
@@ -989,6 +939,28 @@
     - disruptionIndex: 0
       injectionIndex: 0
   tags: {{ documentation_faults["scheduled-chaos-mesh-experiment"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates OpenTelemetry Demo's `accounting` service being scaled to zero replicas.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: accounting
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: scaled-to-zero-kubernetes-workload
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 56
+  platforms: {{ [documentation_faults["scaled-to-zero-kubernetes-workload"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["scaled-to-zero-kubernetes-workload"].tags }}
 - category: sre
   complexity: medium
   description: This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.

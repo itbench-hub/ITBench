@@ -1,0 +1,27 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-56
+spec:
+  alerts:
+    - labels: {}
+      name: NoRequestsReceived
+    - labels: {}
+      name: HighRequestErrorRate
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: accounting
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/accounting
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo scale --replicas=1 deployment/accounting
+            text: Manually scale the workload to the correct value.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment accounting
+            text: Manually edit the manifest and set the `replicas` field to the correct value.
