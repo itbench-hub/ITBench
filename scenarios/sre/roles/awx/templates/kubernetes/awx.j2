@@ -2,8 +2,8 @@
 apiVersion: awx.ansible.com/v1beta1
 kind: AWX
 metadata:
-  name: {{ awx_instances.awx.name }}
-  namespace: {{ awx_instances.awx.namespace }}
+  name: {{ awx_managers.awx_operator.instances.names.main }}
+  namespace: {{ awx_managers.awx_operator.kubernetes.namespace }}
 spec:
   replicas: 3
   service_type: loadbalancer
@@ -14,3 +14,19 @@ spec:
   postgres_storage_requirements:
     requests:
       storage: {{ "4Gi" if awx_cluster.provider == "kind" else "32Gi" }}
+{% if awx_cluster.provider != "kind" %}
+  task_resource_requirements:
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  web_resource_requirements:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+{% endif %}

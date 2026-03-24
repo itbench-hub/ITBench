@@ -3,13 +3,13 @@
   kubernetes.core.k8s_info:
     kind: Service
     kubeconfig: "{{ awx_cluster.kubeconfig }}"
-    name: "{{ awx_instances.awx.name }}-service"
-    namespace: "{{ awx_instances.awx.namespace }}"
+    name: "{{ awx_managers.awx_operator.instances.names.main }}-service"
+    namespace: "{{ awx_managers.awx_operator.kubernetes.namespace }}"
   register: awx_service
   until:
-    - awx_service.resources | length > 0
+    - awx_service.resources | ansible.builtin.length == 1
     - awx_service.resources[0].status.loadBalancer.ingress is defined
-    - awx_service.resources[0].status.loadBalancer.ingress | length > 0
+    - awx_service.resources[0].status.loadBalancer.ingress | ansible.builtin.length > 0
   delay: 15
   retries: 12
 

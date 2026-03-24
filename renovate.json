@@ -3,6 +3,9 @@
   "extends": [
     "config:recommended"
   ],
+  "lockFileMaintenance": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "groupName": "All OpenTelemetry Collector Builder Dependencies",
@@ -41,6 +44,15 @@
       "matchManagers": [
         "ansible"
       ]
+    },
+    {
+      "lockFileMaintenance": {
+        "enabled": true
+      },
+      "matchManagers": [
+        "gomod",
+        "pep621"
+      ]
     }
   ],
   "ansible": {
@@ -52,6 +64,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
+        "clusters/kops/playbooks/roles/docker/defaults/main/managers.yaml",
         "scenarios/sre/roles/applications/defaults/main/managers.yaml",
         "scenarios/sre/roles/tools/defaults/main/managers.yaml"
       ],
@@ -73,17 +86,6 @@
   "gomod": {
     "postUpdateOptions": [
       "gomodTidy"
-    ]
-  },
-  "kubernetes": {
-    "managerFilePatterns": [
-      "/(^|/)daemonsets?.ya?ml$/",
-      "/(^|/)deployments?.ya?ml$/",
-      "/(^|/)deployments?.j2$/",
-      "/(^|/)jobs?.ya?ml$/",
-      "/(^|/)jobs?.j2$/",
-      "/(^|/)statefulsets?.ya?ml$/",
-      "/(^|/)statefulsets?.j2$/"
     ]
   },
   "ocb": {

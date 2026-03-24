@@ -1,0 +1,174 @@
+---
+- name: Create PersistentVolumeClaim for {{ python_recorder.name }}
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/name": "{{ python_recorder.name }}-records"
+        name: "{{ python_recorder.name }}-records"
+        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: "{{ python_recorder.volume.size }}"
+        volumeMode: Filesystem
+    state: present
+
+- name: Create ConfigMap for {{ python_recorder.name }}
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/name": "{{ python_recorder.name }}-scripts"
+        name: "{{ python_recorder.name }}-scripts"
+        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+      data:
+        deps: "{{ lookup('ansible.builtin.file', python_recorder.scripts.requirements_file_path) }}"
+        script: "{{ lookup('ansible.builtin.file', python_recorder.scripts.scripts_file_path) }}"
+    state: present
+
+- name: Create Kubernetes Job Spec for {{ python_recorder.name }}
+  ansible.builtin.set_fact:
+    recorders_job_spec:
+      spec:
+        template:
+          metadata:
+            labels:
+              "app.kubernetes.io/managed-by": ITBench
+              "app.kubernetes.io/name": "{{ python_recorder.name }}"
+          spec:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.itbench.io/sandbox
+                          operator: DoesNotExist
+            containers:
+              - name: recorder
+                image: registry.access.redhat.com/ubi10/python-312-minimal:10.1-1774255563
+                command:
+                  - /bin/sh
+                args:
+                  - -c
+                  - "python3.12 -m pip install -r ~/deps/{{ deps_basename }} && python3.12 ~/scripts/{{ script_basename }}"
+                env: "{{ python_recorder.job.environment_variables }}"
+                resources:
+                  requests:
+                    cpu: 500m
+                    memory: 1Gi
+                  limits:
+                    memory: 15Gi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+                volumeMounts:
+                  - name: dependencies
+                    mountPath: /opt/app-root/src/deps
+                    readOnly: true
+                  - name: scripts
+                    mountPath: /opt/app-root/src/scripts
+                    readOnly: true
+                  - name: records
+                    mountPath: /opt/app-root/src/records
+            restartPolicy: Never
+            securityContext:
+              fsGroup: 1001
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+            volumes:
+              - name: scripts
+                configMap:
+                  name: "{{ python_recorder.name }}-scripts"
+                  items:
+                    - key: script
+                      path: "{{ script_basename }}"
+              - name: dependencies
+                configMap:
+                  name: "{{ python_recorder.name }}-scripts"
+                  items:
+                    - key: deps
+                      path: "{{ deps_basename }}"
+              - name: records
+                persistentVolumeClaim:
+                  claimName: "{{ python_recorder.name }}-records"
+  vars:
+    deps_basename: "{{ python_recorder.scripts.requirements_file_path | ansible.builtin.basename }}"
+    script_basename: "{{ python_recorder.scripts.scripts_file_path | ansible.builtin.basename }}"
+
+- name: Install Job for {{ python_recorder.name }}
+  when:
+    - python_recorder.job.schedule is undefined
+  block:
+    - name: Install Kubernetes Job for {{ python_recorder.name }}
+      kubernetes.core.k8s:
+        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            labels:
+              "app.kubernetes.io/managed-by": ITBench
+              "app.kubernetes.io/name": "{{ python_recorder.name }}"
+            name: "{{ python_recorder.name }}"
+            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+          spec: |-
+            {{
+              recorders_job_spec.spec |
+              ansible.builtin.combine({"ttlSecondsAfterFinished": 10})
+            }}
+        state: present
+
+- name: Install Scheduled Jobs for {{ python_recorder.name }}
+  when:
+    - python_recorder.job.schedule is defined
+  block:
+    # NOTE: Always deploy a job to begin data collection immediately.
+    #       The CronJob will only begin collect according to the schedule.
+
+    - name: Install Kubernetes Job for {{ python_recorder.name }}
+      kubernetes.core.k8s:
+        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            labels:
+              "app.kubernetes.io/component": "{{ python_recorder.name }}"
+              "app.kubernetes.io/managed-by": ITBench
+              "app.kubernetes.io/name": "{{ python_recorder.name }}-init"
+            name: "{{ python_recorder.name }}-init"
+            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+          spec: "{{ recorders_job_spec.spec }}"
+        state: present
+
+    - name: Install Kubernetes CronJob for {{ python_recorder.name }}
+      kubernetes.core.k8s:
+        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: batch/v1
+          kind: CronJob
+          metadata:
+            labels:
+              "app.kubernetes.io/managed-by": ITBench
+              "app.kubernetes.io/name": "{{ python_recorder.name }}"
+            name: "{{ python_recorder.name }}"
+            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+          spec:
+            jobTemplate:
+              spec: "{{ recorders_job_spec.spec }}"
+            schedule: "{{ python_recorder.job.schedule }}"
+        state: present

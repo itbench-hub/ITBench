@@ -782,7 +782,7 @@
             apiVersion: apps/v1
             kind: Deployment
             metadata:
-              name: checking
+              name: checkout
               namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
         id: insufficient-kubernetes-resource-quota
       - args:
@@ -939,6 +939,119 @@
     - disruptionIndex: 0
       injectionIndex: 0
   tags: {{ documentation_faults["scheduled-chaos-mesh-experiment"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates the OpenTelemetry Demo's `product-catalog` service using a nonexistent image.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: product-catalog
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: product-catalog
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: nonexistent-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: checkout
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: delete-workload-pods
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 56
+  platforms: {{ [documentation_faults["nonexistent-kubernetes-workload-container-image"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["nonexistent-kubernetes-workload-container-image"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates the OpenTelemetry Demo's `checkout` service being unable to start due to an unsupported architecture image, testing Kubernetes rolling update resilience without forced restart.
+  disruptions:
+    - injections:
+      - args:
+          container:
+            name: checkout
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: checkout
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: unsupported-architecture-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: checkout
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: delete-workload-pods
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 57
+  platforms: {{ [documentation_faults["unsupported-architecture-kubernetes-workload-container-image"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["unsupported-architecture-kubernetes-workload-container-image"].tags }}
+- category: sre
+  complexity: low
+  description: This scenario simulates OpenTelemetry Demo's `accounting` service being scaled to zero replicas.
+  disruptions:
+    - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: accounting
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: scaled-to-zero-kubernetes-workload
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 58
+  platforms: {{ [documentation_faults["scaled-to-zero-kubernetes-workload"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["scaled-to-zero-kubernetes-workload"].tags }}
+- category: sre
+  complexity: medium
+  description: This scenario simulates OpenTelemetry Demo's `recommendation` service crashing due to a malformed ConfigMap.
+  disruptions:
+    - injections:
+      - args:
+          configMapName: features
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: recommendation
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: crashing-kubernetes-workload-init-container
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 59
+  platforms: {{ [documentation_faults["crashing-kubernetes-workload-init-container"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags: {{ documentation_faults["crashing-kubernetes-workload-init-container"].tags }}
 - category: sre
   complexity: medium
   description: This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.

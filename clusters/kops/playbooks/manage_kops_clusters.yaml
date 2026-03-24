@@ -1,0 +1,127 @@
+---
+- name: Manage KOps (Kubernetes Operations) Clusters
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Validate target variable
+      ansible.builtin.assert:
+        that:
+          - target in ["awx-stack", "single-cluster"]
+        fail_msg: Invalid target provided. Please provide valid target.
+        success_msg: Valid target provided.
+      tags:
+        - always
+
+    - name: Validate cluster name prefixs
+      ansible.builtin.assert:
+        that:
+          - runner.name.prefix != stack.name.prefix
+          - runner.name.prefix != (stack.name.prefix + "-head")
+          - runner.name.prefix != (stack.name.prefix + "-runner")
+        fail_msg: Invalid name prefix. Ensure that the stack and runner name prefixes are differnt.
+        success_msg: Name prefixes are valid.
+
+    - name: Validate runners cluster count
+      ansible.builtin.assert:
+        that:
+          - stack.runners.count > 0
+        fail_msg: Invalid number of kOps clusters set. Must be greater than 0.
+        success_msg: Valid number of kOps clusters configured.
+      tags:
+        - always
+      when:
+        - target == "awx-stack"
+
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+  tasks:
+    - name: Generate runner cluster names
+      tags:
+        - always
+      block:
+        - name: Generate runner cluster name
+          ansible.builtin.set_fact:
+            runner_clusters:
+              - "{{ runner.name.prefix + '-aws.k8s.local' }}"
+          when:
+            - target == "single-cluster"
+
+        - name: Generate runner cluster names
+          ansible.builtin.set_fact:
+            runner_clusters: |-
+              {{
+                (
+                  runner_clusters | ansible.builtin.default([])
+                ) +
+                [
+                  [
+                    stack.name.prefix,
+                    "runner",
+                    runner_index,
+                    "aws.k8s.local"
+                  ] |
+                  ansible.builtin.join("-")
+                ]
+              }}
+          loop: "{{ range(1, stack.runners.count + 1) | ansible.builtin.list }}"
+          loop_control:
+            label: runner/{{ runner_index }}
+            loop_var: runner_index
+          when:
+            - target == "awx-stack"
+
+    - name: Create role variables
+      tags:
+        - always
+      block:
+        - name: Create kOps cluster group variable
+          ansible.builtin.set_fact:
+            kops_cluster_group:
+              clusters: "{{ runner_clusters }}"
+              name: "{{ runner.name.prefix }}"
+          when:
+            - target == "single-cluster"
+
+        - name: Create kOps cluster group variable
+          ansible.builtin.set_fact:
+            kops_cluster_group:
+              clusters: |-
+                {{
+                  (
+                    [
+                      stack.name.prefix + "-head-aws.k8s.local"
+                    ]
+                  ) +
+                  runner_clusters
+                }}
+              name: "{{ stack.name.prefix }}"
+          when:
+            - target == "awx-stack"
+
+        - name: Create kOps configuration variable
+          ansible.builtin.set_fact:
+            kops_configuration:
+              aws: "{{ aws }}"
+
+    - name: Add required configurations for cluster(s) creation
+      tags:
+        - create_clusters
+      block:
+        - name: Add kOps cluster information to configuration
+          ansible.builtin.set_fact:
+            kops_configuration: "{{ kops_configuration | ansible.builtin.combine({'cluster': cluster}) }}"
+
+        - name: Add ssh information to configuration
+          ansible.builtin.set_fact:
+            kops_configuration: "{{ kops_configuration | ansible.builtin.combine({'ssh_keys': ssh_keys}) }}"
+
+        - name: Add docker information to configuration
+          ansible.builtin.set_fact:
+            kops_configuration: "{{ kops_configuration | ansible.builtin.combine({'docker': docker}) }}"
+          when:
+            - docker is defined
+
+    - name: Import kOps role
+      ansible.builtin.import_role:
+        name: kops

@@ -1,0 +1,156 @@
+---
+- name: Fix kOps cluster
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Import system role
+      ansible.builtin.import_role:
+        name: system
+
+    - name: Import kOps validation tasks
+      ansible.builtin.import_role:
+        name: kops
+        tasks_from: set_state_storage
+      vars:
+        kops_configuration:
+          aws:
+            s3: "{{ aws.s3 }}"
+  tasks:
+    - name: Retrieve cluster validation errors
+      ansible.builtin.command:
+        argv:
+          - kops
+          - validate
+          - cluster
+          - --name
+          - "{{ kops_cluster_name }}"
+          - --state
+          - "{{ kops_state_store }}"
+          - --output
+          - json
+          - --wait
+          - 0s
+      register: kops_validate_result
+      changed_when: false
+      failed_when: false
+
+    - name: Display revalidation results
+      ansible.builtin.debug:
+        var: displayed_results
+      vars:
+        displayed_results:
+          output: "{{ kops_validate_result.stdout | ansible.builtin.from_json }}"
+          error: "{{ kops_validate_result.stderr }}"
+
+    - name: Check if cluster resources exist
+      when:
+        - kops_validate_result.rc != 0
+        - "'dial tcp' in kops_validate_result.stderr or 'i/o timeout' in kops_validate_result.stderr"
+      block:
+        - name: Check for cluster instances
+          amazon.aws.ec2_instance_info:
+            filters:
+              "tag:KubernetesCluster": "{{ kops_cluster_name }}"
+            region: "{{ aws.region }}"
+          register: ec2_instances
+
+        - name: Retrieve all related network and application load balancers
+          amazon.aws.elb_application_lb_info:
+            region: "{{ aws.region }}"
+          register: elb_application_lbs
+
+        - name: Gather information about all ELBs
+          amazon.aws.elb_classic_lb_info:
+            region: "{{ aws.region }}"
+          register: elb_classic_lbs
+
+        - name: Parse load balancers by cluster
+          ansible.builtin.set_fact:
+            load_balancers: |-
+              {{
+                [
+                  elb_application_lbs.load_balancers |
+                  ansible.builtin.selectattr("tags.KubernetesCluster", defined) |
+                  ansible.builtin.selectattr("tags.KubernetesCluster", "==", kops_cluster_name)
+                ] +
+                [
+                  elb_classic_lbs.load_balancers |
+                  ansible.builtin.selectattr("tags.KubernetesCluster", defined) |
+                  ansible.builtin.selectattr("tags.KubernetesCluster", "==", kops_cluster_name)
+                ]
+              }}
+
+        - name: Recreate cluster resources if missing
+          when:
+            - (ec2_instances.instances | ansible.builtin.length == 0) or (load_balancers | ansible.builtin.length == 0)
+          block:
+            - name: Run kops update cluster
+              ansible.builtin.command:
+                argv:
+                  - kops
+                  - update
+                  - cluster
+                  - --name
+                  - "{{ kops_cluster_name }}"
+                  - --state
+                  - "{{ kops_state_store }}"
+                  - --yes
+              changed_when: true
+
+            - name: Wait for instances to launch
+              ansible.builtin.pause:
+                minutes: 5
+
+    - name: Parse validation failures
+      ansible.builtin.set_fact:
+        kops_validation_failures: |-
+          {{
+            (
+              kops_validate_result.stdout |
+              ansible.builtin.from_json
+            ).failures |
+            ansible.builtin.default([])
+          }}
+
+    - name: Terminate machines with errors
+      vars:
+        machine_failures: "{{ kops_validation_failures | ansible.builtin.selectattr('kind', '==', 'Machine') | list }}"
+      when:
+        - machine_failures | ansible.builtin.length > 0
+      block:
+        - name: Terminate unjoined EC2 instances
+          amazon.aws.ec2_instance:
+            instance_ids: "{{ machine_failures | map(attribute='name') }}"
+            region: "{{ aws.region }}"
+            state: terminated
+            wait: true
+
+        - name: Wait for AWS Autoscaler to create new instances
+          ansible.builtin.pause:
+            seconds: 300
+
+    - name: Re-attempt to validate cluster
+      ansible.builtin.command:
+        argv:
+          - kops
+          - validate
+          - cluster
+          - --name
+          - "{{ kops_cluster_name }}"
+          - --state
+          - "{{ kops_state_store }}"
+          - --output
+          - json
+          - --wait
+          - 5m
+      register: kops_revalidate_result
+      changed_when: false
+      failed_when: false
+
+    - name: Display revalidation results
+      ansible.builtin.debug:
+        var: displayed_results
+      vars:
+        displayed_results:
+          output: "{{ kops_revalidate_result.stdout | ansible.builtin.from_json }}"
+          error: "{{ kops_revalidate_result.stderr }}"

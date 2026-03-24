@@ -1,0 +1,33 @@
+---
+- name: Check for AWS CLI
+  ansible.builtin.command:
+    cmd: which aws
+  register: system_aws_path
+  changed_when: false
+
+- name: Validate that AWS CLI exists
+  ansible.builtin.assert:
+    that: system_aws_path.stdout_lines | ansible.builtin.length > 0
+    fail_msg: AWS CLI is not installed. Please install aws.
+    success_msg: Using AWS CLI at {{ system_aws_path.stdout_lines[0] }}
+
+- name: Check AWS CLI version
+  ansible.builtin.command:
+    cmd: "{{ system_aws_path.stdout_lines[0] }} --version"
+  register: system_aws_version
+  changed_when: false
+
+- name: Validate the AWS CLI version
+  ansible.builtin.assert:
+    that: "'2.0' is version_compare(aws_cli_version, '<=')"
+    fail_msg: "AWS CLI version for system {{ aws_cli_version }} must be at least 2.0 or later."
+    success_msg: "AWS CLI version {{ aws_cli_version }} (>= 2.0) is OK."
+  vars:
+    aws_cli_version: |-
+      {{
+        system_aws_version.stdout |
+        ansible.builtin.split |
+        ansible.builtin.first |
+        ansible.builtin.split("/") |
+        ansible.builtin.last
+      }}

@@ -1,13 +1,34 @@
 ---
 - name: Import AWX installation tasks
   ansible.builtin.import_tasks:
-    file: install_awx.yaml
+    file: install.yaml
   tags:
     - install_tools
 
+- name: Import validation tasks
+  ansible.builtin.import_tasks:
+    file: validate.yaml
+  tags:
+    - configure_pipeline
+    - launch_workflows
+
+- name: Import AWX variable tasks
+  tags:
+    - configure_pipeline
+    - launch_workflows
+    - sync_scenarios
+  block:
+    - name: Import variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_awx_controller_host.yaml
+
+    - name: Import variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_awx_controller_password.yaml
+
 - name: Import AWX configuration tasks
   ansible.builtin.import_tasks:
-    file: configure_awx.yaml
+    file: configure.yaml
   tags:
     - configure_pipeline
 
@@ -25,6 +46,6 @@
 
 - name: Import AWX uninstallation tasks
   ansible.builtin.import_tasks:
-    file: uninstall_awx.yaml
+    file: uninstall.yaml
   tags:
     - uninstall_tools

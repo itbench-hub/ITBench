@@ -1,0 +1,13 @@
+---
+
+- name: Install AWX
+  kubernetes.core.k8s:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    state: present
+    template: templates/kubernetes/awx.j2
+    wait: true
+    wait_condition:
+      reason: Successful
+      status: "True"
+      type: Successful
+    wait_timeout: 900

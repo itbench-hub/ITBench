@@ -1,0 +1,158 @@
+---
+argument_specs:
+  main:
+    author:
+      - Saurabh Jha
+      - Gerard Vanloo
+    options:
+      kops_cluster_group:
+        required: true
+        type: dict
+        options:
+          clusters:
+            elements: str
+            required: true
+            type: list
+          name:
+            required: true
+            type: str
+      kops_configuration:
+        required: true
+        type: dict
+        options:
+          aws:
+            required: true
+            type: dict
+            options:
+              region:
+                required: true
+                type: str
+              s3:
+                required: true
+                type: dict
+                options:
+                  bucket:
+                    required: true
+                    type: dict
+                    options:
+                      name:
+                        required: true
+                        type: str
+              vpc:
+                required: true
+                type: dict
+                options:
+                  cidr:
+                    required: true
+                    type: str
+                  nat_gateway:
+                    required: false
+                    type: dict
+                    options:
+                      elastic_ip_allocation_id:
+                        required: true
+                        type: str
+              zones:
+                elements: str
+                required: true
+                type: list
+          cluster:
+            required: false
+            type: dict
+            options:
+              kubernetes:
+                required: true
+                type: dict
+                options:
+                  version:
+                    required: true
+                    type: str
+              networking:
+                required: true
+                type: dict
+                options:
+                  mode:
+                    choices:
+                      - cilium
+                    required: true
+                    type: str
+              nodes:
+                required: true
+                type: dict
+                options:
+                  control:
+                    required: true
+                    type: dict
+                    options:
+                      count:
+                        required: true
+                        type: int
+                      instance_type:
+                        required: true
+                        type: str
+                  worker:
+                    required: true
+                    type: dict
+                    options:
+                      count:
+                        required: true
+                        type: int
+                      instance_type:
+                        required: true
+                        type: str
+          ssh_keys:
+            required: false
+            type: dict
+            options:
+              public:
+                required: true
+                type: str
+  set_state_storage:
+    author:
+      - Gerard Vanloo
+    options:
+      kops_configuration:
+        required: true
+        type: dict
+        options:
+          aws:
+            required: true
+            type: dict
+            options:
+              s3:
+                required: true
+                type: dict
+                options:
+                  bucket:
+                    required: true
+                    type: dict
+                    options:
+                      name:
+                        required: true
+                        type: str
+  validate_state_storage:
+    author:
+      - Gerard Vanloo
+    options:
+      kops_configuration:
+        required: true
+        type: dict
+        options:
+          aws:
+            required: true
+            type: dict
+            options:
+              region:
+                required: true
+                type: str
+              s3:
+                required: true
+                type: dict
+                options:
+                  bucket:
+                    required: true
+                    type: dict
+                    options:
+                      name:
+                        required: true
+                        type: str

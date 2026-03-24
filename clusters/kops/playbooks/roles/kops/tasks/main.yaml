@@ -1,0 +1,33 @@
+---
+- name: Set kOps state storage
+  ansible.builtin.import_tasks:
+    file: set_state_storage.yaml
+  tags:
+    - always
+
+- name: Import validation tasks
+  ansible.builtin.import_tasks:
+    file: validate_state_storage.yaml
+  tags:
+    - export_clusters
+    - delete_clusters
+
+- name: Import cluster creation tasks
+  ansible.builtin.import_tasks:
+    file: create.yaml
+  tags:
+    - create_clusters
+
+- name: Import kubeconfig export tasks
+  ansible.builtin.import_tasks:
+    file: export_kubeconfigs.yaml
+  vars:
+    export_directory: "{{ playbook_dir }}/../kubeconfigs"
+  tags:
+    - export_clusters
+
+- name: Import cluster deletion tasks
+  ansible.builtin.import_tasks:
+    file: delete.yaml
+  tags:
+    - delete_clusters

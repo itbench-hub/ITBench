@@ -1,0 +1,17 @@
+---
+- name: Import recorder deployment tasks
+  ansible.builtin.import_tasks:
+    file: deploy_python_recorder.yaml
+  vars:
+    python_recorder:
+      job:
+        environment_variables:
+          - name: JAEGER_ENDPOINT
+            value: "{{ tools_jaeger_endpoint.querier.http }}"
+        schedule: "*/5 * * * *"
+      name: "{{ recorders_managers.data_recorders.instances.jaeger }}"
+      scripts:
+        requirements_file_path: "files/scripts/jaeger/requirements.txt"
+        scripts_file_path: "files/scripts/jaeger/gather.py"
+      volume:
+        size: 5Gi

@@ -1,0 +1,122 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-59
+spec:
+  alerts:
+    - group_id: recommendationservice-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Pod otel-demo/recommendation has been in a non-ready state for longer than 15 minutes
+    - group_id: recommendationservice-pod-1
+      id: KubeContainerWaiting
+      metadata:
+        description: Pod recommendation in namespace otel-demo has been in waiting state for longer than 1 hour (reason PodInitializing)
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in service frontend in namespace otel-demo is above 3
+    - group_id: frontendproxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in service frontend-proxy in namespace otel-demo is above 3
+    - group_id: recommendationservice-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Recommendation service receives no requests - pod not ready due to config validation failure
+  aliases:
+    - - recommendationservice-configmap-1
+      - recommendationservice-pod-1
+    - - recommendationservice-service-1
+      - recommendationservice-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+    - - frontendproxy-service-1
+      - frontendproxy-pod-1
+  fault:
+    - category: Change
+      condition: Malformed ConfigMap with truncated JSON (736KB) injected into recommendation deployment with validation initContainer
+      entity:
+        group_id: recommendationservice-configmap-1
+        kind: ConfigMap
+        name: features
+      fault_mechanism: config_injection
+  groups:
+    - id: recommendationservice-configmap-1
+      kind: ConfigMap
+      namespace: otel-demo
+      name: features
+      root_cause: true
+    - filter:
+        - recommendation-.*
+      id: recommendationservice-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - recommendation\b
+      id: recommendationservice-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-.*
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontendproxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy-.*
+      id: frontendproxy-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: ConfigMap contains malformed JSON configuration data (truncated at 736KB, missing closing braces)
+      effect: Recommendation pod fails to start as initContainer crashes when attempting to parse the malformed configuration file
+      source: recommendationservice-configmap-1
+      target: recommendationservice-pod-1
+    - condition: Recommendation pod fails to start and enters Init:CrashLoopBackOff state, no pods available to serve requests
+      effect: Recommendation service has no endpoints and returns connection refused/timeout for all recommendation requests
+      source: recommendationservice-pod-1
+      target: recommendationservice-service-1
+    - condition: Frontend service calls recommendationservice to display product recommendations
+      effect: Frontend service experiences errors when fetching recommendations, propagates errors in responses
+      source: recommendationservice-service-1
+      target: frontend-service-1
+    - condition: Frontend-proxy routes all user requests to the frontend service
+      effect: Frontend-proxy observes and propagates error responses from frontend, triggering RequestErrorRate alert
+      source: frontend-service-1
+      target: frontendproxy-service-1
+    - condition: Recommendation service has no healthy endpoints
+      effect: Recommendation service receives no requests - all connections refused
+      source: recommendationservice-pod-1
+      target: recommendationservice-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Rollback the recommendation deployment to the previous working version
+          - Verify recommendation pods are running and healthy
+          - Confirm recommendation requests return successfully
+        id: rollback_deployment
+    - solution:
+        actions:
+          - Edit the recommendation deployment manifest to remove the malformed ConfigMap volume mount
+          - Delete the features ConfigMap
+          - Restart the recommendation deployment
+          - Monitor pod status for successful startup
+        id: remove_malformed_config
+    - solution:
+        actions:
+          - Edit the features ConfigMap to fix the malformed JSON
+          - Ensure JSON is properly formatted with correct closing braces
+          - Restart recommendation deployment to reload configuration
+          - Validate configuration parses correctly
+        id: fix_malformed_config

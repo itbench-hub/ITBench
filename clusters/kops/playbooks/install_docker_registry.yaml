@@ -1,0 +1,60 @@
+---
+- name: Install Docker Registry Secret
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Validate target variable
+      ansible.builtin.assert:
+        that:
+          - target in ["awx-stack", "single-cluster"]
+        fail_msg: Invalid target provided. Please provide valid target.
+        success_msg: Valid target provided.
+
+    - name: Validate docker variable
+      ansible.builtin.assert:
+        that:
+          - docker is defined
+          - docker.registry is defined
+        fail_msg: Invalid docker configuration. Please set docker group variable.
+        success_msg: Valid docker configuration.
+  tasks:
+    - name: Retrieve exported kubeconfig(s)
+      ansible.builtin.find:
+        path: "{{ kubeconfig_directory | ansible.builtin.realpath }}"
+        patterns:
+          - "{{ filename_prefix }}-*"
+      register: kubeconfig_paths
+      vars:
+        filename_prefix: "{{ runner.name.prefix if target == 'single-cluster' else stack.name.prefix }}"
+        kubeconfig_directory: "{{ playbook_dir }}/../kubeconfigs"
+
+    - name: Validate the existence of single cluster kubeconfig
+      ansible.builtin.assert:
+        that:
+          - kubeconfig_paths.matched == 1
+        fail_msg: Unable to find kubeconfig. Please ensure that cluster kubeconfig has been exported.
+        success_msg: Located kubeconfig.
+      when:
+        - target == "single-cluster"
+
+    - name: Validate the existence of AWX stack kubeconfigs
+      ansible.builtin.assert:
+        that:
+          - kubeconfig_paths.matched == 1 + stack.runners.count
+        fail_msg: Unable to find kubeconfigs. Please ensure that cluster kubeconfigs has been exported.
+        success_msg: Located kubeconfigs.
+      when:
+        - target == "awx-stack"
+
+    - name: Include Docker role
+      ansible.builtin.include_role:
+        name: docker
+        apply:
+          vars:
+            docker_cluster:
+              kubeconfig: "{{ kubeconfig_path.path }}"
+            docker_registry: "{{ docker.registry }}"
+      loop: "{{ kubeconfig_paths }}"
+      loop_control:
+        label: cluster/{{ kubeconfig_path | ansible.builtin.basename }}
+        loop_var: kubeconfig_path

@@ -1,0 +1,87 @@
+---
+- name: Import validation tasks
+  ansible.builtin.import_tasks:
+    file: validate_configuration.yaml
+
+- name: Retrieve VPC associated with cluster
+  amazon.aws.ec2_vpc_net_info:
+    filters:
+      "tag:ClusterGroup": "{{ kops_cluster_group.name }}"
+      "tag:ManagedBy": ansible
+      "tag:Name": "{{ kops_cluster_group.name }}-vpc"
+    region: "{{ kops_configuration.aws.region }}"
+  register: kops_ec2_vpc_net
+
+- name: Validate that VPC exists
+  ansible.builtin.assert:
+    that:
+      - kops_ec2_vpc_net.vpcs is defined
+      - kops_ec2_vpc_net.vpcs | ansible.builtin.length == 1
+    fail_msg: Failed to find VPC. Please ensure the AWS VPC resources were successfully created.
+    success_msg: Found VPC.
+
+- name: Retrieve all subnets associated with VPC
+  amazon.aws.ec2_vpc_subnet_info:
+    filters:
+      vpc-id: "{{ kops_ec2_vpc_net.vpcs[0].vpc_id }}"
+    region: "{{ kops_configuration.aws.region }}"
+  register: kops_ec2_vpc_subnets
+
+- name: Create subnet id lists by public availability
+  ansible.builtin.set_fact:
+    kops_subnet_ids:
+      private: |-
+        {{
+          kops_ec2_vpc_subnets.subnets |
+          ansible.builtin.selectattr("map_public_ip_on_launch", "==", false) |
+          map(attribute="subnet_id")
+        }}
+      public: |-
+        {{
+          kops_ec2_vpc_subnets.subnets |
+          ansible.builtin.selectattr("map_public_ip_on_launch", "==", true) |
+          map(attribute="subnet_id")
+        }}
+
+- name: Retrieve all NAT Gateways associated with VPC
+  amazon.aws.ec2_vpc_nat_gateway_info:
+    filters:
+      vpc-id: "{{ kops_ec2_vpc_net.vpcs[0].vpc_id }}"
+    region: "{{ kops_configuration.aws.region }}"
+  register: kops_ec2_vpc_nat_gateway
+
+- name: Include cluster configuration tasks
+  ansible.builtin.include_tasks:
+    file: configure_clusters.yaml
+    apply:
+      tags:
+        - create_clusters
+  loop: "{{ kops_cluster_group.clusters }}"
+  loop_control:
+    label: cluster/{{ cluster_name }}
+    loop_var: cluster_name
+    index_var: name_index
+
+- name: Include cluster creation tasks
+  ansible.builtin.include_tasks:
+    file: build_clusters.yaml
+    apply:
+      tags:
+        - create_clusters
+  loop: "{{ kops_cluster_group.clusters | ansible.builtin.batch(20) }}"
+  loop_control:
+    label: batch-{{ batch_index + 1 }}
+    loop_var: cluster_names
+    index_var: batch_index
+
+- name: Include cluster validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_clusters.yaml
+    apply:
+      tags:
+        - create_clusters
+  loop: "{{ kops_cluster_group.clusters | ansible.builtin.batch(20) }}"
+  loop_control:
+    label: batch-{{ batch_index + 1 }}
+    loop_var: cluster_names
+    index_var: batch_index

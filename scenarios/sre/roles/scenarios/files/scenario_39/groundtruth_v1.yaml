@@ -6,13 +6,17 @@ metadata:
 spec:
   alerts:
     - group_id: payment-service-1
-      id: RequestLatency
+      id: HighRequestLatency
       metadata:
         description: Payment service latency increased due to pod stuck on stressed node
     - group_id: payment-service-1
-      id: RequestErrorRate
+      id: HighRequestErrorRate
       metadata:
         description: Payment service experiencing errors as node becomes unhealthy
+    - group_id: payment-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Payment pod becomes NotReady while stuck on stressed/draining node
   aliases:
     - - payment-service-1
       - payment-pod-1
@@ -45,6 +49,10 @@ spec:
     - condition: PDB prevents pod eviction during node drain operation
       effect: Pod remains stuck on node undergoing maintenance/stress
       source: payment-pdb-1
+      target: payment-pod-1
+    - condition: Pod stuck on stressed/draining node
+      effect: Pod may become NotReady as node health degrades
+      source: payment-pod-1
       target: payment-pod-1
     - condition: Pod experiencing degraded performance on stressed node
       effect: Payment service latency increases and error rate rises

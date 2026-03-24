@@ -1,0 +1,53 @@
+---
+- name: Create Prometheus Data Recorder environment variables
+  ansible.builtin.set_fact:
+    recorders_prometheus_env_vars:
+      - name: PROMETHEUS_ENDPOINT
+        value: "{{ tools_prometheus_endpoint.http }}"
+
+- name: Add Prometheus Bearer Token
+  when:
+    - recorders_cluster.platform == "openshift"
+  block:
+    - name: Import Prometheus credential variable setting tasks
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: set_credentials_prometheus
+
+    - name: Create Secret for Prometheus Bearer Token
+      kubernetes.core.k8s:
+        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ recorders_managers.data_recorders.instances.prometheus }}-token"
+            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+          data:
+            token: "{{ prometheus_bearer_token }}"
+        state: present
+
+    - name: Add Secret to environment list
+      ansible.builtin.set_fact:
+        recorders_prometheus_env_vars: "{{ recorders_prometheus_env_vars + secret_env_vars }}"
+      vars:
+        secret_env_vars:
+          - name: PROMETHEUS_TOKEN
+            valueFrom:
+              key: token
+              secretKeyRef: "{{ recorders_managers.data_recorders.instances.prometheus }}-token"
+
+- name: Import recorder deployment tasks
+  ansible.builtin.import_tasks:
+    file: deploy_python_recorder.yaml
+  vars:
+    python_recorder:
+      job:
+        environment_variables: "{{ recorders_prometheus_env_vars }}"
+        schedule: "* * * * *"
+      name: "{{ recorders_managers.data_recorders.instances.prometheus }}"
+      scripts:
+        requirements_file_path: "files/scripts/prometheus/requirements.txt"
+        scripts_file_path: "files/scripts/prometheus/gather.py"
+      volume:
+        size: 1Gi

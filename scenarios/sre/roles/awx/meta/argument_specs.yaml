@@ -8,16 +8,6 @@ argument_specs:
     author:
       - Gerard Vanloo
     options:
-      awx_agent:
-        required: false
-        type: dict
-        options:
-          configuration:
-            required: true
-            type: dict
-          version:
-            required: true
-            type: str
       awx_cluster:
         required: true
         type: dict
@@ -28,31 +18,99 @@ argument_specs:
           provider:
             required: true
             type: str
-      awx_credentials:
+      awx_configuration:
         required: false
         type: dict
         options:
-          aws:
+          agent:
             required: false
             type: dict
             options:
-              access_key_id:
+              configuration:
                 required: true
-                type: str
-              secret_access_key:
+                type: dict
+          github:
+            required: true
+            type: dict
+            options:
+              agent:
                 required: true
-                type: str
+                type: dict
+                options:
+                  ssh:
+                    required: false
+                    type: dict
+                    options:
+                      private_key_passphrase:
+                        required: true
+                        type: str
+                      private_key_path:
+                        required: true
+                        type: str
+                  url:
+                    required: true
+                    type: str
+                  branch:
+                    required: true
+                    type: str
+              itbench:
+                required: true
+                type: dict
+                options:
+                  ssh:
+                    required: false
+                    type: dict
+                    options:
+                      private_key_passphrase:
+                        required: true
+                        type: str
+                      private_key_path:
+                        required: true
+                        type: str
+                  url:
+                    required: true
+                    type: str
+                  branch:
+                    required: true
+                    type: str
+          providers:
+            required: false
+            type: dict
+            options:
+              aws:
+                required: false
+                type: dict
+                options:
+                  enabled:
+                    default: false
+                    required: false
+                    type: bool
+          runners:
+            required: true
+            type: dict
+            options:
+              kubeconfigs:
+                elements: str
+                required: true
+                type: list
       awx_experiments:
-        required: true
+        required: false
         type: dict
         options:
+          agent:
+            required: true
+            type: dict
+            options:
+              version:
+                required: true
+                type: str
           phase:
             choices:
               - full
               - start
               - stop
               - data_collection
-            required: false
+            required: true
             type: str
           scenarios:
             elements: int
@@ -85,55 +143,3 @@ argument_specs:
           trials:
             required: true
             type: int
-      awx_github:
-        required: true
-        type: dict
-        options:
-          it_bench:
-            required: true
-            type: dict
-            options:
-              ssh:
-                required: false
-                type: dict
-                options:
-                  private_key_passphrase:
-                    required: true
-                    type: str
-                  private_key_path:
-                    required: true
-                    type: str
-              url:
-                required: true
-                type: str
-              branch:
-                required: true
-                type: str
-          llm_agent:
-            required: true
-            type: dict
-            options:
-              ssh:
-                required: false
-                type: dict
-                options:
-                  private_key_passphrase:
-                    required: true
-                    type: str
-                  private_key_path:
-                    required: true
-                    type: str
-              url:
-                required: true
-                type: str
-              branch:
-                required: true
-                type: str
-      awx_runners:
-        required: true
-        type: dict
-        options:
-          kubeconfigs:
-            elements: str
-            required: true
-            type: list

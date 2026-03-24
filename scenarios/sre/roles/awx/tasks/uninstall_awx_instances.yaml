@@ -1,0 +1,12 @@
+---
+- name: Uninstall AWX
+  kubernetes.core.k8s:
+    kubeconfig: "{{ awx_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: awx.ansible.com/v1beta1
+      kind: AWX
+      metadata:
+        name: "{{ awx_managers.awx_operator.instances.names.main }}"
+        namespace: "{{ awx_managers.awx_operator.kubernetes.namespace }}"
+    state: absent
+    wait: true
