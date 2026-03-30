@@ -103,7 +103,7 @@ spec:
       rules:
         - alert: KafkaConsumerGroupInactive
           expr: |
-            kafka_consumergroup_members{
+            kafka_consumer_group_members{
               namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
             } == 0
           for: 2m
@@ -127,7 +127,7 @@ spec:
             description: "Job {{ $labels.job }} has a closure rate above 0 (current: {{ $value }})"
         - alert: HighKafkaConsumerLag
           expr: |
-            kafka_consumergroup_lag_sum{
+            kafka_consumer_group_lag_sum_ratio{
               namespace="[[ applications_managers.opentelemetry_demo.kubernetes.namespace ]]"
             } > 100
           for: 5m
