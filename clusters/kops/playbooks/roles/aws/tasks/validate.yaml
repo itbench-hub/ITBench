@@ -4,7 +4,7 @@
     - create_clusters
     - delete_clusters
   block:
-    - name: Retieve all regions
+    - name: Retrieve all regions
       amazon.aws.aws_region_info:
       register: aws_regions
 
@@ -86,7 +86,7 @@
       ansible.builtin.assert:
         that:
           - (aws_ec2_vpc_igw_gateways.internet_gateways | ansible.builtin.length) + 1 <= gateway_quota[0].Value
-        fail_msg: Unable to allocate resources to create Intergent Gateway. Please either raise the account quota or delete unneeded gateways in region.
+        fail_msg: Unable to allocate resources to create Internet Gateway. Please either raise the account quota or delete unneeded gateways in region.
         success_msg: Internet Gateway resource allocation possible.
       vars:
         gateway_quota: |-
@@ -102,10 +102,18 @@
     - name: Validate VPC subnet creation is possible
       ansible.builtin.assert:
         that:
-          - (aws_configuration.vpc.subnets.count * 2) <= subnet_quota[0].Value
+          - subnet_count <= subnet_quota[0].Value
         fail_msg: Requested number of subnets is over region's quota limit (subnet_quota.Value). Please lower the amount or change the quota.
         success_msg: VPC subnet resource allocation possible.
       vars:
+        subnet_count: |-
+          {{
+            (aws_configuration.vpc.nat_gateway is undefined) |
+            ansible.builtin.ternary(
+              aws_configuration.vpc.subnets.count,
+              aws_configuration.vpc.subnets.count * 2
+            )
+          }}
         subnet_quota: |-
           {{
             aws_vpc_service_quotas |
@@ -130,6 +138,6 @@
         - name: Verify Elastic IP exists
           ansible.builtin.assert:
             that:
-              - aws_ec2_eip.addresses | ansible.builtin.length == 0
+              - aws_ec2_eip.addresses | ansible.builtin.length > 0
             fail_msg: Elastic IP not found. Please verify the allocation ID is correct and exists in the target region.
             success_msg: Elastic IP found.

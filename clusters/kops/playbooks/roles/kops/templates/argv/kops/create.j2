@@ -1,0 +1,41 @@
+- kops
+- create
+- cluster
+- {{ cluster_name }}
+- --cloud
+- aws
+- --network-id
+- {{ kops_ec2_vpc_net.vpcs[0].vpc_id }}
+{% if kops_subnet_ids.private | ansible.builtin.length > 0 %}
+- --topology
+- private
+- --subnets
+- {{ kops_subnet_ids.private[name_index] }}
+- --utility-subnets
+- {{ kops_subnet_ids.public[name_index] }}
+{% else %}
+- --topology
+- public
+- --subnets
+- {{ kops_subnet_ids.public[name_index] }}
+{% endif %}
+- --zones
+- {{ kops_configuration.aws.zones | ansible.builtin.join(',') }}
+- --ssh-public-key
+- {{ kops_configuration.ssh_keys.public }}
+- --control-plane-size
+- {{ kops_configuration.cluster.nodes.control.instance_type }}
+- --control-plane-count
+- {{ kops_configuration.cluster.nodes.control.count }}
+- --node-size
+- {{ kops_configuration.cluster.nodes.worker.instance_type }}
+- --node-count
+- {{ kops_configuration.cluster.nodes.worker.count }}
+- --networking
+- {{ kops_configuration.cluster.networking.mode }}
+- --state
+- {{ kops_state_store }}
+- --channel
+- stable
+- --kubernetes-version
+- {{ kops_configuration.cluster.kubernetes.version }}

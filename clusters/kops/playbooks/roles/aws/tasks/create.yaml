@@ -1,17 +1,16 @@
 ---
-# NOTE: `batch` is used here because using Python's slice operator
-#       causes the linter to error out.
-
 - name: Extract CIDR address base
   ansible.builtin.set_fact:
     aws_vpc_cidr_base: |-
       {{
-        aws_configuration.vpc.cidr |
-        ansible.builtin.split(".") |
-        ansible.builtin.batch(2) |
-        ansible.builtin.first |
+        [
+          cidr_components[0],
+          cidr_components[1]
+        ] |
         ansible.builtin.join(".")
       }}
+  vars:
+    cidr_components: "{{ aws_configuration.vpc.cidr | ansible.builtin.split('.') }}"
 
 - name: Create VPC
   amazon.aws.ec2_vpc_net:
@@ -36,73 +35,29 @@
     vpc_id: "{{ aws_vpc.vpc.id }}"
   register: aws_igw
 
-- name: Create VPC subnet(s)
+- name: Create VPC public subnet(s)
   amazon.aws.ec2_vpc_subnet:
     az: "{{ aws_configuration.zones | ansible.builtin.first }}"
-    cidr: "{{ aws_vpc_cidr_base }}.{{ subnet_config[0] }}.0/24"
-    map_public: "{{ subnet_config[1] }}"
+    cidr: "{{ aws_vpc_cidr_base }}.{{ subnet_octet }}.0/24"
+    map_public: true
     region: "{{ aws_configuration.region }}"
     state: present
     tags:
       ClusterGroup: "{{ aws_cluster_group.name.prefix }}"
       ManagedBy: ansible
-      Name: |-
-        {{
-          [
-            aws_cluster_group.name.prefix,
-            "public" if subnet_config[1] else "private",
-            "subnet",
-            subnet_config[0] | string
-          ] |
-          ansible.builtin.join("-")
-        }}
+      Name: "{{ aws_cluster_group.name.prefix }}-public-subnet-{{ subnet_octet | ansible.builtin.string }}"
     vpc_id: "{{ aws_vpc.vpc.id }}"
     wait: true
-  loop: |-
-    {{
-      (
-        range(
-          1,
-          aws_configuration.vpc.subnets.count + 1
-        ) |
-        ansible.builtin.list |
-        product([true])
-      ) +
-      (
-        range(
-          aws_configuration.vpc.subnets.count + 1,
-          (aws_configuration.vpc.subnets.count * 2) + 1
-        ) |
-        ansible.builtin.list |
-        product([false])
-      )
-    }}
+  loop: "{{ range(1, aws_configuration.vpc.subnets.count + 1) | ansible.builtin.list }}"
   loop_control:
-    label: subnet/{{ subnet_config[0] }}
-    loop_var: subnet_config
-  register: aws_vpc_subnets
-
-- name: Create subnet id lists by public availability
-  ansible.builtin.set_fact:
-    aws_vpc_subnet_ids:
-      private: |-
-        {{
-          aws_vpc_subnets.results |
-          ansible.builtin.selectattr("subnet.map_public_ip_on_launch", "==", false) |
-          map(attribute="subnet.id")
-        }}
-      public: |-
-        {{
-          aws_vpc_subnets.results |
-          ansible.builtin.selectattr("subnet.map_public_ip_on_launch", "==", true) |
-          map(attribute="subnet.id")
-        }}
+    label: subnet/{{ subnet_octet }}
+    loop_var: subnet_octet
+  register: aws_vpc_subnets_public
 
 - name: Verify that all subnets were created
   ansible.builtin.assert:
     that:
-      - (aws_vpc_subnet_ids.public | ansible.builtin.length) == aws_configuration.vpc.subnets.count
-      - (aws_vpc_subnet_ids.public | ansible.builtin.length) == (aws_vpc_subnet_ids.private | ansible.builtin.length)
+      - (aws_vpc_subnets_public.results | ansible.builtin.length) == aws_configuration.vpc.subnets.count
     fail_msg: All subnets were not created. Please retry.
     success_msg: All subnets were created.
 
@@ -129,7 +84,12 @@
     subnets: "{{ subnet_ids }}"
     purge_subnets: false
     purge_routes: false
-  loop: "{{ aws_vpc_subnet_ids.public | ansible.builtin.batch(10) }}"
+  loop: |
+    {{
+      aws_vpc_subnets_public.results |
+      map(attribute="subnet.id") |
+      ansible.builtin.batch(10)
+    }}
   loop_control:
     label: batch-{{ batch_index }}
     loop_var: subnet_ids
@@ -145,13 +105,39 @@
         allocation_id: "{{ aws_configuration.vpc.nat_gateway.elastic_ip_allocation_id }}"
         region: "{{ aws_configuration.region }}"
         state: present
-        subnet_id: "{{ aws_vpc_subnet_ids.public | first }}"
+        subnet_id: "{{ (aws_vpc_subnets_public.results | ansible.builtin.first).subnet.id }}"
         tags:
           ClusterGroup: "{{ aws_cluster_group.name.prefix }}"
           ManagedBy: ansible
           Name: "{{ aws_cluster_group.name.prefix }}-nat-gateway"
         wait: true
       register: aws_nat_gateway
+
+    - name: Create VPC private subnet(s)
+      amazon.aws.ec2_vpc_subnet:
+        az: "{{ aws_configuration.zones | ansible.builtin.first }}"
+        cidr: "{{ aws_vpc_cidr_base }}.{{ subnet_octet }}.0/24"
+        map_public: false
+        region: "{{ aws_configuration.region }}"
+        state: present
+        tags:
+          ClusterGroup: "{{ aws_cluster_group.name.prefix }}"
+          ManagedBy: ansible
+          Name: "{{ aws_cluster_group.name.prefix }}-private-subnet-{{ subnet_octet | ansible.builtin.string }}"
+        vpc_id: "{{ aws_vpc.vpc.id }}"
+        wait: true
+      loop: "{{ range(aws_configuration.vpc.subnets.count + 1, (aws_configuration.vpc.subnets.count * 2) + 1) | ansible.builtin.list }}"
+      loop_control:
+        label: subnet/{{ subnet_octet }}
+        loop_var: subnet_octet
+      register: aws_vpc_subnets_private
+
+    - name: Verify that private to public subnet ratio is 1 to 1
+      ansible.builtin.assert:
+        that:
+          - (aws_vpc_subnets_private.results | ansible.builtin.length) == (aws_vpc_subnets_public.results | ansible.builtin.length)
+        fail_msg: All subnets were not created. Please retry.
+        success_msg: All subnets were created.
 
     - name: Create VPC route table for private subnets
       amazon.aws.ec2_vpc_route_table:
@@ -176,41 +162,12 @@
         subnets: "{{ subnet_ids }}"
         purge_subnets: false
         purge_routes: false
-      loop: "{{ aws_vpc_subnet_ids.private | ansible.builtin.batch(10) }}"
-      loop_control:
-        label: batch-{{ batch_index }}
-        loop_var: subnet_ids
-        index_var: batch_index
-        pause: 2
-
-- name: Configure Route Table with Internet Gateway
-  when:
-    - aws_configuration.vpc.nat_gateway is undefined
-  block:
-    - name: Create VPC route table for private subnets
-      amazon.aws.ec2_vpc_route_table:
-        vpc_id: "{{ aws_vpc.vpc.id }}"
-        region: "{{ aws_configuration.region }}"
-        routes:
-          - dest: "0.0.0.0/0"
-            gateway_id: "{{ aws_igw.gateway_id }}"
-        tags:
-          ClusterGroup: "{{ aws_cluster_group.name.prefix }}"
-          ManagedBy: ansible
-          Name: "{{ aws_cluster_group.name.prefix }}-igw-private-route-table"
-        state: present
-      register: aws_private_igw_route_table
-
-    - name: Associate private subnets with IGW route table in batches of 10
-      amazon.aws.ec2_vpc_route_table:
-        vpc_id: "{{ aws_vpc.vpc.id }}"
-        region: "{{ aws_configuration.region }}"
-        route_table_id: "{{ aws_private_igw_route_table.route_table.id }}"
-        lookup: id
-        subnets: "{{ subnet_ids }}"
-        purge_subnets: false
-        purge_routes: false
-      loop: "{{ aws_vpc_subnet_ids.private | ansible.builtin.batch(10) }}"
+      loop: |
+        {{
+          aws_vpc_subnets_private.results |
+          map(attribute="subnet.id") |
+          ansible.builtin.batch(10)
+        }}
       loop_control:
         label: batch-{{ batch_index }}
         loop_var: subnet_ids
