@@ -44,6 +44,7 @@ The following scenarios are being open-sourced at this time and their implementa
 | [57](#Scenario-57) | sre | medium | Kubernetes | Deployment, Performance |
 | [58](#Scenario-58) | sre | low | Kubernetes | Deployment, Performance |
 | [59](#Scenario-59) | sre | medium | Kubernetes | Code, Deployment, Performance |
+| [60](#Scenario-60) | sre | medium | Kubernetes | Code, Deployment, Performance |
 | [102](#Scenario-102) | sre | medium | Kubernetes | Deployment, Performance |
 | [105](#Scenario-105) | sre | medium | Kubernetes | Deployment, Performance |
 
@@ -53,19 +54,19 @@ The following scenarios are being open-sourced at this time and their implementa
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 4 | 33 |
+| 4 | 34 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 35 |
+| 2 | 36 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 16 | 20 | 1 |
+| 16 | 21 | 1 |
 
 ## Detailed Summary of Scenarios
 
@@ -1178,6 +1179,44 @@ kubectl -n otel-demo edit deployment accounting
 **Faults Injected:**
 
 - [Crashing Kubernetes Workload Init Container](./faults.md#Crashing-Kubernetes-Workload-Init-Container)
+
+**Solution:**
+
+Step 1
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n otel-demo rollout undo deployment/recommendation
+```
+
+OR
+
+- Manually edit the manifest and replace the script with a functioning one.
+
+```shell
+kubectl -n otel-demo edit configmap recommendation-config
+```
+
+OR
+
+- Manually edit the manifest and remove the faulty init container.
+
+```shell
+kubectl -n otel-demo edit deployment recommendation
+```
+### Scenario 60
+
+**Description:** This scenario simulates OpenTelemetry Demo's `recommendation` service crashing due to a malformed ConfigMap and `checkout` service being unable to start due to an unsupported architecture image, testing Kubernetes rolling update resilience without forced restart.
+
+**Active Applications:**
+
+- [OpenTelemetry Demo (Astronomy Shop)](./applications.md#opentelemetry-demo-astronomy-shop)
+
+**Faults Injected:**
+
+- [Crashing Kubernetes Workload Init Container](./faults.md#Crashing-Kubernetes-Workload-Init-Container)
+- [Unsupported Architecture Kubernetes Workload Container Image](./faults.md#Unsupported-Architecture-Kubernetes-Workload-Container-Image)
 
 **Solution:**
 

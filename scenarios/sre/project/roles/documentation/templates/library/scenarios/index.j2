@@ -1054,6 +1054,65 @@
   tags: {{ documentation_faults["crashing-kubernetes-workload-init-container"].tags }}
 - category: sre
   complexity: medium
+  description: This scenario simulates OpenTelemetry Demo's `recommendation` service crashing due to a malformed ConfigMap and `checkout` service being unable to start due to an unsupported architecture image, testing Kubernetes rolling update resilience without forced restart.
+  disruptions:
+    - injections:
+      - args:
+          configMapName: features
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: recommendation
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: crashing-kubernetes-workload-init-container
+    - injections:
+      - args:
+          container:
+            name: checkout
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: checkout
+              namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        id: unsupported-architecture-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: checkout
+                  namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            id: delete-workload-pods
+  environment:
+    applications:
+      - id: opentelemetry-demo
+  id: 60
+  platforms: {{
+      [
+        documentation_faults["crashing-kubernetes-workload-init-container"].platform,
+        documentation_faults["unsupported-architecture-kubernetes-workload-container-image"].platform
+      ] |
+      ansible.builtin.unique
+  }}
+  platforms: {{ [documentation_faults["crashing-kubernetes-workload-init-container"].platform] }}
+  solutionTemplates:
+    - disruptionIndex: 0
+      injectionIndex: 0
+  tags:
+    {{
+      [
+        documentation_faults["crashing-kubernetes-workload-init-container"].tags,
+        documentation_faults["unsupported-architecture-kubernetes-workload-container-image"].tags
+      ] |
+      ansible.builtin.flatten |
+      ansible.builtin.unique
+    }}
+- category: sre
+  complexity: medium
   description: This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.
   disruptions:
     - injections:

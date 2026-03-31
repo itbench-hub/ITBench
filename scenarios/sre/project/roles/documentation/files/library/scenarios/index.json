@@ -2642,6 +2642,115 @@
     },
     {
         "alerts": [
+            "KubeContainerWaiting"
+        ],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates OpenTelemetry Demo's `recommendation` service crashing due to a malformed ConfigMap and `checkout` service being unable to start due to an unsupported architecture image, testing Kubernetes rolling update resilience without forced restart.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "configMapName": "features",
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "recommendation",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "crashing-kubernetes-workload-init-container"
+                    }
+                ]
+            },
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "container": {
+                                "name": "checkout"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "checkout",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "unsupported-architecture-kubernetes-workload-container-image"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "checkout",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "delete-workload-pods"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 60,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/recommendation",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap recommendation-config",
+                            "text": "Manually edit the manifest and replace the script with a functioning one."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment recommendation",
+                            "text": "Manually edit the manifest and remove the faulty init container."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Code",
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [
             "KubePodNotReady"
         ],
         "category": "sre",
