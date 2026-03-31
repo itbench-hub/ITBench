@@ -34,18 +34,28 @@
       changed_when: false
       failed_when: false
 
-    - name: Display revalidation results
+    - name: Parse validation errors
+      ansible.builtin.set_fact:
+        validation_errors:
+          failures: |-
+            {{
+              (
+                (kops_validate_result.stdout | ansible.builtin.length == 0) |
+                ansible.builtin.ternary("{}", kops_validate_result.stdout) |
+                ansible.builtin.from_json
+              ).failures |
+              ansible.builtin.default([])
+            }}
+          stderr: "{{ kops_validate_result.stderr }}"
+
+    - name: Display validation errors
       ansible.builtin.debug:
-        var: displayed_results
-      vars:
-        displayed_results:
-          output: "{{ kops_validate_result.stdout | ansible.builtin.from_json }}"
-          error: "{{ kops_validate_result.stderr }}"
+        var: validation_errors
 
     - name: Check if cluster resources exist
       when:
         - kops_validate_result.rc != 0
-        - "'dial tcp' in kops_validate_result.stderr or 'i/o timeout' in kops_validate_result.stderr"
+        - "'dial tcp' in validation_errors.stderr or 'i/o timeout' in validation_errors.stderr"
       block:
         - name: Check for cluster instances
           amazon.aws.ec2_instance_info:
@@ -68,16 +78,16 @@
           ansible.builtin.set_fact:
             load_balancers: |-
               {{
-                [
+                (
                   elb_application_lbs.load_balancers |
-                  ansible.builtin.selectattr("tags.KubernetesCluster", defined) |
+                  ansible.builtin.selectattr("tags.KubernetesCluster", "defined") |
                   ansible.builtin.selectattr("tags.KubernetesCluster", "==", kops_cluster_name)
-                ] +
-                [
-                  elb_classic_lbs.load_balancers |
-                  ansible.builtin.selectattr("tags.KubernetesCluster", defined) |
+                ) +
+                (
+                  elb_classic_lbs.elbs |
+                  ansible.builtin.selectattr("tags.KubernetesCluster", "defined") |
                   ansible.builtin.selectattr("tags.KubernetesCluster", "==", kops_cluster_name)
-                ]
+                )
               }}
 
         - name: Recreate cluster resources if missing
@@ -101,20 +111,9 @@
               ansible.builtin.pause:
                 minutes: 5
 
-    - name: Parse validation failures
-      ansible.builtin.set_fact:
-        kops_validation_failures: |-
-          {{
-            (
-              kops_validate_result.stdout |
-              ansible.builtin.from_json
-            ).failures |
-            ansible.builtin.default([])
-          }}
-
     - name: Terminate machines with errors
       vars:
-        machine_failures: "{{ kops_validation_failures | ansible.builtin.selectattr('kind', '==', 'Machine') | list }}"
+        machine_failures: "{{ validation_errors.failures | ansible.builtin.selectattr('kind', '==', 'Machine') }}"
       when:
         - machine_failures | ansible.builtin.length > 0
       block:
@@ -152,5 +151,10 @@
         var: displayed_results
       vars:
         displayed_results:
-          output: "{{ kops_revalidate_result.stdout | ansible.builtin.from_json }}"
+          output: |-
+            {{
+              (kops_validate_result.stdout | ansible.builtin.length == 0) |
+              ansible.builtin.ternary("{}", kops_validate_result.stdout) |
+              ansible.builtin.from_json
+            }}
           error: "{{ kops_revalidate_result.stderr }}"
