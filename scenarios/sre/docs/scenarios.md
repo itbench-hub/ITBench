@@ -1243,6 +1243,29 @@ OR
 ```shell
 kubectl -n otel-demo edit deployment recommendation
 ```
+Step 2
+
+- Revert the last change done to the manifest.
+
+```shell
+kubectl -n otel-demo rollout undo deployment/checkout
+```
+
+OR
+
+- Manually edit the manifest and replace the invalid image with the correct value.
+
+```shell
+kubectl -n otel-demo edit deployment checkout
+```
+
+OR
+
+- Manually edit the manifest and replace the node selector to allow Kubernetes to schedule the workload on a supported node (if exists).
+
+```shell
+kubectl -n otel-demo edit deployment checkout
+```
 ### Scenario 102
 
 **Description:** This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.
