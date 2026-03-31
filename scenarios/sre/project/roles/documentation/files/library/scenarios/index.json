@@ -2642,7 +2642,8 @@
     },
     {
         "alerts": [
-            "KubeContainerWaiting"
+            "KubeContainerWaiting",
+            "KubePodNotReady"
         ],
         "category": "sre",
         "complexity": "medium",
@@ -2738,6 +2739,32 @@
                         {
                             "command": "kubectl -n otel-demo edit deployment recommendation",
                             "text": "Manually edit the manifest and remove the faulty init container."
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/checkout",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment checkout",
+                            "text": "Manually edit the manifest and replace the invalid image with the correct value."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment checkout",
+                            "text": "Manually edit the manifest and replace the node selector to allow Kubernetes to schedule the workload on a supported node (if exists)."
                         }
                     ]
                 }
