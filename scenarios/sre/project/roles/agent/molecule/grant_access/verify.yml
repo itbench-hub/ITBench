@@ -32,8 +32,10 @@
     - name: Retrieve pods in observability namespace
       ansible.builtin.command:
         cmd: kubectl -n observability get pods --kubeconfig={{ agent_restricted_kubeconfig_path }}
-      changed_when: false
-      failed_when: agent_observability_pods_list_result.rc == 0
+      changed_when:
+        - false
+      failed_when:
+        - agent_observability_pods_list_result.rc == 0
       register: agent_observability_pods_list_result
 
     - name: Validate that pods were not accessible
@@ -46,8 +48,10 @@
     - name: Retrieve pods in observability namespace
       ansible.builtin.command:
         cmd: kubectl get namespaces --kubeconfig={{ agent_restricted_kubeconfig_path }}
-      changed_when: false
-      failed_when: agent_namespace_list_result.rc == 0
+      changed_when:
+        - false
+      failed_when:
+        - agent_namespace_list_result.rc == 0
       register: agent_namespace_list_result
 
     - name: Validate that namespaces were not accesible

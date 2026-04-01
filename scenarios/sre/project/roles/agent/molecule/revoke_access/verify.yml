@@ -17,8 +17,10 @@
     - name: Retrieve pods in application namespace
       ansible.builtin.command:
         cmd: kubectl -n application get pods --kubeconfig={{ agent_restricted_kubeconfig_path }}
-      changed_when: false
-      failed_when: agent_application_pods_list_result.rc == 0
+      changed_when:
+        - false
+      failed_when:
+        - agent_application_pods_list_result.rc == 0
       register: agent_application_pods_list_result
 
     - name: Validate that access was denied after revocation
