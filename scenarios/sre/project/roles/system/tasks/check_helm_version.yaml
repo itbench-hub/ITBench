@@ -3,8 +3,10 @@
   ansible.builtin.command:
     cmd: which helm
   register: system_helm_path
-  changed_when: false
-  failed_when: false
+  changed_when:
+    - false
+  failed_when:
+    - false
 
 - name: Validate Helm CLI exists
   ansible.builtin.assert:
@@ -16,7 +18,8 @@
   ansible.builtin.command:
     cmd: "{{ system_helm_path.stdout }} version --short"
   register: system_raw_helm_version
-  changed_when: false
+  changed_when:
+    - false
 
 - name: Parse helm version
   ansible.builtin.set_fact:

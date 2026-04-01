@@ -18,7 +18,8 @@
       - "{{ item.metadata.name }}"
       - "--kubeconfig={{ cluster_files.kubeconfig | ansible.builtin.expanduser }}"
   register: cluster_certs_approve_output
-  changed_when: cluster_certs_approve_output.rc == 0
+  changed_when:
+    - cluster_certs_approve_output.rc == 0
   loop: "{{ cluster_csr_info.resources }}"
   loop_control:
     label: "csr/{{ item.metadata.name }}"

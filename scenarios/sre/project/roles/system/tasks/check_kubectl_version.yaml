@@ -3,8 +3,10 @@
   ansible.builtin.command:
     cmd: which kubectl
   register: system_kubectl_path
-  changed_when: false
-  failed_when: false
+  changed_when:
+    - false
+  failed_when:
+    - false
 
 - name: Validate kubectl exists
   ansible.builtin.assert:
@@ -21,7 +23,8 @@
       - json
       - --kubeconfig={{ system_cluster.kubeconfig | ansible.builtin.expanduser }}
   register: system_raw_kubectl_version
-  changed_when: false
+  changed_when:
+    - false
 
 - name: Convert kubectl version to JSON
   ansible.builtin.set_fact:

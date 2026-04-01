@@ -35,8 +35,10 @@
           - --state
           - "{{ kops_state_store }}"
       register: kops_get_clusters_result
-      changed_when: false
-      failed_when: false
+      changed_when:
+        - false
+      failed_when:
+        - false
 
     - name: Parse successful output from kops
       when:
@@ -47,7 +49,8 @@
             cmd: column -t
             stdin: "{{ kops_get_clusters_result.stdout }}"
           register: kops_clusters_formatted
-          changed_when: false
+          changed_when:
+            - false
 
         - name: Show all clusters in formatted table
           ansible.builtin.debug:
