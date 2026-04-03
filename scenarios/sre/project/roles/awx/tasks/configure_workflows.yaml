@@ -54,43 +54,43 @@
           }}
       loop: "{{ workflow_types | product(awx_workflow_scenario_configurations) }}"
       loop_control:
-        label: workflow/scenario-{{ workflow_configuration[1].scenario_id }}-{{ workflow_configuration[0].suffix }}
+        label: template/Scenario-{{ workflow_configuration[1].scenario_id }}-{{ workflow_configuration[0].suffix }}
         loop_var: workflow_configuration
       vars:
         workflow_types:
           - is_agent_workflow: false
             is_leaderboard_workflow: false
-            suffix: Data-Collection-Execution
+            suffix: "{{ awx_workflow_template_suffixes[0] }}"
           - is_agent_workflow: true
             is_leaderboard_workflow: false
-            suffix: Full-Execution
+            suffix: "{{ awx_workflow_template_suffixes[1] }}"
           - is_agent_workflow: false
             is_leaderboard_workflow: true
-            suffix: Partial-Execution-Start
+            suffix: "{{ awx_workflow_template_suffixes[2] }}"
           - is_agent_workflow: false
             is_leaderboard_workflow: true
-            suffix: Partial-Execution-Stop
+            suffix: "{{ awx_workflow_template_suffixes[3] }}"
       async: 1200
       poll: 0
-      register: awx_create_workflow_template_async
+      register: awx_create_execution_workflow_template_async
 
     - name: Wait for all workflows to be created
       ansible.builtin.async_status:
         jid: "{{ create_task.ansible_job_id }}"
-      loop: "{{ awx_create_workflow_template_async.results }}"
+      loop: "{{ awx_create_execution_workflow_template_async.results }}"
       loop_control:
         label: job/{{ create_task.ansible_job_id }}
         loop_var: create_task
-      register: awx_create_workflow_template_job
-      until: awx_create_workflow_template_job.finished
+      register: awx_create_execution_workflow_template_job
+      until: awx_create_execution_workflow_template_job.finished
       retries: 60
       delay: 60
   always:
-    - name: Clean up ansychronous create jobs
+    - name: Clean up asynchronous create jobs
       ansible.builtin.async_status:
         mode: cleanup
         jid: "{{ create_task.ansible_job_id }}"
-      loop: "{{ awx_create_workflow_template_async.results }}"
+      loop: "{{ awx_create_execution_workflow_template_async.results }}"
       loop_control:
         label: job/{{ create_task.ansible_job_id }}
         loop_var: create_task
@@ -122,35 +122,31 @@
           )
         }}
       loop_control:
-        label: workflow/cluster-{{ workflow_configuration[1][0] }}-{{ workflow_configuration[0].suffix }}
+        label: template/Cluster-{{ workflow_configuration[1][0] }}-{{ workflow_configuration[0].suffix }}
         loop_var: workflow_configuration
       vars:
-        workflow_types:
-          - suffix: Data-Collection-Execution
-          - suffix: Full-Execution
-          - suffix: Partial-Execution-Start
-          - suffix: Partial-Execution-Stop
+        workflow_types: "{{ awx_workflow_template_suffixes | map('community.general.dict_kv', 'suffix') | list }}"
       async: 1200
       poll: 0
-      register: awx_create_workflow_template_async
+      register: awx_create_orchestration_workflow_template_async
 
     - name: Wait for all workflows to be created
       ansible.builtin.async_status:
         jid: "{{ create_task.ansible_job_id }}"
-      loop: "{{ awx_create_workflow_template_async.results }}"
+      loop: "{{ awx_create_orchestration_workflow_template_async.results }}"
       loop_control:
         label: job/{{ create_task.ansible_job_id }}
         loop_var: create_task
-      register: awx_create_workflow_template_job
-      until: awx_create_workflow_template_job.finished
+      register: awx_create_orchestration_workflow_template_job
+      until: awx_create_orchestration_workflow_template_job.finished
       retries: 60
       delay: 60
   always:
-    - name: Clean up ansychronous create jobs
+    - name: Clean up asynchronous create jobs
       ansible.builtin.async_status:
         mode: cleanup
         jid: "{{ create_task.ansible_job_id }}"
-      loop: "{{ awx_create_workflow_template_async.results }}"
+      loop: "{{ awx_create_orchestration_workflow_template_async.results }}"
       loop_control:
         label: job/{{ create_task.ansible_job_id }}
         loop_var: create_task

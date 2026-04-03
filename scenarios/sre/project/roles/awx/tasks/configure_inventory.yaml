@@ -1,0 +1,62 @@
+---
+- name: Create ITBench inventory
+  awx.awx.inventory:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    description: Inventory for ITBench
+    name: ITBench
+    organization: ITBench
+    state: present
+
+- name: Create localhost host
+  awx.awx.host:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    name: localhost
+    inventory: ITBench
+    variables:
+      ansible_connection: local
+    state: present
+
+- name: Add localhost to environment and runner groups
+  awx.awx.group:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    name: "{{ group_vars_name }}"
+    inventory: ITBench
+    hosts:
+      - localhost
+    state: present
+  loop:
+    - environment
+    - runner
+  loop_control:
+    label: groupvars/{{ group_vars_name }}
+    loop_var: group_vars_name
+
+# ToDo: Revert back to this instead of static allocation once upstream AWX issue on syncing inventories is resolved
+# - name: Create ITBench inventory source
+#   awx.awx.inventory_source:
+#     controller_host: "{{ awx_controller_host }}"
+#     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+#     controller_username: admin
+#     inventory: ITBench
+#     name: SRE
+#     organization: ITBench
+#     description: Inventory for ITBench
+#     source: scm
+#     source_path: sre/inventory.yaml
+#     source_project: GitHub-ITBench
+
+# - name: Sync ITBench inventory source to populate hosts
+#   awx.awx.inventory_source_update:
+#     controller_host: "{{ awx_controller_host }}"
+#     controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+#     controller_username: admin
+#     inventory_source: SRE
+#     inventory: ITBench
+#     wait: true
+#     timeout: 300

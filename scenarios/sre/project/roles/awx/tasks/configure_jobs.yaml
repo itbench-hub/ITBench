@@ -1,5 +1,5 @@
 ---
-- name: Add job template for installing tools
+- name: Add ITBench job templates
   awx.awx.job_template:
     allow_simultaneous: true
     ask_credential_on_launch: true
@@ -9,263 +9,60 @@
     controller_username: admin
     execution_environment: ITBench-Custom-EE
     inventory: ITBench
-    job_tags: install_tools
+    job_tags: "{{ job_template.job_tags | ansible.builtin.default(omit) }}"
     job_type: run
-    name: Deploy-Tools
+    name: "{{ job_template.name }}"
     organization: ITBench
-    playbook: scenarios/sre/project/manage_tools.yaml
+    playbook: "{{ job_template.playbook }}"
     project: GitHub-ITBench
     state: present
-
-- name: Add job template for uninstalling tools
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: uninstall_tools
-    job_type: run
-    name: Undeploy-Tools
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_tools.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for installing applicaions
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: install_applications
-    job_type: run
-    name: Deploy-Applications
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_applications.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for uninstalling applications
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: uninstall_applications
-    job_type: run
-    name: Undeploy-Applications
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_applications.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for clearing Kubernetes events
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_type: run
-    name: Clear-Kubernetes-Events
-    organization: ITBench
-    playbook: scenarios/sre/project/clear_kubernetes_events.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for injecting faults
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: inject_faults
-    job_type: run
-    name: Inject-Faults
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_faults.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for removing faults
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: remove_faults
-    job_type: run
-    name: Remove-Faults
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_faults.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for installing data recorders
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: install_recorders
-    job_type: run
-    name: Deploy-Data-Recorders
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_recorders.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for uninstalling data recorders
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: uninstall_recorders
-    job_type: run
-    name: Undeploy-Data-Recorders
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_recorders.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for enabling agent access
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: grant_access
-    job_type: run
-    name: Grant-Access-To-Agent
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_agent_access.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for disabling agent access
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: revoke_access
-    job_type: run
-    name: Remove-Access-From-Agent
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_agent_access.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for checking alerts in firing state
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_type: run
-    name: Check-for-Alerts
-    organization: ITBench
-    playbook: scenarios/sre/project/check_for_specific_alerts_in_firing_state.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for pause
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: pause
-    job_type: run
-    name: Pause
-    organization: ITBench
-    playbook: scenarios/sre/project/pause_execution.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for handing over to agent
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: agent_handover
-    job_type: run
-    name: Handover-To-Agent
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_agent_transition.yaml
-    project: GitHub-ITBench
-    state: present
-
-- name: Add job template for handing back from agent
-  awx.awx.job_template:
-    allow_simultaneous: true
-    ask_credential_on_launch: true
-    ask_variables_on_launch: true
-    controller_host: "{{ awx_controller_host }}"
-    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
-    controller_username: admin
-    execution_environment: ITBench-Custom-EE
-    inventory: ITBench
-    job_tags: agent_handback
-    job_type: run
-    name: Handback-From-Agent
-    organization: ITBench
-    playbook: scenarios/sre/project/manage_agent_transition.yaml
-    project: GitHub-ITBench
-    state: present
+  loop:
+    - name: Deploy-Tools
+      playbook: scenarios/sre/project/manage_tools.yaml
+      job_tags: install_tools
+    - name: Undeploy-Tools
+      playbook: scenarios/sre/project/manage_tools.yaml
+      job_tags: uninstall_tools
+    - name: Deploy-Applications
+      playbook: scenarios/sre/project/manage_applications.yaml
+      job_tags: install_applications
+    - name: Undeploy-Applications
+      playbook: scenarios/sre/project/manage_applications.yaml
+      job_tags: uninstall_applications
+    - name: Clear-Kubernetes-Events
+      playbook: scenarios/sre/project/clear_kubernetes_events.yaml
+    - name: Inject-Faults
+      playbook: scenarios/sre/project/manage_faults.yaml
+      job_tags: inject_faults
+    - name: Remove-Faults
+      playbook: scenarios/sre/project/manage_faults.yaml
+      job_tags: remove_faults
+    - name: Deploy-Data-Recorders
+      playbook: scenarios/sre/project/manage_recorders.yaml
+      job_tags: install_recorders
+    - name: Undeploy-Data-Recorders
+      playbook: scenarios/sre/project/manage_recorders.yaml
+      job_tags: uninstall_recorders
+    - name: Grant-Access-To-Agent
+      playbook: scenarios/sre/project/manage_agent_access.yaml
+      job_tags: grant_access
+    - name: Remove-Access-From-Agent
+      playbook: scenarios/sre/project/manage_agent_access.yaml
+      job_tags: revoke_access
+    - name: Check-for-Alerts
+      playbook: scenarios/sre/project/check_for_specific_alerts_in_firing_state.yaml
+    - name: Pause
+      playbook: scenarios/sre/project/pause_execution.yaml
+      job_tags: pause
+    - name: Handover-To-Agent
+      playbook: scenarios/sre/project/manage_agent_transition.yaml
+      job_tags: agent_handover
+    - name: Handback-From-Agent
+      playbook: scenarios/sre/project/manage_agent_transition.yaml
+      job_tags: agent_handback
+  loop_control:
+    label: jobtemplate/{{ job_template.name }}
+    loop_var: job_template
 
 - name: Add job template for running agent
   awx.awx.job_template:
