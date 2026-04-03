@@ -1,0 +1,242 @@
+---
+{% if workflow_configuration[0].suffix != "Partial-Execution-Stop" %}
+- identifier: node-deploy-tools
+  extra_data:
+    scenario_id: {{ workflow_configuration[1].scenario_id }}
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+{% if not workflow_configuration[0].is_leaderboard_workflow %}
+    failure_nodes:
+      - identifier: node-undeploy-tools
+{% endif %}
+    success_nodes:
+      - identifier: node-deploy-applications
+  unified_job_template:
+    name: Deploy-Tools
+    type: job_template
+- identifier: node-deploy-applications
+  extra_data:
+    scenario_id: {{ workflow_configuration[1].scenario_id }}
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+{% if not workflow_configuration[0].is_leaderboard_workflow %}
+    failure_nodes:
+      - identifier: node-undeploy-applications
+{% endif %}
+    success_nodes:
+      - identifier: node-deploy-recorders
+  unified_job_template:
+    name: Deploy-Applications
+    type: job_template
+- identifier: node-deploy-recorders
+  extra_data:
+    scenario_id: {{ workflow_configuration[1].scenario_id }}
+    benchmark_phase: pre-fault-injection
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+{% if not workflow_configuration[0].is_leaderboard_workflow %}
+    failure_nodes:
+      - identifier: node-undeploy-recorders
+{% endif %}
+    success_nodes:
+      - identifier: node-clear-kubernetes-events
+  unified_job_template:
+    name: Deploy-Data-Recorders
+    type: job_template
+- identifier: node-clear-kubernetes-events
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+{% if not workflow_configuration[0].is_leaderboard_workflow %}
+    failure_nodes:
+      - identifier: node-undeploy-recorders
+{% endif %}
+    success_nodes:
+      - identifier: node-grant-access-to-agent
+  unified_job_template:
+    name: Clear-Kubernetes-Events
+    type: job_template
+- identifier: node-grant-access-to-agent
+  extra_data:
+    scenario_id: {{ workflow_configuration[1].scenario_id }}
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+{% if not workflow_configuration[0].is_leaderboard_workflow %}
+    failure_nodes:
+      - identifier: node-remove-access-from-agent
+{% endif %}
+    success_nodes:
+      - identifier: node-pre-injection-pause
+  unified_job_template:
+    name: Grant-Access-To-Agent
+    type: job_template
+- identifier: node-pre-injection-pause
+  extra_data:
+    duration_in_minutes: 2
+  related:
+    success_nodes:
+      - identifier: node-deploy-pre-agent-execution-data-recorders
+{% for index in range(0, workflow_configuration[1].fault_count) %}
+      - identifier: node-inject-fault-{{ index + 1 }}
+{% endfor %}
+  unified_job_template:
+    name: Pause
+    type: job_template
+{% for index in range(0, workflow_configuration[1].fault_count) %}
+- identifier: node-inject-fault-{{ index + 1 }}
+  extra_data:
+    faults_index: {{ index }}
+    scenario_id: {{ workflow_configuration[1].scenario_id }}
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+{% if not workflow_configuration[0].is_leaderboard_workflow %}
+    success_nodes:
+      - identifier: node-handback-from-agent
+{% endif %}
+  unified_job_template:
+    name: Inject-Faults
+    type: job_template
+{% endfor %}
+- identifier: node-deploy-pre-agent-execution-data-recorders
+  extra_data:
+    scenario_id: {{ workflow_configuration[1].scenario_id }}
+    benchmark_phase: pre-agent-injection
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+{% if not workflow_configuration[0].is_leaderboard_workflow %}
+    failure_nodes:
+      - identifier: node-remove-fault
+{% endif %}
+    success_nodes:
+      - identifier: node-pre-agent-execution-pause
+  unified_job_template:
+    name: Deploy-Data-Recorders
+    type: job_template
+- identifier: node-pre-agent-execution-pause
+  extra_data:
+    duration_in_minutes: 2
+  related:
+    success_nodes:
+      - identifier: node-check-for-alerts
+  unified_job_template:
+    name: Pause
+    type: job_template
+- identifier: node-check-for-alerts
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+{% if not workflow_configuration[0].is_leaderboard_workflow %}
+    failure_nodes:
+      - identifier: node-remove-fault
+{% endif %}
+    success_nodes:
+      - identifier: node-handover-to-agent
+  unified_job_template:
+    name: Check-for-Alerts
+    type: job_template
+- identifier: node-handover-to-agent
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+{% if not workflow_configuration[0].is_leaderboard_workflow %}
+{% if workflow_configuration[0].is_agent_workflow %}
+    failure_nodes:
+      - identifier: node-remove-fault
+    success_nodes:
+      - identifier: node-run-agent
+{% else %}
+    success_nodes:
+      - identifier: node-handback-from-agent
+{% endif %}
+{% endif %}
+  unified_job_template:
+    name: Handover-To-Agent
+    type: job_template
+{% if workflow_configuration[0].is_agent_workflow %}
+- identifier: node-run-agent
+  extra_data:
+    scenario_id: {{ workflow_configuration[1].scenario_id }}
+  related:
+    success_nodes:
+      - identifier: node-handback-from-agent
+    credentials: {{ workflow_configuration[1].node_credentials }}
+  unified_job_template:
+    name: Run-Agent
+    type: job_template
+{% endif %}
+{% endif %}
+{% if workflow_configuration[0].suffix != "Partial-Execution-Start" %}
+- all_parents_must_converge: {{ workflow_configuration[0].suffix != "Partial-Execution-Stop" }}
+  identifier: node-handback-from-agent
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+    success_nodes:
+      - identifier: node-deploy-post-agent-data-recorders
+  unified_job_template:
+    name: Handback-From-Agent
+    type: job_template
+- identifier: node-deploy-post-agent-data-recorders
+  extra_data:
+    scenario_id: {{ workflow_configuration[1].scenario_id }}
+    benchmark_phase: post-agent-execution
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+{% if not workflow_configuration[0].is_agent_workflow %}
+    always_nodes:
+      - identifier: node-remove-fault
+{% else %}
+    failure_nodes:
+      - identifier: node-remove-fault
+    success_nodes:
+      - identifier: node-post-agent-execution-pause
+{% endif %}
+  unified_job_template:
+    name: Deploy-Data-Recorders
+    type: job_template
+{% if workflow_configuration[0].is_agent_workflow %}
+- identifier: node-post-agent-execution-pause
+  extra_data:
+    duration_in_minutes: 10
+  related:
+    success_nodes:
+      - identifier: node-remove-fault
+  unified_job_template:
+    name: Pause
+    type: job_template
+{% endif %}
+- identifier: node-remove-fault
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+    success_nodes:
+      - identifier: node-remove-access-from-agent
+  unified_job_template:
+    name: Remove-Faults
+    type: job_template
+- identifier: node-remove-access-from-agent
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+    success_nodes:
+      - identifier: node-undeploy-recorders
+  unified_job_template:
+    name: Remove-Access-From-Agent
+    type: job_template
+- identifier: node-undeploy-recorders
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+    success_nodes:
+      - identifier: node-undeploy-applications
+  unified_job_template:
+    name: Undeploy-Data-Recorders
+    type: job_template
+- identifier: node-undeploy-applications
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+    success_nodes:
+      - identifier: node-undeploy-tools
+  unified_job_template:
+    name: Undeploy-Applications
+    type: job_template
+- identifier: node-undeploy-tools
+  related:
+    credentials: {{ workflow_configuration[1].node_credentials }}
+  unified_job_template:
+    name: Undeploy-Tools
+    type: job_template
+{% endif %}
