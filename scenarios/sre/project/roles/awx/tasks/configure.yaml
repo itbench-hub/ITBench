@@ -1,0 +1,40 @@
+---
+- name: Create ITBench organization
+  awx.awx.organization:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    description: Organization for ITBench
+    name: ITBench
+    state: present
+
+- name: Add custom environment for running ITBench scenarios
+  awx.awx.execution_environment:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    description: Custom environment for running ITBench scenarios
+    image: quay.io/it-bench/awx-ee:2.0.0
+    name: ITBench-Custom-EE
+    organization: ITBench
+    pull: always
+
+- name: Import credential configuration tasks
+  ansible.builtin.import_tasks:
+    file: configure_credentials.yaml
+
+- name: Import project configuration tasks
+  ansible.builtin.import_tasks:
+    file: configure_projects.yaml
+
+- name: Import inventory configuration tasks
+  ansible.builtin.import_tasks:
+    file: configure_inventory.yaml
+
+- name: Import job configuration tasks
+  ansible.builtin.import_tasks:
+    file: configure_jobs.yaml
+
+- name: Import workflow configuration tasks
+  ansible.builtin.import_tasks:
+    file: configure_workflows.yaml

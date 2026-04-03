@@ -1,0 +1,12 @@
+---
+{% for index in range(0, (workflow_configuration[1][1] | ansible.builtin.length)) %}
+- identifier: node-scenario-{{ workflow_configuration[1][1][index].scenario_id }}
+{% if (index + 1) < (workflow_configuration[1][1] | ansible.builtin.length) %}
+  related:
+    success_nodes:
+      - identifier: node-scenario-{{ workflow_configuration[1][1][index + 1].scenario_id }}
+{% endif %}
+  unified_job_template:
+    name: Scenario-{{ workflow_configuration[1][1][index].scenario_id }}-{{ workflow_configuration[0].suffix }}
+    type: workflow_job_template
+{% endfor %}

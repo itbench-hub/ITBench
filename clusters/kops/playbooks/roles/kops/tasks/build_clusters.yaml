@@ -29,7 +29,8 @@
         label: job/{{ update_task.ansible_job_id }}
         loop_var: update_task
       register: kops_update_job_status
-      changed_when: kops_update_job_status.rc == 0
+      changed_when:
+        - kops_update_job_status.rc == 0
       until: kops_update_job_status.finished
       delay: 60
       retries: 15

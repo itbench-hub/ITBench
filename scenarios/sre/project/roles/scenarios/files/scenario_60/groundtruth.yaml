@@ -1,0 +1,46 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-60
+spec:
+  alerts:
+    - labels: {}
+      name: KubeContainerWaiting
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: recommendation
+        namespace: otel-demo
+    - apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: recommendation-config
+        namespace: otel-demo
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: checkout
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/recommendation
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit configmap recommendation-config
+            text: Manually edit the manifest and replace the script with a functioning one.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment recommendation
+            text: Manually edit the manifest and remove the faulty init container.
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/checkout
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment checkout
+            text: Manually edit the manifest and replace the invalid image with the correct value.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment checkout
+            text: Manually edit the manifest and replace the node selector to allow Kubernetes to schedule the workload on a supported node (if exists).

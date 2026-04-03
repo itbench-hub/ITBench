@@ -1,0 +1,36 @@
+---
+- name: Create GitHub projects
+  awx.awx.project:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    credential: "{{ repository.credential if repository.requires_credentials else omit }}"
+    description: "{{ repository.description }}"
+    name: "{{ repository.name }}"
+    organization: ITBench
+    scm_allow_override: true
+    scm_branch: "{{ repository.branch }}"
+    scm_clean: true
+    scm_delete_on_update: true
+    scm_track_submodules: "{{ repository.track_submodules }}"
+    scm_type: git
+    scm_url: "{{ repository.url }}"
+    state: present
+  loop:
+    - name: GitHub-ITBench
+      description: ITBench GitHub repository
+      credential: GitHub-ITBench
+      branch: "{{ awx_configuration.github.itbench.branch }}"
+      url: "{{ awx_configuration.github.itbench.url }}"
+      track_submodules: true
+      requires_credentials: "{{ awx_configuration.github.itbench.ssh is defined }}"
+    - name: GitHub-LLM-Agent
+      description: LLM Agent GitHub repository
+      credential: GitHub-LLM-Agent
+      branch: "{{ awx_configuration.github.agent.branch }}"
+      url: "{{ awx_configuration.github.agent.url }}"
+      track_submodules: false
+      requires_credentials: "{{ awx_configuration.github.agent.ssh is defined }}"
+  loop_control:
+    label: project/{{ repository.name }}
+    loop_var: repository

@@ -13,7 +13,8 @@
         ansible.builtin.from_yaml
       }}
   register: kops_create_cluster_results
-  changed_when: kops_create_cluster_results.rc == 0
+  changed_when:
+    - kops_create_cluster_results.rc == 0
 
 - name: Apply Cilium changes to configuration for {{ cluster_name }}
   ansible.builtin.command:
@@ -30,7 +31,8 @@
       - --set
       - spec.networking.cilium.bpfLBSockHostNSOnly=true
   register: kops_edit_cluster_results
-  changed_when: kops_edit_cluster_results.rc == 0
+  changed_when:
+    - kops_edit_cluster_results.rc == 0
 
 - name: Retrieve configuration from state store for {{ cluster_name }}
   ansible.builtin.command:
@@ -45,7 +47,8 @@
       - -o
       - yaml
   register: kops_get_cluster_results
-  changed_when: kops_get_cluster_results.rc == 0
+  changed_when:
+    - kops_get_cluster_results.rc == 0
 
 - name: Save retrieval output to file
   ansible.builtin.copy:
@@ -90,7 +93,8 @@
       - "{{ kops_state_store }}"
       - --force
   register: kops_replace_results
-  changed_when: kops_replace_results.rc == 0
+  changed_when:
+    - kops_replace_results.rc == 0
 
 - name: Delete temporary configuration file for {{ cluster_name }}
   ansible.builtin.file:

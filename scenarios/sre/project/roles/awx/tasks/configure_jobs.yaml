@@ -1,0 +1,122 @@
+---
+- name: Add ITBench job templates
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: "{{ job_template.job_tags | ansible.builtin.default(omit) }}"
+    job_type: run
+    name: "{{ job_template.name }}"
+    organization: ITBench
+    playbook: "{{ job_template.playbook }}"
+    project: GitHub-ITBench
+    state: present
+  loop:
+    - name: Deploy-Tools
+      playbook: scenarios/sre/project/manage_tools.yaml
+      job_tags: install_tools
+    - name: Undeploy-Tools
+      playbook: scenarios/sre/project/manage_tools.yaml
+      job_tags: uninstall_tools
+    - name: Deploy-Applications
+      playbook: scenarios/sre/project/manage_applications.yaml
+      job_tags: install_applications
+    - name: Undeploy-Applications
+      playbook: scenarios/sre/project/manage_applications.yaml
+      job_tags: uninstall_applications
+    - name: Clear-Kubernetes-Events
+      playbook: scenarios/sre/project/clear_kubernetes_events.yaml
+    - name: Inject-Faults
+      playbook: scenarios/sre/project/manage_faults.yaml
+      job_tags: inject_faults
+    - name: Remove-Faults
+      playbook: scenarios/sre/project/manage_faults.yaml
+      job_tags: remove_faults
+    - name: Deploy-Data-Recorders
+      playbook: scenarios/sre/project/manage_recorders.yaml
+      job_tags: install_recorders
+    - name: Undeploy-Data-Recorders
+      playbook: scenarios/sre/project/manage_recorders.yaml
+      job_tags: uninstall_recorders
+    - name: Grant-Access-To-Agent
+      playbook: scenarios/sre/project/manage_agent_access.yaml
+      job_tags: grant_access
+    - name: Remove-Access-From-Agent
+      playbook: scenarios/sre/project/manage_agent_access.yaml
+      job_tags: revoke_access
+    - name: Check-for-Alerts
+      playbook: scenarios/sre/project/check_for_specific_alerts_in_firing_state.yaml
+    - name: Pause
+      playbook: scenarios/sre/project/pause_execution.yaml
+      job_tags: pause
+    - name: Handover-To-Agent
+      playbook: scenarios/sre/project/manage_agent_transition.yaml
+      job_tags: agent_handover
+    - name: Handback-From-Agent
+      playbook: scenarios/sre/project/manage_agent_transition.yaml
+      job_tags: agent_handback
+  loop_control:
+    label: jobtemplate/{{ job_template.name }}
+    loop_var: job_template
+
+- name: Add job template for running agent
+  awx.awx.job_template:
+    allow_simultaneous: true
+    ask_credential_on_launch: true
+    ask_variables_on_launch: true
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    execution_environment: ITBench-Custom-EE
+    inventory: ITBench
+    job_tags: sre_agent
+    job_type: run
+    name: Run-Agent
+    organization: ITBench
+    playbook: deployments/ansible/base.yaml
+    project: GitHub-LLM-Agent
+    state: present
+    timeout: "{{ awx_configuration.agent.configuration['max_runtime_in_seconds'] | int + 900 }}"
+    extra_vars:
+      prometheus_namespace_project_name: prometheus
+      sre_agent_directory: /runner/project
+      venv_directory: /runner/venv
+      provider_agents: "{{ awx_configuration.agent.configuration['agents_config']['provider'] }}"
+      model_agents: "{{ awx_configuration.agent.configuration['agents_config']['model'] }}"
+      url_agents: "{{ awx_configuration.agent.configuration['agents_config']['url'] }}"
+      api_key_agents: "{{ awx_configuration.agent.configuration['agents_config']['api_key'] }}" # pragma: allowlist secret
+      api_version_agents: "{{ awx_configuration.agent.configuration['agents_config']['api_version'] }}"
+      seed_agents: "{{ awx_configuration.agent.configuration['agents_config']['seed'] }}"
+      top_p_agents: "{{ awx_configuration.agent.configuration['agents_config']['top_p'] }}"
+      temperature_agents: "{{ awx_configuration.agent.configuration['agents_config']['temperature'] }}"
+      reasoning_effort_agents: "{{ awx_configuration.agent.configuration['agents_config']['reasoning_effort'] }}"
+      thinking_agents: "{{ awx_configuration.agent.configuration['agents_config']['thinking'] }}"
+      thinking_budget_agents: "{{ awx_configuration.agent.configuration['agents_config']['thinking_budget'] }}"
+      max_tokens_agents: "{{ awx_configuration.agent.configuration['agents_config']['max_tokens'] }}"
+      model_embedding: "{{ awx_configuration.agent.configuration['agents_config']['model_embedding'] }}"
+      url_embedding: "{{ awx_configuration.agent.configuration['agents_config']['url_embedding'] }}"
+      api_version_embedding: "{{ awx_configuration.agent.configuration['agents_config']['api_version_embedding'] }}"
+      provider_tools: "{{ awx_configuration.agent.configuration['tools_config']['provider'] }}"
+      model_tools: "{{ awx_configuration.agent.configuration['tools_config']['model'] }}"
+      url_tools: "{{ awx_configuration.agent.configuration['tools_config']['url'] }}"
+      api_key_tools: "{{ awx_configuration.agent.configuration['tools_config']['api_key'] }}" # pragma: allowlist secret
+      api_version_tools: "{{ awx_configuration.agent.configuration['tools_config']['api_version'] }}"
+      seed_tools: "{{ awx_configuration.agent.configuration['tools_config']['seed'] }}"
+      top_p_tools: "{{ awx_configuration.agent.configuration['tools_config']['top_p'] }}"
+      temperature_tools: "{{ awx_configuration.agent.configuration['tools_config']['temperature'] }}"
+      reasoning_effort_tools: "{{ awx_configuration.agent.configuration['tools_config']['reasoning_effort'] }}"
+      thinking_tools: "{{ awx_configuration.agent.configuration['tools_config']['thinking'] }}"
+      thinking_budget_tools: "{{ awx_configuration.agent.configuration['tools_config']['thinking_budget'] }}"
+      max_tokens_tools: "{{ awx_configuration.agent.configuration['tools_config']['max_tokens'] }}"
+      wx_project_id: "{{ awx_configuration.agent.configuration['watsonx_config']['wx_project_id'] }}"
+      wx_deployment_space_id: "{{ awx_configuration.agent.configuration['watsonx_config']['wx_deployment_space_id'] }}"
+      god_mode: "{{ awx_configuration.agent.configuration['agents_config']['god_mode'] }}"
+      agent_analytics_sdk_username: "{{ awx_configuration.agent.configuration['agent_analytics_sdk']['git_username'] }}"
+      agent_analytics_sdk_token: "{{ awx_configuration.agent.configuration['agent_analytics_sdk']['git_token'] }}"
+      run_mode: remote
+      max_runtime_in_seconds: "{{ awx_configuration.agent.configuration['max_runtime_in_seconds'] }}"

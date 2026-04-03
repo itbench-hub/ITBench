@@ -1,0 +1,33 @@
+---
+- name: Include tasks to approve pending certificate requests
+  ansible.builtin.include_role:
+    name: cluster
+    tasks_from: approve_certificate_requests
+  vars:
+    cluster_files:
+      kubeconfig: "{{ awx_cluster.kubeconfig }}"
+  when:
+    - awx_cluster.provider == "kind"
+
+- name: Import AWX operator installation tasks
+  ansible.builtin.import_tasks:
+    file: install_awx_operator.yaml
+
+- name: Import AWX instance installation tasks
+  ansible.builtin.import_tasks:
+    file: install_awx_instances.yaml
+
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_awx_controller_host.yaml
+
+- name: Import variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_awx_controller_password.yaml
+
+- name: Display login details
+  ansible.builtin.debug:
+    msg:
+      - "AWX Website: {{ awx_controller_host }}"
+      - "AWX Username: admin"
+      - "AWX Password: {{ awx_controller_password }}"

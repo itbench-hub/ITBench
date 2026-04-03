@@ -1,0 +1,28 @@
+---
+# NOTE: `kubectl` is used in place of the `kubernetes.core` module because
+#       the server side configuration the yaml files are still downloaded
+#       and rendered on the client side. Depending on the file, sometimes
+#       there are rendering issues.
+
+- name: Apply Kubernetes Gateway API Custom Resource Definitions
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - apply
+      - --server-side
+      - -f
+      - |-
+        {{
+          [
+            tools_managers.kubernetes_gateway.git.repository.removesuffix(".git"),
+            "releases",
+            "download",
+            tools_managers.kubernetes_gateway.git.tag,
+            "standard-install.yaml"
+          ] |
+          ansible.builtin.join('/')
+        }}
+      - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
+  register: tools_kubernetes_gateway_crds_apply
+  changed_when:
+    - tools_kubernetes_gateway_crds_apply.rc == 0
