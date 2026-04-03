@@ -1,0 +1,22 @@
+---
+- name: Uninstall AWX
+  hosts:
+    - localhost
+  tasks:
+    - name: Import cluster role to set platform and provider variables
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        cluster_tools_enabled:
+          oc: false
+
+    - name: Import awx role to uninstall AWX
+      ansible.builtin.import_role:
+        name: awx
+        tasks_from: uninstall.yaml
+      vars:
+        awx_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          provider: "{{ cluster_provider }}"
