@@ -54,7 +54,7 @@
           }}
       loop: "{{ workflow_types | product(awx_workflow_scenario_configurations) }}"
       loop_control:
-        label: template/Scenario-{{ workflow_configuration[1].scenario_id }}-{{ workflow_configuration[0].suffix }}
+        label: workflowjobtemplate/Scenario-{{ workflow_configuration[1].scenario_id }}-{{ workflow_configuration[0].suffix }}
         loop_var: workflow_configuration
       vars:
         workflow_types:
@@ -104,7 +104,7 @@
         controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
         controller_username: admin
         inventory: ITBench
-        name: Cluster-{{ workflow_configuration[1][0] }}-{{ workflow_configuration[0].suffix }}
+        name: "{{ template_name }}"
         request_timeout: 120
         state: present
         workflow_nodes: |-
@@ -114,7 +114,7 @@
           }}
       loop: |-
         {{
-          workflow_types |
+          awx_workflow_template_suffixes |
           product(
             awx_workflow_scenario_configurations |
             ansible.builtin.groupby("runner_id") |
@@ -122,10 +122,10 @@
           )
         }}
       loop_control:
-        label: template/Cluster-{{ workflow_configuration[1][0] }}-{{ workflow_configuration[0].suffix }}
+        label: workflowjobtemplate/{{ template_name }}
         loop_var: workflow_configuration
       vars:
-        workflow_types: "{{ awx_workflow_template_suffixes | map('community.general.dict_kv', 'suffix') | list }}"
+        template_name: Cluster-{{ workflow_configuration[1][0] }}-{{ workflow_configuration[0] }}
       async: 1200
       poll: 0
       register: awx_create_orchestration_workflow_template_async

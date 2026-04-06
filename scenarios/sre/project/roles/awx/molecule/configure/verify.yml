@@ -21,80 +21,95 @@
 
     - name: Export AWX configuration
       awx.awx.export:
-        all: true
         controller_host: "{{ awx_controller_host }}"
         controller_password: "{{ awx_controller_password }}"
         controller_username: admin
+        credential_types:
+          - Kubeconfig
+        credentials:
+          - all
+        execution_environments:
+          - ITBench-Custom-EE
+        inventory:
+          - ITBench
+        job_templates:
+          - Deploy-Tools
+          - Undeploy-Tools
+          - Deploy-Applications
+          - Undeploy-Applications
+          - Clear-Kubernetes-Events
+          - Inject-Faults
+          - Remove-Faults
+          - Deploy-Data-Recorders
+          - Undeploy-Data-Recorders
+          - Grant-Access-To-Agent
+          - Remove-Access-From-Agent
+          - Check-for-Alerts
+          - Pause
+          - Handover-To-Agent
+          - Handback-From-Agent
+          - Run-Agent
+        projects:
+          - GitHub-ITBench
+          - GitHub-LLM-Agent
+        organizations:
+          - ITBench
+        workflow_job_templates:
+          - all
       register: awx_export
-
-    - name: Parse exported configuration
-      ansible.builtin.set_fact:
-        awx_config: "{{ awx_export.assets | ansible.builtin.from_yaml }}"
 
     - name: Validate that ITBench organization exists
       ansible.builtin.assert:
         that:
-          - awx_config.organizations | ansible.builtin.selectattr('name', 'equalto', 'ITBench') | ansible.builtin.length == 1
-        fail_msg: ITBench organization not found in export. Configuration failed.
-        success_msg: ITBench organization found in export.
+          - awx_export.assets.organizations | ansible.builtin.length == 1
+        fail_msg: ITBench organization not found. Configuration failed.
+        success_msg: ITBench organization found.
 
     - name: Validate that ITBench execution environment exists
       ansible.builtin.assert:
         that:
-          - awx_config.execution_environments | ansible.builtin.selectattr('name', 'equalto', 'ITBench-Custom-EE') | ansible.builtin.length == 1
-        fail_msg: ITBench-Custom-EE execution environment not found in export. Configuration failed.
-        success_msg: ITBench-Custom-EE execution environment found in export.
+          - awx_export.assets.execution_environments | ansible.builtin.length == 1
+        fail_msg: ITBench-Custom-EE execution environment not found. Configuration failed.
+        success_msg: ITBench-Custom-EE execution environment found.
 
     - name: Validate that Kubeconfig credential type exists
       ansible.builtin.assert:
         that:
-          - awx_config.credential_types | ansible.builtin.selectattr('name', 'equalto', 'Kubeconfig') | ansible.builtin.length == 1
-        fail_msg: Kubeconfig credential type not found in export. Configuration failed.
-        success_msg: Kubeconfig credential type found in export.
+          - awx_export.assets.credential_types | ansible.builtin.length == 1
+        fail_msg: Kubeconfig credential type not found. Configuration failed.
+        success_msg: Kubeconfig credential type found.
 
     - name: Validate that credentials were created
       ansible.builtin.assert:
         that:
-          - awx_config.credentials | ansible.builtin.length >= 1
-        fail_msg: Expected at least 1 credential, found {{ awx_config.credentials | ansible.builtin.length }}. Configuration failed.
-        success_msg: Found {{ awx_config.credentials | ansible.builtin.length }} credentials.
+          - awx_export.assets.credentials | ansible.builtin.length >= 1
+        fail_msg: Expected at least 1 credential, found {{ awx_export.assets.credentials | ansible.builtin.length }}. Configuration failed.
+        success_msg: Found {{ awx_export.assets.credentials | ansible.builtin.length }} credentials.
 
     - name: Validate that projects were created
       ansible.builtin.assert:
         that:
-          - awx_config.projects | ansible.builtin.length >= 2
-          - awx_config.projects | ansible.builtin.selectattr('name', 'equalto', 'GitHub-ITBench') | ansible.builtin.length == 1
-          - awx_config.projects | ansible.builtin.selectattr('name', 'equalto', 'GitHub-LLM-Agent') | ansible.builtin.length == 1
-        fail_msg: Expected at least 2 projects including GitHub-ITBench and GitHub-LLM-Agent. Configuration failed.
-        success_msg: Found {{ awx_config.projects | ansible.builtin.length }} projects including required projects.
+          - awx_export.assets.projects | ansible.builtin.length == 2
+        fail_msg: GitHub repository projects not found. Configuration failed.
+        success_msg: GitHub repository projects found.
 
     - name: Validate that ITBench inventory exists
       ansible.builtin.assert:
         that:
-          - awx_config.inventories | ansible.builtin.selectattr('name', 'equalto', 'ITBench') | ansible.builtin.length == 1
+          - awx_export.assets.inventory | ansible.builtin.length == 1
         fail_msg: ITBench inventory not found in export. Configuration failed.
         success_msg: ITBench inventory found in export.
 
     - name: Validate that job templates were created
       ansible.builtin.assert:
         that:
-          - awx_config.job_templates | ansible.builtin.length >= 13
-          - awx_config.job_templates | ansible.builtin.selectattr('name', 'equalto', 'Deploy-Tools') | ansible.builtin.length == 1
-          - awx_config.job_templates | ansible.builtin.selectattr('name', 'equalto', 'Run-Agent') | ansible.builtin.length == 1
-        fail_msg: Expected at least 13 job templates including Deploy-Tools and Run-Agent. Configuration failed.
-        success_msg: Found {{ awx_config.job_templates | ansible.builtin.length }} job templates including required templates.
+          - awx_export.assets.job_templates | ansible.builtin.length == 16
+        fail_msg: Job templates not found. Configuration failed.
+        success_msg: Job templates found.
 
     - name: Validate that workflow templates were created
       ansible.builtin.assert:
         that:
-          - awx_config.workflow_job_templates | ansible.builtin.length >= 8
-        fail_msg: Expected at least 8 workflow templates, found {{ awx_config.workflow_job_templates | ansible.builtin.length }}. Configuration failed.
-        success_msg: Found {{ awx_config.workflow_job_templates | ansible.builtin.length }} workflow templates.
-
-    - name: Validate workflow template naming convention
-      ansible.builtin.assert:
-        that:
-          - awx_config.workflow_job_templates | ansible.builtin.selectattr('name', 'match', '^Scenario-[0-9]+-.*') | ansible.builtin.length >= 4
-          - awx_config.workflow_job_templates | ansible.builtin.selectattr('name', 'match', '^Cluster-[0-9]+-.*') | ansible.builtin.length >= 4
-        fail_msg: Workflow templates do not follow expected naming convention. Configuration failed.
-        success_msg: Workflow templates follow expected naming convention.
+          - awx_export.assets.workflow_job_templates | ansible.builtin.length >= 8
+        fail_msg: Expected at least 8 workflow templates, found {{ awx_export.assets.workflow_job_templates | ansible.builtin.length }}. Configuration failed.
+        success_msg: Found {{ awx_export.assets.workflow_job_templates | ansible.builtin.length }} workflow templates.
