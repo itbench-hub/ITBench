@@ -170,7 +170,3 @@ generate-leaderboard-bundle-status: ## Generates a bundle status for Leaderboard
 .PHONY: generate-leaderboard-bundle
 generate-leaderboard-bundle: ## Generates a bundle of scenarios for the Leaderboard to interface
 	uv run ansible-playbook -i inventory project/generate_leaderboard_bundle.yaml
-
-PHONY: fetch-alerts
-fetch-alerts: ## Checks the Prometheus for firing alerts
-	ansible-runner run ./ -p check_for_specific_alerts_in_firing_state.yaml
