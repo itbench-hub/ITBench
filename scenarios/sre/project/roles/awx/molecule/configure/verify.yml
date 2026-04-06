@@ -3,23 +3,13 @@
   hosts:
     - localhost
   tasks:
-    - name: Import cluster role to set platform and provider variables
-      ansible.builtin.import_role:
-        name: cluster
-      vars:
-        cluster_files:
-          kubeconfig: "{{ cluster.kubeconfig }}"
-        cluster_tools_enabled:
-          oc: false
-
-    - name: Import awx role to set controller variables
+    - name: Import awx role to set controller host
       ansible.builtin.import_role:
         name: awx
         tasks_from: set_awx_controller_host.yaml
       vars:
         awx_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
-          provider: "{{ cluster_provider }}"
 
     - name: Import awx role to set controller password
       ansible.builtin.import_role:
@@ -28,120 +18,83 @@
       vars:
         awx_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
-          provider: "{{ cluster_provider }}"
 
-    - name: Retrieve ITBench organization
-      awx.awx.organization:
+    - name: Export AWX configuration
+      awx.awx.export:
+        all: true
         controller_host: "{{ awx_controller_host }}"
         controller_password: "{{ awx_controller_password }}"
         controller_username: admin
-        name: ITBench
-        state: exists
-      register: awx_organization
+      register: awx_export
+
+    - name: Parse exported configuration
+      ansible.builtin.set_fact:
+        awx_config: "{{ awx_export.assets | ansible.builtin.from_yaml }}"
 
     - name: Validate that ITBench organization exists
       ansible.builtin.assert:
         that:
-          - awx_organization.id is defined
-        fail_msg: ITBench organization not found. Configuration failed.
-        success_msg: ITBench organization found.
-
-    - name: Retrieve ITBench execution environment
-      awx.awx.execution_environment:
-        controller_host: "{{ awx_controller_host }}"
-        controller_password: "{{ awx_controller_password }}"
-        controller_username: admin
-        name: ITBench-Custom-EE
-        state: exists
-      register: awx_execution_environment
+          - awx_config.organizations | ansible.builtin.selectattr('name', 'equalto', 'ITBench') | ansible.builtin.length == 1
+        fail_msg: ITBench organization not found in export. Configuration failed.
+        success_msg: ITBench organization found in export.
 
     - name: Validate that ITBench execution environment exists
       ansible.builtin.assert:
         that:
-          - awx_execution_environment.id is defined
-        fail_msg: ITBench execution environment not found. Configuration failed.
-        success_msg: ITBench execution environment found.
-
-    - name: Retrieve Kubeconfig credential type
-      awx.awx.credential_type:
-        controller_host: "{{ awx_controller_host }}"
-        controller_password: "{{ awx_controller_password }}"
-        controller_username: admin
-        name: Kubeconfig
-        state: exists
-      register: awx_credential_type
+          - awx_config.execution_environments | ansible.builtin.selectattr('name', 'equalto', 'ITBench-Custom-EE') | ansible.builtin.length == 1
+        fail_msg: ITBench-Custom-EE execution environment not found in export. Configuration failed.
+        success_msg: ITBench-Custom-EE execution environment found in export.
 
     - name: Validate that Kubeconfig credential type exists
       ansible.builtin.assert:
         that:
-          - awx_credential_type.id is defined
-        fail_msg: Kubeconfig credential type not found. Configuration failed.
-        success_msg: Kubeconfig credential type found.
+          - awx_config.credential_types | ansible.builtin.selectattr('name', 'equalto', 'Kubeconfig') | ansible.builtin.length == 1
+        fail_msg: Kubeconfig credential type not found in export. Configuration failed.
+        success_msg: Kubeconfig credential type found in export.
 
-    - name: Retrieve all projects
-      ansible.builtin.uri:
-        url: "{{ awx_controller_host }}/api/v2/projects/"
-        method: GET
-        user: admin
-        password: "{{ awx_controller_password }}"
-        force_basic_auth: true
-        validate_certs: false
-      register: awx_projects
+    - name: Validate that credentials were created
+      ansible.builtin.assert:
+        that:
+          - awx_config.credentials | ansible.builtin.length >= 1
+        fail_msg: Expected at least 1 credential, found {{ awx_config.credentials | ansible.builtin.length }}. Configuration failed.
+        success_msg: Found {{ awx_config.credentials | ansible.builtin.length }} credentials.
 
     - name: Validate that projects were created
       ansible.builtin.assert:
         that:
-          - awx_projects.json.count >= 2
-        fail_msg: Expected at least 2 projects, found {{ awx_projects.json.count }}. Configuration failed.
-        success_msg: Found {{ awx_projects.json.count }} projects.
-
-    - name: Retrieve ITBench inventory
-      awx.awx.inventory:
-        controller_host: "{{ awx_controller_host }}"
-        controller_password: "{{ awx_controller_password }}"
-        controller_username: admin
-        name: ITBench
-        organization: ITBench
-        state: exists
-      register: awx_inventory
+          - awx_config.projects | ansible.builtin.length >= 2
+          - awx_config.projects | ansible.builtin.selectattr('name', 'equalto', 'GitHub-ITBench') | ansible.builtin.length == 1
+          - awx_config.projects | ansible.builtin.selectattr('name', 'equalto', 'GitHub-LLM-Agent') | ansible.builtin.length == 1
+        fail_msg: Expected at least 2 projects including GitHub-ITBench and GitHub-LLM-Agent. Configuration failed.
+        success_msg: Found {{ awx_config.projects | ansible.builtin.length }} projects including required projects.
 
     - name: Validate that ITBench inventory exists
       ansible.builtin.assert:
         that:
-          - awx_inventory.id is defined
-        fail_msg: ITBench inventory not found. Configuration failed.
-        success_msg: ITBench inventory found.
-
-    - name: Retrieve all job templates
-      ansible.builtin.uri:
-        url: "{{ awx_controller_host }}/api/v2/job_templates/"
-        method: GET
-        user: admin
-        password: "{{ awx_controller_password }}"
-        force_basic_auth: true
-        validate_certs: false
-      register: awx_job_templates
+          - awx_config.inventories | ansible.builtin.selectattr('name', 'equalto', 'ITBench') | ansible.builtin.length == 1
+        fail_msg: ITBench inventory not found in export. Configuration failed.
+        success_msg: ITBench inventory found in export.
 
     - name: Validate that job templates were created
       ansible.builtin.assert:
         that:
-          - awx_job_templates.json.count >= 13
-        fail_msg: Expected at least 13 job templates, found {{ awx_job_templates.json.count }}. Configuration failed.
-        success_msg: Found {{ awx_job_templates.json.count }} job templates.
-
-    - name: Retrieve all workflow job templates
-      ansible.builtin.uri:
-        url: "{{ awx_controller_host }}/api/v2/workflow_job_templates/"
-        method: GET
-        user: admin
-        password: "{{ awx_controller_password }}"
-        force_basic_auth: true
-        validate_certs: false
-      register: awx_workflow_templates
+          - awx_config.job_templates | ansible.builtin.length >= 13
+          - awx_config.job_templates | ansible.builtin.selectattr('name', 'equalto', 'Deploy-Tools') | ansible.builtin.length == 1
+          - awx_config.job_templates | ansible.builtin.selectattr('name', 'equalto', 'Run-Agent') | ansible.builtin.length == 1
+        fail_msg: Expected at least 13 job templates including Deploy-Tools and Run-Agent. Configuration failed.
+        success_msg: Found {{ awx_config.job_templates | ansible.builtin.length }} job templates including required templates.
 
     - name: Validate that workflow templates were created
       ansible.builtin.assert:
         that:
-          - awx_workflow_templates.json.count >= 8
-        fail_msg: Expected at least 8 workflow templates, found {{ awx_workflow_templates.json.count }}. Configuration failed.
-        success_msg: Found {{ awx_workflow_templates.json.count }} workflow templates.
+          - awx_config.workflow_job_templates | ansible.builtin.length >= 8
+        fail_msg: Expected at least 8 workflow templates, found {{ awx_config.workflow_job_templates | ansible.builtin.length }}. Configuration failed.
+        success_msg: Found {{ awx_config.workflow_job_templates | ansible.builtin.length }} workflow templates.
+
+    - name: Validate workflow template naming convention
+      ansible.builtin.assert:
+        that:
+          - awx_config.workflow_job_templates | ansible.builtin.selectattr('name', 'match', '^Scenario-[0-9]+-.*') | ansible.builtin.length >= 4
+          - awx_config.workflow_job_templates | ansible.builtin.selectattr('name', 'match', '^Cluster-[0-9]+-.*') | ansible.builtin.length >= 4
+        fail_msg: Workflow templates do not follow expected naming convention. Configuration failed.
+        success_msg: Workflow templates follow expected naming convention.
