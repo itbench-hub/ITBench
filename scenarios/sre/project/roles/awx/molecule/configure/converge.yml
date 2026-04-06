@@ -8,7 +8,7 @@
         name: cluster
       vars:
         cluster_files:
-          kubeconfig: "{{ cluster.kubeconfig }}"
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
         cluster_tools_enabled:
           oc: false
 
@@ -17,7 +17,7 @@
         name: awx
       vars:
         awx_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
           provider: "{{ cluster_provider }}"
         awx_configuration:
           agent:
@@ -67,8 +67,7 @@
               url: https://github.com/itbench-hub/ITBench-SRE-Agent.git
               branch: main
           runners:
-            kubeconfigs:
-              - "{{ cluster.kubeconfig }}"
+            kubeconfigs: "{{ stack.runners.kubeconfigs }}"
         awx_experiments:
           agent:
             version: v1.0.0
