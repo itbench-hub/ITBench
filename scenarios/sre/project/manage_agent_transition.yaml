@@ -1,70 +1,104 @@
 ---
-- name: Manage SRE and FinOps Agent Handover Phases
+- name: Manage SRE and FinOps Agent Transition Phases
   hosts:
     - localhost
   pre_tasks:
-    - name: Validate that storage is configured
-      ansible.builtin.assert:
-        that: "storage.local is defined or storage.s3 is defined"
-        fail_msg: Storage has not been configured. Please assign either local or s3 bucket storage.
-        success_msg: Storage is configured.
+    - name: Configure storage
+      tags:
+        - always
+      block:
+        - name: Override storage configuration
+          ansible.builtin.set_fact:
+            storage: |-
+              {{
+                lookup("ansible.builtin.template", template_path) |
+                ansible.builtin.from_yaml
+              }}
+          vars:
+            template_path: "{{ playbook_dir }}/templates/group_variables/storage.j2"
+          when:
+            - scenario_id is defined
+            - storage is defined
+            - storage_overrides is defined
+
+        - name: Create directory for local storage export
+          ansible.builtin.file:
+            mode: "0755"
+            path: "{{ storage.local.directory | ansible.builtin.default('/tmp') }}"
+            state: directory
+          when:
+            - storage.local is defined
   tasks:
-    - name: Record agent handover timestamp
+    - name: Create temporary file for transition information
+      ansible.builtin.tempfile:
+        prefix: transitions
+        state: directory
+      register: transition_export_directory
+      tags:
+        - always
+
+    - name: Create handover information file
       ansible.builtin.copy:
-        content: "{{ now(utc=true, fmt='%Y-%m-%dT%H-%M-%S.%f') }}"
-        dest: /tmp/handing_over_to_agent.txt
+        content: |-
+          {{
+            (
+              {
+                "timestamp": now(utc=true, fmt="%Y-%m-%dT%H-%M-%S.%f")
+              }
+            ) |
+            ansible.builtin.to_nice_json(indent=4)
+          }}
+        dest: "{{ [transition_export_directory.path, 'handover.json'] | ansible.builtin.path_join }}"
         mode: "0644"
+      register: transition_file
       tags:
         - agent_handover
 
-    - name: Copy handover data into local directory
+    - name: Create handback information file
       ansible.builtin.copy:
-        dest: "{{ storage.local.directory }}/{handing_over_to_agent.txt"
+        content: |-
+          {{
+            (
+              {
+                "timestamp": now(utc=true, fmt="%Y-%m-%dT%H-%M-%S.%f")
+              }
+            ) |
+            ansible.builtin.to_nice_json(indent=4)
+          }}
+        dest: "{{ [transition_export_directory.path, 'handback.json'] | ansible.builtin.path_join }}"
         mode: "0644"
-        src: /tmp/handing_over_to_agent.txt
+      register: transition_file
       tags:
         - agent_handover
-      when:
-        - storage.local is defined
 
-    - name: Upload handover data to S3 bucket
-      amazon.aws.s3_object:
-        endpoint_url: "{{ storage.s3.endpoint }}"
-        bucket: "{{ storage.s3.bucket }}"
-        object: "{{ storage.s3.directory }}/handing_over_to_agent.txt"
-        src: /tmp/handing_over_to_agent.txt
-        mode: put
+    - name: Upload transition file to storage
       tags:
-        - agent_handover
+        - always
       when:
-        - storage.s3 is defined
+        - storage is defined
+        - transition_file is defined
+      block:
+        - name: Copy handover data into local directory
+          ansible.builtin.copy:
+            dest: "{{ storage.local.directory }}/{{ transition_file.dest | ansible.builtin.basename }}"
+            mode: "0644"
+            src: "{{ transition_file.dest }}"
+          when:
+            - storage.local is defined
 
-    - name: Record agent handback timestamp
-      ansible.builtin.copy:
-        content: "{{ now(utc=true, fmt='%Y-%m-%dT%H-%M-%S.%f') }}"
-        dest: /tmp/agent_execution_completed_or_exited_at.txt
-        mode: "0644"
-      tags:
-        - agent_handback
+        - name: Upload handover data to S3 bucket
+          amazon.aws.s3_object:
+            endpoint_url: "{{ storage.s3.endpoint }}"
+            bucket: "{{ storage.s3.bucket }}"
+            object: "{{ storage.s3.directory }}/{{ transition_file.dest | ansible.builtin.basename }}"
+            src: "{{ transition_file.dest }}"
+            mode: put
+          when:
+            - storage.s3 is defined
 
-    - name: Copy handback data into local directory
-      ansible.builtin.copy:
-        dest: "{{ storage.local.directory }}/agent_execution_completed_or_exited_at.txt"
-        mode: "0644"
-        src: /tmp/agent_execution_completed_or_exited_at.txt
+    - name: Delete temporary file
+      ansible.builtin.file:
+        path: "{{ transition_export_directory.path }}"
+        state: absent
       tags:
-        - agent_handback
-      when:
-        - storage.local is defined
-
-    - name: Upload handback data to S3 bucket
-      amazon.aws.s3_object:
-        endpoint_url: "{{ storage.s3.endpoint }}"
-        bucket: "{{ storage.s3.bucket }}"
-        object: "{{ storage.s3.directory }}/agent_execution_completed_or_exited_at.txt"
-        src: /tmp/agent_execution_completed_or_exited_at.txt
-        mode: put
-      tags:
-        - agent_handback
-      when:
-        - storage.s3 is defined
+        - always

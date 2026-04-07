@@ -19,7 +19,7 @@
           {
             "fault_count": awx_library_map[(scenario.id | ansible.builtin.string)].faultCount,
             "node_credentials": (
-              lookup("ansible.builtin.template", "templates/awx/workflows/credentials.j2") |
+              lookup("ansible.builtin.template", "templates/awx/workflows/node_credentials.j2") |
               ansible.builtin.from_yaml
             ),
             "runner_id": kubeconfig_index + 1,
@@ -43,6 +43,8 @@
         controller_host: "{{ awx_controller_host }}"
         controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
         controller_username: admin
+        extra_vars:
+          scenario_id: "{{ workflow_configuration[1].scenario_id }}"
         inventory: ITBench
         name: Scenario-{{ workflow_configuration[1].scenario_id }}-{{ workflow_configuration[0].suffix }}
         request_timeout: 120

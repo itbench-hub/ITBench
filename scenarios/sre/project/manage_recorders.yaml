@@ -17,6 +17,32 @@
       vars:
         cluster_files:
           kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Configure storage
+      tags:
+        - always
+      block:
+        - name: Override storage configuration
+          ansible.builtin.set_fact:
+            storage: |-
+              {{
+                lookup("ansible.builtin.template", template_path) |
+                ansible.builtin.from_yaml
+              }}
+          vars:
+            template_path: "{{ playbook_dir }}/templates/group_variables/storage.j2"
+          when:
+            - scenario_id is defined
+            - storage is defined
+            - storage_overrides is defined
+
+        - name: Create directory for local storage export
+          ansible.builtin.file:
+            mode: "0755"
+            path: "{{ storage.local.directory | ansible.builtin.default('/tmp') }}"
+            state: directory
+          when:
+            - storage.local is defined
   tasks:
     - name: Import role variables from scenario
       tags:

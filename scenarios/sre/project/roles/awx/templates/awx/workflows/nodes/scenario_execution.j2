@@ -1,8 +1,6 @@
 ---
 {% if workflow_configuration[0].suffix != "Partial-Execution-Stop" %}
 - identifier: node-deploy-tools
-  extra_data:
-    scenario_id: {{ workflow_configuration[1].scenario_id }}
   related:
     credentials: {{ workflow_configuration[1].node_credentials }}
 {% if not workflow_configuration[0].is_leaderboard_workflow %}
@@ -15,8 +13,6 @@
     name: Deploy-Tools
     type: job_template
 - identifier: node-deploy-applications
-  extra_data:
-    scenario_id: {{ workflow_configuration[1].scenario_id }}
   related:
     credentials: {{ workflow_configuration[1].node_credentials }}
 {% if not workflow_configuration[0].is_leaderboard_workflow %}
@@ -30,7 +26,6 @@
     type: job_template
 - identifier: node-deploy-recorders
   extra_data:
-    scenario_id: {{ workflow_configuration[1].scenario_id }}
     benchmark_phase: pre-fault-injection
   related:
     credentials: {{ workflow_configuration[1].node_credentials }}
@@ -56,8 +51,6 @@
     name: Clear-Kubernetes-Events
     type: job_template
 - identifier: node-grant-access-to-agent
-  extra_data:
-    scenario_id: {{ workflow_configuration[1].scenario_id }}
   related:
     credentials: {{ workflow_configuration[1].node_credentials }}
 {% if not workflow_configuration[0].is_leaderboard_workflow %}
@@ -98,7 +91,6 @@
 {% endfor %}
 - identifier: node-deploy-pre-agent-execution-data-recorders
   extra_data:
-    scenario_id: {{ workflow_configuration[1].scenario_id }}
     benchmark_phase: pre-agent-injection
   related:
     credentials: {{ workflow_configuration[1].node_credentials }}
@@ -130,8 +122,6 @@
     type: job_template
 {% if workflow_configuration[0].is_agent_workflow %}
 - identifier: node-run-agent
-  extra_data:
-    scenario_id: {{ workflow_configuration[1].scenario_id }}
   related:
     success_nodes:
       - identifier: node-handback-from-agent
@@ -153,7 +143,6 @@
     type: job_template
 - identifier: node-deploy-post-agent-data-recorders
   extra_data:
-    scenario_id: {{ workflow_configuration[1].scenario_id }}
     benchmark_phase: post-agent-execution
   related:
     credentials: {{ workflow_configuration[1].node_credentials }}

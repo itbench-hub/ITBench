@@ -1,0 +1,46 @@
+---
+{% if storage.local is defined %}
+local:
+  directory: |-
+    {{
+      (
+        [
+          storage.local.directory,
+          storage_overrides.export_path_variables.agent_version,
+          storage_overrides.export_path_variables.experiment_id,
+          (
+            scenario_id |
+            ansible.builtin.string
+          ),
+          (
+            storage_overrides.export_path_variables.trial_id |
+            ansible.builtin.string
+          )
+        ]
+      ) |
+      ansible.builtin.path_join
+    }}
+{% endif %}
+{% if storage.local.s3 is defined %}
+s3:
+  bucket: {{ storage.s3.bucket }}
+  directory: |-
+    {{
+      (
+        [
+          storage_overrides.export_path_variables.agent_version,
+          storage_overrides.export_path_variables.experiment_id,
+          (
+            scenario_id |
+            ansible.builtin.string
+          ),
+          (
+            storage_overrides.export_path_variables.trial_id |
+            ansible.builtin.string
+          )
+        ]
+      ) |
+      ansible.builtin.path_join
+    }}
+  endpoint: {{ storage.s3.endpoint }}
+{% endif %}
