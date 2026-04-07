@@ -1,0 +1,41 @@
+---
+- name: Generate run identifier (UUID4)
+  ansible.builtin.command:
+    cmd: uuidgen
+  changed_when:
+    - false
+  register: awx_run_uuid
+
+- name: Launch multi-trial workflows on runners
+  awx.awx.workflow_launch:
+    controller_host: "{{ awx_controller_host }}"
+    controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+    controller_username: admin
+    extra_vars:
+      storage: |-
+        {{
+          lookup("ansible.builtin.template", "templates/awx/workflows/vars/storage.j2") |
+          ansible.builtin.from_yaml
+        }}
+    workflow_template: Cluster-{{ launch_configuration[1] }}-{{ awx_workflow_template_suffixes[awx_experiments.workflow] }}
+    wait: false
+  loop: |-
+    {{
+      range(1, awx_experiments.trials + 1) |
+      ansible.builtin.list |
+      product(
+        range(
+          1,
+          (
+            awx_experiments.runners.kubeconfigs |
+            ansible.builtin.length
+          ) + 1
+        ) |
+        ansible.builtin.list
+      )
+    }}
+  loop_control:
+    label: runner-{{ launch_configuration[1] }}/trial-{{ launch_configuration[0] }}
+    loop_var: launch_configuration
+  vars:
+    run_directory: "{{ awx_agent.version }}/{{ awx_run_uuid.stdout }}/{{ launch_configuration[1] }}/{{ launch_configuration[0] }}"

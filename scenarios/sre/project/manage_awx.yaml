@@ -28,8 +28,7 @@
               agent:
                 configuration: "{{ agent_configuration.configuration }}"
               github: "{{ github }}"
-              runners:
-                kubeconfigs: "{{ stack.runners.kubeconfigs }}"
+              scenarios: "{{ experiments.scenarios }}"
 
         - name: Add providers variable
           ansible.builtin.set_fact:
@@ -37,20 +36,38 @@
           when:
             - cluster_provider != "kind"
 
+        - name: Create experiments variable
+          ansible.builtin.set_fact:
+            awx_experiments:
+              runners:
+                kubeconfigs: "{{ stack.runners.kubeconfigs }}"
+
     - name: Import role variables
       tags:
-        - configure_awx
         - launch_workflows
       block:
+        - name: Validate that workflow type was provided
+          ansible.builtin.assert:
+            that:
+              - workflow_type is defined
+            fail_msg: Workflow type undefined. Please include this argument via the CLI.
+            success_msg: Workflow type defined.
+
         - name: Create experiments variable
           ansible.builtin.set_fact:
             awx_experiments:
               agent:
                 version: "{{ agent_configuration.version }}"
-              phase: "{{ run_phase | ansible.builtin.default('full') }}"
-              scenarios: "{{ experiments.scenarios }}"
-              storage: "{{ storage }}"
+              runners:
+                kubeconfigs: "{{ stack.runners.kubeconfigs }}"
               trials: "{{ experiments.trials }}"
+              workflow: "{{ workflow_type }}"
+
+        - name: Add storage variable
+          ansible.builtin.set_fact:
+            awx_configuration: "{{ awx_experiments | combine({'storage': storage}) }}"
+          when:
+            - storage is defined
 
     - name: Import awx role
       ansible.builtin.import_role:

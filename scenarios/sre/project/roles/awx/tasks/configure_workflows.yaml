@@ -17,23 +17,23 @@
         ) +
         [
           {
-            "fault_count": awx_library_map[(scenario | ansible.builtin.string)].faultCount,
+            "fault_count": awx_library_map[(scenario.id | ansible.builtin.string)].faultCount,
             "node_credentials": (
               lookup("ansible.builtin.template", "templates/awx/workflows/credentials.j2") |
               ansible.builtin.from_yaml
             ),
             "runner_id": kubeconfig_index + 1,
-            "scenario_id": scenario
+            "scenario_id": scenario.id
           }
         ]
       }}
-  loop: "{{ awx_experiments.scenarios }}"
+  loop: "{{ awx_configuration.scenarios }}"
   loop_control:
     index_var: scenario_index
-    label: scenario/{{ scenario }}
+    label: scenario/{{ scenario.id }}
     loop_var: scenario
   vars:
-    kubeconfig_index: "{{ scenario_index % (awx_configuration.runners.kubeconfigs | ansible.builtin.length) }}"
+    kubeconfig_index: "{{ scenario_index % (awx_experiments.runners.kubeconfigs | ansible.builtin.length) }}"
 
 - name: Asynchronously create scenario execution workflows
   block:
@@ -60,16 +60,16 @@
         workflow_types:
           - is_agent_workflow: false
             is_leaderboard_workflow: false
-            suffix: "{{ awx_workflow_template_suffixes[0] }}"
+            suffix: "{{ awx_workflow_template_suffixes.data }}"
           - is_agent_workflow: true
             is_leaderboard_workflow: false
-            suffix: "{{ awx_workflow_template_suffixes[1] }}"
+            suffix: "{{ awx_workflow_template_suffixes.full }}"
           - is_agent_workflow: false
             is_leaderboard_workflow: true
-            suffix: "{{ awx_workflow_template_suffixes[2] }}"
+            suffix: "{{ awx_workflow_template_suffixes.start }}"
           - is_agent_workflow: false
             is_leaderboard_workflow: true
-            suffix: "{{ awx_workflow_template_suffixes[3] }}"
+            suffix: "{{ awx_workflow_template_suffixes.stop }}"
       async: 1200
       poll: 0
       register: awx_create_execution_workflow_template_async
@@ -114,7 +114,7 @@
           }}
       loop: |-
         {{
-          awx_workflow_template_suffixes |
+          awx_workflow_template_suffixes.values() |
           product(
             awx_workflow_scenario_configurations |
             ansible.builtin.groupby("runner_id") |

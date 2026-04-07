@@ -8,8 +8,8 @@ help: ## Display this help.
 deploy-awx-stack: ## Deploys AWX to a cluster
 	uv run ansible-playbook -i inventory project/manage_awx.yaml --tags "install_tools"
 
-.PHONY: configure-awx-pipeline
-configure-awx-pipeline: ## Add job and workflow templates to AWX pipeline
+.PHONY: configure-awx-stack
+configure-awx-stack: ## Add job and workflow templates to AWX pipeline
 	uv run ansible-playbook -i inventory project/manage_awx.yaml --tags "configure_awx"
 
 .PHONY: undeploy-awx-stack
@@ -23,22 +23,22 @@ launch-sync-workflow: ## Launches the scenario sync workflow
 .PHONY: launch-start-workflow
 launch-start-workflow: ## Launches the workflow equivalent of start_incident on AWX
 	uv run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "run_phase=start"
+		--extra-vars "workflow_type=start"
 
 .PHONY: launch-stop-workflow
 launch-stop-workflow: ## Launches the workflow equivalent of stop_incident on AWX
 	uv run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "run_phase=stop"
+		--extra-vars "workflow_type=stop"
 
 .PHONY: launch-full-workflow
 launch-full-workflow: ## Launches the scenario full execution workflow
 	uv run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "run_phase=full"
+		--extra-vars "workflow_type=full"
 
 .PHONY: launch-data-collection-workflow
 launch-data-collection-workflow: ## Launches the data collection execution workflow
 	uv run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "run_phase=data_collection"
+		--extra-vars "workflow_type=data"
 
 .PHONY: test-unit
 test-unit: ## Runs unit tests

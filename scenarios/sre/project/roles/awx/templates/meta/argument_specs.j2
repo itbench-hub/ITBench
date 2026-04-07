@@ -5,6 +5,8 @@ argument_specs:
       - Gerard Vanloo
     options:
       awx_cluster:
+        required: true
+        type: dict
         options:
           kubeconfig:
             required: true
@@ -12,149 +14,115 @@ argument_specs:
           provider:
             required: true
             type: str
-        required: true
-        type: dict
       awx_configuration:
+        required: false
+        type: dict
         options:
           agent:
+            required: false
+            type: dict
             options:
               configuration:
                 required: true
                 type: dict
-            required: false
-            type: dict
           github:
-            options:
-              agent:
-                options:
-                  branch:
-                    required: true
-                    type: str
-                  ssh:
-                    options:
-                      private_key_passphrase:
-                        required: true
-                        type: str
-                      private_key_path:
-                        required: true
-                        type: str
-                    required: false
-                    type: dict
-                  url:
-                    required: true
-                    type: str
-                required: true
-                type: dict
-              itbench:
-                options:
-                  branch:
-                    required: true
-                    type: str
-                  ssh:
-                    options:
-                      private_key_passphrase:
-                        required: true
-                        type: str
-                      private_key_path:
-                        required: true
-                        type: str
-                    required: false
-                    type: dict
-                  url:
-                    required: true
-                    type: str
-                required: true
-                type: dict
             required: true
             type: dict
+            options:
+              agent:
+                required: true
+                type: dict
+                options:
+                  ssh:
+                    required: false
+                    type: dict
+                    options:
+                      private_key_passphrase:
+                        required: true
+                        type: str
+                      private_key_path:
+                        required: true
+                        type: str
+                  url:
+                    required: true
+                    type: str
+                  branch:
+                    required: true
+                    type: str
+              itbench:
+                required: true
+                type: dict
+                options:
+                  ssh:
+                    required: false
+                    type: dict
+                    options:
+                      private_key_passphrase:
+                        required: true
+                        type: str
+                      private_key_path:
+                        required: true
+                        type: str
+                  url:
+                    required: true
+                    type: str
+                  branch:
+                    required: true
+                    type: str
           providers:
+            required: false
+            type: dict
             options:
               aws:
+                required: false
+                type: dict
                 options:
                   enabled:
                     default: false
                     required: false
                     type: bool
-                required: false
-                type: dict
-            required: false
-            type: dict
           scenarios:
             elements: dict
-            options:
-              id:
-                choices:
-                  - 1
-                  - 3
-                  - 16
-                  - 18
-                  - 20
-                  - 23
-                  - 26
-                  - 27
-                  - 30
-                  - 31
-                  - 33
-                  - 34
-                  - 37
-                  - 38
-                  - 39
-                  - 40
-                  - 41
-                  - 42
-                  - 43
-                  - 44
-                  - 45
-                  - 46
-                  - 47
-                  - 48
-                  - 49
-                  - 50
-                  - 51
-                  - 52
-                  - 53
-                  - 54
-                  - 55
-                  - 56
-                  - 57
-                  - 58
-                  - 59
-                  - 60
-                  - 102
-                  - 105
-                required: true
-                type: int
             required: true
             type: list
+            options:
+              id:
+                choices: {{ awx_scenario_faults_count_map.keys() }}
+                required: true
+                type: int
+      awx_experiments:
         required: false
         type: dict
-      awx_experiments:
         options:
           agent:
+            required: false
+            type: dict
             options:
               version:
                 required: true
                 type: str
-            required: false
-            type: dict
           runners:
+            required: true
+            type: dict
             options:
               kubeconfigs:
                 elements: str
                 required: true
                 type: list
-            required: true
-            type: dict
           storage:
+            required: false
+            type: dict
             options:
               local:
+                required: false
+                type: dict
                 options:
                   directory:
                     required: true
                     type: str
+              s3:
                 required: false
                 type: dict
-              s3:
                 options:
                   bucket:
                     required: true
@@ -165,20 +133,10 @@ argument_specs:
                   endpoint:
                     required: true
                     type: str
-                required: false
-                type: dict
-            required: false
-            type: dict
           trials:
             required: false
             type: int
           workflow:
-            choices:
-              - data
-              - full
-              - start
-              - stop
+            choices: {{ awx_workflow_template_suffixes.keys() }}
             required: false
             type: str
-        required: false
-        type: dict

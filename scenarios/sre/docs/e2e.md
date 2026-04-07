@@ -96,7 +96,7 @@ KUBECONFIG=<path_to_kubeconfig> kubectl get secret awx-deployment-admin-password
 Set up job templates and workflows for your test scenarios:
 
 ```bash
-make -f Makefile.runner configure-awx-pipeline
+make -f Makefile.runner configure-awx-stack
 ```
 
 ### Step 7: Configure AWX Pipeline

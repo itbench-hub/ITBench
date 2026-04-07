@@ -39,6 +39,7 @@ install-cluster-docker-registry: get-cluster-kubeconfig ## Installs docker regis
 sync-cluster-group-vars: get-cluster-kubeconfig ## Syncs the kubeconfig with the scenarios group variables
 	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=single-cluster"
+	cd ../../ && uv run ansible-lint scenarios/sre/inventory/group_vars/environment --fix
 
 .PHONY: destroy-cluster
 destroy-cluster: ## Deletes a single cluster
@@ -68,6 +69,7 @@ install-stack-docker-registry: get-stack-kubeconfigs ## Installs docker registry
 sync-stack-group-vars: get-stack-kubeconfigs ## Syncs the kubeconfig with the scenarios group variables
 	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=awx-stack"
+	cd ../../ && uv run ansible-lint scenarios/sre/inventory/group_vars/runner --fix
 
 .PHONY: destroy-awx-stack
 destroy-awx-stack: ## Destroy an AWX stack

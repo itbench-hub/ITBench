@@ -38,13 +38,13 @@ validate-docs: ## Validates library indexes
 .PHONY: generate-scenario-files
 generate-scenario-files: ## Generates scenario related files using library indexes
 	uv run ansible-playbook -i inventory project/generate_scenario_files.yaml --tags "generate_files"
-	cd ../../ && uv run ansible-lint project/roles/scenarios/files project/roles/scenarios/meta project/roles/waiters/meta project/roles/faults/meta --fix
+	uv run ansible-lint project/roles/scenarios/files project/roles/scenarios/meta project/roles/waiters/meta project/roles/faults/meta project/roles/awx/meta --fix
 
 .PHONY: regenerate-scenario-files
 regenerate-scenario-files: ## Overwrites scenario related files using library indexes
 	uv run ansible-playbook -i inventory project/generate_scenario_files.yaml --tags "generate_files" \
 		--extra-vars "overwrite_files=true"
-	cd ../../ && uv run ansible-lint project/roles/scenarios/files project/roles/scenarios/meta project/roles/waiters/meta project/roles/faults/meta --fix
+	uv run ansible-lint project/roles/scenarios/files project/roles/scenarios/meta project/roles/waiters/meta project/roles/faults/meta project/roles/awx/meta --fix
 
 .PHONY: deploy-tools
 deploy-tools: ## Deploys the observability and fault tools to cluster
