@@ -1,0 +1,37 @@
+---
+- name: Checks Machine Resources
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Validate target variable
+      ansible.builtin.assert:
+        that:
+          - target in ["awx-stack", "single-cluster"]
+        fail_msg: Invalid target provided. Please provide valid target.
+        success_msg: Valid target provided.
+  tasks:
+    - name: Show warning messages for lack of resources
+      vars:
+        recommended_resources:
+          "awx-stack":
+            cpu: 24
+            memory: 32
+          "single-cluster":
+            cpu: 8
+            memory: 16
+      block:
+        - name: Show warning message for lack of CPU resources
+          ansible.builtin.debug:
+            msg:
+              - This machine does not have the recommended amount of CPU ({{ recommended_resources[target].cpu }}+).
+              - You may experience degraded or inconsistent performance on this machine.
+          when:
+            - (ansible_facts["processor_cores"] | ansible.builtin.int) < (recommended_resources[target].cpu)
+
+        - name: Show warning message for lack of memory resources
+          ansible.builtin.debug:
+            msg:
+              - This machine does not have the recommended amount of memory ({{ recommended_resources[target].memory }}GB+).
+              - You may experience degraded or inconsistent performance on this machine.
+          when:
+            - ((ansible_facts["memtotal_mb"] | ansible.builtin.int) // 1024) < (recommended_resources[target].memory)
