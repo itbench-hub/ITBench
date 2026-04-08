@@ -1,4 +1,4 @@
-module github.com/itbench-hub/ITBench/sre/local_cluster
+module github.com/itbench-hub/ITBench/clusters/kind
 
 go 1.24.0
 
