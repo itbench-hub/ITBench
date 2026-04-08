@@ -1,4 +1,4 @@
-# Makefile to run Ansible playbooks
+UV = $(shell which uv)
 
 .PHONY: help
 help: ## Display this help.
@@ -6,10 +6,10 @@ help: ## Display this help.
 
 .PHONY: deps
 deps: ## Installs dependencies
-	uv sync
-	uv run ansible-galaxy install -r requirements.yaml --force
+	$(UV) sync
+	$(UV) run ansible-galaxy install -r requirements.yaml --force
 
 .PHONY: pre-commit-hooks
 pre-commit-hooks: ## Installs pre-commit hooks
-	uv run pre-commit install
-	uv run pre-commit install --hook-type commit-msg --hook-type pre-push
+	$(UV) run pre-commit install
+	$(UV) run pre-commit install --hook-type commit-msg --hook-type pre-push
