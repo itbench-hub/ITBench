@@ -1,5 +1,7 @@
 UV = $(shell which uv)
 
+PYTHON = $(shell $(UV) python find)
+
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
@@ -10,7 +12,7 @@ lint: ## Lints files
 
 .PHONY: group-vars
 group-vars: ## Generates the group variables from templates
-	echo "---\nansible_python_interpreter: $(shell $(UV) python find)" > inventory/group_vars/all/python.yaml
+	echo "---\nansible_python_interpreter: $(PYTHON)" > inventory/group_vars/all/python.yaml
 	cp inventory/group_vars/all/aws.yaml.example inventory/group_vars/all/aws.yaml
 	cp inventory/group_vars/all/cluster.yaml.example inventory/group_vars/all/cluster.yaml
 	cp inventory/group_vars/all/docker.yaml.example inventory/group_vars/all/docker.yaml
