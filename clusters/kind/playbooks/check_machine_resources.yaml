@@ -26,7 +26,7 @@
               - This machine does not have the recommended amount of CPU ({{ recommended_resources[target].cpu }}+).
               - You may experience degraded or inconsistent performance on this machine.
           when:
-            - (ansible_facts["processor_cores"] | ansible.builtin.int) < (recommended_resources[target].cpu)
+            - (ansible_facts["processor_cores"] | ansible.builtin.int) < recommended_resources[target].cpu
 
         - name: Show warning message for lack of memory resources
           ansible.builtin.debug:
@@ -34,4 +34,4 @@
               - This machine does not have the recommended amount of memory ({{ recommended_resources[target].memory }}GB+).
               - You may experience degraded or inconsistent performance on this machine.
           when:
-            - ((ansible_facts["memtotal_mb"] | ansible.builtin.int) // 1024) < (recommended_resources[target].memory)
+            - ((ansible_facts["memtotal_mb"] | ansible.builtin.int) // 1024) < recommended_resources[target].memory

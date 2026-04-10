@@ -22,6 +22,7 @@ group-vars: ## Generates the group variables from templates
 
 .PHONY: create-cluster
 create-cluster: ## Creates a single cluster
+	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
 	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
 		--extra-vars "target=single-cluster"
 	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
@@ -52,6 +53,7 @@ destroy-cluster: ## Deletes a single cluster
 
 .PHONY: create-awx-stack
 create-awx-stack: ## Creates an AWX stack
+	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
 	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
 		--extra-vars "target=awx-stack"
 	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
