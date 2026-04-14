@@ -1,0 +1,91 @@
+---
+- name: Verify external endpoints are accessible
+  hosts:
+    - localhost
+  tasks:
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Set up external endpoints
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: set_external_endpoints.yaml
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+
+    - name: Test Prometheus endpoints
+      ansible.builtin.uri:
+        url: "{{ tools_prometheus_endpoint.host }}{{ path }}"
+        status_code: 200
+      loop: "{{ tools_prometheus_endpoint.paths }}"
+      loop_control:
+        loop_var: path
+        label: "{{ tools_prometheus_endpoint.host }}{{ path }}"
+      retries: 12
+      delay: 15
+      when:
+        - tools_prometheus_endpoint is defined
+        - tools_prometheus_endpoint.host is defined
+
+    - name: Test ClickHouse endpoints
+      ansible.builtin.uri:
+        url: "{{ tools_clickhouse_endpoint.host }}{{ path }}"
+        status_code: 200
+      loop: "{{ tools_clickhouse_endpoint.paths }}"
+      loop_control:
+        loop_var: path
+        label: "{{ tools_clickhouse_endpoint.host }}{{ path }}"
+      retries: 12
+      delay: 15
+      when:
+        - tools_clickhouse_endpoint is defined
+        - tools_clickhouse_endpoint.host is defined
+
+    - name: Test Jaeger endpoints
+      ansible.builtin.uri:
+        url: "{{ tools_jaeger_endpoint.host }}{{ path }}"
+        status_code: 200
+      loop: "{{ tools_jaeger_endpoint.paths }}"
+      loop_control:
+        loop_var: path
+        label: "{{ tools_jaeger_endpoint.host }}{{ path }}"
+      retries: 12
+      delay: 15
+      when:
+        - tools_jaeger_endpoint is defined
+        - tools_jaeger_endpoint.host is defined
+
+    - name: Test Kubernetes Topology Monitor endpoints
+      ansible.builtin.uri:
+        url: "{{ tools_kubernetes_topology_monitor_endpoint.host }}{{ path }}"
+        status_code: 200
+      loop: "{{ tools_kubernetes_topology_monitor_endpoint.paths }}"
+      loop_control:
+        loop_var: path
+        label: "{{ tools_kubernetes_topology_monitor_endpoint.host }}{{ path }}"
+      retries: 12
+      delay: 15
+      when:
+        - tools_kubernetes_topology_monitor_endpoint is defined
+        - tools_kubernetes_topology_monitor_endpoint.host is defined
+
+    - name: Test OpenCost endpoints
+      ansible.builtin.uri:
+        url: "{{ tools_opencost_endpoint.host }}{{ path }}"
+        status_code: 200
+      loop: "{{ tools_opencost_endpoint.paths }}"
+      loop_control:
+        loop_var: path
+        label: "{{ tools_opencost_endpoint.host }}{{ path }}"
+      retries: 12
+      delay: 15
+      when:
+        - tools_opencost_endpoint is defined
+        - tools_opencost_endpoint.host is defined

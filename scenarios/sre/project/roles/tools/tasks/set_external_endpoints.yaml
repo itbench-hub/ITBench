@@ -18,39 +18,33 @@
   ansible.builtin.set_fact:
     tools_namespaces_names: "{{ tools_namespaces.resources | map(attribute='metadata.name') }}"
 
-- name: Create localhost address based on service provider
-  ansible.builtin.set_fact:
-    tools_service_provider_address: http://localhost:{{ tools_service_provider.host_port }}
-  when:
-    - tools_service_provider is defined
+- name: Validate that Kubernetes Gateway instance namespace exists
+  ansible.builtin.assert:
+    that:
+      - tools_managers.kubernetes_gateway.instances.kubernetes.namespace in tools_namespaces_names
+    fail_msg: Kubernetes Gateway namespace does not exist. Please ensure tool installation was successful.
+    success_msg: Kubernetes Gateway namespace exists.
+
+- name: Retrieve Istio managed Gateway
+  kubernetes.core.k8s_info:
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}"
+    namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+  register: tools_istio_gateway
+  until:
+    - tools_istio_gateway.resources | ansible.builtin.length == 1
+    - tools_istio_gateway.resources[0].status.addresses is defined
+    - tools_istio_gateway.resources[0].status.addresses | ansible.builtin.length > 0
+  delay: 15
+  retries: 20
 
 - name: Extract Kubernetes Gateway address
   when:
     - tools_cluster.platform == "kubernetes"
-    - tools_service_provider is undefined
+    - tools_cluster.provider != "kind"
   block:
-    - name: Validate that Kubernetes Gateway instance namespace exists
-      ansible.builtin.assert:
-        that:
-          - tools_managers.kubernetes_gateway.instances.kubernetes.namespace in tools_namespaces_names
-        fail_msg: Kubernetes Gateway namespace does not exist. Please ensure tool installation was successful.
-        success_msg: Kubernetes Gateway namespace exists.
-
-    - name: Retrieve Istio managed Gateway
-      kubernetes.core.k8s_info:
-        api_version: gateway.networking.k8s.io/v1
-        kind: Gateway
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}"
-        namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
-      register: tools_istio_gateway
-      until:
-        - tools_istio_gateway.resources | ansible.builtin.length == 1
-        - tools_istio_gateway.resources[0].status.addresses is defined
-        - tools_istio_gateway.resources[0].status.addresses | ansible.builtin.length > 0
-      delay: 15
-      retries: 20
-
     - name: Extract ip address information
       ansible.builtin.set_fact:
         tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}:80
@@ -62,6 +56,56 @@
         tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}
       when:
         - tools_istio_gateway.resources[0].status.addresses[0].type == "Hostname"
+
+- name: Extract localhost address from container runtime
+  when:
+    - tools_cluster.provider == "kind"
+  block:
+    - name: Import variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_load_balancer_container.yaml
+
+    - name: Inspect container for network settings
+      ansible.builtin.command:
+        argv:
+          - "{{ tools_container_info.runtime }}"
+          - inspect
+          - "{{ tools_container_info.id }}"
+      changed_when:
+        - false
+      register: tools_inspect_result
+
+    - name: Parse container host port
+      ansible.builtin.set_fact:
+        tools_load_balancer_host_ports: |-
+          {{
+            (
+              (
+                tools_inspect_result.stdout |
+                ansible.builtin.from_json |
+                ansible.builtin.first
+              )["NetworkSettings"]["Ports"]["80/tcp"]
+            ) |
+            map(attribute="HostPort")
+          }}
+
+    - name: Validate that there is only one host port
+      ansible.builtin.assert:
+        that:
+          - tools_load_balancer_host_ports | ansible.builtin.length > 0
+        fail_msg: No host ports discovered.
+        success_msg: Host port(s) discovered.
+
+    - name: Create localhost address based on service provider
+      ansible.builtin.set_fact:
+        tools_service_provider_address: http://localhost:{{ tools_load_balancer_host_ports[0] }}
+
+- name: Validate that address has been parsed
+  ansible.builtin.assert:
+    that:
+      - tools_service_provider_address is defined or tools_gateway_http_address is defined
+    fail_msg: External address could not be determined.
+    success_msg: External address determined.
 
 - name: Import Clickhouse variable setting tasks
   ansible.builtin.import_tasks:

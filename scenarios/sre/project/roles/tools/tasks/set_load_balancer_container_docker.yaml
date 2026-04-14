@@ -1,0 +1,29 @@
+---
+- ansible.builtin.command:
+    argv:
+      - docker
+      - ps
+  register: tools_docker_containers_result
+  changed_when:
+    - false
+
+- debug:
+    var: tools_docker_containers_result
+
+- name: Retrieve all running containers on Docker
+  ansible.builtin.command:
+    argv:
+      - docker
+      - ps
+      - --filter
+      - "label={{ container_label }}"
+      - --quiet
+  register: tools_docker_containers_result
+  changed_when:
+    - false
+
+- name: Parse container ids
+  ansible.builtin.set_fact:
+    tools_container_info:
+      ids: "{{ tools_docker_containers_result.stdout_lines | ansible.builtin.first }}"
+      runtime: docker

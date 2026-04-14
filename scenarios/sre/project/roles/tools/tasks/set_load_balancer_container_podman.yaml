@@ -1,0 +1,31 @@
+---
+- ansible.builtin.command:
+    argv:
+      - "{{ binary_path }}"
+      - ps
+  register: tools_podman_containers_result
+  changed_when:
+    - false
+
+- debug:
+    var: tools_podman_containers_result
+
+- name: Retrieve all running containers on Podman
+  ansible.builtin.command:
+    argv:
+      - "{{ binary_path }}"
+      - ps
+      - --filter
+      - "label={{ container_label }}"
+      - --quiet
+  register: tools_podman_containers_result
+  changed_when:
+    - false
+
+- name: Parse container ids
+  ansible.builtin.set_fact:
+    tools_container_info:
+      ids: "{{ tools_podman_containers_result.stdout_lines | ansible.builtin.first }}"
+      runtime: podman
+  when:
+    - tools_podman_containers_result is defined

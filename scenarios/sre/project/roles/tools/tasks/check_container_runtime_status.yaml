@@ -1,0 +1,30 @@
+---
+- name: Retrieve path for {{ binary_name }}
+  ansible.builtin.shell:
+    cmd: command -v {{ binary_name }}
+  register: tools_container_runtime_path
+  changed_when:
+    - false
+  failed_when:
+    - false
+
+- name: Check status of container runtime
+  when:
+    - tools_container_runtime_path.rc == 0
+  block:
+    - name: Check status of {{ binary_name }}
+      ansible.builtin.command:
+        argv:
+          - "{{ tools_container_runtime_path.stdout }}"
+          - version
+      register: tools_container_runtime_version
+      changed_when:
+        - false
+      failed_when:
+        - false
+
+    - name: Extract path from retrieval task output for {{ binary_name }}
+      ansible.builtin.set_fact:
+        tools_{{ binary_name }}_path: "{{ tools_container_runtime_path.stdout }}"
+      when:
+        - tools_container_runtime_version.rc == 0

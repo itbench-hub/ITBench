@@ -1,5 +1,5 @@
 ---
-- name: Uninstall SRE tools
+- name: Install all tools (SRE and FinOps)
   hosts:
     - localhost
   tasks:
@@ -13,9 +13,14 @@
     - name: Import tools role
       ansible.builtin.import_role:
         name: tools
-        tasks_from: uninstall.yaml
+        tasks_from: install.yaml
       vars:
         tools_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
           provider: "{{ cluster_provider }}"
+        tools_configuration:
+          sre:
+            enabled: true
+          finops:
+            enabled: true
