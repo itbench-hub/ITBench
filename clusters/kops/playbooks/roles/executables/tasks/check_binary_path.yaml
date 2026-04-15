@@ -1,0 +1,19 @@
+---
+- name: Retrieve path for {{ binary_name }}
+  ansible.builtin.command:
+    cmd: command -v {{ binary_name }}
+  register: executables_binary_path
+  changed_when:
+    - false
+  failed_when:
+    - false
+
+- name: Fail playbook due to `binary not found` error
+  ansible.builtin.fail:
+    msg: "`{{ binary_name }}` not found. please install `{{ binary_name }}`."
+  when:
+    - executables_binary_path.rc != 0
+
+- name: Extract path from retrieval task output {{ binary_name }}
+  ansible.builtin.set_fact:
+    executables_{{ binary_name }}_path: "{{ executables_binary_path.stdout }}"

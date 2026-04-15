@@ -1,0 +1,31 @@
+---
+- name: Import binary path validation tasks
+  ansible.builtin.import_tasks:
+    file: check_binary_path.yaml
+  vars:
+    binary_name: kops
+
+- name: Check kops executable version
+  ansible.builtin.command:
+    cmd: "{{ executables_kops_path }} version --short"
+  register: executables_kops_short_version
+  changed_when:
+    - false
+
+- name: Parse kops executable version string
+  ansible.builtin.set_fact:
+    executables_kops_version: "{{ executables_kops_short_version.stdout }}"
+
+- name: Fail playbook due to `wrong binary version` error
+  ansible.builtin.fail:
+    msg: "`kops` version: {{ executables_kops_version }}. please update `kops` to version {{ executables_minimum_versions.kops }} or higher."
+  when:
+    - executables_kops_version is ansible.builtin.version(executables_minimum_versions.kops, "<")
+
+- name: Display kops executable information
+  ansible.builtin.debug:
+    var: info
+  vars:
+    info:
+      path: "{{ executables_kops_path }}"
+      version: "{{ executables_kops_version }}"

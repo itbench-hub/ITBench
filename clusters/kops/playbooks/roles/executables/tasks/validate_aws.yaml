@@ -1,0 +1,38 @@
+---
+- name: Import binary path validation tasks
+  ansible.builtin.import_tasks:
+    file: check_binary_path.yaml
+  vars:
+    binary_name: aws
+
+- name: Check aws executable version
+  ansible.builtin.command:
+    cmd: "{{ executables_aws_path }} --version"
+  register: executables_aws_raw_version
+  changed_when:
+    - false
+
+- name: Parse aws executable version string
+  ansible.builtin.set_fact:
+    executables_aws_version: |-
+      {{
+        executables_aws_raw_version.stdout |
+        ansible.builtin.split |
+        ansible.builtin.first |
+        ansible.builtin.split("/") |
+        ansible.builtin.last
+      }}
+
+- name: Fail playbook due to `wrong binary version` error
+  ansible.builtin.fail:
+    msg: "`aws` version: {{ executables_aws_version }}. please update `aws` to version {{ executables_minimum_versions.aws }} or higher."
+  when:
+    - executables_aws_version is ansible.builtin.version(executables_minimum_versions.aws, "<")
+
+- name: Display aws executable information
+  ansible.builtin.debug:
+    var: info
+  vars:
+    info:
+      path: "{{ executables_aws_path }}"
+      version: "{{ executables_aws_version }}"
