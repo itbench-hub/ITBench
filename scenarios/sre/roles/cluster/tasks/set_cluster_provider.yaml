@@ -1,18 +1,16 @@
 ---
-- name: Retrieve all control nodes
+- name: Retrieve all nodes
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Node
     kubeconfig: "{{ cluster_files.kubeconfig }}"
-    label_selectors:
-      - node-role.kubernetes.io/control-plane =
-  register: cluster_control_nodes
+  register: cluster_nodes
 
-- name: Extract provider information from control nodes
+- name: Extract provider information
   ansible.builtin.set_fact:
     cluster_provider: |-
       {{
-        cluster_control_nodes.resources |
+        cluster_nodes.resources |
         ansible.builtin.selectattr("spec.providerID", "defined") |
         map(attribute="spec.providerID") |
         map("ansible.builtin.split", ":") |
