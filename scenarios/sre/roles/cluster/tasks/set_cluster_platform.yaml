@@ -1,39 +1,28 @@
 ---
-- name: Display message
-  ansible.builtin.debug:
-    msg:
-      - Unable to find the OpenShift CLI (oc). Assuming it is not installed.
-      - The cluster provider variable will be set to 'kubernetes' because the OpenShift version cannot be determined.
-  when:
-    - not (cluster_tools_enabled.oc | bool)
+- name: Retrieve cluster information
+  kubernetes.core.k8s_cluster_info:
+    kubeconfig: "{{ cluster_files.kubeconfig }}"
+  register: cluster_information
 
-- name: Set cluster platform variable
+- name: Determine if OpenShift or Kubernetes based on presence of OpenShift APIs
   ansible.builtin.set_fact:
-    cluster_platform: kubernetes
-  when:
-    - not (cluster_tools_enabled.oc | bool)
-
-- name: Retrieve cluster version information using OpenShift CLI
-  ansible.builtin.command:
-    argv:
-      - oc
-      - version
-      - -o
-      - json
-      - --kubeconfig={{ cluster_files.kubeconfig | ansible.builtin.expanduser }}
-  register: cluster_raw_oc_version
-  changed_when: false
-  when:
-    - cluster_tools_enabled.oc | bool
-
-- name: Convert version output into JSON object
-  ansible.builtin.set_fact:
-    cluster_oc_version: "{{ cluster_raw_oc_version.stdout | from_json }}"
-  when:
-    - cluster_tools_enabled.oc | bool
-
-- name: Set cluster platform variable based on version output
-  ansible.builtin.set_fact:
-    cluster_platform: "{{ 'openshift' if cluster_oc_version.openshiftVersion is defined else 'kubernetes' }}"
-  when:
-    - cluster_tools_enabled.oc | bool
+    cluster_platform: |-
+      {{
+        (
+          (
+            cluster_information.apis.keys() |
+            ansible.builtin.intersect(openshift_apis) |
+            ansible.builtin.length
+          ) ==
+          (
+            openshift_apis |
+            ansible.builtin.length
+          )
+        ) |
+        ansible.builtin.ternary("openshift", "kubernetes")
+      }}
+  vars:
+    openshift_apis:
+      - route.openshift.io/v1
+      - project.openshift.io/v1
+      - config.openshift.io/v1
