@@ -1,6 +1,10 @@
 ---
+# NOTE: `ansible.builin.shell` is used over `ansible.builtin.command` here because
+#       `command` is a shell builtin command and cannot be accessed properly without
+#       a shell. It may work on MacOS, but does not in Linux.
+
 - name: Retrieve path for {{ binary_name }}
-  ansible.builtin.command:
+  ansible.builtin.shell:
     cmd: command -v {{ binary_name }}
   register: executables_binary_path
   changed_when:
