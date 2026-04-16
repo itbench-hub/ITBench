@@ -10,7 +10,7 @@
     argv:
       - "{{ executables_helm_path }}"
       - version
-      - --short
+      - "--template={\"version\": \"{{ '{{' }} .Version {{ '}}' }}\"}"
   register: executables_helm_raw_version
   changed_when:
     - false
@@ -19,9 +19,15 @@
   ansible.builtin.set_fact:
     executables_helm_version: |-
       {{
+        raw_version.version |
+        ansible.builtin.split("v") |
+        ansible.builtin.last
+      }}
+  vars:
+    raw_version: |-
+      {{
         executables_helm_raw_version.stdout |
-        ansible.builtin.regex_search("([0-9]+\\.[0-9]+\\.[0-9]+).*", "\\1") |
-        ansible.builtin.first
+        ansible.builtin.from_json
       }}
 
 - name: Fail playbook due to `wrong binary version` error
