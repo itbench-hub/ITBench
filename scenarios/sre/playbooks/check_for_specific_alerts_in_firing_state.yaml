@@ -3,14 +3,11 @@
   hosts:
     - environment
   pre_tasks:
-    - name: Import system role
+    - name: Import executables role
       ansible.builtin.import_role:
-        name: system
+        name: executables
       tags:
         - always
-      vars:
-        system_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
 
     - name: Import cluster role
       ansible.builtin.import_role:
@@ -20,8 +17,6 @@
       vars:
         cluster_files:
           kubeconfig: "{{ cluster.kubeconfig }}"
-        cluster_tools_enabled:
-          oc: "{{ system_oc_exists }}"
   tasks:
     - name: Import tools role for variable setting tasks
       ansible.builtin.import_role:

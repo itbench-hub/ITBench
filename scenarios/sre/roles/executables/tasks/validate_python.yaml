@@ -1,0 +1,19 @@
+---
+- name: Extract python executable information
+  ansible.builtin.set_fact:
+    executables_python_path: "{{ ansible_facts.python.executable }}"
+    executables_python_version: "{{ ansible_facts.python_version }}"
+
+- name: Fail playbook due to `wrong binary version` error
+  ansible.builtin.fail:
+    msg: "`python` version: {{ executables_python_version }}. please update `python` to version {{ executables_minimum_versions.python }} or higher."
+  when:
+    - executables_python_version is ansible.builtin.version(executables_minimum_versions.python, "<")
+
+- name: Display python executable information
+  ansible.builtin.debug:
+    var: info
+  vars:
+    info:
+      path: "{{ executables_python_path }}"
+      version: "{{ executables_python_version }}"

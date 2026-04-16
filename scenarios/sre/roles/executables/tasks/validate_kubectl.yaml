@@ -1,0 +1,47 @@
+---
+- name: Import binary path validation tasks
+  ansible.builtin.import_tasks:
+    file: check_binary_path.yaml
+  vars:
+    binary_name: kubectl
+
+- name: Check kubectl executable version
+  ansible.builtin.command:
+    argv:
+      - "{{ executables_kubectl_path }}"
+      - version
+      - --client=true
+      - -o
+      - json
+  register: executables_kubectl_raw_version
+  changed_when:
+    - false
+
+- name: Parse kubectl executable version string
+  ansible.builtin.set_fact:
+    executables_kubectl_version: |-
+      {{
+        versions.clientVersion.gitVersion |
+        ansible.builtin.split("v") |
+        ansible.builtin.last
+      }}
+  vars:
+    versions: |-
+      {{
+        executables_kubectl_raw_version.stdout |
+        ansible.builtin.from_json
+      }}
+
+- name: Fail playbook due to `wrong binary version` error
+  ansible.builtin.fail:
+    msg: "`kubectl` version: {{ executables_kubectl_version }}. please update `kubectl` to version {{ executables_minimum_versions.kubectl }} or higher."
+  when:
+    - executables_kubectl_version is ansible.builtin.version(executables_minimum_versions.kubectl, "<")
+
+- name: Display kubectl executable information
+  ansible.builtin.debug:
+    var: info
+  vars:
+    info:
+      path: "{{ executables_kubectl_path }}"
+      version: "{{ executables_kubectl_version }}"

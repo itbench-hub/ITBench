@@ -1,0 +1,39 @@
+---
+- name: Import binary path validation tasks
+  ansible.builtin.import_tasks:
+    file: check_binary_path.yaml
+  vars:
+    binary_name: helm
+
+- name: Check helm executable version
+  ansible.builtin.command:
+    argv:
+      - "{{ executables_helm_path }}"
+      - version
+      - --short
+  register: executables_helm_raw_version
+  changed_when:
+    - false
+
+- name: Parse helm executable version string
+  ansible.builtin.set_fact:
+    executables_helm_version: |-
+      {{
+        executables_helm_raw_version.stdout |
+        ansible.builtin.regex_search("([0-9]+\\.[0-9]+\\.[0-9]+).*", "\\1") |
+        ansible.builtin.first
+      }}
+
+- name: Fail playbook due to `wrong binary version` error
+  ansible.builtin.fail:
+    msg: "`helm` version: {{ executables_helm_version }}. please update `helm` to version {{ executables_minimum_versions.helm }} or higher."
+  when:
+    - executables_helm_version is ansible.builtin.version(executables_minimum_versions.helm, "<")
+
+- name: Display helm executable information
+  ansible.builtin.debug:
+    var: info
+  vars:
+    info:
+      path: "{{ executables_helm_path }}"
+      version: "{{ executables_helm_version }}"
