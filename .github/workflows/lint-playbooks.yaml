@@ -15,8 +15,17 @@ jobs:
       - name: Install project dependencies
         run: |
           make deps
-      - name: Run ansible-lint
+      - name: Lint kind playbooks
         uses: ansible/ansible-lint@v26.4.0
         with:
           setup_python: "false"
-          requirements_file: requirements.yaml
+          working_directory: clusters/kind
+      - name: Lint kops playbooks
+        uses: ansible/ansible-lint@v26.4.0
+        with:
+          setup_python: "false"
+          working_directory: clusters/kops
+      - name: Lint scenario playbooks
+        uses: ansible/ansible-lint@v26.4.0
+        with:
+          setup_python: "false"

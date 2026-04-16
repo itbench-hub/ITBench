@@ -9,6 +9,10 @@ deps: ## Installs dependencies
 	$(UV) sync
 	$(UV) run ansible-galaxy install -r requirements.yaml --force
 
+.PHONY: lint
+lint: ## Lints files
+	uv run ansible-lint
+
 .PHONY: pre-commit-hooks
 pre-commit-hooks: ## Installs pre-commit hooks
 	$(UV) run pre-commit install
