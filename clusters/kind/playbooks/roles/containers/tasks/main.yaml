@@ -16,11 +16,12 @@
           - name=^kindccm
           - --format
           - json
+          - --no-trunc
       register: containers_docker_ps
       changed_when:
         - false
 
-    - name: Parse cloud provider kind ids by service
+    - name: Parse cloud provider kind containers ids
       ansible.builtin.set_fact:
         containers_docker_cpk_containers: |-
           {{
@@ -30,15 +31,13 @@
             ) |
             ansible.builtin.combine(
               {
-                load_balancer_label_components[1]: {
-                  load_balancer_label_components[2]: {
-                    "container": {
-                      "id": container.ID
-                    }
+                container.ID: {
+                  "service": {
+                    "name": load_balancer_label_components[2],
+                    "namespace": load_balancer_label_components[1]
                   }
                 }
-              },
-              recursive=true
+              }
             )
           }}
       loop: |-
@@ -62,8 +61,59 @@
             ansible.builtin.split("/")
           }}
 
-    - debug:
-        var: containers_docker_cpk_containers
+    - name: Inspect containers
+      ansible.builtin.command:
+        argv:
+          - "{{ containers_docker_path }}"
+          - inspect
+          - |-
+            {{
+              containers_docker_cpk_containers.keys() |
+              ansible.builtin.default([]) |
+              ansible.builtin.join(" ")
+            }}
+      register: containers_docker_inspect
+      when:
+        - containers_docker_cpk_containers is defined
+        - containers_docker_cpk_containers.keys() | ansible.builtin.length > 0
+
+    - name: Parse cloud provider kind host ports
+      ansible.builtin.set_fact:
+        containers_docker_cpk_ports: |-
+          {{
+            (
+              containers_docker_cpk_ports |
+              ansible.builtin.default({})
+            ) |
+            ansible.builtin.combine(
+              {
+                kubernetes_service.namespace: {
+                  kubernetes_service.name: {
+                    "host_port": (
+                      (
+                        load_balancer_service_port["80/tcp"] |
+                        ansible.builtin.first
+                      ).HostPort
+                    )
+                  }
+                }
+              },
+              recursive=true
+            )
+          }}
+      loop: |-
+        {{
+          containers_docker_inspect.stdout |
+          ansible.builtin.from_json
+        }}
+      loop_control:
+        label: container/{{ container.Id }}
+        loop_var: container
+      vars:
+        load_balancer_service_port: "{{ container['NetworkSettings']['Ports'] }}"
+        kubernetes_service: "{{ containers_docker_cpk_containers[container.Id].service }}"
+      when:
+        - load_balancer_service_port["80/tcp"] is defined
 
 - name: List podman containers
   when:
@@ -82,28 +132,30 @@
       changed_when:
         - false
 
-    - name: Parse cloud provider kind ids by service
+    - name: Parse cloud provider kind host ports
       ansible.builtin.set_fact:
-        containers_podman_cpk_containers: |-
+        containers_podman_cpk_ports: |-
           {{
             (
-              containers_podman_cpk_containers |
+              containers_podman_cpk_ports |
               ansible.builtin.default({})
             ) |
             ansible.builtin.combine(
               {
                 load_balancer_label_components[1]: {
                   load_balancer_label_components[2]: {
-                    "container": {
-                      "hostPort": load_balancer_service_port.host_port
-                    }
+                    "host_port": load_balancer_service_port[0].host_port
                   }
                 }
               },
               recursive=true
             )
           }}
-      loop: "{{ containers_podman_ps.stdout | ansible.builtin.from_json }}"
+      loop: |-
+        {{
+          containers_podman_ps.stdout |
+          ansible.builtin.from_json
+        }}
       loop_control:
         label: container/{{ container.ID }}
         loop_var: container
@@ -111,14 +163,27 @@
         load_balancer_service_port: |-
           {{
             container.Ports |
-            ansible.builtin.selectattr("container_port", "==", 80) |
-            ansible.builtin.first
+            ansible.builtin.selectattr("container_port", "==", 80)
           }}
         load_balancer_label_components: |-
           {{
             container.Labels["io.x-k8s.cloud-provider-kind.loadbalancer.name"] |
             ansible.builtin.split("/")
           }}
+      when:
+        - load_balancer_service_port | ansible.builtin.length == 1
 
-    - debug:
-        var: containers_podman_cpk_containers
+- name: Create combine host port dictionary
+  ansible.builtin.set_fact:
+    containers_cpk_host_ports: |-
+      {{
+        containers_docker_cpk_ports |
+        ansible.builtin.default({}) |
+        ansible.builtin.combine(
+          containers_podman_cpk_ports |
+          ansible.builtin.default({})
+        )
+      }}
+
+- debug:
+    var: containers_cpk_host_ports
