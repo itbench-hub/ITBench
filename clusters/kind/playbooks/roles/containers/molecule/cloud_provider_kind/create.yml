@@ -5,6 +5,7 @@
   tasks:
     - name: Create test namespace
       kubernetes.core.k8s:
+        kubeconfig: ~/.kube/config
         resource_definition:
           apiVersion: v1
           kind: Namespace
@@ -14,6 +15,7 @@
 
     - name: Create test deployment
       kubernetes.core.k8s:
+        kubeconfig: ~/.kube/config
         resource_definition:
           apiVersion: apps/v1
           kind: Deployment
@@ -39,9 +41,11 @@
                       - -c
                       - "sleep infinity"
         state: present
+        wait: true
 
     - name: Create test service with LoadBalancer
       kubernetes.core.k8s:
+        kubeconfig: ~/.kube/config
         resource_definition:
           apiVersion: v1
           kind: Service
