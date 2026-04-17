@@ -153,6 +153,14 @@ make destroy-simple-cluster
 
 This section will mainly highlight key issues that one may encounter when running Kind. Kind already has an [FAQ](https://kind.sigs.k8s.io/docs/user/known-issues/) which contains many more cases.
 
+### MacOS
+
+#### Load Balancer IP Address is unreacheable
+
+**Problem**: The IP address assigned to a Kubernetes service is not reachable via `curl` or the browser.
+
+**Solution**: The cause of this is explained in further detail [here](https://github.com/kubernetes-sigs/cloud-provider-kind?tab=readme-ov-file#enabling-load-balancer-port-mapping). After installing the service on the Kubernetes cluster (ie, after running `make deploy-tools` for the SRE scenarios), run the `make sync-network-group-vars` command. This will retrieve the host port from the container operating as the provider so that the service can be reached via `localhost`.
+
 ### RHEL
 
 #### "CrashLoopBackOff" in Chaos-Controller Manager Pods

@@ -22,15 +22,15 @@ create-simple-cluster: group-vars ## Creates a Kind cluster for local developmen
 		--extra-vars "target=single-cluster"
 	$(GO) tool kind create cluster --config configs/simple.yaml
 
+.PHONY: destroy-simple-cluster
+destroy-simple-cluster: ## Deletes the local development Kind cluster
+	$(GO) tool kind delete cluster --name kind-dev
+
 .PHONY: create-awx-cluster
 create-awx-cluster: group-vars ## Create a Kind cluster for local development on AWX
 	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml \
 		--extra-vars "target=awx-stack"
 	$(GO) tool kind create cluster --config configs/awx.yaml
-
-.PHONY: destroy-simple-cluster
-destroy-simple-cluster: ## Deletes the local development Kind cluster
-	$(GO) tool kind delete cluster --name kind-dev
 
 .PHONY: destroy-awx-cluster
 destroy-awx-cluster: ## Deletes the local development AWX Kind cluster
@@ -39,6 +39,10 @@ destroy-awx-cluster: ## Deletes the local development AWX Kind cluster
 .PHONY: run-service-provider
 run-service-provider: ## Runs Cloud Provider Kind for Load Balancer services
 	$(GO) tool cloud-provider-kind --enable-lb-port-mapping --gateway-channel disabled
+
+.PHONY: sync-network-group-vars
+sync-network-group-vars: ## Syncs the network info with the scenarios group variables
+	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml
 
 .PHONY: test-unit-containers
 test-unit-containers: ## Runs containers unit tests
