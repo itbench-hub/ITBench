@@ -1,0 +1,59 @@
+---
+- name: Create test environment
+  hosts:
+    - localhost
+  tasks:
+    - name: Create test namespace
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: cloud-provider-kind-test
+        state: present
+
+    - name: Create test deployment
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-deployment
+            namespace: cloud-provider-kind-test
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: test-app
+            template:
+              metadata:
+                labels:
+                  app: test-app
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.1-1776071394
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+        state: present
+
+    - name: Create test service with LoadBalancer
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: test-lb-service
+            namespace: cloud-provider-kind-test
+          spec:
+            type: LoadBalancer
+            selector:
+              app: test-app
+            ports:
+              - protocol: TCP
+                port: 80
+                targetPort: 8080
+        state: present

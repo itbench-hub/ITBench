@@ -1,0 +1,24 @@
+---
+- name: Import validation tasks
+  ansible.builtin.import_tasks:
+    file: validate_runtime.yaml
+
+- name: List docker containers
+  when:
+    - containers_docker_path is defined
+  block:
+    - name: Check for Docker containers
+      ansible.builtin.import_tasks:
+        file: check_runtime_containers.yaml
+      vars:
+        binary_path: "{{ containers_docker_path }}"
+
+- name: List podman containers
+  when:
+    - containers_podman_path is defined
+  block:
+    - name: Check for Podman containers
+      ansible.builtin.import_tasks:
+        file: check_runtime_containers.yaml
+      vars:
+        binary_path: "{{ containers_podman_path }}"

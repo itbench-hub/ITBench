@@ -1,0 +1,19 @@
+---
+# NOTE: `ansible.builin.shell` is used over `ansible.builtin.command` here because
+#       `command` is a shell builtin command and cannot be accessed properly without
+#       a shell. It may work on MacOS, but does not in Linux.
+
+- name: Retrieve path for {{ binary_name }}
+  ansible.builtin.command:
+    cmd: command -v {{ binary_name }}
+  register: containers_binary_path
+  changed_when:
+    - false
+  failed_when:
+    - false
+
+- name: Extract path from retrieval task output {{ binary_name }}
+  ansible.builtin.set_fact:
+    containers_{{ binary_name }}_path: "{{ containers_binary_path.stdout }}"
+  when:
+    - containers_binary_path.rc == 0

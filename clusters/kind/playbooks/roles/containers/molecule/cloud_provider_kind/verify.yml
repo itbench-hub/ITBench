@@ -1,0 +1,16 @@
+---
+- name: Verify containers role functionality
+  hosts:
+    - localhost
+  tasks:
+    - name: Import containers role
+      ansible.builtin.import_role:
+        name: containers
+
+    - name: Verify cloud-provider-kind container was detected
+      ansible.builtin.assert:
+        that:
+          - containers_list_result is defined
+          - containers_list_result.stdout is defined
+        fail_msg: cloud-provider-kind container was not detected by the containers role
+        success_msg: cloud-provider-kind container was successfully detected
