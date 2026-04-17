@@ -3,6 +3,25 @@
   hosts:
     - localhost
   tasks:
+    - name: Retrieve service info
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        kubeconfig: ~/.kube/config
+        name: test-lb-service
+        namespace: cloud-provider-kind-test
+      register: containers_load_balancer_service
+
+    - debug:
+        var: containers_load_balancer_service
+
+    - name: Verify load balance was added
+      ansible.builtin.assert:
+        that:
+          - containers_load_balancer_service.resources[0].status.loadBalancer is defined
+        fail_msg: load balancer not added to service.
+        success_msg: load balancer added to service.
+
     - name: Import containers role
       ansible.builtin.import_role:
         name: containers
