@@ -26,14 +26,13 @@
           host: |-
             {{
               (
-                tools_service_provider_address |
-                ansible.builtin.default(tools_gateway_http_address) |
-                ansible.builtin.default("")
-              ) +
-              tools_kubernetes_topology_monitor_http_route.resources[0].rules[0].matches[0].path.value
+                tools_gateway_http_address +
+                tools_kubernetes_topology_monitor_http_route.resources[0].spec.rules[0].matches[0].path.value
+              ) |
+              ansible.builtin.regex_replace("/$", "")
             }}
           paths:
-            - /
+            - /healthz
 
 - name: Retrieve host address from Routes
   when:
@@ -61,7 +60,7 @@
         tools_kubernetes_topology_monitor_endpoint:
           host: "http://{{ tools_kubernetes_topology_monitor_route.resources[0].status.ingress[0].host }}"
           paths:
-            - /
+            - /healthz
       when:
         - tools_kubernetes_topology_monitor_route.resources[0].status.ingress is defined
         - tools_kubernetes_topology_monitor_route.resources[0].status.ingress | ansible.builtin.length > 0

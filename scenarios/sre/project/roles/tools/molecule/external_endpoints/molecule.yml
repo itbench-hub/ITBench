@@ -1,0 +1,22 @@
+---
+dependency:
+  name: galaxy
+
+ansible:
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../../inventory
+  playbooks:
+    converge: converge.yml
+    verify: verify.yml
+
+scenario:
+  name: external_endpoints
+  test_sequence:
+    - syntax
+    - converge
+    - verify

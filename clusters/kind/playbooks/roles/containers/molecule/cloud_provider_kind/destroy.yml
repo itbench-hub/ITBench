@@ -1,0 +1,15 @@
+---
+- name: Destroy test environment
+  hosts:
+    - localhost
+  tasks:
+    - name: Delete test namespace
+      kubernetes.core.k8s:
+        kubeconfig: ~/.kube/config
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: cloud-provider-kind-test
+        state: absent
+        wait: true

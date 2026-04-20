@@ -1,0 +1,63 @@
+- name: Clear Kubernetes events
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+  tasks:
+    - name: Define tool network configuration
+      ansible.builtin.set_fact:
+        tools_network_configuration: "{{ network }}"
+      when:
+        - network is defined
+
+    - name: Set up external endpoints
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: set_external_endpoints.yaml
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+
+    - name: Display endpoint(s) for {{ service.name }}
+      ansible.builtin.debug:
+        msg:
+          - |-
+            {{
+              [
+                service.name,
+                (
+                  (service.endpoint.host is defined) |
+                  ansible.builtin.ternary(
+                    (
+                      [service.endpoint.host] |
+                      product(service.endpoint.paths) |
+                      map("ansible.builtin.join") |
+                      ansible.builtin.join(", ")
+                    ),
+                    "N/A"
+                  )
+                )
+              ] |
+              ansible.builtin.join(": ")
+            }}
+      loop:
+        - name: Clickhouse
+          endpoint: "{{ tools_clickhouse_endpoint | ansible.builtin.default({}) }}"
+        - name: Jaeger
+          endpoint: "{{ tools_jaeger_endpoint | ansible.builtin.default({}) }}"
+        - name: OpenCost
+          endpoint: "{{ tools_opencost_endpoint | ansible.builtin.default({}) }}"
+        - name: Prometheus
+          endpoint: "{{ tools_prometheus_endpoint | ansible.builtin.default({}) }}"
+      loop_control:
+        label: service/{{ service.name }}
+        loop_var: service

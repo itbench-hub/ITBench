@@ -1,0 +1,19 @@
+---
+- name: Check for Docker
+  ansible.builtin.import_tasks:
+    file: check_binary_path.yaml
+  vars:
+    binary_name: docker
+
+- name: Check for Podman
+  ansible.builtin.import_tasks:
+    file: check_binary_path.yaml
+  vars:
+    binary_name: podman
+
+- name: Fail playbook due to `runtime not found` error
+  ansible.builtin.fail:
+    msg: "`docker` and `podman` not found. please install either `docker` or `podman`"
+  when:
+    - containers_docker_path is undefined
+    - containers_podman_path is undefined

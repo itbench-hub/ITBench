@@ -1,0 +1,26 @@
+---
+- name: Sync network related with scenarios group variables
+  hosts:
+    - localhost
+  tasks:
+    - name: Import containers role
+      ansible.builtin.import_role:
+        name: containers
+
+    - name: Write all network group variables
+      ansible.builtin.copy:
+        content: |-
+          {{
+            (
+              {
+                "network": {
+                  "cloud_provider_kind": containers_cpk_host_ports
+                }
+              }
+            ) |
+            ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
+          }}
+        dest: "{{ group_vars_path | ansible.builtin.realpath }}"
+        mode: "0644"
+      vars:
+        group_vars_path: "{{ playbook_dir }}/../../../scenarios/sre/group_vars/all/network.yaml"

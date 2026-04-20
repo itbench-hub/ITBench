@@ -18,38 +18,38 @@
   ansible.builtin.set_fact:
     tools_namespaces_names: "{{ tools_namespaces.resources | map(attribute='metadata.name') }}"
 
-- name: Create localhost address based on service provider
-  ansible.builtin.set_fact:
-    tools_service_provider_address: http://localhost:{{ tools_service_provider.host_port }}
-  when:
-    - tools_service_provider is defined
+- name: Validate that Kubernetes Gateway instance namespace exists
+  ansible.builtin.assert:
+    that:
+      - tools_managers.kubernetes_gateway.instances.kubernetes.namespace in tools_namespaces_names
+    fail_msg: Kubernetes Gateway namespace does not exist. Please ensure tool installation was successful.
+    success_msg: Kubernetes Gateway namespace exists.
+
+- name: Retrieve Istio managed Gateway
+  kubernetes.core.k8s_info:
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}"
+    namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+  register: tools_istio_gateway
+  until:
+    - tools_istio_gateway.resources | ansible.builtin.length == 1
+    - tools_istio_gateway.resources[0].status.addresses is defined
+    - tools_istio_gateway.resources[0].status.addresses | ansible.builtin.length > 0
+  delay: 15
+  retries: 20
 
 - name: Extract Kubernetes Gateway address
   when:
     - tools_cluster.platform == "kubernetes"
-    - tools_service_provider is undefined
+    - (tools_cluster.provider != "kind") or (tools_cluster.provider == "kind" and ansible_facts["system"] == "Linux")
   block:
-    - name: Validate that Kubernetes Gateway instance namespace exists
-      ansible.builtin.assert:
-        that:
-          - tools_managers.kubernetes_gateway.instances.kubernetes.namespace in tools_namespaces_names
-        fail_msg: Kubernetes Gateway namespace does not exist. Please ensure tool installation was successful.
-        success_msg: Kubernetes Gateway namespace exists.
-
-    - name: Retrieve Istio managed Gateway
-      kubernetes.core.k8s_info:
-        api_version: gateway.networking.k8s.io/v1
-        kind: Gateway
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}"
-        namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
-      register: tools_istio_gateway
-      until:
-        - tools_istio_gateway.resources | ansible.builtin.length == 1
-        - tools_istio_gateway.resources[0].status.addresses is defined
-        - tools_istio_gateway.resources[0].status.addresses | ansible.builtin.length > 0
-      delay: 15
-      retries: 20
+    - name: Extract hostname address information
+      ansible.builtin.set_fact:
+        tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}
+      when:
+        - tools_istio_gateway.resources[0].status.addresses[0].type == "Hostname"
 
     - name: Extract ip address information
       ansible.builtin.set_fact:
@@ -57,11 +57,34 @@
       when:
         - tools_istio_gateway.resources[0].status.addresses[0].type == "IPAddress"
 
-    - name: Extract hostname address information
-      ansible.builtin.set_fact:
-        tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}
+- name: Extract localhost address from container runtime
+  vars:
+    istio_gateway_service:
+      name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}-istio"
+      namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+  when:
+    - tools_cluster.provider == "kind" and ansible_facts["system"] == "Darwin"
+  block:
+    - name: Fail playbook for `invalid network configuration` error
+      ansible.builtin.fail:
+        msg: "Network settings for cloud provider kind have not been provided."
       when:
-        - tools_istio_gateway.resources[0].status.addresses[0].type == "Hostname"
+        - tools_network_configuration is undefined
+        - tools_network_configuration.cloud_provider_kind is undefined
+        - tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace] is undefined
+        - tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name] is undefined
+
+    - name: Create localhost address based on service provider
+      ansible.builtin.set_fact:
+        tools_gateway_http_address: http://localhost:{{ service.host_port }}
+      vars:
+        service: "{{ tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name] }}"
+
+- name: Fail playbook due to `no gateway address found` error
+  ansible.builtin.fail:
+    msg: The external address for the Kubernetes Gateway could not be found.
+  when:
+    - tools_gateway_http_address is undefined
 
 - name: Import Clickhouse variable setting tasks
   ansible.builtin.import_tasks:

@@ -3,6 +3,13 @@
   hosts:
     - localhost
   tasks:
+    - name: Import cluster role to set platform and provider variables
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
+
     - name: Import awx role to set controller host
       ansible.builtin.import_role:
         name: awx
@@ -10,6 +17,8 @@
       vars:
         awx_cluster:
           kubeconfig: "{{ stack.awx.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
 
     - name: Import awx role to set controller password
       ansible.builtin.import_role:
@@ -18,6 +27,8 @@
       vars:
         awx_cluster:
           kubeconfig: "{{ stack.awx.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
 
     - name: Export AWX configuration
       awx.awx.export:

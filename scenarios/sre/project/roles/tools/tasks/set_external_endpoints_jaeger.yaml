@@ -26,11 +26,10 @@
           host: |-
             {{
               (
-                tools_service_provider_address |
-                ansible.builtin.default(tools_gateway_http_address) |
-                ansible.builtin.default("")
-              ) +
-              tools_jaeger_http_route.resources[0].rules[0].matches[0].path.value
+                tools_gateway_http_address +
+                tools_jaeger_http_route.resources[0].spec.rules[0].matches[0].path.value
+              ) |
+              ansible.builtin.regex_replace("/$", "")
             }}
           paths:
             - /

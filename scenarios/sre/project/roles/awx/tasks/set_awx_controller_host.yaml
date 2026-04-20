@@ -1,26 +1,54 @@
 ---
-- name: Get AWX service information
-  kubernetes.core.k8s_info:
-    kind: Service
-    kubeconfig: "{{ awx_cluster.kubeconfig }}"
-    name: "{{ awx_managers.awx_operator.instances.names.main }}-service"
-    namespace: "{{ awx_managers.awx_operator.kubernetes.namespace }}"
-  register: awx_service
-  until:
-    - awx_service.resources | ansible.builtin.length == 1
-    - awx_service.resources[0].status.loadBalancer.ingress is defined
-    - awx_service.resources[0].status.loadBalancer.ingress | ansible.builtin.length > 0
-  delay: 15
-  retries: 12
-
-- name: Extract ip address information
-  ansible.builtin.set_fact:
-    awx_controller_host: "http://{{ awx_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+- name: Extract AWX service address
   when:
-    - awx_service.resources[0].status.loadBalancer.ingress[0].ip is defined
+    - awx_cluster.platform == "kubernetes"
+    - (awx_cluster.provider != "kind") or (awx_cluster.provider == "kind" and ansible_facts["system"] == "Linux")
+  block:
+    - name: Get AWX service information
+      kubernetes.core.k8s_info:
+        kind: Service
+        kubeconfig: "{{ awx_cluster.kubeconfig }}"
+        name: "{{ awx_managers.awx_operator.instances.names.main }}-service"
+        namespace: "{{ awx_managers.awx_operator.kubernetes.namespace }}"
+      register: awx_service
+      until:
+        - awx_service.resources | ansible.builtin.length == 1
+        - awx_service.resources[0].status.loadBalancer.ingress is defined
+        - awx_service.resources[0].status.loadBalancer.ingress | ansible.builtin.length > 0
+      delay: 15
+      retries: 12
 
-- name: Extract hostname address information
-  ansible.builtin.set_fact:
-    awx_controller_host: "http://{{ awx_service.resources[0].status.loadBalancer.ingress[0].hostname }}"
+    - name: Extract ip address information
+      ansible.builtin.set_fact:
+        awx_controller_host: "http://{{ awx_service.resources[0].status.loadBalancer.ingress[0].ip }}"
+      when:
+        - awx_service.resources[0].status.loadBalancer.ingress[0].ip is defined
+
+    - name: Extract hostname address information
+      ansible.builtin.set_fact:
+        awx_controller_host: "http://{{ awx_service.resources[0].status.loadBalancer.ingress[0].hostname }}"
+      when:
+        - awx_service.resources[0].status.loadBalancer.ingress[0].hostname is defined
+
+- name: Extract localhost address from container runtime
+  vars:
+    awx_service:
+      name: "{{ awx_managers.awx_operator.instances.names.main }}-service"
+      namespace: "{{ awx_managers.awx_operator.kubernetes.namespace }}"
   when:
-    - awx_service.resources[0].status.loadBalancer.ingress[0].hostname is defined
+    - awx_cluster.provider == "kind" and ansible_facts["system"] == "Darwin"
+  block:
+    - name: Fail playbook for `invalid network configuration` error
+      ansible.builtin.fail:
+        msg: "Network settings for cloud provider kind have not been provided."
+      when:
+        - awx_network_configuration is undefined
+        - awx_network_configuration.cloud_provider_kind is undefined
+        - awx_network_configuration.cloud_provider_kind[awx_service.namespace] is undefined
+        - awx_network_configuration.cloud_provider_kind[awx_service.namespace][awx_service.name] is undefined
+
+    - name: Create localhost address based on service provider
+      ansible.builtin.set_fact:
+        awx_gateway_http_address: http://localhost:{{ service.host_port }}
+      vars:
+        service: "{{ awx_network_configuration.cloud_provider_kind[awx_service.namespace][awx_service.name] }}"

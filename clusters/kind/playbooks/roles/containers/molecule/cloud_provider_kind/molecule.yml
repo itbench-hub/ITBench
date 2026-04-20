@@ -1,0 +1,26 @@
+---
+dependency:
+  name: galaxy
+
+ansible:
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../../inventory
+  playbooks:
+    create: create.yml
+    converge: converge.yml
+    destroy: destroy.yml
+    verify: verify.yml
+
+scenario:
+  name: cloud_provider_kind
+  test_sequence:
+    - syntax
+    - create
+    - converge
+    - verify
+    - destroy

@@ -56,6 +56,10 @@ else
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install_tools"
 endif
 
+.PHONY: display-endpoints
+display-endpoints: ## Shows the urls for accessing deployed tools in browser
+	$(UV) run ansible-playbook -i inventory project/display_gateway_endpoints.yaml
+
 .PHONY: undeploy-tools
 undeploy-tools: ## Undeploys the observability and fault tools from cluster
 ifdef SCENARIO_NUMBER
@@ -194,11 +198,16 @@ test-unit-recorders: ## Runs recorder installation unit tests
 
 .PHONY: test-unit-tools
 test-unit-tools: ## Runs tool installation unit tests
-	cd project/roles/tools && $(UV) run molecule test --all --report --command-borders
+	cd project/roles/tools && $(UV) run molecule test --scenario-name install_sre --report --command-borders
+	cd project/roles/tools && $(UV) run molecule test --scenario-name install_finops --report --command-borders
 
 .PHONY: test-unit-waiters
 test-unit-waiters: ## Runs waiter unit tests
 	cd project/roles/waiters && $(UV) run molecule test --all --report --command-borders
+
+.PHONY:
+test-network-gateway: ## Run tool gateway network tests
+	cd project/roles/tools && $(UV) run molecule test --scenario-name external_endpoints --report --command-borders
 
 .PHONY: generate-agent-bundle
 generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with
