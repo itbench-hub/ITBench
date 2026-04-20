@@ -4,48 +4,48 @@ category: sre
 complexity: medium
 description: This scenario simulates tampered HTTP requests to OpenTelemetry Demo's `email` service.
 disruptions:
-- injections:
-  - args:
-      kubernetesObject:
-        apiVersion: chaos-mesh.org/v1alpha1
-        kind: Schedule
-        metadata:
-          name: email-http-chaos-post-body-tamper
-          namespace: chaos-mesh
-      scheduleSpec:
-        httpChaos:
-          duration: 55s
-          method: POST
-          mode: all
-          patch:
-            body:
-              type: JSON
-              value: '{''email'': ''12345'', ''order'': ''error body''}'
-          path: '*'
-          port: 8080
-          selector:
-            labelSelectors:
-              app.kubernetes.io/component: email
-            namespaces:
-            - otel-demo
-          target: Request
-        type: HTTPChaos
-    id: scheduled-chaos-mesh-experiment
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: chaos-mesh.org/v1alpha1
+            kind: Schedule
+            metadata:
+              name: email-http-chaos-post-body-tamper
+              namespace: chaos-mesh
+          scheduleSpec:
+            httpChaos:
+              duration: 55s
+              method: POST
+              mode: all
+              patch:
+                body:
+                  type: JSON
+                  value: "{'email': '12345', 'order': 'error body'}"
+              path: "*"
+              port: 8080
+              selector:
+                labelSelectors:
+                  app.kubernetes.io/component: email
+                namespaces:
+                  - otel-demo
+              target: Request
+            type: HTTPChaos
+        id: scheduled-chaos-mesh-experiment
 environment:
   applications:
-  - id: opentelemetry-demo
+    - id: opentelemetry-demo
 id: 26
 platforms:
-- Kubernetes
+  - Kubernetes
 solutions:
-- - steps:
-    - command: kubectl -n chaos-mesh annotate schedule email-http-chaos-post-body-tamper experiment.chaos-mesh.org/pause='true'
-      text: Annotate the schedule to pause the active experiment.
-    - command: kubectl -n chaos-mesh get httpchaos --selector='experiment.chaos-mesh.org/pause=true'
-      text: Retrieve the associated experiment managed by the schedule.
-    - text: Delete the retrieved experiement after it has entered the `Paused` state.
-    - command: kubectl -n chaos-mesh delete schedule email-http-chaos-post-body-tamper experiment.chaos-mesh.org/pause='true'
-      text: Delete the schedule.
+  - - steps:
+        - command: kubectl -n chaos-mesh annotate schedule email-http-chaos-post-body-tamper experiment.chaos-mesh.org/pause='true'
+          text: Annotate the schedule to pause the active experiment.
+        - command: kubectl -n chaos-mesh get httpchaos --selector='experiment.chaos-mesh.org/pause=true'
+          text: Retrieve the associated experiment managed by the schedule.
+        - text: Delete the retrieved experiement after it has entered the `Paused` state.
+        - command: kubectl -n chaos-mesh delete schedule email-http-chaos-post-body-tamper experiment.chaos-mesh.org/pause='true'
+          text: Delete the schedule.
 tags:
-- Deployment
-- Performance
+  - Deployment
+  - Performance

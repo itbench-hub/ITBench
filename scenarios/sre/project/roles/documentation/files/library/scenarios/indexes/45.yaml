@@ -1,35 +1,35 @@
 ---
 alerts:
-- KubeContainerWaiting
+  - KubeContainerWaiting
 category: sre
 complexity: medium
 description: This scenario simulates new pods of OpenTelemetry Demo's `email` service being unable to execute.
 disruptions:
-- injections:
-  - args:
-      kubernetesObject:
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: email
-          namespace: otel-demo
-    id: hanging-kubernetes-workload-init-container
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: email
+              namespace: otel-demo
+        id: hanging-kubernetes-workload-init-container
 environment:
   applications:
-  - id: opentelemetry-demo
+    - id: opentelemetry-demo
 id: 45
 platforms:
-- Kubernetes
+  - Kubernetes
 solutions:
-- - steps:
-    - command: kubectl -n otel-demo rollout undo deployment/email
-      text: Revert the last change done to the manifest.
-  - steps:
-    - command: kubectl -n otel-demo edit deployment email
-      text: Manually edit the manifest and replace the command of the hanging init container to one which will complete.
-  - steps:
-    - command: kubectl -n otel-demo edit deployment email
-      text: Manually edit the manifest and remove the faulty init container.
+  - - steps:
+        - command: kubectl -n otel-demo rollout undo deployment/email
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n otel-demo edit deployment email
+          text: Manually edit the manifest and replace the command of the hanging init container to one which will complete.
+    - steps:
+        - command: kubectl -n otel-demo edit deployment email
+          text: Manually edit the manifest and remove the faulty init container.
 tags:
-- Deployment
-- Performance
+  - Deployment
+  - Performance
