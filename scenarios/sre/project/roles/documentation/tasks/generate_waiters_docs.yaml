@@ -1,4 +1,9 @@
 ---
+- name: Retrieve all waiters index templates
+  ansible.builtin.find:
+    path: "{{ role_path }}/files/library/waiters/indexes"
+  register: documentation_waiters_indexes
+
 - name: Create identifiers for waiters
   ansible.builtin.set_fact:
     documentation_waiters_library: |
@@ -16,20 +21,29 @@
                   waiter.name |
                   ansible.builtin.lower |
                   ansible.builtin.replace(" ", "-")
+                ),
+                "index": (
+                  waiter_index.path |
+                  ansible.builtin.basename |
+                  ansible.builtin.splitext |
+                  ansible.builtin.first |
+                  ansible.builtin.int
                 )
               }
             )
           )
         ]
       }}
-  loop: |-
-    {{
-      lookup("ansible.builtin.file", "files/library/waiters/index.json") |
-      ansible.builtin.from_json
-    }}
+  loop: "{{ documentation_waiters_indexes.files }}"
   loop_control:
-    label: waiter/{{ waiter.name }}
-    loop_var: waiter
+    label: file/{{ waiter_index.path | ansible.builtin.basename }}
+    loop_var: waiter_index
+  vars:
+    waiter: |-
+      {{
+        lookup("ansible.builtin.file", waiter_index.path) |
+        ansible.builtin.from_yaml
+      }}
 
 - name: Generate waiters library index
   ansible.builtin.copy:
