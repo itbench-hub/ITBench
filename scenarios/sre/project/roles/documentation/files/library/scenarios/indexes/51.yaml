@@ -1,34 +1,34 @@
 ---
 alerts:
-- HighRequestLatency
+  - HighRequestLatency
 category: sre
 complexity: low
 description: This scenario simulates Kubernetes API server a surge in request during OpenTelemetry Demo's execution.
 disruptions:
-- injections:
-  - args:
-      kubernetesObject:
-        apiVersion: v1
-        kind: Namespace
-        metadata:
-          name: otel-demo
-      loadGenerator:
-        options:
-          requestsPerSecond: 1000
-    id: kubernetes-api-server-request-surge
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: otel-demo
+          loadGenerator:
+            options:
+              requestsPerSecond: 1000
+        id: kubernetes-api-server-request-surge
 environment:
   applications:
-  - id: opentelemetry-demo
+    - id: opentelemetry-demo
 id: 51
 platforms:
-- Kubernetes
+  - Kubernetes
 solutions:
-- - steps:
-    - command: kubectl -n otel-demo edit deployment workload-scanner
-      text: Manually edit the manifest and lower the request rate.
-  - steps:
-    - command: kubectl -n otel-demo delete deployment workload-scanner
-      text: Delete the injected load generator deployment.
+  - - steps:
+        - command: kubectl -n otel-demo edit deployment workload-scanner
+          text: Manually edit the manifest and lower the request rate.
+    - steps:
+        - command: kubectl -n otel-demo delete deployment workload-scanner
+          text: Delete the injected load generator deployment.
 tags:
-- Deployment
-- Performance
+  - Deployment
+  - Performance

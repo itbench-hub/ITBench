@@ -48,17 +48,14 @@ resources:
 solutions:
   templates:
     - steps:
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{
-            args.kubernetesObject.metadata.name }}
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}
           text: Revert the last change done to the manifest.
     - steps:
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{
-            args.kubernetesObject.metadata.name }}
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
           text: Manually edit the manifest and remove the node selector value with the correct value(s).
     - steps:
         - text: Create a new priority class with a higher value than the workload which caused its preemption.
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{
-            args.kubernetesObject.metadata.name }}
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
           text: Manually edit the manifest and change the priority of the workload to the new priority.
 tags:
   - Deployment

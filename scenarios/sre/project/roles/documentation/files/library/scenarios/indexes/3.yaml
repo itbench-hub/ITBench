@@ -4,48 +4,48 @@ category: sre
 complexity: medium
 description: This scenario simulates the OpenTelemetry Demo's `ad` service experiencing high CPU usage.
 disruptions:
-- injections:
-  - args:
-      flag:
-        name: adHighCpu
-        state: 'on'
-      kubernetesObject:
-        apiVersion: v1
-        kind: ConfigMap
-        metadata:
-          name: flagd-config
-          namespace: otel-demo
-    id: opentelemetry-demo-feature-flag
-  waitFor:
-    postInjection:
-    - args:
-        kubernetesObject:
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: flagd
-            namespace: otel-demo
-      id: restart-kubernetes-workload
-    - args:
-        kubernetesObject:
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: ad
-            namespace: otel-demo
-      id: restart-kubernetes-workload
+  - injections:
+      - args:
+          flag:
+            name: adHighCpu
+            state: "on"
+          kubernetesObject:
+            apiVersion: v1
+            kind: ConfigMap
+            metadata:
+              name: flagd-config
+              namespace: otel-demo
+        id: opentelemetry-demo-feature-flag
+    waitFor:
+      postInjection:
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: flagd
+                namespace: otel-demo
+          id: restart-kubernetes-workload
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: ad
+                namespace: otel-demo
+          id: restart-kubernetes-workload
 environment:
   applications:
-  - id: opentelemetry-demo
+    - id: opentelemetry-demo
 id: 3
 platforms:
-- Kubernetes
+  - Kubernetes
 solutions:
-- - steps:
-    - command: kubectl -n otel-demo edit configmap flagd-config
-      text: Disable the feature flag (adHighCpu) by manually editing the contents of the ConfigMap
-    - command: kubectl -n otel-demo rollout restart deployment
-      text: Restart all of the Deployment workloads.
+  - - steps:
+        - command: kubectl -n otel-demo edit configmap flagd-config
+          text: Disable the feature flag (adHighCpu) by manually editing the contents of the ConfigMap
+        - command: kubectl -n otel-demo rollout restart deployment
+          text: Restart all of the Deployment workloads.
 tags:
-- Deployment
-- Performance
+  - Deployment
+  - Performance
