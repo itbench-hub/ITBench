@@ -1,0 +1,36 @@
+---
+alerts: []
+category: sre
+complexity: medium
+description: This scenario changes the environment variables of OpenTelemetry Demo's `shipping` service, causing it to be unable to reach the `quote` service.
+disruptions:
+- injections:
+  - args:
+      container:
+        env:
+          name: QUOTE_ADDR
+          value: quote:0000
+        name: shipping
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: shipping
+          namespace: otel-demo
+    id: modified-kubernetes-workload-container-environment-variable
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 16
+platforms:
+- Kubernetes
+solutions:
+- - steps:
+    - command: kubectl -n otel-demo rollout undo deployment/shipping
+      text: Revert the last change done to the manifest.
+  - steps:
+    - command: kubectl -n otel-demo edit deployment shipping
+      text: Manually edit the manifest and replace the environment variable(s) value with the correct value(s).
+tags:
+- Deployment
+- Performance

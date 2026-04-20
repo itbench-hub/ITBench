@@ -1,0 +1,47 @@
+---
+alerts:
+- KubePodNotReady
+category: sre
+complexity: medium
+description: This scenario simulates the OpenTelemetry Demo's `checkout` service being unable to start due to an unsupported architecture image, testing Kubernetes rolling update resilience without forced restart.
+disruptions:
+- injections:
+  - args:
+      container:
+        name: checkout
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: checkout
+          namespace: otel-demo
+    id: unsupported-architecture-kubernetes-workload-container-image
+  waitFor:
+    postInjection:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: checkout
+            namespace: otel-demo
+      id: delete-workload-pods
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 57
+platforms:
+- Kubernetes
+solutions:
+- - steps:
+    - command: kubectl -n otel-demo rollout undo deployment/checkout
+      text: Revert the last change done to the manifest.
+  - steps:
+    - command: kubectl -n otel-demo edit deployment checkout
+      text: Manually edit the manifest and replace the invalid image with the correct value.
+  - steps:
+    - command: kubectl -n otel-demo edit deployment checkout
+      text: Manually edit the manifest and replace the node selector to allow Kubernetes to schedule the workload on a supported node (if exists).
+tags:
+- Deployment
+- Performance

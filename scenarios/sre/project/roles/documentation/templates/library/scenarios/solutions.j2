@@ -1,0 +1,20 @@
+---
+{% if scenario.solutionTemplates | ansible.builtin.length == 0 %}
+[]
+{% else %}
+{% for t in scenario.solutionTemplates %}
+{% set injection = scenario.disruptions[t.disruptionIndex].injections[t.injectionIndex] %}
+- {{
+      documentation_faults[injection.id].solutions.templates |
+      ansible.builtin.to_json |
+      ansible.builtin.replace(
+        "args.",
+        (
+          "scenario.disruptions[%d].injections[%d].args." |
+          ansible.builtin.format(t.disruptionIndex, t.injectionIndex)
+        )
+      ) |
+      ansible.builtin.from_json
+  }}
+{% endfor %}
+{% endif %}

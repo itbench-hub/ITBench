@@ -1,0 +1,31 @@
+---
+category: sre
+complexity: high
+description: This scenario simulates OpenTelemetry Demo's `checkout` service experiencing a failure.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: chaos-mesh.org/v1alpha1
+          kind: Schedule
+          metadata:
+            name: otel-demo-product-catalog-network-delay
+            namespace: {{ tools_managers.chaos_mesh.kubernetes.namespace }}
+        scheduleSpec:
+          type: PodChaos
+          podChaos:
+            action: pod-failure
+            mode: all
+            selector:
+              namespaces:
+                - {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+              labelSelectors:
+                "app.kubernetes.io/component": checkout
+      id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 18
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

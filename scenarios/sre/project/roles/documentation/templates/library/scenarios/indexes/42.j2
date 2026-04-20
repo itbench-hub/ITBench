@@ -1,0 +1,21 @@
+---
+category: sre
+complexity: medium
+description: This scenario simulates the OpenTelemetry Demo's `kafka` service being evicted from the node.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: kafka
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: priority-kubernetes-workload-priority-preemption
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 42
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

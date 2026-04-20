@@ -1,0 +1,36 @@
+---
+category: sre
+complexity: medium
+description: This scenario simulates aborted HTTP requests to OpenTelemetry Demo's `quote` service.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: chaos-mesh.org/v1alpha1
+          kind: Schedule
+          metadata:
+            name: quote-http-chaos-abort
+            namespace: {{ tools_managers.chaos_mesh.kubernetes.namespace }}
+        scheduleSpec:
+          type: HTTPChaos
+          httpChaos:
+            mode: all
+            selector:
+              namespaces:
+                - {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+              labelSelectors:
+                "app.kubernetes.io/component": quote
+            target: Request
+            port: 8080
+            method: POST
+            path: "*"
+            abort: true
+            duration: "55s"
+      id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 27
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

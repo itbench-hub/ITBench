@@ -1,0 +1,23 @@
+---
+category: sre
+complexity: low
+description: This scenario simulates Kubernetes API server a surge in request during OpenTelemetry Demo's execution.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        loadGenerator:
+          options:
+            requestsPerSecond: 1000
+      id: kubernetes-api-server-request-surge
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 51
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

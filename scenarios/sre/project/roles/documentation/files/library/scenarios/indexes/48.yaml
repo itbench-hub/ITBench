@@ -1,0 +1,28 @@
+---
+alerts:
+- NoRequestsReceived
+category: sre
+complexity: medium
+description: This scenario simulates BookInfo's `gateway` service unable to receive GET HTTP requests.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: book-info
+    id: disabled-istio-ambient-mode-kubernetes-namespace
+environment:
+  applications:
+  - id: book-info
+id: 48
+platforms:
+- Kubernetes
+solutions:
+- - steps:
+    - command: kubectl -n book-info edit namespace book-info-deny
+      text: Manually edit the manifest and replace the invalid label with the correct value.
+tags:
+- Deployment
+- Networking
