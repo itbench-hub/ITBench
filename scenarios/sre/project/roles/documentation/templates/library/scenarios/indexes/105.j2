@@ -1,0 +1,23 @@
+---
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `product-catalog` service having a malformed command.
+disruptions:
+  - injections:
+    - args:
+        container:
+          name: product-catalog
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: product-catalog
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: invalid-kubernetes-workload-container-command
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 105
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

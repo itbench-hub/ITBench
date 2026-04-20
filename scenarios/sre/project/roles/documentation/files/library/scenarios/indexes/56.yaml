@@ -1,0 +1,44 @@
+---
+alerts:
+- KubePodNotReady
+category: sre
+complexity: low
+description: This scenario simulates the OpenTelemetry Demo's `product-catalog` service using a nonexistent image.
+disruptions:
+- injections:
+  - args:
+      container:
+        name: product-catalog
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: product-catalog
+          namespace: otel-demo
+    id: nonexistent-kubernetes-workload-container-image
+  waitFor:
+    postInjection:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: checkout
+            namespace: otel-demo
+      id: delete-workload-pods
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 56
+platforms:
+- Kubernetes
+solutions:
+- - steps:
+    - command: kubectl -n otel-demo rollout undo deployment/product-catalog
+      text: Revert the last change done to the manifest.
+  - steps:
+    - command: kubectl -n otel-demo edit deployment product-catalog
+      text: Manually edit the manifest and replace the invalid image with the correct value.
+tags:
+- Deployment
+- Performance

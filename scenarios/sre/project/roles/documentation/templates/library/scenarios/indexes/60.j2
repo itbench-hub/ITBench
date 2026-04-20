@@ -1,0 +1,45 @@
+---
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `recommendation` service crashing due to a malformed ConfigMap and `checkout` service being unable to start due to an unsupported architecture image, testing Kubernetes rolling update resilience without forced restart.
+disruptions:
+  - injections:
+    - args:
+        configMapName: features
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: recommendation
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: crashing-kubernetes-workload-init-container
+  - injections:
+    - args:
+        container:
+          name: checkout
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: checkout
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: unsupported-architecture-kubernetes-workload-container-image
+    waitFor:
+      postInjection:
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: checkout
+                namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+          id: delete-workload-pods
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 60
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0
+  - disruptionIndex: 1
+    injectionIndex: 0

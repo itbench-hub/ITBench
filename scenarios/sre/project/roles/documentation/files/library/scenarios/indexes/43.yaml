@@ -1,0 +1,32 @@
+---
+alerts:
+- HighRequestErrorRate
+category: sre
+complexity: medium
+description: This scenario simulates the OpenTelemetry Demo's `frontend` service being reach other services.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: frontend
+          namespace: otel-demo
+    id: failing-name-resolution-kubernetes-workload-dns-policy
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 43
+platforms:
+- Kubernetes
+solutions:
+- - steps:
+    - command: kubectl -n otel-demo edit authorizationpolicy frontend-deny
+      text: Manually edit the manifest and replace the invalid rule with the correct value.
+  - steps:
+    - command: kubectl -n otel-demo delete authorizationpolicy frontend-deny
+      text: Delete the faulty authorization policy.
+tags:
+- Deployment
+- Networking

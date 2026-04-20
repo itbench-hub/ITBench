@@ -1,0 +1,22 @@
+---
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `recommendation` service crashing due to a malformed ConfigMap.
+disruptions:
+  - injections:
+    - args:
+        configMapName: features
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: recommendation
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: crashing-kubernetes-workload-init-container
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 59
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

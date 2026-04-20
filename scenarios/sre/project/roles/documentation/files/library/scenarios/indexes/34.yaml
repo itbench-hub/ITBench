@@ -1,0 +1,31 @@
+---
+alerts:
+- HighRequestLatency
+category: sre
+complexity: low
+description: This scenario simulates the wrong password being set as the user for OpenTelemetry Demo's `valkey-cart` service.
+disruptions:
+- injections:
+  - args:
+      container:
+        name: valkey-cart
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: valkey-cart
+          namespace: otel-demo
+    id: valkey-workload-changed-password
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 34
+platforms:
+- Kubernetes
+solutions:
+- - steps:
+    - command: kubectl -n otel-demo edit secret valkey-credentials
+      text: Change the password back to the original by modifying the value of `valkey-password` in the secrete.
+tags:
+- Deployment
+- Authentication

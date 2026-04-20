@@ -1,0 +1,31 @@
+---
+category: sre
+complexity: low
+description: This scenario simulates OpenTelemetry Demo's `ad` and `cart` services being deployed on the wrong node.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: ad
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: nonexistent-kubernetes-workload-node
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: cart
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: nonexistent-kubernetes-workload-node
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 33
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0
+  - disruptionIndex: 0
+    injectionIndex: 1

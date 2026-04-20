@@ -1,0 +1,34 @@
+---
+alerts:
+- KubePodCrashLooping
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `postgresql` service not having enough resources.
+disruptions:
+- injections:
+  - args:
+      container:
+        name: postgresql
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: postgresql
+          namespace: otel-demo
+    id: insufficient-kubernetes-workload-container-resources
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 46
+platforms:
+- Kubernetes
+solutions:
+- - steps:
+    - command: kubectl -n otel-demo rollout undo deployment/postgresql
+      text: Revert the last change done to the manifest.
+  - steps:
+    - command: kubectl -n otel-demo edit deployment postgresql
+      text: Manually edit the manifest and replace the invalid container's resource configuration with the correct value(s).
+tags:
+- Deployment
+- Performance

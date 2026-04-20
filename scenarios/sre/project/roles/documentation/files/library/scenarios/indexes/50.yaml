@@ -1,0 +1,32 @@
+---
+alerts:
+- HighRequestErrorRate
+category: sre
+complexity: medium
+description: This scenario simulates BookInfo's `productpage-v1` service being unable to communicate with other services.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: productpage-v1
+          namespace: book-info
+    id: strict-mutual-tls-istio-service-mesh-enforcement
+environment:
+  applications:
+  - id: book-info
+id: 50
+platforms:
+- Kubernetes
+solutions:
+- - steps:
+    - command: kubectl -n book-info edit deployment productpage-v1
+      text: Manually edit the manifest and to add the required Istio ambient mode labels to the workload.
+  - steps:
+    - command: kubectl edit namespace book-info
+      text: Manually edit the namespace manifest and to add the required Istio ambient mode labels to the workload.
+tags:
+- Deployment
+- Networking

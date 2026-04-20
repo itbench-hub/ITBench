@@ -1,0 +1,48 @@
+---
+alerts: []
+category: sre
+complexity: medium
+description: This scenario simulates aborted HTTP requests to OpenTelemetry Demo's `quote` service.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: quote-http-chaos-abort
+          namespace: chaos-mesh
+      scheduleSpec:
+        httpChaos:
+          abort: true
+          duration: 55s
+          method: POST
+          mode: all
+          path: '*'
+          port: 8080
+          selector:
+            labelSelectors:
+              app.kubernetes.io/component: quote
+            namespaces:
+            - otel-demo
+          target: Request
+        type: HTTPChaos
+    id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 27
+platforms:
+- Kubernetes
+solutions:
+- - steps:
+    - command: kubectl -n chaos-mesh annotate schedule quote-http-chaos-abort experiment.chaos-mesh.org/pause='true'
+      text: Annotate the schedule to pause the active experiment.
+    - command: kubectl -n chaos-mesh get httpchaos --selector='experiment.chaos-mesh.org/pause=true'
+      text: Retrieve the associated experiment managed by the schedule.
+    - text: Delete the retrieved experiement after it has entered the `Paused` state.
+    - command: kubectl -n chaos-mesh delete schedule quote-http-chaos-abort experiment.chaos-mesh.org/pause='true'
+      text: Delete the schedule.
+tags:
+- Deployment
+- Performance
