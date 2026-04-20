@@ -80,12 +80,11 @@
       vars:
         service: "{{ tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name] }}"
 
-- name: Validate that address has been parsed
-  ansible.builtin.assert:
-    that:
-      - tools_gateway_http_address is defined
-    fail_msg: External address could not be determined.
-    success_msg: External address determined.
+- name: Fail playbook due to `no gateway address found` error
+  ansible.builtin.fail:
+    msg: The external address for the Kubernetes Gateway could not be found.
+  when:
+    - tools_gateway_http_address is undefined
 
 - name: Import Clickhouse variable setting tasks
   ansible.builtin.import_tasks:
