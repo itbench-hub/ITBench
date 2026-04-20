@@ -56,6 +56,10 @@ else
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install_tools"
 endif
 
+.PHONY: display-endpoints
+display-endpoints: ## Shows the urls for accessing deployed tools in browser
+	$(UV) run ansible-playbook -i inventory project/display_gateway_endpoints.yaml
+
 .PHONY: undeploy-tools
 undeploy-tools: ## Undeploys the observability and fault tools from cluster
 ifdef SCENARIO_NUMBER

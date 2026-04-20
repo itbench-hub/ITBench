@@ -25,7 +25,7 @@
         tools_kubernetes_topology_monitor_endpoint:
           host: "{{ tools_gateway_http_address + tools_kubernetes_topology_monitor_http_route.resources[0].spec.rules[0].matches[0].path.value }}"
           paths:
-            - ""
+            - healthz
 
 - name: Retrieve host address from Routes
   when:
@@ -53,7 +53,7 @@
         tools_kubernetes_topology_monitor_endpoint:
           host: "http://{{ tools_kubernetes_topology_monitor_route.resources[0].status.ingress[0].host }}"
           paths:
-            - /
+            - /healthz
       when:
         - tools_kubernetes_topology_monitor_route.resources[0].status.ingress is defined
         - tools_kubernetes_topology_monitor_route.resources[0].status.ingress | ansible.builtin.length > 0

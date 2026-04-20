@@ -1,0 +1,37 @@
+- name: Clear Kubernetes events
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+  tasks:
+    - name: Define tool network configuration
+      ansible.builtin.set_fact:
+        tools_network_configuration: "{{ network }}"
+      when:
+        - network is defined
+
+    - name: Set up external endpoints
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: set_external_endpoints.yaml
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+
+    - name: Display endpoints
+      ansible.builtin.debug:
+        msg:
+          - "Clickhouse: {{ tools_clickhouse_endpoint.host | ansible.builtin.default('N/A') }}"
+          - "Jaeger: {{ tools_jaeger_endpoint.host | ansible.builtin.default('N/A') }}"
+          - "Kubernetes Topology Monitor: {{ tools_kubernetes_topology_monitor_endpoint.host | ansible.builtin.default('N/A') }}"
+          - "OpenCost: {{ tools_opencost_endpoint.host | ansible.builtin.default('N/A') }}"
+          - "Prometheus: {{ tools_prometheus_endpoint.host | ansible.builtin.default('N/A') }}"
