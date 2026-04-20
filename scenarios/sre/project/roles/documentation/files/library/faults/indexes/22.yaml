@@ -1,0 +1,58 @@
+---
+alerts:
+  goldenSignal:
+    - HighRequestErrorRate
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+    type: object
+description: This fault injects a policy which causes the affected workload to be unable to communicate with other pods in the service mesh.
+expectation: The faulted pod will be unable to succesfully make requests to other pods, causing the error rate to increase.
+name: Strict Mutual TLS Istio Service Mesh Enforcement
+platform: Kubernetes
+resources:
+  - https://istio.io/latest/docs/ambient/usage/add-workloads/
+  - https://istio.io/latest/docs/tasks/security/authentication/mtls-migration/
+  - https://istio.io/latest/docs/ambient/usage/verify-mtls-enabled/
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{
+            args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and to add the required Istio ambient mode labels to the workload.
+    - steps:
+        - command: kubectl edit namespace {{ args.kubernetesObject.metadata.namespace }}
+          text: Manually edit the namespace manifest and to add the required Istio ambient mode labels to the workload.
+tags:
+  - Deployment
+  - Networking

@@ -1,0 +1,57 @@
+---
+alerts:
+  goldenSignal:
+    - HighRequestErrorRate
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - v1
+            type: string
+          kind:
+            enum:
+              - Service
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+      targetPort:
+        type: integer
+    required:
+      - kubernetesObject
+      - targetPort
+    type: object
+description: This fault overwrites the designated target port with a different number.
+expectation: Other workloads will be unable to communicate with the faulted pod(s) on the correct port. This usually results in increased latency and errors in
+  applications.
+name: Modified Target Port Kubernetes Service
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/concepts/services-networking/service/
+  - https://kubernetes.io/docs/tasks/access-application-cluster/connecting-frontend-backend/
+  - https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{
+            args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and replace the target port ({{ args.targetPort }}) with the correct value.
+tags:
+  - Deployment
+  - Networking

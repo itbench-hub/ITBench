@@ -1,5 +1,10 @@
 ---
-- name: Create identifiers for faults
+- name: Retrieve all fault index templates
+  ansible.builtin.find:
+    path: "{{ role_path }}/files/library/faults/indexes"
+  register: documentation_faults_indexes
+
+- name: Create identifiers for fault indexes
   ansible.builtin.set_fact:
     documentation_faults_library: |
       {{
@@ -16,20 +21,29 @@
                   fault.name |
                   ansible.builtin.lower |
                   ansible.builtin.replace(" ", "-")
+                ),
+                "index": (
+                  fault_index.path |
+                  ansible.builtin.basename |
+                  ansible.builtin.splitext |
+                  ansible.builtin.first |
+                  ansible.builtin.int
                 )
               }
             )
           )
         ]
       }}
-  loop: |-
-    {{
-      lookup("ansible.builtin.file", "files/library/faults/index.json") |
-      ansible.builtin.from_json
-    }}
+  loop: "{{ documentation_faults_indexes.files }}"
   loop_control:
-    label: fault/{{ fault.name }}
-    loop_var: fault
+    label: file/{{ fault_index.path | ansible.builtin.basename }}
+    loop_var: fault_index
+  vars:
+    fault: |-
+      {{
+        lookup("ansible.builtin.file", fault_index.path) |
+        ansible.builtin.from_yaml
+      }}
 
 - name: Generate faults library index
   ansible.builtin.copy:

@@ -1,0 +1,72 @@
+---
+alerts:
+  application:
+    - KubePodCrashLooping
+arguments:
+  jsonSchema:
+    properties:
+      container:
+        properties:
+          name:
+            type: string
+        required:
+          - name
+        type: object
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+      - container
+    type: object
+description: This fault adds a code change to a Valkey workload. This modifies the container to also contain a process which will consume memory.
+expectation: The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state. The workload will become unable to
+  function.
+name: Valkey Workload Out of Memory
+platform: Kubernetes
+resources:
+  - https://valkey.io/
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{
+            args.kubernetesObject.metadata.name }}
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{
+            args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and remove the code change volumes.
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete configmap valkey-storage-script
+          text: Delete the injected ConfigMap object.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit configmap valkey-storage-script
+          text: Manually edit the manifest and change the script.
+tags:
+  - Deployment
+  - Code

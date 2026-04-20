@@ -1,0 +1,62 @@
+---
+alerts:
+  application:
+    - KubePodNotReady
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+    type: object
+description: This fault places a workload on a node and prevents it from scaling by blocking all new scheduling attempts.
+expectation: The faulted pod(s) will enter the `Pending` state due to an `FailedScheduling` warning. Thus, the new pod will not start running.
+name: Cordoned Kubernetes Worker Node
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/architecture/nodes/
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{
+            args.kubernetesObject.metadata.name }}
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{
+            args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and replace the node selector with the correct value.
+    - steps:
+        - command: kubectl get nodes --selector='node-role.kubernetes.io/node='
+          text: Retrieve all worker node nodes
+        - text: Uncordon all worker nodes which are cordoned.
+tags:
+  - Deployment
+  - Performance
