@@ -1,4 +1,9 @@
 ---
+- name: Retrieve all applications index templates
+  ansible.builtin.find:
+    path: "{{ role_path }}/files/library/applications/indexes"
+  register: documentation_applications_indexes
+
 - name: Create identifiers for applications
   ansible.builtin.set_fact:
     documentation_applications_library: |
@@ -16,20 +21,29 @@
                   application.name |
                   ansible.builtin.lower |
                   ansible.builtin.replace(" ", "-")
+                ),
+                "index": (
+                  application_index.path |
+                  ansible.builtin.basename |
+                  ansible.builtin.splitext |
+                  ansible.builtin.first |
+                  ansible.builtin.int
                 )
               }
             )
           )
         ]
       }}
-  loop: |-
-    {{
-      lookup("ansible.builtin.file", "files/library/applications/index.json") |
-      ansible.builtin.from_json
-    }}
+  loop: "{{ documentation_applications_indexes.files }}"
   loop_control:
-    label: application/{{ application.name }}
-    loop_var: application
+    label: file/{{ application_index.path | ansible.builtin.basename }}
+    loop_var: application_index
+  vars:
+    application: |-
+      {{
+        lookup("ansible.builtin.file", application_index.path) |
+        ansible.builtin.from_yaml
+      }}
 
 - name: Generate applications library index
   ansible.builtin.copy:
