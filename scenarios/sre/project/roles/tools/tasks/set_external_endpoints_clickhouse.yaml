@@ -23,9 +23,16 @@
     - name: Create Clickhouse external endpoint
       ansible.builtin.set_fact:
         tools_clickhouse_endpoint:
-          host: "{{ tools_gateway_http_address + tools_clickhouse_http_route.resources[0].spec.rules[0].matches[0].path.value }}"
+          host: |-
+            {{
+              (
+                tools_gateway_http_address +
+                tools_clickhouse_http_route.resources[0].spec.rules[0].matches[0].path.value
+              ) |
+              ansible.builtin.trim
+            }}
           paths:
-            - play
+            - /play
 
 - name: Retrieve host address from Routes
   when:

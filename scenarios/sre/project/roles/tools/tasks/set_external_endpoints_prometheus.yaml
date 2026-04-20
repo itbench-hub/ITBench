@@ -23,10 +23,17 @@
     - name: Create Prometheus external endpoint
       ansible.builtin.set_fact:
         tools_prometheus_endpoint:
-          host: "{{ tools_gateway_http_address + tools_prometheus_http_route.resources[0].spec.rules[0].matches[0].path.value }}"
+          host: |-
+            {{
+              (
+                tools_gateway_http_address +
+                tools_prometheus_http_route.resources[0].spec.rules[0].matches[0].path.value
+              ) |
+              ansible.builtin.trim
+            }}
           paths:
-            - alerts
-            - query
+            - /alerts
+            - /query
       when:
         - tools_prometheus_http_route.api_found
         - tools_prometheus_http_route.resources | ansible.builtin.length == 1
