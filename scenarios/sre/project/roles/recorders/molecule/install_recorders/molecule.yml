@@ -1,0 +1,29 @@
+---
+dependency:
+  name: galaxy
+
+ansible:
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../../inventory
+        - --tags=install_recorders,untagged
+  playbooks:
+    cleanup: cleanup.yml
+    converge: converge.yml
+    create: create.yml
+    destroy: destroy.yml
+    verify: verify.yml
+
+scenario:
+  name: install_recorders
+  test_sequence:
+    - syntax
+    - create
+    - converge
+    - verify
+    - cleanup
+    - destroy

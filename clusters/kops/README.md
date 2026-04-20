@@ -5,7 +5,7 @@
 [Kyverno](https://kyverno.io/) ensures that registry secrets (used to access private Docker registries) are configured in every namespace on the cluster.
 
 > [!NOTE]
-> As of the time writing (**03/09/2026**) these playbooks in this directory use [Amazon Web Services (AWS)](https://docs.aws.amazon.com/#products) as the provisoner. While other cloud providers may supported by kOps, orchestrating the additional pieces from those provides is not instrumented here.
+> As of the time writing (**03/09/2026**) these playbooks in this directory use [Amazon Web Services (AWS)](https://docs.aws.amazon.com/#products) as the provisoner. While other cloud providers may supported by kOps, orchestrating the additional pieces from those providers is not instrumented here.
 
 ## Required Software
 

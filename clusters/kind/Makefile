@@ -1,6 +1,8 @@
 GO = $(shell which go)
 UV = $(shell which uv)
 
+PYTHON = $(shell $(UV) python find)
+
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
@@ -12,7 +14,7 @@ lint: ## Lints files
 .PHONY: group-vars
 group-vars: ## Generates the group variables
 	mkdir -p inventory/group_vars/all
-	echo "ansible_python_interpreter: $(shell uv python find)" > inventory/group_vars/all/ansible.yaml
+	echo "ansible_python_interpreter: $(PYTHON)" > inventory/group_vars/all/ansible.yaml
 
 .PHONY: create-simple-cluster
 create-simple-cluster: group-vars ## Creates a Kind cluster for local development

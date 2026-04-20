@@ -1,0 +1,53 @@
+---
+- name: Load scenarios library index
+  ansible.builtin.set_fact:
+    awx_library_index: |-
+      {{
+        lookup('ansible.builtin.file', index_file_path) |
+        ansible.builtin.from_json
+      }}
+  vars:
+    index_file_path: "{{ playbook_dir }}/roles/documentation/files/library/scenarios/index.json"
+
+- name: Generate scenarios library id-count map
+  ansible.builtin.set_fact:
+    awx_scenario_faults_count_map: |-
+      {{
+        awx_scenario_faults_count_map |
+        ansible.builtin.default({}) |
+        ansible.builtin.combine(
+          {
+            scenario.id: {
+              "faultCount": scenario.disruptions | ansible.builtin.length
+            }
+          }
+        )
+      }}
+  loop: "{{ awx_library_index }}"
+  loop_control:
+    label: scenario/{{ scenario.id }}
+    loop_var: scenario
+  vars:
+    task_file: "{{ scenario.id | ansible.builtin.replace('-', '_') }}.yaml"
+
+- name: Create scenarios library id-count file
+  ansible.builtin.copy:
+    content: |
+      {{
+        awx_scenario_faults_count_map |
+        ansible.builtin.to_nice_json
+      }}
+    dest: "{{ [role_path, 'files', 'library', 'map.json'] | ansible.builtin.path_join }}"
+    mode: "0644"
+
+- name: Create awx roles meta argument specs file
+  ansible.builtin.copy:
+    content: "{{ awx_argument_specs | ansible.builtin.to_nice_yaml(explicit_start=true, indent=2) }}"
+    dest: "{{ [role_path, 'meta', 'argument_specs.yaml'] | ansible.builtin.path_join }}"
+    mode: "0644"
+  vars:
+    awx_argument_specs: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') |
+        ansible.builtin.from_yaml
+      }}

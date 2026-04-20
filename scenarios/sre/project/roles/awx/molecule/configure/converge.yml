@@ -1,0 +1,72 @@
+---
+- name: Configure AWX
+  hosts:
+    - localhost
+  tasks:
+    - name: Import cluster role to set platform and provider variables
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
+
+    - name: Import awx role to configure AWX
+      ansible.builtin.import_role:
+        name: awx
+      vars:
+        awx_cluster:
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
+          provider: "{{ cluster_provider }}"
+        awx_configuration:
+          agent:
+            configuration:
+              agents_config:
+                provider: ""
+                model: ""
+                url: ""
+                api_key: "" # pragma: allowlist secret
+                api_version: ""
+                seed: ""
+                top_p: ""
+                temperature: ""
+                reasoning_effort: ""
+                thinking: ""
+                thinking_budget: 0
+                max_tokens: 0
+                model_embedding: ""
+                url_embedding: ""
+                api_version_embedding: ""
+                god_mode: true
+              tools_config:
+                provider: ""
+                model: ""
+                url: ""
+                api_key: "" # pragma: allowlist secret
+                api_version: ""
+                seed: ""
+                top_p: ""
+                temperature: ""
+                reasoning_effort: ""
+                thinking: ""
+                thinking_budget: 0
+                max_tokens: 0
+              watsonx_config:
+                wx_project_id: ""
+                wx_deployment_space_id: ""
+              agent_analytics_sdk:
+                git_token: ""
+                git_username: ""
+              max_runtime_in_seconds: 3600
+          github:
+            itbench:
+              url: https://github.com/itbench-hub/ITBench.git
+              branch: main
+            agent:
+              url: https://github.com/itbench-hub/ITBench-SRE-Agent.git
+              branch: main
+          scenarios:
+            - id: 1
+            - id: 60
+        awx_experiments:
+          runners:
+            kubeconfigs: "{{ stack.runners.kubeconfigs }}"

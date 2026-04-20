@@ -1,0 +1,27 @@
+---
+dependency:
+  name: galaxy
+
+ansible:
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../../inventory
+        - --tags=configure_awx,untagged
+  playbooks:
+    create: create.yml
+    cleanup: cleanup.yml
+    converge: converge.yml
+    verify: verify.yml
+
+scenario:
+  name: configure
+  test_sequence:
+    - syntax
+    - create
+    - converge
+    - verify
+    - cleanup

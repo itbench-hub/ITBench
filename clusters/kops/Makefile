@@ -1,5 +1,7 @@
 UV = $(shell which uv)
 
+PYTHON = $(shell $(UV) python find)
+
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
@@ -10,7 +12,7 @@ lint: ## Lints files
 
 .PHONY: group-vars
 group-vars: ## Generates the group variables from templates
-	echo "---\nansible_python_interpreter: $(shell $(UV) python find)" > inventory/group_vars/all/python.yaml
+	echo "---\nansible_python_interpreter: $(PYTHON)" > inventory/group_vars/all/python.yaml
 	cp inventory/group_vars/all/aws.yaml.example inventory/group_vars/all/aws.yaml
 	cp inventory/group_vars/all/cluster.yaml.example inventory/group_vars/all/cluster.yaml
 	cp inventory/group_vars/all/docker.yaml.example inventory/group_vars/all/docker.yaml
@@ -20,6 +22,7 @@ group-vars: ## Generates the group variables from templates
 
 .PHONY: create-cluster
 create-cluster: ## Creates a single cluster
+	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
 	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
 		--extra-vars "target=single-cluster"
 	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
@@ -39,6 +42,7 @@ install-cluster-docker-registry: get-cluster-kubeconfig ## Installs docker regis
 sync-cluster-group-vars: get-cluster-kubeconfig ## Syncs the kubeconfig with the scenarios group variables
 	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=single-cluster"
+	cd ../../ && uv run ansible-lint scenarios/sre/inventory/group_vars/environment --fix
 
 .PHONY: destroy-cluster
 destroy-cluster: ## Deletes a single cluster
@@ -49,6 +53,7 @@ destroy-cluster: ## Deletes a single cluster
 
 .PHONY: create-awx-stack
 create-awx-stack: ## Creates an AWX stack
+	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
 	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
 		--extra-vars "target=awx-stack"
 	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
@@ -68,6 +73,7 @@ install-stack-docker-registry: get-stack-kubeconfigs ## Installs docker registry
 sync-stack-group-vars: get-stack-kubeconfigs ## Syncs the kubeconfig with the scenarios group variables
 	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=awx-stack"
+	cd ../../ && uv run ansible-lint scenarios/sre/inventory/group_vars/runner --fix
 
 .PHONY: destroy-awx-stack
 destroy-awx-stack: ## Destroy an AWX stack

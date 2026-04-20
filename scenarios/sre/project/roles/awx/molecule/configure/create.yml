@@ -1,0 +1,20 @@
+---
+- name: Install AWX
+  hosts:
+    - localhost
+  tasks:
+    - name: Import cluster role to set platform and provider variables
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
+
+    - name: Import awx role to install AWX
+      ansible.builtin.import_role:
+        name: awx
+        tasks_from: install.yaml
+      vars:
+        awx_cluster:
+          kubeconfig: "{{ stack.awx.kubeconfig }}"
+          provider: "{{ cluster_provider }}"

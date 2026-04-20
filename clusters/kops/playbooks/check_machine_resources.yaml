@@ -1,0 +1,43 @@
+---
+- name: Checks Machine Resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve machine resources for worker nodes
+      amazon.aws.ec2_instance_type_info:
+        filters:
+          instance-type:
+            - "{{ cluster.nodes.worker.instance_type }}"
+      register: ec2_instance_type
+
+    - name: Validate that machine type was found
+      ansible.builtin.assert:
+        that:
+          - ec2_instance_type.instance_types | ansible.builtin.length == 1
+        fail_msg: Worker node machine instance type not found. Please verify that it exists.
+        success_msg: Worker node machine instance type found.
+
+    - name: Show warning messages for lack of resources
+      vars:
+        machine_resources:
+          cpu: "{{ ec2_instance_type.instance_types[0].v_cpu_info.default_v_cpus }}"
+          memory: "{{ ec2_instance_type.instance_types[0].memory_info.size_in_mi_b }}"
+        recommended_resources:
+          cpu: 8
+          memory: 16
+      block:
+        - name: Show warning message for lack of CPU resources
+          ansible.builtin.debug:
+            msg:
+              - This machine does not have the recommended amount of CPU ({{ recommended_resources.cpu }}+).
+              - You may experience degraded or inconsistent performance on this machine.
+          when:
+            - machine_resources.cpu < recommended_resources.cpu
+
+        - name: Show warning message for lack of memory resources
+          ansible.builtin.debug:
+            msg:
+              - This machine does not have the recommended amount of memory ({{ recommended_resources.memory }}GB+).
+              - You may experience degraded or inconsistent performance on this machine.
+          when:
+            - (machine_resources.memory // 1024) < recommended_resources.memory

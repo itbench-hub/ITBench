@@ -1,0 +1,142 @@
+---
+argument_specs:
+  main:
+    author:
+      - Gerard Vanloo
+    options:
+      awx_cluster:
+        required: true
+        type: dict
+        options:
+          kubeconfig:
+            required: true
+            type: str
+          provider:
+            required: true
+            type: str
+      awx_configuration:
+        required: false
+        type: dict
+        options:
+          agent:
+            required: false
+            type: dict
+            options:
+              configuration:
+                required: true
+                type: dict
+          github:
+            required: true
+            type: dict
+            options:
+              agent:
+                required: true
+                type: dict
+                options:
+                  ssh:
+                    required: false
+                    type: dict
+                    options:
+                      private_key_passphrase:
+                        required: true
+                        type: str
+                      private_key_path:
+                        required: true
+                        type: str
+                  url:
+                    required: true
+                    type: str
+                  branch:
+                    required: true
+                    type: str
+              itbench:
+                required: true
+                type: dict
+                options:
+                  ssh:
+                    required: false
+                    type: dict
+                    options:
+                      private_key_passphrase:
+                        required: true
+                        type: str
+                      private_key_path:
+                        required: true
+                        type: str
+                  url:
+                    required: true
+                    type: str
+                  branch:
+                    required: true
+                    type: str
+          providers:
+            required: false
+            type: dict
+            options:
+              aws:
+                required: false
+                type: dict
+                options:
+                  enabled:
+                    default: false
+                    required: false
+                    type: bool
+          scenarios:
+            elements: dict
+            required: true
+            type: list
+            options:
+              id:
+                choices: {{ awx_scenario_faults_count_map.keys() }}
+                required: true
+                type: int
+      awx_experiments:
+        required: false
+        type: dict
+        options:
+          agent:
+            required: false
+            type: dict
+            options:
+              version:
+                required: true
+                type: str
+          runners:
+            required: true
+            type: dict
+            options:
+              kubeconfigs:
+                elements: str
+                required: true
+                type: list
+          storage:
+            required: false
+            type: dict
+            options:
+              local:
+                required: false
+                type: dict
+                options:
+                  directory:
+                    required: true
+                    type: str
+              s3:
+                required: false
+                type: dict
+                options:
+                  bucket:
+                    required: true
+                    type: str
+                  directory:
+                    required: false
+                    type: str
+                  endpoint:
+                    required: true
+                    type: str
+          trials:
+            required: false
+            type: int
+          workflow:
+            choices: {{ awx_workflow_template_suffixes.keys() }}
+            required: false
+            type: str

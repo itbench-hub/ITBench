@@ -1,0 +1,128 @@
+---
+# Note: Since Prometheus only configures the authentication for Remote Write
+#       via Kubernetes Secret, the Clickhouse credential has to be replicated
+#       in the Prometheus namespace.
+
+- name: Redeploy Clickhouse credential to Prometheus namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: clickhouse-remote-write-credentials
+        namespace: |-
+          {{
+            (tools_cluster.platform == "kubernetes") |
+            ansible.builtin.ternary(
+              tools_managers.prometheus.kubernetes.namespace,
+              tools_managers.prometheus.openshift.namespace
+            )
+          }}
+      type: Opaque
+      stringData:
+        password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
+        username: "{{ tools_clickhouse_username }}"
+    state: present
+  register: tools_clickhouse_write_secret
+
+- name: Update Prometheus on Kubernetes to use remote write
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Update Prometheus to use Clickhouse as Remote Access
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.prometheus.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.prometheus.helm.chart.version }}"
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.prometheus.helm.release.name }}"
+        release_namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
+        release_state: present
+        reset_values: false
+        reuse_values: true
+        timeout: 10m0s
+        values:
+          prometheus:
+            prometheusSpec:
+              remoteWrite:
+                - url: "http://{{ tools_clickhouse_endpoint.prometheus }}/write"
+                  basicAuth:
+                    password:
+                      name: "{{ tools_clickhouse_write_secret.result.metadata.name }}"
+                      key: password
+                    username:
+                      name: "{{ tools_clickhouse_write_secret.result.metadata.name }}"
+                      key: username
+                  queueConfig:
+                    maxSamplesPerSend: 5000
+                    batchSendDeadline: 10s
+        wait: true
+
+- name: Update Prometheus on OpenShift to use remote write
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Retrieve User Workload config map
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: ConfigMap
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        name: user-workload-monitoring-config
+        namespace: "{{ tools_managers.prometheus.openshift.namespace }}"
+      register: tools_openshift_prometheus_configmap
+
+    - name: Validate that config map was retrieved
+      ansible.builtin.assert:
+        that:
+          - tools_openshift_prometheus_configmap.api_found
+          - tools_openshift_prometheus_configmap.resources | ansible.builtin.length == 1
+        fail_msg: Unable to find config map. Please verify that user defined workload Prometheus is enabled.
+        success_msg: Found config map.
+
+    - name: Patch configmap with remote write configuration
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: user-workload-monitoring-config
+          namespace: "{{ tools_managers.prometheus.openshift.namespace }}"
+          data:
+            config.yaml: |
+              {{
+                tools_openshift_prometheus_configmap.resources[0].data["config.yaml"] |
+                ansible.builtin.default("{}") |
+                ansible.builtin.from_yaml |
+                ansible.builtin.combine(
+                  {
+                    "prometheus":
+                      {
+                        "remoteWrite":
+                          [
+                            {
+
+                              "basicAuth": {
+                                "password": {
+                                  "key": "password",
+                                  "name": tools_clickhouse_write_secret.result.metadata.name
+                                },
+                                "username": {
+                                  "key": "username",
+                                  "name": tools_clickhouse_write_secret.result.metadata.name
+                                }
+                              },
+                              "queueConfig": {
+                                "batchSendDeadline": "10s",
+                                "maxSamplesPerSend": 5000
+                              },
+                              "url": "http://" ~ tools_clickhouse_endpoint.prometheus ~ "/write"
+                            }
+                          ]
+                      }
+                  },
+                  recursive=true
+                ) |
+                ansible.builtin.to_nice_yaml(indent=2)
+              }}
+        state: patched

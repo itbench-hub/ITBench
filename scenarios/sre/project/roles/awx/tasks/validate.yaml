@@ -1,0 +1,76 @@
+---
+- name: Validate arguments for configuration tasks
+  tags:
+    - configure_awx
+  block:
+    - name: Validate that configuration was provided
+      ansible.builtin.assert:
+        that:
+          - awx_configuration is defined
+          - awx_experiments is defined
+        fail_msg: Configuration arguments not provided. Please provide argument.
+        success_msg: Configuration arguments provided.
+
+    - name: Validate that at least one runner is defined
+      ansible.builtin.assert:
+        that:
+          - awx_experiments.runners | ansible.builtin.length > 0
+        fail_msg: No runners are defined. Please define at least one runner.
+        success_msg: "{{ awx_experiments.runners | ansible.builtin.length }} runners defined."
+
+    - name: Validate that every runner kubeconfig exists
+      ansible.builtin.assert:
+        that:
+          - (kubeconfig | ansible.builtin.expanduser) is ansible.builtin.file
+        fail_msg: Kubeconfig not found at given path. Please provide correct file path.
+        success_msg: Kubeconfig found.
+      loop: "{{ awx_experiments.runners.kubeconfigs }}"
+      loop_control:
+        label: kubeconfig/{{ kubeconfig | ansible.builtin.basename }}
+        loop_var: kubeconfig
+
+    - name: Validate that ITBench Repository private key exists
+      ansible.builtin.assert:
+        that:
+          - (awx_configuration.github.itbench.ssh.private_key_path | ansible.builtin.expanduser) is ansible.builtin.file
+        fail_msg: Private key not found at given path. Please provide correct file path.
+        success_msg: Private key found.
+      when:
+        - awx_configuration.github.itbench.ssh is defined
+
+    - name: Validate that LLM Agent Repository private key exists
+      ansible.builtin.assert:
+        that:
+          - (awx_configuration.github.agent.ssh.private_key_path | ansible.builtin.expanduser) is ansible.builtin.file
+        fail_msg: Private key not found at given path. Please provide correct file path.
+        success_msg: Private key found.
+      when:
+        - awx_configuration.github.agent.ssh is defined
+
+    - name: Validate that at least one scenario is defined
+      ansible.builtin.assert:
+        that:
+          - awx_configuration.scenarios | ansible.builtin.length > 0
+        fail_msg: No scenarios are defined. Please define at least one scenario.
+        success_msg: "{{ awx_configuration.scenarios | ansible.builtin.length }} scenarios defined."
+
+- name: Validate arguments for launch tasks
+  tags:
+    - launch_workflows
+  block:
+    - name: Validate that configuration was provided
+      ansible.builtin.assert:
+        that:
+          - awx_experiments is defined
+          - awx_experiments.agent is defined
+          - awx_experiments.trials is defined
+          - awx_experiments.workflow is defined
+        fail_msg: Configuration arguments not provided. Please provide argument.
+        success_msg: Configuration arguments provided.
+
+    - name: Validate that at least one trial is defined
+      ansible.builtin.assert:
+        that:
+          - awx_experiments.trials > 0
+        fail_msg: Invalid number of trials configured. Please set the number of trials to greater or equal to 1.
+        success_msg: Trials configured correctly.

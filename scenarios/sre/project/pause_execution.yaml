@@ -1,0 +1,20 @@
+---
+- name: Pause pipeline execution
+  hosts:
+    - localhost
+  tasks:
+    - name: Pausing for atleast two minutes
+      ansible.builtin.pause:
+        seconds: |-
+          {{
+            (
+              (
+                duration_in_minutes |
+                ansible.builtin.default(2)
+              ) |
+              ansible.builtin.int
+            ) *
+            60
+          }}
+      tags:
+        - pause

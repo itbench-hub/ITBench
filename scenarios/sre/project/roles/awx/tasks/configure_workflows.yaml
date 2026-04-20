@@ -1,0 +1,154 @@
+---
+- name: Load scenario library index map
+  ansible.builtin.set_fact:
+    awx_library_map: |-
+      {{
+        lookup('ansible.builtin.file', 'files/library/map.json') |
+        ansible.builtin.from_json
+      }}
+
+- name: Generate workflow configuration for each scenario
+  ansible.builtin.set_fact:
+    awx_workflow_scenario_configurations: |-
+      {{
+        (
+          awx_workflow_scenario_configurations |
+          ansible.builtin.default([])
+        ) +
+        [
+          {
+            "fault_count": awx_library_map[(scenario.id | ansible.builtin.string)].faultCount,
+            "node_credentials": (
+              lookup("ansible.builtin.template", "templates/awx/workflows/node_credentials.j2") |
+              ansible.builtin.from_yaml
+            ),
+            "runner_id": kubeconfig_index + 1,
+            "scenario_id": scenario.id
+          }
+        ]
+      }}
+  loop: "{{ awx_configuration.scenarios }}"
+  loop_control:
+    index_var: scenario_index
+    label: scenario/{{ scenario.id }}
+    loop_var: scenario
+  vars:
+    kubeconfig_index: "{{ scenario_index % (awx_experiments.runners.kubeconfigs | ansible.builtin.length) }}"
+
+- name: Asynchronously create scenario execution workflows
+  block:
+    - name: Create all scenario execution workflows
+      awx.awx.workflow_job_template:
+        ask_variables_on_launch: true
+        controller_host: "{{ awx_controller_host }}"
+        controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+        controller_username: admin
+        extra_vars:
+          scenario_id: "{{ workflow_configuration[1].scenario_id }}"
+        inventory: ITBench
+        name: Scenario-{{ workflow_configuration[1].scenario_id }}-{{ workflow_configuration[0].suffix }}
+        request_timeout: 120
+        state: present
+        workflow_nodes: |-
+          {{
+            lookup("ansible.builtin.template", "templates/awx/workflows/nodes/scenario_execution.j2") |
+            ansible.builtin.from_yaml
+          }}
+      loop: "{{ workflow_types | product(awx_workflow_scenario_configurations) }}"
+      loop_control:
+        label: workflowjobtemplate/Scenario-{{ workflow_configuration[1].scenario_id }}-{{ workflow_configuration[0].suffix }}
+        loop_var: workflow_configuration
+      vars:
+        workflow_types:
+          - is_agent_workflow: false
+            is_leaderboard_workflow: false
+            suffix: "{{ awx_workflow_template_suffixes.data }}"
+          - is_agent_workflow: true
+            is_leaderboard_workflow: false
+            suffix: "{{ awx_workflow_template_suffixes.full }}"
+          - is_agent_workflow: false
+            is_leaderboard_workflow: true
+            suffix: "{{ awx_workflow_template_suffixes.start }}"
+          - is_agent_workflow: false
+            is_leaderboard_workflow: true
+            suffix: "{{ awx_workflow_template_suffixes.stop }}"
+      async: 1200
+      poll: 0
+      register: awx_create_execution_workflow_template_async
+
+    - name: Wait for all workflows to be created
+      ansible.builtin.async_status:
+        jid: "{{ create_task.ansible_job_id }}"
+      loop: "{{ awx_create_execution_workflow_template_async.results }}"
+      loop_control:
+        label: job/{{ create_task.ansible_job_id }}
+        loop_var: create_task
+      register: awx_create_execution_workflow_template_job
+      until: awx_create_execution_workflow_template_job.finished
+      retries: 60
+      delay: 60
+  always:
+    - name: Clean up asynchronous create jobs
+      ansible.builtin.async_status:
+        mode: cleanup
+        jid: "{{ create_task.ansible_job_id }}"
+      loop: "{{ awx_create_execution_workflow_template_async.results }}"
+      loop_control:
+        label: job/{{ create_task.ansible_job_id }}
+        loop_var: create_task
+
+- name: Asynchronously create scenario orchestration workflows
+  block:
+    - name: Create all scenario orchestration workflows
+      awx.awx.workflow_job_template:
+        ask_variables_on_launch: true
+        controller_host: "{{ awx_controller_host }}"
+        controller_password: "{{ awx_controller_password }}" # pragma: allowlist secret
+        controller_username: admin
+        inventory: ITBench
+        name: "{{ template_name }}"
+        request_timeout: 120
+        state: present
+        workflow_nodes: |-
+          {{
+            lookup("ansible.builtin.template", "templates/awx/workflows/nodes/scenario_orchestration.j2") |
+            ansible.builtin.from_yaml
+          }}
+      loop: |-
+        {{
+          awx_workflow_template_suffixes.values() |
+          product(
+            awx_workflow_scenario_configurations |
+            ansible.builtin.groupby("runner_id") |
+            map("list")
+          )
+        }}
+      loop_control:
+        label: workflowjobtemplate/{{ template_name }}
+        loop_var: workflow_configuration
+      vars:
+        template_name: Cluster-{{ workflow_configuration[1][0] }}-{{ workflow_configuration[0] }}
+      async: 1200
+      poll: 0
+      register: awx_create_orchestration_workflow_template_async
+
+    - name: Wait for all workflows to be created
+      ansible.builtin.async_status:
+        jid: "{{ create_task.ansible_job_id }}"
+      loop: "{{ awx_create_orchestration_workflow_template_async.results }}"
+      loop_control:
+        label: job/{{ create_task.ansible_job_id }}
+        loop_var: create_task
+      register: awx_create_orchestration_workflow_template_job
+      until: awx_create_orchestration_workflow_template_job.finished
+      retries: 60
+      delay: 60
+  always:
+    - name: Clean up asynchronous create jobs
+      ansible.builtin.async_status:
+        mode: cleanup
+        jid: "{{ create_task.ansible_job_id }}"
+      loop: "{{ awx_create_orchestration_workflow_template_async.results }}"
+      loop_control:
+        label: job/{{ create_task.ansible_job_id }}
+        loop_var: create_task
