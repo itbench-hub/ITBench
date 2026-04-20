@@ -10,13 +10,16 @@ ansible:
     args:
       ansible_playbook:
         - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../../inventory
+        - --tags=install_tools,untagged
   playbooks:
+    cleanup: cleanup.yml
     converge: converge.yml
     verify: verify.yml
 
 scenario:
-  name: external_endpoints
+  name: install_finops
   test_sequence:
     - syntax
     - converge
     - verify
+    - cleanup

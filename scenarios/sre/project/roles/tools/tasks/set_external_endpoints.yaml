@@ -43,7 +43,7 @@
 - name: Extract Kubernetes Gateway address
   when:
     - tools_cluster.platform == "kubernetes"
-    - tools_cluster.provider != "kind"
+    - (tools_cluster.provider != "kind") or (tools_cluster.provider == "kind" and ansible_system == "Linux")
   block:
     - name: Extract ip address information
       ansible.builtin.set_fact:
@@ -58,52 +58,32 @@
         - tools_istio_gateway.resources[0].status.addresses[0].type == "Hostname"
 
 - name: Extract localhost address from container runtime
+  vars:
+    istio_gateway_service:
+      name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}-istio"
+      namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
   when:
-    - tools_cluster.provider == "kind"
+    - tools_cluster.provider == "kind" and ansible_system == "Darwin"
   block:
-    - name: Import variable setting tasks
-      ansible.builtin.import_tasks:
-        file: set_load_balancer_container.yaml
-
-    - name: Inspect container for network settings
-      ansible.builtin.command:
-        argv:
-          - "{{ tools_container_info.runtime }}"
-          - inspect
-          - "{{ tools_container_info.id }}"
-      changed_when:
-        - false
-      register: tools_inspect_result
-
-    - name: Parse container host port
-      ansible.builtin.set_fact:
-        tools_load_balancer_host_ports: |-
-          {{
-            (
-              (
-                tools_inspect_result.stdout |
-                ansible.builtin.from_json |
-                ansible.builtin.first
-              )["NetworkSettings"]["Ports"]["80/tcp"]
-            ) |
-            map(attribute="HostPort")
-          }}
-
-    - name: Validate that there is only one host port
-      ansible.builtin.assert:
-        that:
-          - tools_load_balancer_host_ports | ansible.builtin.length > 0
-        fail_msg: No host ports discovered.
-        success_msg: Host port(s) discovered.
+    - name: Fail playbook for `invalid network configuration` error
+      ansible.builtin.fail:
+        msg: "Network settings for cloud provider kind have not been provided."
+      when:
+        - tools_network_configuration is undefined
+        - tools_network_configuration.cloud_provider_kind is undefined
+        - tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace] is undefined
+        - tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name] is undefined
 
     - name: Create localhost address based on service provider
       ansible.builtin.set_fact:
-        tools_service_provider_address: http://localhost:{{ tools_load_balancer_host_ports[0] }}
+        tools_gateway_http_address: http://localhost:{{ host_port }}
+      vars:
+        host_port: "{{ tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name]['host_port'] }}"
 
 - name: Validate that address has been parsed
   ansible.builtin.assert:
     that:
-      - tools_service_provider_address is defined or tools_gateway_http_address is defined
+      - tools_gateway_http_address is defined
     fail_msg: External address could not be determined.
     success_msg: External address determined.
 

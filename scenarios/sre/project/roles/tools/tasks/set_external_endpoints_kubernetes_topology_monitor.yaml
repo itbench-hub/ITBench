@@ -23,15 +23,7 @@
     - name: Create Kubernetes Topology Monitor external endpoint
       ansible.builtin.set_fact:
         tools_kubernetes_topology_monitor_endpoint:
-          host: |-
-            {{
-              (
-                tools_service_provider_address |
-                ansible.builtin.default(tools_gateway_http_address) |
-                ansible.builtin.default("")
-              ) +
-              tools_kubernetes_topology_monitor_http_route.resources[0].rules[0].matches[0].path.value
-            }}
+          host: "{{ tools_gateway_http_address + tools_kubernetes_topology_monitor_http_route.resources[0].rules[0].matches[0].path.value }}"
           paths:
             - /
 
