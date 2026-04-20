@@ -1,0 +1,59 @@
+---
+alerts:
+  application:
+    - KubePodNotReady
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+    type: object
+description: This fault injects a node selector for an nonexistent node into a designated Kubernetes workload.
+expectation: The faulted pod(s) will enter the `Pending` state. The workload will become unable to function.
+name: Nonexistent Kubernetes Workload Node
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/architecture/nodes/
+  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+  - https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+  - https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{
+            args.kubernetesObject.metadata.name }}
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{
+            args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and replace the node selector with the correct value.
+tags:
+  - Deployment
+  - Performance
