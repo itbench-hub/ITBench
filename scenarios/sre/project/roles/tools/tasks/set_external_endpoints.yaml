@@ -43,19 +43,19 @@
 - name: Extract Kubernetes Gateway address
   when:
     - tools_cluster.platform == "kubernetes"
-    - (tools_cluster.provider != "kind") or (tools_cluster.provider == "kind" and ansible_system == "Linux")
+    - (tools_cluster.provider != "kind") or (tools_cluster.provider == "kind" and ansible_facts["system"] == "Linux")
   block:
-    - name: Extract ip address information
-      ansible.builtin.set_fact:
-        tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}:80
-      when:
-        - tools_istio_gateway.resources[0].status.addresses[0].type == "IPAddress"
-
     - name: Extract hostname address information
       ansible.builtin.set_fact:
         tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}
       when:
         - tools_istio_gateway.resources[0].status.addresses[0].type == "Hostname"
+
+    - name: Extract ip address information
+      ansible.builtin.set_fact:
+        tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}:80
+      when:
+        - tools_istio_gateway.resources[0].status.addresses[0].type == "IPAddress"
 
 - name: Extract localhost address from container runtime
   vars:
@@ -63,7 +63,7 @@
       name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}-istio"
       namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
   when:
-    - tools_cluster.provider == "kind" and ansible_system == "Darwin"
+    - tools_cluster.provider == "kind" and ansible_facts["system"] == "Darwin"
   block:
     - name: Fail playbook for `invalid network configuration` error
       ansible.builtin.fail:
@@ -76,9 +76,9 @@
 
     - name: Create localhost address based on service provider
       ansible.builtin.set_fact:
-        tools_gateway_http_address: http://localhost:{{ host_port }}
+        tools_gateway_http_address: http://localhost:{{ service.host_port }}
       vars:
-        host_port: "{{ tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name]['host_port'] }}"
+        service: "{{ tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name] }}"
 
 - name: Validate that address has been parsed
   ansible.builtin.assert:
