@@ -27,11 +27,37 @@
           platform: "{{ cluster_platform }}"
           provider: "{{ cluster_provider }}"
 
-    - name: Display endpoints
+    - name: Display endpoint(s) for {{ service.name }}
       ansible.builtin.debug:
         msg:
-          - "Clickhouse: {{ tools_clickhouse_endpoint.host | ansible.builtin.default('N/A') }}"
-          - "Jaeger: {{ tools_jaeger_endpoint.host | ansible.builtin.default('N/A') }}"
-          - "Kubernetes Topology Monitor: {{ tools_kubernetes_topology_monitor_endpoint.host | ansible.builtin.default('N/A') }}"
-          - "OpenCost: {{ tools_opencost_endpoint.host | ansible.builtin.default('N/A') }}"
-          - "Prometheus: {{ tools_prometheus_endpoint.host | ansible.builtin.default('N/A') }}"
+          - |-
+            {{
+              [
+                service.name,
+                (
+                  (service.endpoint.host is defined) |
+                  ansible.builtin.ternary(
+                    (
+                      [service.endpoint.host] |
+                      product(service.endpoint.paths) |
+                      map("ansible.builtin.join") |
+                      ansible.builtin.join(", ")
+                    ),
+                    "N/A"
+                  )
+                )
+              ] |
+              ansible.builtin.join(": ")
+            }}
+      loop:
+        - name: Clickhouse
+          endpoint: "{{ tools_clickhouse_endpoint | ansible.builtin.default({}) }}"
+        - name: Jaeger
+          endpoint: "{{ tools_jaeger_endpoint | ansible.builtin.default({}) }}"
+        - name: OpenCost
+          endpoint: "{{ tools_opencost_endpoint | ansible.builtin.default({}) }}"
+        - name: Prometheus
+          endpoint: "{{ tools_prometheus_endpoint | ansible.builtin.default({}) }}"
+      loop_control:
+        label: service/{{ service.name }}
+        loop_var: service
