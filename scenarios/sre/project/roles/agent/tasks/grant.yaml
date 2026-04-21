@@ -213,7 +213,7 @@
     mode: "0644"
     src: "{{ agent_temporary_kubeconfig.path }}"
   when:
-    - agent_storage.local is defined
+    - agent_storage.local is ansible.builtin.defined
 
 - name: Upload restricted kubeconfig to S3 bucket
   amazon.aws.s3_object:
@@ -223,7 +223,7 @@
     src: "{{ agent_temporary_kubeconfig.path }}"
     mode: put
   when:
-    - agent_storage.s3 is defined
+    - agent_storage.s3 is ansible.builtin.defined
 
 - name: Delete the temporary kubeconfig
   ansible.builtin.file:

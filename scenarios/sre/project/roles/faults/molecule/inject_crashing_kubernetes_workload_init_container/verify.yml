@@ -15,7 +15,7 @@
     - name: Validate that init container was added
       ansible.builtin.assert:
         that:
-          - faults_deployment.resources[0].spec.template.spec.initContainers is defined
+          - faults_deployment.resources[0].spec.template.spec.initContainers is ansible.builtin.defined
           - faults_deployment.resources[0].spec.template.spec.initContainers | length > 0
           - faults_deployment.resources[0].spec.template.spec.initContainers[0].name == "worker"
         fail_msg: Init container was not added to the workload. Fault injection failed.
@@ -34,15 +34,15 @@
       ansible.builtin.assert:
         that:
           - faults_configmap.resources | length == 1
-          - faults_configmap.resources[0].data.config is defined
-          - faults_configmap.resources[0].data.script is defined
+          - faults_configmap.resources[0].data.config is ansible.builtin.defined
+          - faults_configmap.resources[0].data.script is ansible.builtin.defined
         fail_msg: ConfigMap was not created. Fault injection failed.
         success_msg: ConfigMap was successfully created.
 
     - name: Validate that volumes were added
       ansible.builtin.assert:
         that:
-          - faults_deployment.resources[0].spec.template.spec.volumes is defined
+          - faults_deployment.resources[0].spec.template.spec.volumes is ansible.builtin.defined
           - faults_deployment.resources[0].spec.template.spec.volumes | length >= 2
         fail_msg: Volumes were not added to the workload. Fault injection failed.
         success_msg: Volumes were successfully added to the workload.

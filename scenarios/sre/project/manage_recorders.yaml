@@ -32,9 +32,9 @@
           vars:
             template_path: "{{ playbook_dir }}/templates/group_variables/storage.j2"
           when:
-            - scenario_id is defined
-            - storage is defined
-            - storage_overrides is defined
+            - scenario_id is ansible.builtin.defined
+            - storage is ansible.builtin.defined
+            - storage_overrides is ansible.builtin.defined
 
         - name: Create directory for local storage export
           ansible.builtin.file:
@@ -42,13 +42,13 @@
             path: "{{ storage.local.directory | ansible.builtin.default('/tmp') }}"
             state: directory
           when:
-            - storage.local is defined
+            - storage.local is ansible.builtin.defined
   tasks:
     - name: Import role variables from scenario
       tags:
         - install_recorders
       when:
-        - scenario_id is defined
+        - scenario_id is ansible.builtin.defined
       block:
         - name: Import scenarios role
           ansible.builtin.import_role:
@@ -66,7 +66,7 @@
       tags:
         - install_recorders
       when:
-        - scenario_id is undefined
+        - scenario_id is ansible.builtin.undefined
       block:
         - name: Create recorders installation variable
           ansible.builtin.set_fact:
@@ -82,7 +82,7 @@
       tags:
         - uninstall_recorders
       when:
-        - storage is defined
+        - storage is ansible.builtin.defined
       block:
         - name: Create recorders uninstallation variable
           ansible.builtin.set_fact:

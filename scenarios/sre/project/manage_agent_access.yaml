@@ -23,9 +23,9 @@
           vars:
             template_path: "{{ playbook_dir }}/templates/group_variables/storage.j2"
           when:
-            - scenario_id is defined
-            - storage is defined
-            - storage_overrides is defined
+            - scenario_id is ansible.builtin.defined
+            - storage is ansible.builtin.defined
+            - storage_overrides is ansible.builtin.defined
 
         - name: Create directory for local storage export
           ansible.builtin.file:
@@ -33,13 +33,13 @@
             path: "{{ storage.local.directory | ansible.builtin.default('/tmp') }}"
             state: directory
           when:
-            - storage.local is defined
+            - storage.local is ansible.builtin.defined
   tasks:
     - name: Import role variables from scenario
       tags:
         - grant_access
       when:
-        - scenario_id is defined
+        - scenario_id is ansible.builtin.defined
       block:
         - name: Import scenarios role
           ansible.builtin.import_role:
@@ -76,7 +76,7 @@
           ansible.builtin.set_fact:
             agent_storage: "{{ storage }}"
           when:
-            - storage is defined
+            - storage is ansible.builtin.defined
 
     - name: Import agent role
       ansible.builtin.import_role:
