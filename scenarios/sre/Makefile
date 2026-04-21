@@ -21,6 +21,7 @@ group-vars: ## Generates the group variables
 .PHONY: generate-docs
 generate-docs: ## Generates library indexes, schemas, and other related documentation
 	$(UV) run ansible-playbook -i inventory project/manage_documentation.yaml --tags "generate_docs"
+	$(UV) run ansible-lint project/roles/documentation/files --fix
 
 .PHONY: scaffold-fault
 scaffold-fault: ## Collect user input and create skeleton for fault entry

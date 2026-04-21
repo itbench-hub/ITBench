@@ -236,17 +236,81 @@
     dest: "{{ [role_path, 'files', 'library', 'scenarios', 'index.json'] | ansible.builtin.path_join }}"
     mode: "0644"
 
-- name: Generate Scenarios README
+- name: Generate scenario library readme
   ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.template', 'templates/readmes/scenarios.j2') }}"
-    dest: "{{ playbook_dir }}/../docs/scenarios.md"
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/readmes/index.j2') }}"
+    dest: "{{ playbook_dir }}/../../../documentation/library/scenarios/README.md"
     mode: "0644"
   vars:
-    documentation_contents: |-
+    scenarios: |-
       {{
         lookup("ansible.builtin.file", "files/library/scenarios/index.json") |
         ansible.builtin.from_json
       }}
+    statistics:
+      application:
+        book_info: |-
+          {{
+            documentation_scenarios |
+            map(attribute="environment.applications") |
+            ansible.builtin.flatten |
+            ansible.builtin.selectattr("id", "==", "book-info") |
+            ansible.builtin.length
+          }}
+        otel_demo: |-
+          {{
+            documentation_scenarios |
+            map(attribute="environment.applications") |
+            ansible.builtin.flatten |
+            ansible.builtin.selectattr("id", "==", "opentelemetry-demo") |
+            ansible.builtin.length
+          }}
+      category:
+        finops: |-
+          {{
+            documentation_scenarios |
+            ansible.builtin.selectattr("category", "==", "finops") |
+            ansible.builtin.length
+          }}
+        sre: |-
+          {{
+            documentation_scenarios |
+            ansible.builtin.selectattr("category", "==", "sre") |
+            ansible.builtin.length
+          }}
+      complexity:
+        high: |-
+          {{
+            documentation_scenarios |
+            ansible.builtin.selectattr("complexity", "==", "high") |
+            ansible.builtin.length
+          }}
+        low: |-
+          {{
+            documentation_scenarios |
+            ansible.builtin.selectattr("complexity", "==", "low") |
+            ansible.builtin.length
+          }}
+        medium: |-
+          {{
+            documentation_scenarios |
+            ansible.builtin.selectattr("complexity", "==", "medium") |
+            ansible.builtin.length
+          }}
+
+- name: Generate scenario library index readmes
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/readmes/scenario.j2') }}"
+    dest: "{{ playbook_dir }}/../../../documentation/library/scenarios/{{ scenario.category }}/{{ scenario.id }}.md"
+    mode: "0644"
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/scenarios/index.json") |
+      ansible.builtin.from_json
+    }}
+  loop_control:
+    label: scenario/{{ scenario.id }}
+    loop_var: scenario
 
 - name: Delete the temporary directory
   ansible.builtin.file:

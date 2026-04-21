@@ -90,10 +90,13 @@ ITBench uses [Ansible](https://docs.ansible.com/ansible/latest/getting_started/i
 | [tools.yaml](../../scenarios/sre/inventory/group_vars/environment/tools.yaml.example) | Configures the tool stack |
 | [storage.yaml](../../scenarios/sre/inventory/group_vars/all/storage.yaml.example) | Configures the storage options for data files |
 
-> [!NOTE]
-> Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
+>[!NOTE]
+>Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
 
 This document functions as `quick-start` guide to running scenarios. Thus, it will not go through all the options available to develop them. For more infomation, please consult the `developer` section of the documentation.
+
+>[!NOTE]
+>See [scenario library](../library/scenarios/README.md) for a full comprehensive list of runnable scenarios.
 
 1. Create and configure the group variables.
 ```shell
@@ -130,11 +133,11 @@ Once a scenario is injected, one can begin runnning an agent to pull information
 SCENARIO_NUMBER=1 make stop-scenario
 ```
 
-### Observing Scenario Impact
+## Observing Scenario Impact
 
 Every fault in ITBench causes a noticeable effect on the application it has been injected to which can be obsevered through observability data.
 
-#### Alerts & Metrics
+### Alerts & Metrics
 
 An **alert** is a notification that some threshold (set by the user) has been surpased. These thresholds are defined using **metrics**. When an alert is active, the engineers are notified that something is wrong with an application and that they need to begin invetigating.
 
@@ -147,7 +150,7 @@ make display-endpoints
 
 2. Enter the respective Prometheus address into the browser (`/alerts` for alerts dashboard and `/query` for the query dashboard)
 
-#### Traces
+### Traces
 
 A **trace** is a debug tool that - typically - shows the progress of a request as it moves through an application. This information allows engineers to see which services are failing to handle the request.
 
@@ -160,7 +163,7 @@ make display-endpoints
 
 2. Enter the Jaeger address into the browser
 
-#### Logs
+### Logs
 
 A **log** is a tool that show some message. These messages are crafted by the application developer(s) for a variety of purposes (following execution, debuging, etc.). Logs tend to be volumous in nature. Thus, normally only a subset of all possible displayed logs are captured for performance and storage reasons.
 
@@ -173,7 +176,7 @@ make display-endpoints
 
 2. Enter the Clickhouse address into the browser
 
-#### Financial Metrics
+### Financial Metrics
 
 These metrics are more of a specification of a type of metric, [discussed earlier](#alerts--metrics).
 
