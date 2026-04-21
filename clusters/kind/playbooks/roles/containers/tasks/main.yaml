@@ -5,7 +5,7 @@
 
 - name: List docker containers
   when:
-    - containers_docker_path is defined
+    - containers_docker_path is ansible.builtin.defined
   block:
     - name: Retrieve cloud provider kind containers from Docker
       ansible.builtin.command:
@@ -76,7 +76,7 @@
       changed_when:
         - false
       when:
-        - containers_docker_cpk_containers is defined
+        - containers_docker_cpk_containers is ansible.builtin.defined
         - containers_docker_cpk_containers.keys() | ansible.builtin.length > 0
 
     - name: Parse cloud provider kind host ports
@@ -115,11 +115,11 @@
         kubernetes_service: "{{ containers_docker_cpk_containers[container.Id].service }}"
         load_balancer_service_port: "{{ container['NetworkSettings']['Ports'] }}"
       when:
-        - load_balancer_service_port["80/tcp"] is defined
+        - load_balancer_service_port["80/tcp"] is ansible.builtin.defined
 
 - name: List podman containers
   when:
-    - containers_podman_path is defined
+    - containers_podman_path is ansible.builtin.defined
   block:
     - name: Retrieve cloud provider kind containers from podman
       ansible.builtin.command:

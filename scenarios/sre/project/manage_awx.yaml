@@ -49,7 +49,7 @@
         - name: Validate that workflow type was provided
           ansible.builtin.assert:
             that:
-              - workflow_type is defined
+              - workflow_type is ansible.builtin.defined
             fail_msg: Workflow type undefined. Please include this argument via the CLI.
             success_msg: Workflow type defined.
 
@@ -67,7 +67,7 @@
           ansible.builtin.set_fact:
             awx_experiments: "{{ awx_experiments | combine({'storage': storage}) }}"
           when:
-            - storage is defined
+            - storage is ansible.builtin.defined
 
     - name: Import role variables
       tags:
@@ -78,7 +78,7 @@
           ansible.builtin.set_fact:
             awx_network_configuration: "{{ network }}"
           when:
-            - network is defined
+            - network is ansible.builtin.defined
 
     - name: Import awx role
       ansible.builtin.import_role:

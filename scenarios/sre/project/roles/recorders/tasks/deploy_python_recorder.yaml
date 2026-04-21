@@ -111,7 +111,7 @@
 
 - name: Install Job for {{ python_recorder.name }}
   when:
-    - python_recorder.job.schedule is undefined
+    - python_recorder.job.schedule is ansible.builtin.undefined
   block:
     - name: Install Kubernetes Job for {{ python_recorder.name }}
       kubernetes.core.k8s:
@@ -134,7 +134,7 @@
 
 - name: Install Scheduled Jobs for {{ python_recorder.name }}
   when:
-    - python_recorder.job.schedule is defined
+    - python_recorder.job.schedule is ansible.builtin.defined
   block:
     # NOTE: Always deploy a job to begin data collection immediately.
     #       The CronJob will only begin collect according to the schedule.

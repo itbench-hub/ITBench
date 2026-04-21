@@ -20,7 +20,7 @@
 
     - name: Validate that storage is configured
       ansible.builtin.assert:
-        that: "storage.local is defined or storage.s3 is defined"
+        that: "storage.local is ansible.builtin.defined or storage.s3 is ansible.builtin.defined"
         fail_msg: Storage has not been configured. Please assign either local or s3 bucket storage.
         success_msg: Storage is configured.
   tasks:
@@ -46,7 +46,7 @@
       retries: 3
       delay: 60
       when:
-        - storage.s3 is defined
+        - storage.s3 is ansible.builtin.defined
 
     - name: Copy restricted kubeconfig into temporary directory from local directory
       ansible.builtin.copy:
@@ -54,7 +54,7 @@
         mode: "0644"
         src: "{{ storage.local.directory }}/kubeconfig"
       when:
-        - storage.local is defined
+        - storage.local is ansible.builtin.defined
 
     - name: Print agent bundle
       ansible.builtin.debug:
@@ -68,5 +68,5 @@
       vars:
         restricted_kubeconfig_exists: "{{ '/tmp/kubeconfig' is exists }}"
       when:
-        - tools_prometheus_endpoint is defined
+        - tools_prometheus_endpoint is ansible.builtin.defined
         - restricted_kubeconfig_exists

@@ -6,12 +6,12 @@
     - name: Validate that configuration was provided
       ansible.builtin.assert:
         that:
-          - awx_configuration is defined
-          - awx_experiments is defined
+          - awx_configuration is ansible.builtin.defined
+          - awx_experiments is ansible.builtin.defined
         fail_msg: Configuration arguments not provided. Please provide argument.
         success_msg: Configuration arguments provided.
 
-    - name: Validate that at least one runner is defined
+    - name: Validate that at least one runner is ansible.builtin.defined
       ansible.builtin.assert:
         that:
           - awx_experiments.runners | ansible.builtin.length > 0
@@ -36,7 +36,7 @@
         fail_msg: Private key not found at given path. Please provide correct file path.
         success_msg: Private key found.
       when:
-        - awx_configuration.github.itbench.ssh is defined
+        - awx_configuration.github.itbench.ssh is ansible.builtin.defined
 
     - name: Validate that LLM Agent Repository private key exists
       ansible.builtin.assert:
@@ -45,9 +45,9 @@
         fail_msg: Private key not found at given path. Please provide correct file path.
         success_msg: Private key found.
       when:
-        - awx_configuration.github.agent.ssh is defined
+        - awx_configuration.github.agent.ssh is ansible.builtin.defined
 
-    - name: Validate that at least one scenario is defined
+    - name: Validate that at least one scenario is ansible.builtin.defined
       ansible.builtin.assert:
         that:
           - awx_configuration.scenarios | ansible.builtin.length > 0
@@ -61,14 +61,14 @@
     - name: Validate that configuration was provided
       ansible.builtin.assert:
         that:
-          - awx_experiments is defined
-          - awx_experiments.agent is defined
-          - awx_experiments.trials is defined
-          - awx_experiments.workflow is defined
+          - awx_experiments is ansible.builtin.defined
+          - awx_experiments.agent is ansible.builtin.defined
+          - awx_experiments.trials is ansible.builtin.defined
+          - awx_experiments.workflow is ansible.builtin.defined
         fail_msg: Configuration arguments not provided. Please provide argument.
         success_msg: Configuration arguments provided.
 
-    - name: Validate that at least one trial is defined
+    - name: Validate that at least one trial is ansible.builtin.defined
       ansible.builtin.assert:
         that:
           - awx_experiments.trials > 0

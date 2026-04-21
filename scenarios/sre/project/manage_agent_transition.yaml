@@ -17,9 +17,9 @@
           vars:
             template_path: "{{ playbook_dir }}/templates/group_variables/storage.j2"
           when:
-            - scenario_id is defined
-            - storage is defined
-            - storage_overrides is defined
+            - scenario_id is ansible.builtin.defined
+            - storage is ansible.builtin.defined
+            - storage_overrides is ansible.builtin.defined
 
         - name: Create directory for local storage export
           ansible.builtin.file:
@@ -27,7 +27,7 @@
             path: "{{ storage.local.directory | ansible.builtin.default('/tmp') }}"
             state: directory
           when:
-            - storage.local is defined
+            - storage.local is ansible.builtin.defined
   tasks:
     - name: Create temporary file for transition information
       ansible.builtin.tempfile:
@@ -75,8 +75,8 @@
       tags:
         - always
       when:
-        - storage is defined
-        - transition_file is defined
+        - storage is ansible.builtin.defined
+        - transition_file is ansible.builtin.defined
       block:
         - name: Copy handover data into local directory
           ansible.builtin.copy:
@@ -84,7 +84,7 @@
             mode: "0644"
             src: "{{ transition_file.dest }}"
           when:
-            - storage.local is defined
+            - storage.local is ansible.builtin.defined
 
         - name: Upload handover data to S3 bucket
           amazon.aws.s3_object:
@@ -94,7 +94,7 @@
             src: "{{ transition_file.dest }}"
             mode: put
           when:
-            - storage.s3 is defined
+            - storage.s3 is ansible.builtin.defined
 
     - name: Delete temporary file
       ansible.builtin.file:

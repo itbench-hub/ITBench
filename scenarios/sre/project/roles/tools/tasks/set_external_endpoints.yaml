@@ -35,7 +35,7 @@
   register: tools_istio_gateway
   until:
     - tools_istio_gateway.resources | ansible.builtin.length == 1
-    - tools_istio_gateway.resources[0].status.addresses is defined
+    - tools_istio_gateway.resources[0].status.addresses is ansible.builtin.defined
     - tools_istio_gateway.resources[0].status.addresses | ansible.builtin.length > 0
   delay: 15
   retries: 20
@@ -69,10 +69,10 @@
       ansible.builtin.fail:
         msg: "Network settings for cloud provider kind have not been provided."
       when:
-        - tools_network_configuration is undefined
-        - tools_network_configuration.cloud_provider_kind is undefined
-        - tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace] is undefined
-        - tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name] is undefined
+        - tools_network_configuration is ansible.builtin.undefined
+        - tools_network_configuration.cloud_provider_kind is ansible.builtin.undefined
+        - tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace] is ansible.builtin.undefined
+        - tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name] is ansible.builtin.undefined
 
     - name: Create localhost address based on service provider
       ansible.builtin.set_fact:
@@ -84,7 +84,7 @@
   ansible.builtin.fail:
     msg: The external address for the Kubernetes Gateway could not be found.
   when:
-    - tools_gateway_http_address is undefined
+    - tools_gateway_http_address is ansible.builtin.undefined
 
 - name: Import Clickhouse variable setting tasks
   ansible.builtin.import_tasks:

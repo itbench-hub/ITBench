@@ -31,7 +31,7 @@
     - name: Validate that container command was modified
       ansible.builtin.assert:
         that:
-          - faults_deployment.resources[0].spec.template.spec.containers[0].command is defined
+          - faults_deployment.resources[0].spec.template.spec.containers[0].command is ansible.builtin.defined
           - faults_deployment.resources[0].spec.template.spec.containers[0].command | ansible.builtin.length > 0
         fail_msg: Container command not modified. Fault injection failed.
         success_msg: Container command modified.
@@ -39,7 +39,7 @@
     - name: Validate that volume mount was added
       ansible.builtin.assert:
         that:
-          - faults_deployment.resources[0].spec.template.spec.containers[0].volumeMounts is defined
+          - faults_deployment.resources[0].spec.template.spec.containers[0].volumeMounts is ansible.builtin.defined
           - faults_deployment.resources[0].spec.template.spec.containers[0].volumeMounts |
             ansible.builtin.selectattr('name', '==', 'scripts') |
             ansible.builtin.length == 1
@@ -49,7 +49,7 @@
     - name: Validate that volume was added
       ansible.builtin.assert:
         that:
-          - faults_deployment.resources[0].spec.template.spec.volumes is defined
+          - faults_deployment.resources[0].spec.template.spec.volumes is ansible.builtin.defined
           - faults_deployment.resources[0].spec.template.spec.volumes |
             ansible.builtin.selectattr('name', '==', 'scripts') |
             ansible.builtin.length == 1

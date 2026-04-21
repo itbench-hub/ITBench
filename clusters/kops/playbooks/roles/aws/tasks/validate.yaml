@@ -110,7 +110,7 @@
       vars:
         subnet_count: |-
           {{
-            (aws_configuration.vpc.nat_gateway is undefined) |
+            (aws_configuration.vpc.nat_gateway is ansible.builtin.undefined) |
             ansible.builtin.ternary(
               aws_configuration.vpc.subnets.count,
               aws_configuration.vpc.subnets.count * 2
@@ -128,7 +128,7 @@
 
     - name: Validate NAT Gateway Elastic IP configuration
       when:
-        - aws_configuration.vpc.nat_gateway is defined
+        - aws_configuration.vpc.nat_gateway is ansible.builtin.defined
       block:
         - name: Validate Elastic IP allocation id
           amazon.aws.ec2_eip_info:
