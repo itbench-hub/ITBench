@@ -49,12 +49,15 @@ resources:
 solutions:
   templates:
     - steps:
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} annotate schedule {{ args.kubernetesObject.metadata.name }} experiment.chaos-mesh.org/pause='true'
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} annotate schedule {{ args.kubernetesObject.metadata.name }}
+            experiment.chaos-mesh.org/pause='true'
           text: Annotate the schedule to pause the active experiment.
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} get {{ args.scheduleSpec.type | lower }} --selector='experiment.chaos-mesh.org/pause=true'
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} get {{ args.scheduleSpec.type | lower }}
+            --selector='experiment.chaos-mesh.org/pause=true'
           text: Retrieve the associated experiment managed by the schedule.
         - text: Delete the retrieved experiement after it has entered the `Paused` state.
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete schedule {{ args.kubernetesObject.metadata.name }} experiment.chaos-mesh.org/pause='true'
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete schedule {{ args.kubernetesObject.metadata.name }}
+            experiment.chaos-mesh.org/pause='true'
           text: Delete the schedule.
 tags:
   - Deployment
