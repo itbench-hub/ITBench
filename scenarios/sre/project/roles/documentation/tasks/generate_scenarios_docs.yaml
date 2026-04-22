@@ -311,6 +311,10 @@
   loop_control:
     label: scenario/{{ scenario.id }}
     loop_var: scenario
+  vars:
+    scenario_tags: "{{ scenario.tags | ansible.builtin.sort | ansible.builtin.join(', ') }}"
+    scenario_platforms: "{{ scenario.platforms | ansible.builtin.sort | ansible.builtin.join(', ') }}"
+    source_file_path: ../../../../scenarios/sre/project/roles/documentation/files/library/scenarios/indexes/{{ scenario.index }}.yaml
 
 - name: Delete the temporary directory
   ansible.builtin.file:

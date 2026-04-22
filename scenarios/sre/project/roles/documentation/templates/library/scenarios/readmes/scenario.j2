@@ -3,7 +3,7 @@
 
 # Scenario {{ scenario.id }}
 
-**Complexity:** `{{ scenario.complexity }}` | **Platforms:** `{{ scenario.platforms | ansible.builtin.sort | ansible.builtin.join(', ') }}` | **Tags:** `{{ scenario.tags | ansible.builtin.sort | ansible.builtin.join(', ') }}`
+| [Source]({{ source_file_path }}) | {{ scenario.complexity | ansible.builtin.capitalize }} Complexity | {{ scenario_platforms }} | {{ scenario_tags }} |
 
 ## Description
 
@@ -12,11 +12,7 @@
 ## Applications
 
 {% for application in scenario.environment.applications %}
-{% if application.id == "book-info" %}
-- [BookInfo](../../../../applications.md#istio-bookinfo)
-{% elif application.id == "opentelemetry-demo" %}
-- [OpenTelemetry Demo (Astronomy Shop)](../../../../applications.md#opentelemetry-demo-astronomy-shop)
-{% endif %}
+- [{{ documentation_applications[application.id].name }}](../../applications/{{ application.id }}.md)
 {% endfor %}
 
 {% if scenario.disruptions | ansible.builtin.length > 0 %}

@@ -121,7 +121,7 @@ SCENARIO_NUMBER=1 make start-scenario
 
 ### Running an Agent
 
-Once a scenario is injected, one can begin runnning an agent to pull information from the cluster and the various observability tools so that it can attempt to diagnose and remidiate a problem.
+Once a scenario has started, one can begin runnning an agent to pull information from the cluster and the various observability tools so that it can attempt to diagnose and remidiate a problem.
 
 >[!NOTE]
 >If you don't have an agent yet, you can use the [SRE-Agent](https://github.com/itbench-hub/itbench-sre-agent) to see how it works.
