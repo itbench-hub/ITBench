@@ -56,14 +56,51 @@
     dest: "{{ [role_path, 'files', 'library', 'waiters', 'index.json'] | ansible.builtin.path_join }}"
     mode: "0644"
 
-- name: Generate Waiters README
+- name: Generate waiter library readme
   ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.template', 'templates/readmes/waiters.j2') }}"
-    dest: "{{ playbook_dir }}/../docs/waiters.md"
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/waiters/readmes/index.j2') }}"
+    dest: "{{ playbook_dir }}/../../../documentation/library/waiters/README.md"
     mode: "0644"
   vars:
-    documentation_contents: |-
+    waiters: |-
       {{
         lookup("ansible.builtin.file", "files/library/waiters/index.json") |
         ansible.builtin.from_json
       }}
+
+- name: Generate waiter library index readmes
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/waiters/readmes/waiter.j2') }}"
+    dest: "{{ playbook_dir }}/../../../documentation/library/waiters/{{ waiter.id }}.md"
+    mode: "0644"
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/waiters/index.json") |
+      ansible.builtin.from_json
+    }}
+  loop_control:
+    label: waiter/{{ waiter.id }}
+    loop_var: waiter
+  vars:
+    waiter_platforms: "{{ waiter.platforms | ansible.builtin.sort | ansible.builtin.join(', ') }}"
+    schema_file_path: ../../../schemas/json/waiters/{{ waiter.id }}.json
+    source_file_path: ../../../scenarios/sre/project/roles/documentation/files/library/waiters/indexes/{{ waiter.index }}.yaml
+
+- name: Generate waiter library index json schemas
+  ansible.builtin.copy:
+    content: |-
+      {{
+        waiter.arguments.jsonSchema |
+        ansible.builtin.combine({"$schema": "https://json-schema.org/draft/2020-12/schema"}) |
+        ansible.builtin.to_nice_json
+      }}
+    dest: "{{ playbook_dir }}/../../../schemas/json/waiters/{{ waiter.id }}.json"
+    mode: "0644"
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/waiters/index.json") |
+      ansible.builtin.from_json
+    }}
+  loop_control:
+    label: waiter/{{ waiter.id }}
+    loop_var: waiter
