@@ -1,4 +1,4 @@
-# ITBench: Hardware Specification
+# Hardware Specification for ITBench
 
 ITBench executes its scenarios in a live environment ([Kubernetes](https://kubernetes.io/docs/concepts/overview/)). As such, one needs significant resources in order to run the benchmarks.
 
