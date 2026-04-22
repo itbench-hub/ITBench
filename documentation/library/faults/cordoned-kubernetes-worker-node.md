@@ -3,7 +3,7 @@
 
 # Cordoned Kubernetes Worker Node
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/1.yaml) | [Schema](../../../schemas/json/faults/cordoned-kubernetes-worker-node.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_cordoned_kubernetes_worker_node.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/1.yaml) | [Schema](../../../schemas/json/faults/cordoned-kubernetes-worker-node.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_cordoned_kubernetes_worker_node.yaml) | Kubernetes | Deployment, Performance |
 
 This fault places a workload on a node and prevents it from scaling by blocking all new scheduling attempts.
 

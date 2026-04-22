@@ -3,7 +3,7 @@
 
 # Nonexistent Kubernetes Workload Persistent Volume Claim
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/17.yaml) | [Schema](../../../schemas/json/faults/nonexistent-kubernetes-workload-persistent-volume-claim.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_nonexistent_kubernetes_workload_persistent_volume_claim.yaml) | Kubernetes | Deployment |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/17.yaml) | [Schema](../../../schemas/json/faults/nonexistent-kubernetes-workload-persistent-volume-claim.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_nonexistent_kubernetes_workload_persistent_volume_claim.yaml) | Kubernetes | Deployment |
 
 This fault injects a workload with a nonexistent volume.
 

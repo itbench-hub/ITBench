@@ -3,7 +3,7 @@
 
 # Scheduled Chaos Mesh Experiment
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/21.yaml) | [Schema](../../../schemas/json/faults/scheduled-chaos-mesh-experiment.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_scheduled_chaos_mesh_experiment.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/21.yaml) | [Schema](../../../schemas/json/faults/scheduled-chaos-mesh-experiment.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_scheduled_chaos_mesh_experiment.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects a Chaos Mesh experiment into the environment. The experiment is [scheduled](https://chaos-mesh.org/docs/define-scheduling-rules/) to repeated fire so that the behavior persists.
 

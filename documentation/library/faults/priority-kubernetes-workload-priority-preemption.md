@@ -3,7 +3,7 @@
 
 # Priority Kubernetes Workload Priority Preemption
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/19.yaml) | [Schema](../../../schemas/json/faults/priority-kubernetes-workload-priority-preemption.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_priority_kubernetes_workload_priority_preemption.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/19.yaml) | [Schema](../../../schemas/json/faults/priority-kubernetes-workload-priority-preemption.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_priority_kubernetes_workload_priority_preemption.yaml) | Kubernetes | Deployment, Performance |
 
 This fault causes a workload to be a lower priority than another. This causes the pod to be evicted when the higher priority workload needs more resources.
 

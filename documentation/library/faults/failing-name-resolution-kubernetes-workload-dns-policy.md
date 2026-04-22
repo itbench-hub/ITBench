@@ -3,7 +3,7 @@
 
 # Failing Name Resolution Kubernetes Workload DNS Policy
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/4.yaml) | [Schema](../../../schemas/json/faults/failing-name-resolution-kubernetes-workload-dns-policy.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_failing_name_resolution_kubernetes_workload_dns_policy.yaml) | Kubernetes | Deployment, Networking |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/4.yaml) | [Schema](../../../schemas/json/faults/failing-name-resolution-kubernetes-workload-dns-policy.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_failing_name_resolution_kubernetes_workload_dns_policy.yaml) | Kubernetes | Deployment, Networking |
 
 This fault injects an DNS policy which results in the workload being unable to resolve the name of outgoing services.
 

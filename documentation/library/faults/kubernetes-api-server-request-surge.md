@@ -3,7 +3,7 @@
 
 # Kubernetes API Server Request Surge
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/10.yaml) | [Schema](../../../schemas/json/faults/kubernetes-api-server-request-surge.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_kubernetes_api_server_request_surge.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/10.yaml) | [Schema](../../../schemas/json/faults/kubernetes-api-server-request-surge.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_kubernetes_api_server_request_surge.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects a workload which causes a surge in requests to the API server, causing performance degredation.
 

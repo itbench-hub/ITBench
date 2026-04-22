@@ -3,7 +3,7 @@
 
 # Unschedulable Kubernetes Workload Pod Anti Affinity Rule
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/25.yaml) | [Schema](../../../schemas/json/faults/unschedulable-kubernetes-workload-pod-anti-affinity-rule.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_unschedulable_kubernetes_workload_pod_anti_affinity_rule.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/25.yaml) | [Schema](../../../schemas/json/faults/unschedulable-kubernetes-workload-pod-anti-affinity-rule.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_unschedulable_kubernetes_workload_pod_anti_affinity_rule.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects an Inter-Pod Anti-Affinity which causes Kubernetes to be unable to schedule the pod.
 

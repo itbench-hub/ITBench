@@ -3,7 +3,7 @@
 
 # Insufficient Kubernetes Workload Container Resources
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/8.yaml) | [Schema](../../../schemas/json/faults/insufficient-kubernetes-workload-container-resources.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_insufficient_kubernetes_workload_container_resources.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/8.yaml) | [Schema](../../../schemas/json/faults/insufficient-kubernetes-workload-container-resources.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_insufficient_kubernetes_workload_container_resources.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects a insufficient resource configuration into a designated Kubernetes workload's container.
 

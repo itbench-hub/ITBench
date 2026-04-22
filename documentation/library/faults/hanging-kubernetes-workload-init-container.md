@@ -3,7 +3,7 @@
 
 # Hanging Kubernetes Workload Init Container
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/5.yaml) | [Schema](../../../schemas/json/faults/hanging-kubernetes-workload-init-container.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_hanging_kubernetes_workload_init_container.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/5.yaml) | [Schema](../../../schemas/json/faults/hanging-kubernetes-workload-init-container.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_hanging_kubernetes_workload_init_container.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects an init container which will hang into a workload.
 

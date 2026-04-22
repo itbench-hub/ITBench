@@ -3,7 +3,7 @@
 
 # Scaled To Zero Kubernetes Workload
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/20.yaml) | [Schema](../../../schemas/json/faults/scaled-to-zero-kubernetes-workload.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_scaled_to_zero_kubernetes_workload.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/20.yaml) | [Schema](../../../schemas/json/faults/scaled-to-zero-kubernetes-workload.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_scaled_to_zero_kubernetes_workload.yaml) | Kubernetes | Deployment, Performance |
 
 This fault scales a Kubernetes workload to 0.
 
