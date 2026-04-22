@@ -56,14 +56,51 @@
     dest: "{{ [role_path, 'files', 'library', 'applications', 'index.json'] | ansible.builtin.path_join }}"
     mode: "0644"
 
-- name: Generate applications README
+- name: Generate application library readme
   ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.template', 'templates/readmes/applications.j2') }}"
-    dest: "{{ playbook_dir }}/../docs/applications.md"
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/applications/readmes/index.j2') }}"
+    dest: "{{ playbook_dir }}/../../../documentation/library/applications/README.md"
     mode: "0644"
   vars:
-    documentation_contents: |-
+    applications: |-
       {{
         lookup("ansible.builtin.file", "files/library/applications/index.json") |
         ansible.builtin.from_json
       }}
+
+- name: Generate application library index readmes
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/applications/readmes/application.j2') }}"
+    dest: "{{ playbook_dir }}/../../../documentation/library/applications/{{ application.id }}.md"
+    mode: "0644"
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/applications/index.json") |
+      ansible.builtin.from_json
+    }}
+  loop_control:
+    label: application/{{ application.id }}
+    loop_var: application
+  vars:
+    application_platforms: "{{ application.platforms | ansible.builtin.sort | ansible.builtin.join(', ') }}"
+    schema_file_path: ../../../schemas/json/applications/{{ application.id }}.json
+    source_file_path: ../../../scenarios/sre/project/roles/documentation/files/library/applications/indexes/{{ application.index }}.yaml
+
+- name: Generate application library index json schemas
+  ansible.builtin.copy:
+    content: |-
+      {{
+        application.arguments.jsonSchema |
+        ansible.builtin.combine({"$schema": "https://json-schema.org/draft/2020-12/schema"}) |
+        ansible.builtin.to_nice_json
+      }}
+    dest: "{{ playbook_dir }}/../../../schemas/json/applications/{{ application.id }}.json"
+    mode: "0644"
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/applications/index.json") |
+      ansible.builtin.from_json
+    }}
+  loop_control:
+    label: application/{{ application.id }}
+    loop_var: application
