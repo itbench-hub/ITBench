@@ -3,7 +3,7 @@
 
 # Nonexistent Kubernetes Workload Container Image
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/15.yaml) | [Schema](../../../schemas/json/faults/nonexistent-kubernetes-workload-container-image.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_nonexistent_kubernetes_workload_container_image.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/15.yaml) | [Schema](../../../schemas/json/faults/nonexistent-kubernetes-workload-container-image.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_nonexistent_kubernetes_workload_container_image.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects an nonexistent image into a designated Kubernetes workload's container.
 

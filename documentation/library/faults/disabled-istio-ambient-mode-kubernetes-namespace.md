@@ -3,7 +3,7 @@
 
 # Disabled Istio Ambient Mode Kubernetes Namespace
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/3.yaml) | [Schema](../../../schemas/json/faults/disabled-istio-ambient-mode-kubernetes-namespace.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_disabled_istio_ambient_mode_kubernetes_namespace.yaml) | Kubernetes | Deployment, Networking |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/3.yaml) | [Schema](../../../schemas/json/faults/disabled-istio-ambient-mode-kubernetes-namespace.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_disabled_istio_ambient_mode_kubernetes_namespace.yaml) | Kubernetes | Deployment, Networking |
 
 This fault modifies a namespace, disabling it from being included in Istio's Ambient Mode service mesh.
 

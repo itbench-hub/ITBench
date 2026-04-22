@@ -3,7 +3,7 @@
 
 # Modified Target Port Kubernetes Service
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/14.yaml) | [Schema](../../../schemas/json/faults/modified-target-port-kubernetes-service.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_modified_target_port_kubernetes_service.yaml) | Kubernetes | Deployment, Networking |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/14.yaml) | [Schema](../../../schemas/json/faults/modified-target-port-kubernetes-service.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_modified_target_port_kubernetes_service.yaml) | Kubernetes | Deployment, Networking |
 
 This fault overwrites the designated target port with a different number.
 

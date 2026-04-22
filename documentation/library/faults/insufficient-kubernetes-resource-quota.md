@@ -3,7 +3,7 @@
 
 # Insufficient Kubernetes Resource Quota
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/7.yaml) | [Schema](../../../schemas/json/faults/insufficient-kubernetes-resource-quota.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_insufficient_kubernetes_resource_quota.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/7.yaml) | [Schema](../../../schemas/json/faults/insufficient-kubernetes-resource-quota.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_insufficient_kubernetes_resource_quota.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects a resource quota with hard resource requirements that are underprovisioned for the namespace.
 

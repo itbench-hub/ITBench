@@ -3,7 +3,7 @@
 
 # Nonexistent Kubernetes Workload Node
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/16.yaml) | [Schema](../../../schemas/json/faults/nonexistent-kubernetes-workload-node.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_nonexistent_kubernetes_workload_node.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/16.yaml) | [Schema](../../../schemas/json/faults/nonexistent-kubernetes-workload-node.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_nonexistent_kubernetes_workload_node.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects a node selector for an nonexistent node into a designated Kubernetes workload.
 

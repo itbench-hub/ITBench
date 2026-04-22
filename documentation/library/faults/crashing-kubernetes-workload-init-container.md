@@ -3,7 +3,7 @@
 
 # Crashing Kubernetes Workload Init Container
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/2.yaml) | [Schema](../../../schemas/json/faults/crashing-kubernetes-workload-init-container.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_crashing_kubernetes_workload_init_container.yaml) | Kubernetes | Code, Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/2.yaml) | [Schema](../../../schemas/json/faults/crashing-kubernetes-workload-init-container.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_crashing_kubernetes_workload_init_container.yaml) | Kubernetes | Code, Deployment, Performance |
 
 This fault injects an init container that crashes due to a bad script.
 

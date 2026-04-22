@@ -3,7 +3,7 @@
 
 # Traffic Denying Istio Gateway Authorization Policy
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/23.yaml) | [Schema](../../../schemas/json/faults/traffic-denying-istio-gateway-authorization-policy.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_traffic_denying_istio_gateway_authorization_policy.yaml) | Kubernetes | Deployment, Networking |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/23.yaml) | [Schema](../../../schemas/json/faults/traffic-denying-istio-gateway-authorization-policy.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_traffic_denying_istio_gateway_authorization_policy.yaml) | Kubernetes | Deployment, Networking |
 
 This fault injects an authorization policy which denies all HTTP requests to a Kubernetes Gateway.
 

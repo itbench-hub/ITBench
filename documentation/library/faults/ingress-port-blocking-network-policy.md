@@ -3,7 +3,7 @@
 
 # Ingress Port Blocking Network Policy
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/6.yaml) | [Schema](../../../schemas/json/faults/ingress-port-blocking-network-policy.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_ingress_port_blocking_network_policy.yaml) | Kubernetes | Deployment, Networking |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/6.yaml) | [Schema](../../../schemas/json/faults/ingress-port-blocking-network-policy.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_ingress_port_blocking_network_policy.yaml) | Kubernetes | Deployment, Networking |
 
 This fault injects a network policy which blocks traffic on all ingress ports of a given workload.
 

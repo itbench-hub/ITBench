@@ -3,7 +3,7 @@
 
 # Misconfigured Kubernetes Workload Container Readiness Probe
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/12.yaml) | [Schema](../../../schemas/json/faults/misconfigured-kubernetes-workload-container-readiness-probe.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_misconfigured_kubernetes_workload_container_readiness_probe.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/12.yaml) | [Schema](../../../schemas/json/faults/misconfigured-kubernetes-workload-container-readiness-probe.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_misconfigured_kubernetes_workload_container_readiness_probe.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects a misconfigured readiness probe into a workload container. This probe blocks the pod from starting up.
 

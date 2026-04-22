@@ -3,7 +3,7 @@
 
 # Unsupported Architecture Kubernetes Workload Container Image
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/26.yaml) | [Schema](../../../schemas/json/faults/unsupported-architecture-kubernetes-workload-container-image.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_unsupported_architecture_kubernetes_workload_container_image.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/26.yaml) | [Schema](../../../schemas/json/faults/unsupported-architecture-kubernetes-workload-container-image.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_unsupported_architecture_kubernetes_workload_container_image.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects an image with an unsupported architecture into a designated Kubernetes workload's container and assigns it to a node.
 

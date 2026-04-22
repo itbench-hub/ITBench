@@ -3,7 +3,7 @@
 
 # Misconfigured Kubernetes Horizontal Pod Autoscaler
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/11.yaml) | [Schema](../../../schemas/json/faults/misconfigured-kubernetes-horizontal-pod-autoscaler.json) | [Implementation](../../../scenarios/sre/project/roles/roles/faults/tasks/inject_misconfigured_kubernetes_horizontal_pod_autoscaler.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/11.yaml) | [Schema](../../../schemas/json/faults/misconfigured-kubernetes-horizontal-pod-autoscaler.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_misconfigured_kubernetes_horizontal_pod_autoscaler.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects a configuration into a horizontal pod autoscaler that causes it to react to low resource usage
 
