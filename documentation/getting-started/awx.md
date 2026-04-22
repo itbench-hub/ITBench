@@ -8,9 +8,9 @@ ITBench uses [AWX](https://docs.ansible.com/projects/awx/en/latest/) for managin
 
 While the recommended AWX image is built and supplied by ITBench, the ITBench required software and dependencies will still need to be installed in order to run the commands needed to run AWX on a cluster.
 
-For the clusters running the experiements (also known referred to as `runners`), please ensure that each node has **at least**: 8 CPUs, 16 GB of memory, 50 GB of disk storage. These are the minimum requirements of running ITBench on a single cluster.
+For the clusters running the experiements (also known referred to as `runners`), please ensure that each node has **at least**: [8 CPUs, 16 GB of memory, 50 GB of disk storage](./hardware-specification.md#local-development-kind-minikube-etc). These are the minimum requirements of running ITBench on a single cluster.
 
-If running both AWX and a `runner` on the same cluster (ie: Kind, Minikube, etc), please ensure that the machine has **at least**: 24 CPUs, 32 GB of memory, 100 GB of disk storage.
+If running both AWX and a `runner` on the same cluster (ie: Kind, Minikube, etc), please ensure that the machine has **at least**: [24 CPUs, 32 GB of memory, 100 GB of disk storage](./hardware-specification.md#development-on-awx).
 
 >[!NOTE]
 >When creating an AWX stack with a `Kind` cluster with [our provided setup](../../clusters/kind/README.md), this hardware check is done as a part of the creation process. It will produce a warning message in the console when the machine lacks the necessary requirements. **When running on an underprovisoned cluster, poor performance is expected.**
