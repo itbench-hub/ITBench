@@ -4,18 +4,27 @@
     kubeconfig: "{{ cluster_files.kubeconfig }}"
   register: cluster_information
 
-- name: Fail playbook due to `wrong kubernetes version` error
-  ansible.builtin.fail:
-    msg: "`kubernetes` version: {{ version }}. please update `kubernetes` to version {{ cluster_minimum_versions.kubernetes }} or higher."
-  vars:
-    version: |-
+- name: Parse kubernetes cluster version string
+  ansible.builtin.set_fact:
+    cluster_kubernetes_version: |-
       {{
         cluster_information.version.server.kubernetes.gitVersion |
         ansible.builtin.split("v") |
         ansible.builtin.last
       }}
+
+- name: Fail playbook due to `wrong kubernetes version` error
+  ansible.builtin.fail:
+    msg: "`kubernetes` version: {{ cluster_kubernetes_version }}. please update `kubernetes` to version {{ cluster_minimum_versions.kubernetes }} or higher."
   when:
-    - version is ansible.builtin.version(cluster_minimum_versions.kubernetes, "<")
+    - cluster_kubernetes_version is ansible.builtin.version(cluster_minimum_versions.kubernetes, "<")
+
+- name: Display kubernetes cluster information
+  ansible.builtin.debug:
+    var: info
+  vars:
+    info:
+      version: "{{ cluster_kubernetes_version }}"
 
 - name: Validate OpenShift server version
   when:
@@ -42,10 +51,19 @@
         fail_msg: Unable to retrieve OpenShift version information from cluster.
         success_msg: OpenShift version information retrieved.
 
+    - name: Parse openshift cluster version string
+      ansible.builtin.set_fact:
+        cluster_openshift_version: "{{ cluster_cluster_version.resources[0].status.desired.version }}"
+
     - name: Fail playbook due to `wrong openshift version` error
       ansible.builtin.fail:
-        msg: "`openshift` version: {{ version }}. please update `openshift` to version {{ cluster_minimum_versions.openshift }} or higher."
-      vars:
-        version: "{{ cluster_cluster_version.resources[0].status.desired.version }}"
+        msg: "`openshift` version: {{ cluster_openshift_version }}. please update `openshift` to version {{ cluster_minimum_versions.openshift }} or higher."
       when:
-        - version is ansible.builtin.version(cluster_minimum_versions.openshift, "<")
+        - cluster_openshift_version is ansible.builtin.version(cluster_minimum_versions.openshift, "<")
+
+    - name: Display openshift cluster information
+      ansible.builtin.debug:
+        var: info
+      vars:
+        info:
+          version: "{{ cluster_openshift_version }}"

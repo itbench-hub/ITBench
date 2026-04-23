@@ -24,7 +24,6 @@ opencost:
       internetNetworkEgress: 1.00
   exporter:
     extraEnv:
-      INSECURE_SKIP_VERIFY: {{ tools_cluster.platform == 'openshift' }}
       USE_CUSTOM_PROVIDER: true
   metrics:
     serviceMonitor:
@@ -39,6 +38,7 @@ opencost:
     external:
       enabled: true
       url: "{{ tools_prometheus_endpoint.http }}"
+    insecureSkipVerify: {{ tools_cluster.platform == 'openshift' }}
     internal:
       enabled: false
 {% if tools_cluster.platform == 'openshift' %}
