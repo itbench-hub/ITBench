@@ -28,13 +28,10 @@ There is currently not a unifed running procedure that covers both CISO, FinOps,
 
 1. Download the following packages
 ```shell
-brew install helm@3
+brew install helm
 brew install kubectl
 brew install uv
 ```
-
->![WARNING]
-> As of the time writing (**04/13/2026**) the `kubernetes.core` Ansible module has not released a new version which supports Helm 4 ([though support has been added](https://github.com/ansible-collections/kubernetes.core/issues/1038)). Until a new release has been made, please ensure to download Helm 3 through the command above. Using `brew install helm` will download Helm 4 and cause the Ansible playbooks to not work.
 
 2. Download the following packages **(optional)**
 ```shell
@@ -51,7 +48,7 @@ brew install openshift-cli
 ### Linux
 
 1. Download the following packages
-    - **a.** Install Helm 3 by following the instructions [here](https://helm.sh/docs/v3/intro/install#from-script)
+    - **a.** Install Helm 4 by following the instructions [here](https://helm.sh/docs/intro/install#from-script)
     - **b.** Install kubectl by following the instructions [here](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
     - **c.** Install UV by following the instructions [here](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
 
