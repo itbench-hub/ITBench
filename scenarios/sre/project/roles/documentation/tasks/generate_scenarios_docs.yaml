@@ -9,11 +9,33 @@
 
 - name: Include applications role variables for templating
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/../applications/defaults/main/managers.yaml"
+    file: |-
+      {{
+        [
+          playbook_dir,
+          "roles",
+          "applications",
+          "defaults",
+          "main",
+          "managers.yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
 
 - name: Include tools role variables for templating
   ansible.builtin.include_vars:
-    file: "{{ role_path }}/../tools/defaults/main/managers.yaml"
+    file: |-
+      {{
+        [
+          playbook_dir,
+          "roles",
+          "tools",
+          "defaults",
+          "main",
+          "managers.yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
 
 - name: Generate map for applications based on application id
   ansible.builtin.set_fact:
@@ -68,7 +90,17 @@
 
 - name: Retrieve all scenario index templates
   ansible.builtin.find:
-    path: "{{ role_path }}/templates/library/scenarios/indexes"
+    path: |-
+      {{
+        [
+          role_path,
+          "templates",
+          "library",
+          "scenarios",
+          "indexes"
+        ] |
+        ansible.builtin.path_join
+      }}
   register: documentation_scenarios_indexes_templates
 
 - name: Template all scenario indexes
@@ -205,7 +237,17 @@
         ansible.builtin.from_yaml |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ [role_path, 'files', 'library', 'scenarios', 'schema.json'] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "scenarios",
+          "schema.json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
 
 - name: Generate scenario indexes
@@ -216,7 +258,18 @@
         ansible.utils.remove_keys(target=["index"]) |
         ansible.builtin.to_nice_yaml(explicit_start=true, indent=2, width=9999)
       }}
-    dest: "{{ [role_path, 'files', 'library', 'scenarios', 'indexes', index_file_name] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "scenarios",
+          "indexes",
+          index_file_name
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   loop: "{{ documentation_scenarios }}"
   loop_control:
@@ -233,13 +286,36 @@
         ansible.builtin.sort(attribute="id") |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ [role_path, 'files', 'library', 'scenarios', 'index.json'] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "scenarios",
+          "index.json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
 
 - name: Generate scenario library readme
   ansible.builtin.copy:
     content: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/readmes/index.j2') }}"
-    dest: "{{ playbook_dir }}/../../../documentation/library/scenarios/README.md"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "scenarios",
+          "README.md"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   vars:
     scenarios: |-
@@ -301,7 +377,21 @@
 - name: Generate scenario library index readmes
   ansible.builtin.copy:
     content: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/readmes/scenario.j2') }}"
-    dest: "{{ playbook_dir }}/../../../documentation/library/scenarios/{{ scenario.category }}/{{ scenario.id }}.md"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "scenarios",
+          scenario.category,
+          scenario.id ~ ".md"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   loop: |-
     {{
@@ -314,7 +404,26 @@
   vars:
     scenario_tags: "{{ scenario.tags | ansible.builtin.sort | ansible.builtin.join(', ') }}"
     scenario_platforms: "{{ scenario.platforms | ansible.builtin.sort | ansible.builtin.join(', ') }}"
-    source_file_path: ../../../../scenarios/sre/project/roles/documentation/files/library/scenarios/indexes/{{ scenario.index }}.yaml
+    source_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "..",
+          "scenarios",
+          "sre",
+          "project",
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "scenarios",
+          "indexes",
+          scenario.index ~ ".yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
 
 - name: Delete the temporary directory
   ansible.builtin.file:

@@ -1,7 +1,17 @@
 ---
 - name: Retrieve all applications index templates
   ansible.builtin.find:
-    path: "{{ role_path }}/files/library/applications/indexes"
+    path: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "applications",
+          "indexes"
+        ] |
+        ansible.builtin.path_join
+      }}
   register: documentation_applications_indexes
 
 - name: Create identifiers for applications
@@ -53,13 +63,36 @@
         ansible.builtin.sort(attribute="name") |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ [role_path, 'files', 'library', 'applications', 'index.json'] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "applications",
+          "index.json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
 
 - name: Generate application library readme
   ansible.builtin.copy:
     content: "{{ lookup('ansible.builtin.template', 'templates/library/applications/readmes/index.j2') }}"
-    dest: "{{ playbook_dir }}/../../../documentation/library/applications/README.md"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "applications",
+          "README.md"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   vars:
     applications: |-
@@ -71,7 +104,20 @@
 - name: Generate application library index readmes
   ansible.builtin.copy:
     content: "{{ lookup('ansible.builtin.template', 'templates/library/applications/readmes/application.j2') }}"
-    dest: "{{ playbook_dir }}/../../../documentation/library/applications/{{ application.id }}.md"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "applications",
+          application.id ~ ".md"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   loop: |-
     {{
@@ -83,8 +129,38 @@
     loop_var: application
   vars:
     application_platforms: "{{ application.platforms | ansible.builtin.sort | ansible.builtin.join(', ') }}"
-    schema_file_path: ../../../schemas/json/applications/{{ application.id }}.json
-    source_file_path: ../../../scenarios/sre/project/roles/documentation/files/library/applications/indexes/{{ application.index }}.yaml
+    schema_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "schemas",
+          "json",
+          "applications",
+          application.id ~ ".json"
+        ] |
+        ansible.builtin.path_join
+      }}
+    source_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "scenarios",
+          "sre",
+          "project",
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "applications",
+          "indexes",
+          application.index ~ ".yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
 
 - name: Generate application library index json schemas
   ansible.builtin.copy:
@@ -94,7 +170,20 @@
         ansible.builtin.combine({"$schema": "https://json-schema.org/draft/2020-12/schema"}) |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ playbook_dir }}/../../../schemas/json/applications/{{ application.id }}.json"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "schemas",
+          "json",
+          "applications",
+          application.id ~ ".json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   loop: |-
     {{
