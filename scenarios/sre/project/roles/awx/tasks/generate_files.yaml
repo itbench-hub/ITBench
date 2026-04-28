@@ -1,0 +1,21 @@
+---
+- name: Load scenarios library index
+  ansible.builtin.set_fact:
+    awx_scenario_library_index: |-
+      {{
+        lookup('ansible.builtin.file', index_file_path) |
+        ansible.builtin.from_json
+      }}
+  vars:
+    index_file_path: "{{ [playbook_dir, 'roles', 'documentation', 'files', 'library', 'scenarios', 'index.json'] | ansible.builtin.path_join }}"
+
+- name: Create awx roles meta argument specs file
+  ansible.builtin.copy:
+    content: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') |
+        ansible.builtin.from_yaml |
+        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
+      }}
+    dest: "{{ [role_path, 'meta', 'argument_specs.yaml'] | ansible.builtin.path_join }}"
+    mode: "0644"

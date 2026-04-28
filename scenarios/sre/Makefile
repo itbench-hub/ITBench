@@ -23,30 +23,22 @@ generate-docs: ## Generates library indexes, schemas, and other related document
 	$(UV) run ansible-playbook -i inventory project/manage_documentation.yaml --tags "generate_docs"
 	$(UV) run ansible-lint project/roles/documentation/files --fix
 
-.PHONY: scaffold-fault
-scaffold-fault: ## Collect user input and create skeleton for fault entry
-	$(UV) run ansible-playbook -i inventory.yaml playbooks/scaffold_fault.yaml
-	$(UV) run ansible-lint roles/scenarios/files roles/scenarios/meta roles/waiters/meta roles/faults/meta --fix
+.PHONY: generate-fault-index
+generate-fault-index: ## Generate a new fault index based on user input
+	$(UV) run ansible-playbook -i inventory.yaml project/generate_documentation_index.yaml --tags "generate_fault"
 
-.PHONY: scaffold-scenario
-scaffold-scenario: ## Collect user input and create skeleton for scenario entry
-	$(UV) run ansible-playbook -i inventory.yaml playbooks/scaffold_scenario.yaml
-	$(UV) run ansible-lint roles/scenarios/files roles/scenarios/meta roles/waiters/meta roles/faults/meta --fix
+.PHONY: generate-scenario-index
+generate-scenario-index: ## Generate a new scenario index based on user input
+	$(UV) run ansible-playbook -i inventory.yaml project/generate_documentation_index.yaml --tags "generate_scenario"
+
+.PHONY: generate-resource-files
+generate-resource-files: ## Generates task files, scenario manifests, and other related files
+	$(UV) run ansible-playbook -i inventory project/manage_scenario_files.yaml --tags "generate_files"
+	$(UV) run ansible-lint project/roles/scenarios/files project/roles/scenarios/meta project/roles/waiters/meta project/roles/faults/meta project/roles/awx/meta --fix
 
 .PHONY: validate-docs
 validate-docs: ## Validates library indexes
 	$(UV) run ansible-playbook -i inventory project/manage_documentation.yaml --tags "validate_docs"
-
-.PHONY: generate-scenario-files
-generate-scenario-files: ## Generates scenario related files using library indexes
-	$(UV) run ansible-playbook -i inventory project/generate_scenario_files.yaml --tags "generate_files"
-	$(UV) run ansible-lint project/roles/scenarios/files project/roles/scenarios/meta project/roles/waiters/meta project/roles/faults/meta project/roles/awx/meta --fix
-
-.PHONY: regenerate-scenario-files
-regenerate-scenario-files: ## Overwrites scenario related files using library indexes
-	$(UV) run ansible-playbook -i inventory project/generate_scenario_files.yaml --tags "generate_files" \
-		--extra-vars "overwrite_files=true"
-	$(UV) run ansible-lint project/roles/scenarios/files project/roles/scenarios/meta project/roles/waiters/meta project/roles/faults/meta project/roles/awx/meta --fix
 
 .PHONY: deploy-tools
 deploy-tools: ## Deploys the observability and fault tools to cluster
