@@ -7,7 +7,19 @@
         ansible.builtin.from_json
       }}
   vars:
-    index_file_path: "{{ playbook_dir }}/roles/documentation/files/library/faults/index.json"
+    index_file_path: |-
+      {{
+        [
+          playbook_dir,
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "faults",
+          "index.json"
+        ] |
+        ansible.builtin.path_join
+      }}
 
 - name: Generate faults library index-task map
   ansible.builtin.set_fact:
@@ -37,13 +49,30 @@
         faults_library_map |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ [role_path, 'files', 'library', 'map.json'] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "map.json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
 
 - name: Create faults roles meta argument specs file
   ansible.builtin.copy:
     content: "{{ faults_argument_specs | ansible.builtin.to_nice_yaml(explicit_start=true, indent=2) }}"
-    dest: "{{ [role_path, 'meta', 'argument_specs.yaml'] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "meta",
+          "argument_specs.yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   vars:
     faults_argument_specs: |-
@@ -59,7 +88,15 @@
       - name: Print message
         ansible.builtin.debug:
           msg: This fault injection ({{ fault.id }}) is unimplemented.
-    dest: "{{ [role_path, 'tasks', task_file_name] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "tasks",
+          task_file_name
+        ] |
+        ansible.builtin.path_join
+      }}
     force: false
     mode: "0644"
   loop: "{{ faults_library_index }}"

@@ -1,12 +1,4 @@
 ---
-- name: Load scenario library index map
-  ansible.builtin.set_fact:
-    awx_library_map: |-
-      {{
-        lookup('ansible.builtin.file', 'files/library/map.json') |
-        ansible.builtin.from_json
-      }}
-
 - name: Generate workflow configuration for each scenario
   ansible.builtin.set_fact:
     awx_workflow_scenario_configurations: |-
@@ -17,7 +9,12 @@
         ) +
         [
           {
-            "fault_count": awx_library_map[(scenario.id | ansible.builtin.string)].faultCount,
+            "fault_count": (
+              lookup('ansible.builtin.file', scenario_index_path) |
+              ansible.builtin.from_yaml |
+              map(attribute="disruptions") |
+              ansible.builtin.length
+            ),
             "node_credentials": (
               lookup("ansible.builtin.template", "templates/awx/workflows/node_credentials.j2") |
               ansible.builtin.from_yaml
@@ -34,6 +31,20 @@
     loop_var: scenario
   vars:
     kubeconfig_index: "{{ scenario_index % (awx_experiments.runners.kubeconfigs | ansible.builtin.length) }}"
+    scenario_index_path: |-
+      {{
+        [
+          playbook_dir,
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "scenarios",
+          "indexes",
+          scenario.id ~ ".yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
 
 - name: Asynchronously create scenario execution workflows
   block:
