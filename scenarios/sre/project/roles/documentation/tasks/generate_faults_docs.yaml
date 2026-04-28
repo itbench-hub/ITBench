@@ -1,7 +1,17 @@
 ---
 - name: Retrieve all fault index templates
   ansible.builtin.find:
-    path: "{{ role_path }}/files/library/faults/indexes"
+    path: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "faults",
+          "indexes"
+        ] |
+        ansible.builtin.path_join
+      }}
   register: documentation_faults_indexes
 
 - name: Create identifiers for fault indexes
@@ -53,13 +63,36 @@
         ansible.builtin.sort(attribute="name") |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ [role_path, 'files', 'library', 'faults', 'index.json'] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "faults",
+          "index.json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
 
 - name: Generate fault library readme
   ansible.builtin.copy:
     content: "{{ lookup('ansible.builtin.template', 'templates/library/faults/readmes/index.j2') }}"
-    dest: "{{ playbook_dir }}/../../../documentation/library/faults/README.md"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "faults",
+          "README.md"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   vars:
     faults: |-
@@ -71,7 +104,20 @@
 - name: Generate fault library index readmes
   ansible.builtin.copy:
     content: "{{ lookup('ansible.builtin.template', 'templates/library/faults/readmes/fault.j2') }}"
-    dest: "{{ playbook_dir }}/../../../documentation/library/faults/{{ fault.id }}.md"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "faults",
+          fault.id ~ ".md"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   loop: |-
     {{
@@ -83,9 +129,54 @@
     loop_var: fault
   vars:
     fault_tags: "{{ fault.tags | ansible.builtin.sort | ansible.builtin.join(', ') }}"
-    implementation_file_path: ../../../scenarios/sre/project/roles/faults/tasks/inject_{{ fault.id | ansible.builtin.replace("-", "_") }}.yaml
-    schema_file_path: ../../../schemas/json/faults/{{ fault.id }}.json
-    source_file_path: ../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/{{ fault.index }}.yaml
+    implementation_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "scenarios",
+          "sre",
+          "project",
+          "roles",
+          "faults",
+          "tasks",
+          "inject_" ~ (fault.id | ansible.builtin.replace("-", "_")) ~ ".yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
+    schema_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "schemas",
+          "json",
+          "faults",
+          fault.id ~ ".json"
+        ] |
+        ansible.builtin.path_join
+      }}
+    source_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "scenarios",
+          "sre",
+          "project",
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "faults",
+          "indexes",
+          fault.index ~ ".yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
 
 - name: Generate fault library index json schemas
   ansible.builtin.copy:
@@ -95,7 +186,20 @@
         ansible.builtin.combine({"$schema": "https://json-schema.org/draft/2020-12/schema"}) |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ playbook_dir }}/../../../schemas/json/faults/{{ fault.id }}.json"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "schemas",
+          "json",
+          "faults",
+          fault.id ~ ".json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   loop: |-
     {{

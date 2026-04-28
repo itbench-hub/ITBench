@@ -1,7 +1,17 @@
 ---
 - name: Retrieve all waiters index templates
   ansible.builtin.find:
-    path: "{{ role_path }}/files/library/waiters/indexes"
+    path: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "waiters",
+          "indexes"
+        ] |
+        ansible.builtin.path_join
+      }}
   register: documentation_waiters_indexes
 
 - name: Create identifiers for waiters
@@ -53,13 +63,36 @@
         ansible.builtin.sort(attribute="name") |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ [role_path, 'files', 'library', 'waiters', 'index.json'] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "waiters",
+          "index.json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
 
 - name: Generate waiter library readme
   ansible.builtin.copy:
     content: "{{ lookup('ansible.builtin.template', 'templates/library/waiters/readmes/index.j2') }}"
-    dest: "{{ playbook_dir }}/../../../documentation/library/waiters/README.md"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "waiters",
+          "README.md"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   vars:
     waiters: |-
@@ -71,7 +104,20 @@
 - name: Generate waiter library index readmes
   ansible.builtin.copy:
     content: "{{ lookup('ansible.builtin.template', 'templates/library/waiters/readmes/waiter.j2') }}"
-    dest: "{{ playbook_dir }}/../../../documentation/library/waiters/{{ waiter.id }}.md"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "waiters",
+          waiter.id ~ ".md"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   loop: |-
     {{
@@ -83,8 +129,38 @@
     loop_var: waiter
   vars:
     waiter_platforms: "{{ waiter.platforms | ansible.builtin.sort | ansible.builtin.join(', ') }}"
-    schema_file_path: ../../../schemas/json/waiters/{{ waiter.id }}.json
-    source_file_path: ../../../scenarios/sre/project/roles/documentation/files/library/waiters/indexes/{{ waiter.index }}.yaml
+    schema_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "schemas",
+          "json",
+          "waiters",
+          waiter.id ~ ".json"
+        ] |
+        ansible.builtin.path_join
+      }}
+    source_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "scenarios",
+          "sre",
+          "project",
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "waiters",
+          "indexes",
+          waiter.index ~ ".yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
 
 - name: Generate waiter library index json schemas
   ansible.builtin.copy:
@@ -94,7 +170,20 @@
         ansible.builtin.combine({"$schema": "https://json-schema.org/draft/2020-12/schema"}) |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ playbook_dir }}/../../../schemas/json/waiters/{{ waiter.id }}.json"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "schemas",
+          "json",
+          "waiters",
+          waiter.id ~ ".json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   loop: |-
     {{
