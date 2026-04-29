@@ -63,7 +63,12 @@
 
 - name: Create waiters roles meta argument specs file
   ansible.builtin.copy:
-    content: "{{ waiters_argument_specs | ansible.builtin.to_nice_yaml(explicit_start=true, indent=2) }}"
+    content: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') |
+        ansible.builtin.from_yaml |
+        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
+      }}
     dest: |-
       {{
         [
@@ -74,12 +79,6 @@
         ansible.builtin.path_join
       }}
     mode: "0644"
-  vars:
-    waiters_argument_specs: |-
-      {{
-        lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') |
-        ansible.builtin.from_yaml
-      }}
 
 - name: Create waiter tasks files
   ansible.builtin.copy:

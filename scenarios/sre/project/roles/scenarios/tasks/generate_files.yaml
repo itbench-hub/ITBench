@@ -27,25 +27,23 @@
       {{
         scenarios_directory_paths |
         ansible.builtin.default({}) |
-        ansible.builtin.combine({scenario.id: directory_path})
+        ansible.builtin.combine(
+          {
+            scenario.id: (
+              [
+                role_path,
+                "files",
+                "scenario_" ~ scenario.id
+              ] |
+              ansible.builtin.path_join
+            )
+          }
+        )
       }}
   loop: "{{ scenarios_library_index }}"
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
-  vars:
-    directory_path: |-
-      {{
-        [
-          role_path,
-          "files",
-          [
-            "scenario",
-            scenario.id
-          ] | ansible.builtin.join("_")
-        ] |
-        ansible.builtin.path_join
-      }}
 
 - name: Generate scenario directories
   ansible.builtin.file:
@@ -56,12 +54,15 @@
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
-  when:
-    - not (scenarios_directory_paths[scenario.id] is directory)
 
 - name: Create scenarios roles meta argument specs file
   ansible.builtin.copy:
-    content: "{{ scenarios_argument_specs | ansible.builtin.to_nice_yaml(explicit_start=true, indent=2) }}"
+    content: |-
+      {{
+        lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') |
+        ansible.builtin.from_yaml |
+        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
+      }}
     dest: |-
       {{
         [
@@ -73,11 +74,7 @@
       }}
     mode: "0644"
   vars:
-    scenarios_argument_specs: |-
-      {{
-        lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') |
-        ansible.builtin.from_yaml
-      }}
+    scenario_ids: "{{ scenarios_library_index | map(attribute='id') }}"
 
 - name: Generate scenario specs
   ansible.builtin.copy:
@@ -100,15 +97,6 @@
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
-  vars:
-    enable_chaos_mesh: |-
-      {{
-        scenario.disruptions |
-        map(attribute="injections") |
-        ansible.builtin.flatten |
-        ansible.builtin.selectattr("id", "==", "scheduled-chaos-mesh-experiment") |
-        ansible.builtin.length > 0
-      }}
 
 - name: Generate scenario ground truths
   ansible.builtin.copy:
