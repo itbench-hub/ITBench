@@ -114,7 +114,7 @@ SCENARIO_NUMBER=1 make start-scenario
 ```
 
 >[!NOTE]
->Switching to a different scenario can be done by changing the value of the `SCENARIO_NUMBER` variable.
+>Switching to a different scenario can be done by changing the value of the `SCENARIO_NUMBER` variable. Documentation for the available scenarios can be found [here](../library/scenarios/README.md).
 
 ### Running an Agent
 
