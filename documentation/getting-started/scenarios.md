@@ -123,6 +123,9 @@ Once a scenario has started, one can begin runnning an agent to pull information
 >[!NOTE]
 >If you don't have an agent yet, you can use the [SRE-Agent](https://github.com/itbench-hub/itbench-sre-agent) to see how it works.
 
+>[!NOTE]
+>A scenario starts once fault injection has begun. Since faults may be injected after [certain conditions](../library/waiters/README.md) have been fulfilled, an agent may be running before one or multiple faults have been injected.
+
 ### Stopping Scenarios
 
 1. Use the following command to stop running a scenario:
