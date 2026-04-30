@@ -1,0 +1,42 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve ConfigMap
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: ConfigMap
+        name: flagd-config
+        namespace: opentelemetry-demo-feature-flag-test
+      register: faults_configmap
+
+    - name: Validate that ConfigMap exists
+      ansible.builtin.assert:
+        that:
+          - faults_configmap.resources | ansible.builtin.length == 1
+        fail_msg: Unable to find ConfigMap. Fault injection failed.
+        success_msg: Found ConfigMap.
+
+    - name: Parse feature flag data
+      ansible.builtin.set_fact:
+        faults_flagd_data: |-
+          {{
+            faults_configmap.resources[0].data["demo.flagd.json"] |
+            ansible.builtin.from_json
+          }}
+
+    - name: Validate that feature flag exists
+      ansible.builtin.assert:
+        that:
+          - faults_flagd_data.flags.productCatalogFailure is ansible.builtin.defined
+        fail_msg: Feature flag 'productCatalogFailure' not found. Fault injection failed.
+        success_msg: Feature flag 'productCatalogFailure' found.
+
+    - name: Validate that feature flag was modified
+      ansible.builtin.assert:
+        that:
+          - faults_flagd_data.flags.productCatalogFailure.defaultVariant == "on"
+        fail_msg: Feature flag was not set to 'on'. Fault injection failed.
+        success_msg: Feature flag was successfully set to 'on'.

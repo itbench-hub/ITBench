@@ -1,0 +1,43 @@
+---
+- name: Create OpenTelemetry Demo Application
+  hosts:
+    - localhost
+  tasks:
+    - name: Include applications role variables
+      ansible.builtin.include_vars:
+        file: |-
+          {{
+            [
+              playbook_dir,
+              '..',
+              '..',
+              'applications',
+              'defaults',
+              'main',
+              'managers.yaml'
+            ] |
+            ansible.builtin.path_join
+          }}
+
+    - name: Install OpenTelemetry Demo (Astronomy Shop)
+      kubernetes.core.helm:
+        chart_ref: "{{ applications_managers.opentelemetry_demo.helm.chart.reference }}"
+        chart_version: "{{ applications_managers.opentelemetry_demo.helm.chart.version }}"
+        create_namespace: true
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: opentelemetry-demo-feature-flag-release
+        release_namespace: opentelemetry-demo-feature-flag-test
+        release_state: present
+        timeout: 10m0s
+        values:
+          opentelemetry-collector:
+            enabled: false
+          jaeger:
+            enabled: false
+          prometheus:
+            enabled: false
+          grafana:
+            enabled: false
+          opensearch:
+            enabled: false
+        wait: true
