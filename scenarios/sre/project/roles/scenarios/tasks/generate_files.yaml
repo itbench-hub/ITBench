@@ -1,25 +1,8 @@
 ---
-- name: Load scenarios library index
-  ansible.builtin.set_fact:
-    scenarios_library_index: |-
-      {{
-        lookup('ansible.builtin.file', index_file_path) |
-        ansible.builtin.from_json
-      }}
-  vars:
-    index_file_path: |-
-      {{
-        [
-          playbook_dir,
-          "roles",
-          "documentation",
-          "files",
-          "library",
-          "scenarios",
-          "index.json"
-        ] |
-        ansible.builtin.path_join
-      }}
+- name: Import documentation role
+  ansible.builtin.import_role:
+    name: documentation
+    tasks_from: load
 
 - name: Generate scenario directory paths
   ansible.builtin.set_fact:
@@ -40,7 +23,7 @@
           }
         )
       }}
-  loop: "{{ scenarios_library_index }}"
+  loop: "{{ documentation_library_index.scenarios }}"
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
@@ -50,7 +33,7 @@
     mode: "0755"
     path: "{{ scenarios_directory_paths[scenario.id] }}"
     state: directory
-  loop: "{{ scenarios_library_index }}"
+  loop: "{{ documentation_library_index.scenarios }}"
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
@@ -74,7 +57,7 @@
       }}
     mode: "0644"
   vars:
-    scenario_ids: "{{ scenarios_library_index | map(attribute='id') }}"
+    scenario_ids: "{{ documentation_library_index.scenarios | map(attribute='id') }}"
 
 - name: Generate scenario specs
   ansible.builtin.copy:
@@ -93,7 +76,7 @@
         ansible.builtin.path_join
       }}
     mode: "0644"
-  loop: "{{ scenarios_library_index }}"
+  loop: "{{ documentation_library_index.scenarios }}"
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
@@ -115,7 +98,7 @@
         ansible.builtin.path_join
       }}
     mode: "0644"
-  loop: "{{ scenarios_library_index }}"
+  loop: "{{ documentation_library_index.scenarios }}"
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario

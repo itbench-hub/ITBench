@@ -1,25 +1,8 @@
 ---
-- name: Load faults library index
-  ansible.builtin.set_fact:
-    faults_library_index: |-
-      {{
-        lookup('ansible.builtin.file', index_file_path) |
-        ansible.builtin.from_json
-      }}
-  vars:
-    index_file_path: |-
-      {{
-        [
-          playbook_dir,
-          "roles",
-          "documentation",
-          "files",
-          "library",
-          "faults",
-          "index.json"
-        ] |
-        ansible.builtin.path_join
-      }}
+- name: Import documentation role
+  ansible.builtin.import_role:
+    name: documentation
+    tasks_from: load
 
 - name: Generate faults library index-task map
   ansible.builtin.set_fact:
@@ -35,7 +18,7 @@
           }
         )
       }}
-  loop: "{{ faults_library_index }}"
+  loop: "{{ documentation_library_index.faults }}"
   loop_control:
     label: fault/{{ fault.id }}
     loop_var: fault
@@ -98,7 +81,7 @@
       }}
     force: false
     mode: "0644"
-  loop: "{{ faults_library_index }}"
+  loop: "{{ documentation_library_index.faults }}"
   loop_control:
     label: fault/{{ fault.id }}
     loop_var: fault

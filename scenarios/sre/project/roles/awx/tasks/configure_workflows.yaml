@@ -1,4 +1,9 @@
 ---
+- name: Import documentation role
+  ansible.builtin.import_role:
+    name: documentation
+    tasks_from: load
+
 - name: Generate workflow configuration for each scenario
   ansible.builtin.set_fact:
     awx_workflow_scenario_configurations: |-
@@ -10,8 +15,9 @@
         [
           {
             "fault_count": (
-              lookup('ansible.builtin.file', scenario_index_path) |
-              ansible.builtin.from_yaml |
+              documentation_library_index.scenarios |
+              ansible.builtin.selectattr("id", "==", scenario.id) |
+              ansible.builtin.first |
               map(attribute="disruptions") |
               ansible.builtin.length
             ),
