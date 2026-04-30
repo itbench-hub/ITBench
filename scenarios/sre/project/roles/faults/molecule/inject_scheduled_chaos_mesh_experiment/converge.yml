@@ -1,0 +1,47 @@
+---
+- name: Run fault injection test
+  hosts:
+    - localhost
+  tasks:
+    - name: Include tools role variables
+      ansible.builtin.include_vars:
+        file: |-
+          {{
+            [
+              playbook_dir,
+              "..",
+              "..",
+              "..",
+              "tools",
+              "defaults",
+              "main",
+              "managers.yaml"
+            ] |
+            ansible.builtin.path_join
+          }}
+
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        faults_injection_tasks:
+          - id: scheduled-chaos-mesh-experiment
+            args:
+              kubernetesObject:
+                apiVersion: chaos-mesh.org/v1alpha1
+                kind: Schedule
+                metadata:
+                  name: test-pod-kill-schedule
+                  namespace: "{{ tools_managers.chaos_mesh.kubernetes.namespace }}"
+              scheduleSpec:
+                type: PodChaos
+                podChaos:
+                  action: pod-kill
+                  mode: one
+                  selector:
+                    namespaces:
+                      - scheduled-chaos-test
+                    labelSelectors:
+                      app.kubernetes.io/name: test-workload

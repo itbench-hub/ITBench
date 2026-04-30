@@ -27,26 +27,26 @@
           apiVersion: v1
           kind: Namespace
           metadata:
-            name: strict-mtls-test
+            name: scheduled-chaos-test
         state: absent
         wait: true
 
-    - name: Uninstall Istio Base (CRDs)
+    - name: Uninstall Chaos Mesh
       kubernetes.core.helm:
         kubeconfig: "{{ cluster.kubeconfig }}"
-        release_name: "{{ tools_managers.istio_base.helm.release.name }}"
-        release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+        release_name: "{{ tools_managers.chaos_mesh.helm.release.name }}"
+        release_namespace: "{{ tools_managers.chaos_mesh.kubernetes.namespace }}"
         release_state: absent
         wait: true
 
-    - name: Delete Istio namespace
+    - name: Delete Chaos Mesh namespace
       kubernetes.core.k8s:
         kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Namespace
           metadata:
-            name: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+            name: "{{ tools_managers.chaos_mesh.kubernetes.namespace }}"
         state: absent
         wait: true
 
@@ -57,7 +57,7 @@
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: faults_custom_resource_definitions
 
-    - name: Delete Istio related CustomResourceDefinitions
+    - name: Delete Chaos Mesh related CustomResourceDefinitions
       kubernetes.core.k8s:
         kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
@@ -70,7 +70,7 @@
       loop: |-
         {{
           faults_custom_resource_definitions.resources |
-          ansible.builtin.selectattr("spec.group", "search", "\.istio\.io$")
+          ansible.builtin.selectattr("spec.group", "==", "chaos-mesh.org")
         }}
       loop_control:
         label: customresourcedefinition/{{ custom_resource_definition.metadata.name }}
