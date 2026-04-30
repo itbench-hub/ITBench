@@ -1,0 +1,23 @@
+---
+- name: Destroy test resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Uninstall Kubernetes Metrics Server
+      kubernetes.core.helm:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: misconfigured-hpa-release
+        release_namespace: misconfigured-hpa-test
+        release_state: absent
+        wait: true
+
+    - name: Delete test namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: misconfigured-hpa-test
+        state: absent
+        wait: true
