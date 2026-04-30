@@ -141,7 +141,7 @@ Every fault in ITBench causes a noticeable effect on the application it has been
 
 An **alert** is a notification that some threshold (set by the user) has been surpased. These thresholds are defined using **metrics**. When an alert is active, the engineers are notified that something is wrong with an application and that they need to begin invetigating.
 
-ITBench uses OpenTelemetry and Prometheus to collect metrics and configure alerts from an application and Kubernetes cluster. To access the dashboard, follow these steps:
+ITBench uses [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) and [Prometheus](https://prometheus.io/docs/introduction/overview/) to collect metrics and configure alerts from an application and Kubernetes cluster. To access the dashboard, follow these steps:
 
 1. Use the following command to show the host address:
 ```shell
@@ -154,7 +154,7 @@ make display-endpoints
 
 A **trace** is a debug tool that - typically - shows the progress of a request as it moves through an application. This information allows engineers to see which services are failing to handle the request.
 
-ITBench uses OpenTelemetry and Jaeger to collect traces from an application. To access the dashboard, follow these steps:
+ITBench uses [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) and [Jaeger](https://www.jaegertracing.io/docs/latest/) to collect traces from an application. To access the dashboard, follow these steps:
 
 1. Use the following command to show the host address:
 ```shell
@@ -167,7 +167,7 @@ make display-endpoints
 
 A **log** is a tool that show some message. These messages are crafted by the application developer(s) for a variety of purposes (following execution, debuging, etc.). Logs tend to be volumous in nature. Thus, normally only a subset of all possible displayed logs are captured for performance and storage reasons.
 
-ITBench uses OpenTelemetry to collect logs from application, which are then stored in Clickhouse. To access the dashboard, follow these steps:
+ITBench uses [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) to collect logs from application, which are then stored in Clickhouse. To access the dashboard, follow these steps:
 
 1. Use the following command to show the host address:
 ```shell
@@ -180,7 +180,7 @@ make display-endpoints
 
 These metrics are more of a specification of a type of metric, [discussed earlier](#alerts--metrics).
 
-ITBench uses OpenCost to collect and analyze cost metrics of an application. These metrics themselves are supplied from Promethues. To access the dashboard, follow these steps:
+ITBench uses [OpenCost](https://opencost.io/docs/) to collect and analyze cost metrics of an application. These metrics themselves are supplied from [Promethues](https://prometheus.io/docs/introduction/overview/). To access the dashboard, follow these steps:
 
 1. Use the following command to show the host address:
 ```shell
