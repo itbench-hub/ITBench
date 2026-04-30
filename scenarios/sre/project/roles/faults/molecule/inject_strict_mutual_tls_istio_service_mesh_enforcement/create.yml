@@ -1,0 +1,71 @@
+---
+- name: Create test resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Include tools role variables
+      ansible.builtin.include_vars:
+        file: |-
+          {{
+            [
+              playbook_dir,
+              '..',
+              '..',
+              'tools',
+              'defaults',
+              'main',
+              'managers.yaml'
+            ] |
+            ansible.builtin.path_join
+          }}
+
+    - name: Install Istio Base (CRDs only)
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.istio_base.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.istio_base.helm.chart.version }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        create_namespace: true
+        release_name: "{{ tools_managers.istio_base.helm.release.name }}"
+        release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+        release_state: present
+        wait: true
+
+    - name: Create test namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: strict-mtls-test
+        state: present
+
+    - name: Create test deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-workload
+            namespace: strict-mtls-test
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: test-workload
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: test-workload
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.1-1776834797
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+        state: present
+        wait: true
