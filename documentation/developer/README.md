@@ -9,6 +9,9 @@ This document will detail how to set up a developer environment for contributing
 
 Please follow the requirements listed [here](../getting-started/scenarios.md#required-software).
 
+>[!NOTE]
+>See [here](./software.md) for a comprehensive list of the ITBench software stack.
+
 ## Installation
 
 Please follow the instructions listed [here](../getting-started/scenarios.md#installation).
@@ -27,4 +30,4 @@ make pre-commit-hooks
 
 ## Next Steps
 
-Check out this directory for guides on how to further contribute to ITBench. Please see the documentation [here](../library/) for more information about the various tools supported and offered by the project.
+Check out this directory for guides on how to further contribute to ITBench. Please see the documentation [here](../library/) for more information about the various faults and scenarios offered by the project, along with other supported softwares.
