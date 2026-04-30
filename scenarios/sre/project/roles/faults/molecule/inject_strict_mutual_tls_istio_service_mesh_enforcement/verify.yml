@@ -1,0 +1,51 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve PeerAuthentication
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: security.istio.io/v1
+        kind: PeerAuthentication
+        name: mtls-strict
+        namespace: strict-mtls-test
+      register: faults_peer_authentication
+
+    - name: Validate that PeerAuthentication exists
+      ansible.builtin.assert:
+        that:
+          - faults_peer_authentication.resources | ansible.builtin.length == 1
+        fail_msg: PeerAuthentication not found. Fault injection failed.
+        success_msg: PeerAuthentication found.
+
+    - name: Validate that PeerAuthentication has STRICT mode
+      ansible.builtin.assert:
+        that:
+          - faults_peer_authentication.resources[0].spec.mtls.mode == "STRICT"
+        fail_msg: PeerAuthentication mode is not STRICT. Fault injection failed.
+        success_msg: PeerAuthentication mode is STRICT.
+
+    - name: Retrieve Deployment
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: test-workload
+        namespace: strict-mtls-test
+      register: faults_deployment
+
+    - name: Validate that Deployment exists
+      ansible.builtin.assert:
+        that:
+          - faults_deployment.resources | ansible.builtin.length == 1
+        fail_msg: Deployment not found. Fault injection failed.
+        success_msg: Deployment found.
+
+    - name: Validate that workload has istio dataplane-mode label set to none
+      ansible.builtin.assert:
+        that:
+          - faults_deployment.resources[0].spec.template.metadata.labels["istio.io/dataplane-mode"] is defined
+          - faults_deployment.resources[0].spec.template.metadata.labels["istio.io/dataplane-mode"] == "none"
+        fail_msg: Workload label 'istio.io/dataplane-mode' not set to 'none'. Fault injection failed.
+        success_msg: Workload label 'istio.io/dataplane-mode' is set to 'none'.

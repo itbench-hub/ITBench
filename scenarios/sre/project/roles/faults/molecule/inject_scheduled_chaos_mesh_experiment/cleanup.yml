@@ -1,0 +1,12 @@
+---
+- name: Remove fault objects
+  hosts:
+    - localhost
+  tasks:
+    - name: Import faults role to remove schedules
+      ansible.builtin.import_role:
+        name: faults
+        tasks_from: remove_chaos_mesh_schedules.yaml
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"

@@ -1,0 +1,115 @@
+---
+- name: Create test resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Include tools role variables
+      ansible.builtin.include_vars:
+        file: |-
+          {{
+            [
+              playbook_dir,
+              "..",
+              "..",
+              "..",
+              "tools",
+              "defaults",
+              "main",
+              "managers.yaml"
+            ] |
+            ansible.builtin.path_join
+          }}
+
+    - name: Approve pending certificate requests
+      ansible.builtin.include_role:
+        name: cluster
+        tasks_from: approve_certificate_requests
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Install Kubernetes Metrics Server
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.kubernetes_metrics_server.helm.chart.reference }}"
+        chart_repo_url: "{{ tools_managers.kubernetes_metrics_server.helm.chart.repository }}"
+        chart_version: "{{ tools_managers.kubernetes_metrics_server.helm.chart.version }}"
+        create_namespace: true
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: misconfigured-hpa-release
+        release_namespace: misconfigured-hpa-test
+        release_state: present
+        timeout: 10m0s
+        values:
+          apiService:
+            insecureSkipTLSVerify: false
+          tls:
+            type: helm
+        wait: true
+
+    - name: Create test deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-workload
+            namespace: misconfigured-hpa-test
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: test-workload
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: test-workload
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.1-1776834797
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+                    resources:
+                      requests:
+                        cpu: 100m
+                        memory: 128Mi
+                      limits:
+                        cpu: 200m
+                        memory: 256Mi
+        state: present
+        wait: true
+
+    - name: Create HorizontalPodAutoscaler
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: autoscaling/v2
+          kind: HorizontalPodAutoscaler
+          metadata:
+            name: test-workload-hpa
+            namespace: misconfigured-hpa-test
+          spec:
+            scaleTargetRef:
+              apiVersion: apps/v1
+              kind: Deployment
+              name: test-workload
+            minReplicas: 1
+            maxReplicas: 10
+            metrics:
+              - type: Resource
+                resource:
+                  name: cpu
+                  target:
+                    type: Utilization
+                    averageUtilization: 70
+              - type: Resource
+                resource:
+                  name: memory
+                  target:
+                    type: Utilization
+                    averageUtilization: 80
+        state: present

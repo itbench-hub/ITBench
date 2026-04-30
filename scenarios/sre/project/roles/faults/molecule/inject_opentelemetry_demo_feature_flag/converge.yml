@@ -1,0 +1,23 @@
+---
+- name: Run fault injection test
+  hosts:
+    - localhost
+  tasks:
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        faults_injection_tasks:
+          - id: opentelemetry-demo-feature-flag
+            args:
+              kubernetesObject:
+                apiVersion: v1
+                kind: ConfigMap
+                metadata:
+                  name: flagd-config
+                  namespace: opentelemetry-demo-feature-flag-test
+              flag:
+                name: productCatalogFailure
+                state: "on"

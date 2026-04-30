@@ -1,0 +1,52 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve HorizontalPodAutoscaler
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: autoscaling/v2
+        kind: HorizontalPodAutoscaler
+        name: test-workload-hpa
+        namespace: misconfigured-hpa-test
+      register: faults_hpa
+
+    - name: Validate that HPA exists
+      ansible.builtin.assert:
+        that:
+          - faults_hpa.resources | ansible.builtin.length == 1
+        fail_msg: Unable to find HPA. Fault injection failed.
+        success_msg: Found HPA.
+
+    - name: Retrieve CPU metric configuration
+      ansible.builtin.set_fact:
+        faults_cpu_metric: |-
+          {{
+            faults_hpa.resources[0].spec.metrics |
+            ansible.builtin.selectattr('resource.name', '==', 'cpu')
+          }}
+
+    - name: Retrieve memory metric configuration
+      ansible.builtin.set_fact:
+        faults_memory_metric: |-
+          {{
+            faults_hpa.resources[0].spec.metrics |
+            ansible.builtin.selectattr('resource.name', '==', 'memory')
+          }}
+
+    - name: Validate that CPU metric was misconfigured
+      ansible.builtin.assert:
+        that:
+          - faults_cpu_metric | ansible.builtin.length == 1
+          - faults_cpu_metric[0].resource.target.averageUtilization == 20
+        fail_msg: CPU metric was not misconfigured. Fault injection failed.
+        success_msg: CPU metric was misconfigured to 20%.
+
+    - name: Validate that memory metric was misconfigured
+      ansible.builtin.assert:
+        that:
+          - faults_memory_metric | ansible.builtin.length == 1
+          - faults_memory_metric[0].resource.target.averageUtilization == 30
+        fail_msg: Memory metric was not misconfigured. Fault injection failed.
+        success_msg: Memory metric was misconfigured to 30%.
