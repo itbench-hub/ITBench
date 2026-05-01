@@ -15,7 +15,7 @@ Please follow the instructions listed [here](../getting-started/scenarios.md#ins
 
 ## Set Up
 
-Please follow the instructions listed [here](../getting-started/scenarios.md#setup).
+Please follow the instructions listed [here](../getting-started/scenarios.md#set-up).
 
 ## Creating Scenarios
 
