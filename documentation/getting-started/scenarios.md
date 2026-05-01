@@ -62,7 +62,7 @@ brew install openshift-cli
 >![NOTE]
 >The OpenShift CLI is only required if using an OpenShift cluster.
 
-## SetUp
+## Set Up
 
 1. From the root directory of this repository, run the following command:
 ```shell
