@@ -1,0 +1,34 @@
+---
+alerts:
+  - KubePodNotReady
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `frontend` service having a malformed readiness probe.
+disruptions:
+  - injections:
+      - args:
+          container:
+            name: frontend
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: frontend
+              namespace: otel-demo
+        id: misconfigured-kubernetes-workload-container-readiness-probe
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 49
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo rollout undo deployment/frontend
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n otel-demo edit deployment frontend
+          text: Manually edit the manifest and remove the faulty readiness probe in the container rule.
+tags:
+  - Deployment
+  - Performance

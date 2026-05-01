@@ -1,0 +1,55 @@
+---
+alerts:
+  goldenSignal:
+    - HighRequestErrorRate
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+    type: object
+description: This fault injects an DNS policy which results in the workload being unable to resolve the name of outgoing services.
+expectation: All outgoing requests made by the workload will failed due to being unable to resolve the DNS name.
+name: Failing Name Resolution Kubernetes Workload DNS Policy
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny
+          text: Manually edit the manifest and replace the invalid rule with the correct value.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny
+          text: Delete the faulty authorization policy.
+tags:
+  - Deployment
+  - Networking

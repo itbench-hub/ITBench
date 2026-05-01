@@ -1,17 +1,41 @@
 ---
-- name: Include applications role variables for templating
-  ansible.builtin.include_vars:
-    file: "{{ role_path }}/../applications/defaults/main/managers.yaml"
 
-- name: Include tools role variables for templating
-  ansible.builtin.include_vars:
-    file: "{{ role_path }}/../tools/defaults/main/managers.yaml"
 
 - name: Create temporary directory for scenario templates
   ansible.builtin.tempfile:
     prefix: scenarios
     state: directory
   register: documentation_temporary_directory
+
+- name: Include applications role variables for templating
+  ansible.builtin.include_vars:
+    file: |-
+      {{
+        [
+          playbook_dir,
+          "roles",
+          "applications",
+          "defaults",
+          "main",
+          "managers.yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
+
+- name: Include tools role variables for templating
+  ansible.builtin.include_vars:
+    file: |-
+      {{
+        [
+          playbook_dir,
+          "roles",
+          "tools",
+          "defaults",
+          "main",
+          "managers.yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
 
 - name: Generate map for applications based on application id
   ansible.builtin.set_fact:
@@ -64,186 +88,146 @@
     label: waiter/{{ waiter.name }}
     loop_var: waiter
 
-- name: Generate variables for scenario library index templating
-  ansible.builtin.set_fact:
-    documentation_scenarios: |-
+- name: Retrieve all scenario index templates
+  ansible.builtin.find:
+    path: |-
       {{
-        documentation_scenarios |
-        ansible.builtin.default({}) |
-        ansible.builtin.combine(
-          {
-            scenario.id: (
-              scenario |
-              ansible.utils.remove_keys(target=["solutionTemplates"]) |
-              ansible.builtin.combine({"alerts": [], "solutions": []})
-            )
-          }
-        )
+        [
+          role_path,
+          "templates",
+          "library",
+          "scenarios",
+          "indexes"
+        ] |
+        ansible.builtin.path_join
       }}
-    documentation_scenario_solutions: |-
+  register: documentation_scenarios_indexes_templates
+
+- name: Template all scenario indexes
+  ansible.builtin.set_fact:
+    documentation_scenarios_indexes: |-
       {{
         (
-          documentation_scenario_solutions |
+          documentation_scenarios_indexes |
           ansible.builtin.default([])
         ) +
-        (
-          [scenario.id] |
-          ansible.builtin.product(scenario.solutionTemplates)
-        )
+        [
+          (
+            lookup("ansible.builtin.template", scenario_index.path) |
+            ansible.builtin.from_yaml
+          ) |
+          ansible.builtin.combine(
+            {
+              "index": (
+                scenario_index.path |
+                ansible.builtin.basename |
+                ansible.builtin.splitext |
+                ansible.builtin.first |
+                ansible.builtin.int
+              )
+            }
+          )
+        ]
       }}
-  loop: |-
-    {{
-      lookup("ansible.builtin.template", "templates/library/scenarios/index.j2") |
-      ansible.builtin.from_yaml
-    }}
+  loop: "{{ documentation_scenarios_indexes_templates.files }}"
   loop_control:
-    label: scenario-{{ scenario.id }}
-    loop_var: scenario
+    label: file/{{ scenario_index.path | ansible.builtin.basename }}
+    loop_var: scenario_index
 
-- name: Generate scenario solution template files
+- name: Create solution templates for each templated scenario
   ansible.builtin.copy:
     content: |-
       {{
-        documentation_faults[scenario_injection.id].solutions.templates |
-        ansible.builtin.to_nice_yaml |
-        ansible.builtin.replace("args.", "scenario_injection.args.")
+        lookup("ansible.builtin.template", "templates/library/scenarios/solutions.j2") |
+        ansible.builtin.from_yaml |
+        ansible.builtin.to_nice_yaml
       }}
-    dest: "{{ documentation_temporary_directory.path }}/{{ solution_file_name }}.j2"
+    dest: "{{ documentation_temporary_directory.path }}/{{ scenario.id }}_solutions.j2"
     mode: "0644"
-  loop: "{{ documentation_scenario_solutions }}"
+  loop: "{{ documentation_scenarios_indexes }}"
   loop_control:
-    label: scenario-{{ group[0] }}/solution-{{ group[1].disruptionIndex }}-{{ group[1].injectionIndex }}
-    loop_var: group
-  vars:
-    scenario_injection: |-
-      {{
-        documentation_scenarios[
-          group[0]
-        ].disruptions[
-          group[1].disruptionIndex
-        ].injections[
-          group[1].injectionIndex
-        ]
-      }}
-    solution_file_name: |-
-      {{
-        [
-          "scenario",
-          group[0],
-          "solution",
-          group[1].disruptionIndex,
-          group[1].injectionIndex
-        ] |
-        ansible.builtin.join("-")
-      }}
+    label: scenario/{{ scenario.id }}
+    loop_var: scenario
 
-- name: Template scenario solution files
-  ansible.builtin.template:
-    src: "{{ documentation_temporary_directory.path }}/{{ solution_file_name }}.j2"
-    dest: "{{ documentation_temporary_directory.path }}/{{ solution_file_name }}.yaml"
-    mode: "0644"
-  loop: "{{ documentation_scenario_solutions }}"
-  loop_control:
-    label: scenario-{{ group[0] }}/solution-{{ group[1].disruptionIndex }}-{{ group[1].injectionIndex }}
-    loop_var: group
-  vars:
-    scenario_injection: |-
-      {{
-        documentation_scenarios[
-          group[0]
-        ].disruptions[
-          group[1].disruptionIndex
-        ].injections[
-          group[1].injectionIndex
-        ]
-      }}
-    solution_file_name: |-
-      {{
-        [
-          "scenario",
-          group[0],
-          "solution",
-          group[1].disruptionIndex,
-          group[1].injectionIndex
-        ] |
-        ansible.builtin.join("-")
-      }}
-
-- name: Add templated fault solutions to scenarios
+- name: Add solution and fault information to scenario
   ansible.builtin.set_fact:
     documentation_scenarios: |-
       {{
-        documentation_scenarios |
-        ansible.builtin.combine(
-          {
-            group[0]: (
-              documentation_scenarios[group[0]] |
-              ansible.builtin.combine(
-                {
-                  "alerts": (
+        (
+          documentation_scenarios |
+          ansible.builtin.default([])
+        ) +
+        [
+          (
+            scenario |
+            ansible.utils.remove_keys(target=["solutionTemplates"]) |
+            ansible.builtin.combine(
+              {
+                "alerts": (
+                  (
                     (
-                      documentation_scenarios[group[0]].alerts +
-                      (
-                        documentation_faults[scenario_injection.id].alerts.application |
-                        ansible.builtin.default ([])
-                      ) +
-                      (
-                        documentation_faults[scenario_injection.id].alerts.goldenSignal |
-                        ansible.builtin.default ([])
-                      )
-                    ) |
-                    ansible.builtin.unique
-                  ),
-                  "solutions": (
-                    documentation_scenarios[group[0]].solutions +
-                    [
-                      lookup(
-                        "ansible.builtin.file",
-                        (
-                          [
-                            documentation_temporary_directory.path,
-                            (
-                              [solution_file_name, ".yaml"] | ansible.builtin.join("")
-                            )
-                          ] |
-                          ansible.builtin.path_join
-                        )
-                      ) |
-                      ansible.builtin.from_yaml
-                    ]
-                  )
-                }
-              )
+                      scenario_faults |
+                      map(attribute="alerts.application", default=[]) |
+                      ansible.builtin.flatten
+                    ) +
+                    (
+                      scenario_faults |
+                      map(attribute="alerts.goldenSignal", default=[]) |
+                      ansible.builtin.flatten
+                    )
+                  ) |
+                  ansible.builtin.unique
+                ),
+                "platforms": (
+                  (
+                    (
+                      scenario.platforms |
+                      ansible.builtin.default([])
+                    ) +
+                    (
+                      scenario_faults |
+                      map(attribute="platform")
+                    )
+                  ) |
+                  ansible.builtin.unique
+                ),
+                "tags": (
+                  (
+                    (
+                      scenario.tags |
+                      ansible.builtin.default([])
+                    ) +
+                    (
+                      scenario_faults |
+                      map(attribute="tags", default=[]) |
+                      ansible.builtin.flatten
+                    )
+                  ) |
+                  ansible.builtin.unique
+                ),
+                "solutions": (
+                  lookup("ansible.builtin.template", scenario_solutions_file) |
+                  ansible.builtin.from_yaml
+                )
+              }
             )
-          }
-        )
-      }}
-  loop: "{{ documentation_scenario_solutions }}"
-  loop_control:
-    label: scenario-{{ group[0] }}/solution-{{ group[1].disruptionIndex }}-{{ group[1].injectionIndex }}
-    loop_var: group
-  vars:
-    scenario_injection: |-
-      {{
-        documentation_scenarios[
-          group[0]
-        ].disruptions[
-          group[1].disruptionIndex
-        ].injections[
-          group[1].injectionIndex
+          )
         ]
       }}
-    solution_file_name: |-
+  loop: "{{ documentation_scenarios_indexes }}"
+  loop_control:
+    label: scenario/{{ scenario.id }}
+    loop_var: scenario
+  vars:
+    scenario_faults: |-
       {{
-        [
-          "scenario",
-          group[0],
-          "solution",
-          group[1].disruptionIndex,
-          group[1].injectionIndex
-        ] |
-        ansible.builtin.join("-")
+        scenario.disruptions |
+        map(attribute="injections", default=[]) |
+        ansible.builtin.flatten(1) |
+        map(attribute="id") |
+        map("extract", documentation_faults)
       }}
+    scenario_solutions_file: "{{ documentation_temporary_directory.path }}/{{ scenario.id }}_solutions.j2"
 
 - name: Generate scenarios libary schema
   ansible.builtin.copy:
@@ -253,30 +237,192 @@
         ansible.builtin.from_yaml |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ [role_path, 'files', 'library', 'scenarios', 'schema.json'] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "scenarios",
+          "schema.json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
+
+- name: Generate scenario indexes
+  ansible.builtin.copy:
+    content: |-
+      {{
+        scenario |
+        ansible.utils.remove_keys(target=["index"]) |
+        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2, width=9999)
+      }}
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "scenarios",
+          "indexes",
+          index_file_name
+        ] |
+        ansible.builtin.path_join
+      }}
+    mode: "0644"
+  loop: "{{ documentation_scenarios }}"
+  loop_control:
+    label: index/{{ scenario.index }}
+    loop_var: scenario
+  vars:
+    index_file_name: "{{ scenario.index | ansible.builtin.string }}.yaml"
 
 - name: Generate scenarios libary index
   ansible.builtin.copy:
     content: |
       {{
-        documentation_scenarios.values() |
+        documentation_scenarios |
         ansible.builtin.sort(attribute="id") |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ [role_path, 'files', 'library', 'scenarios', 'index.json'] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "scenarios",
+          "index.json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
 
-- name: Generate Scenarios README
+- name: Generate scenario library readme
   ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.template', 'templates/readmes/scenarios.j2') }}"
-    dest: "{{ playbook_dir }}/../docs/scenarios.md"
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/readmes/index.j2') }}"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "scenarios",
+          "README.md"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   vars:
-    documentation_contents: |-
+    scenarios: |-
       {{
         lookup("ansible.builtin.file", "files/library/scenarios/index.json") |
         ansible.builtin.from_json
+      }}
+    statistics:
+      application:
+        book_info: |-
+          {{
+            documentation_scenarios |
+            map(attribute="environment.applications") |
+            ansible.builtin.flatten |
+            ansible.builtin.selectattr("id", "==", "book-info") |
+            ansible.builtin.length
+          }}
+        otel_demo: |-
+          {{
+            documentation_scenarios |
+            map(attribute="environment.applications") |
+            ansible.builtin.flatten |
+            ansible.builtin.selectattr("id", "==", "opentelemetry-demo") |
+            ansible.builtin.length
+          }}
+      category:
+        finops: |-
+          {{
+            documentation_scenarios |
+            ansible.builtin.selectattr("category", "==", "finops") |
+            ansible.builtin.length
+          }}
+        sre: |-
+          {{
+            documentation_scenarios |
+            ansible.builtin.selectattr("category", "==", "sre") |
+            ansible.builtin.length
+          }}
+      complexity:
+        high: |-
+          {{
+            documentation_scenarios |
+            ansible.builtin.selectattr("complexity", "==", "high") |
+            ansible.builtin.length
+          }}
+        low: |-
+          {{
+            documentation_scenarios |
+            ansible.builtin.selectattr("complexity", "==", "low") |
+            ansible.builtin.length
+          }}
+        medium: |-
+          {{
+            documentation_scenarios |
+            ansible.builtin.selectattr("complexity", "==", "medium") |
+            ansible.builtin.length
+          }}
+
+- name: Generate scenario library index readmes
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/readmes/scenario.j2') }}"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "scenarios",
+          scenario.category,
+          scenario.id ~ ".md"
+        ] |
+        ansible.builtin.path_join
+      }}
+    mode: "0644"
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/scenarios/index.json") |
+      ansible.builtin.from_json
+    }}
+  loop_control:
+    label: scenario/{{ scenario.id }}
+    loop_var: scenario
+  vars:
+    scenario_tags: "{{ scenario.tags | ansible.builtin.sort | ansible.builtin.join(', ') }}"
+    scenario_platforms: "{{ scenario.platforms | ansible.builtin.sort | ansible.builtin.join(', ') }}"
+    source_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "..",
+          "scenarios",
+          "sre",
+          "project",
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "scenarios",
+          "indexes",
+          scenario.index ~ ".yaml"
+        ] |
+        ansible.builtin.path_join
       }}
 
 - name: Delete the temporary directory

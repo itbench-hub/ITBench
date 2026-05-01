@@ -1,0 +1,32 @@
+---
+alerts:
+  - KubePodNotReady
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `ad` service unable to run due to a resource quota on the namespace.
+disruptions:
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: ad
+              namespace: otel-demo
+        id: insufficient-kubernetes-resource-quota
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 102
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo edit resourcequota memory
+          text: Manually edit the manifest(s) and increase the values of the resource quota(s).
+    - steps:
+        - command: kubectl -n otel-demo delete resourcequota memory
+          text: Delete the offending resource quota(s) if it is no longer required.
+tags:
+  - Deployment
+  - Performance

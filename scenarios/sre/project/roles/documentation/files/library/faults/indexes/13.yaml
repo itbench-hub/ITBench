@@ -1,0 +1,73 @@
+---
+arguments:
+  jsonSchema:
+    properties:
+      container:
+        properties:
+          env:
+            properties:
+              name:
+                type: string
+              value:
+                type: string
+            required:
+              - name
+              - value
+            type: object
+          name:
+            type: string
+        required:
+          - env
+          - name
+        type: object
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+      - container
+    type: object
+description: This fault overwrites an environment variable value with one provided in the argument.
+expectation: Varies based on the effect/purpose of the environment variable.
+name: Modified Kubernetes Workload Container Environment Variable
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{
+            args.kubernetesObject.metadata.name }}
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{
+            args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and replace the environment variable(s) value with the correct value(s).
+tags:
+  - Deployment
+  - Performance

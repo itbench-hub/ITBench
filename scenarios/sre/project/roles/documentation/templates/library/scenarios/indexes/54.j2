@@ -1,0 +1,35 @@
+---
+category: sre
+complexity: low
+description: This scenario simulates Kubernetes API server being stressed during OpenTelemetry Demo's execution.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: chaos-mesh.org/v1alpha1
+          kind: Schedule
+          metadata:
+            name: api-server-memory-stress
+            namespace: {{ tools_managers.chaos_mesh.kubernetes.namespace }}
+        scheduleSpec:
+          type: StressChaos
+          stressChaos:
+            mode: one
+            selector:
+              namespaces:
+                - kube-system
+              labelSelectors:
+                component: kube-apiserver
+            stressors:
+              memory:
+                workers: 4
+                size: 6GB
+            duration: 55s
+      id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 54
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

@@ -1,0 +1,37 @@
+---
+alerts:
+  - NoRequestsReceived
+  - HighRequestErrorRate
+category: sre
+complexity: low
+description: This scenario simulates all ingress traffic being blocked on OpenTelemetry Demo's `frontend` service.
+disruptions:
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: frontend
+              namespace: otel-demo
+        id: ingress-port-blocking-network-policy
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 31
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo get networkpolicy
+          text: Retrieve and review the configuration of the network policy(s) in the affected namespace.
+        - command: kubectl -n otel-demo edit networkpolicy frontend-ingress
+          text: Manually edit the manifest(s) and allow access to workload's ports of the network policy(s).
+    - steps:
+        - command: kubectl -n otel-demo get networkpolicy
+          text: Retrieve and review the configuration of the network policy(s) in the affected namespace.
+        - command: kubectl -n otel-demo edit networkpolicy frontend-ingress
+          text: Delete the offending network policy(s) if it is no longer required.
+tags:
+  - Deployment
+  - Networking

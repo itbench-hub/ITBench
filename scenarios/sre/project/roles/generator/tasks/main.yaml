@@ -1,0 +1,36 @@
+---
+- name: Import fault generation tasks
+  ansible.builtin.import_tasks:
+    file: generate_fault_index.yaml
+  tags:
+    - generate_fault
+
+- name: Import scenario generation tasks
+  ansible.builtin.import_tasks:
+    file: generate_scenario_index.yaml
+  tags:
+    - generate_scenario
+
+- name: Generate and update files
+  tags:
+    - generate_files
+  block:
+    - name: Import awx role
+      ansible.builtin.import_role:
+        name: awx
+        tasks_from: generate_files
+
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+        tasks_from: generate_files
+
+    - name: Import waiters role
+      ansible.builtin.import_role:
+        name: waiters
+        tasks_from: generate_files
+
+    - name: Include scenarios role
+      ansible.builtin.import_role:
+        name: scenarios
+        tasks_from: generate_files

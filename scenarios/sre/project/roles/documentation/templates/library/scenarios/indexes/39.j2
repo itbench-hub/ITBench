@@ -1,0 +1,21 @@
+---
+category: sre
+complexity: low
+description: This scenario simulates OpenTelemetry Demo's `payment` service being unable to schedule a new pod.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: payment
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: cordoned-kubernetes-worker-node
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 39
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

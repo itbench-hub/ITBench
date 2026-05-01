@@ -11,9 +11,13 @@ deps: ## Installs dependencies
 
 .PHONY: lint
 lint: ## Lints files
-	uv run ansible-lint
+	$(UV) run ansible-lint
 
 .PHONY: pre-commit-hooks
 pre-commit-hooks: ## Installs pre-commit hooks
 	$(UV) run pre-commit install
 	$(UV) run pre-commit install --hook-type commit-msg --hook-type pre-push
+
+.PHONY: update-secrets-baseline
+update-secrets-baseline: ## Updates the baseline secret file
+	$(UV) run detect-secrets scan --update .secrets.baseline

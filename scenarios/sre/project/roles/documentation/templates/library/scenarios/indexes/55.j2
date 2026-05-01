@@ -1,0 +1,35 @@
+---
+category: sre
+complexity: low
+description: This scenario simulates Kubernetes API server experiencing latency during OpenTelemetry Demo's execution.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: chaos-mesh.org/v1alpha1
+          kind: Schedule
+          metadata:
+            name: api-server-memory-stress
+            namespace: {{ tools_managers.chaos_mesh.kubernetes.namespace }}
+        scheduleSpec:
+          type: IOChaos
+          ioChaos:
+            action: latency
+            mode: all
+            selector:
+              namespaces:
+                - kube-system
+              labelSelectors:
+                component: etcd
+            delay: 200ms
+            percent: 50
+            volumePath: /var/lib/etcd
+            duration: 5m
+      id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 55
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

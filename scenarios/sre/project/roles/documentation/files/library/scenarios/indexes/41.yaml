@@ -1,0 +1,63 @@
+---
+alerts: []
+category: sre
+complexity: low
+description: This scenario simulates the OpenTelemetry Demo's `cart` service consuming most of the node's available memory.
+disruptions:
+  - injections:
+      - args:
+          container:
+            name: cart
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: cart
+              namespace: otel-demo
+        id: unassigned-kubernetes-workload-container-resource-limits
+      - args:
+          kubernetesObject:
+            apiVersion: chaos-mesh.org/v1alpha1
+            kind: Schedule
+            metadata:
+              name: cart-stress-chaos-memory
+              namespace: chaos-mesh
+          scheduleSpec:
+            stressChaos:
+              duration: 55s
+              mode: all
+              selector:
+                labelSelectors:
+                  app.kubernetes.io/component: cart
+                namespaces:
+                  - otel-demo
+              stressors:
+                memory:
+                  size: 85%
+                  workers: 10
+            type: StressChaos
+        id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 41
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n chaos-mesh annotate schedule cart-stress-chaos-memory experiment.chaos-mesh.org/pause='true'
+          text: Annotate the schedule to pause the active experiment.
+        - command: kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'
+          text: Retrieve the associated experiment managed by the schedule.
+        - text: Delete the retrieved experiement after it has entered the `Paused` state.
+        - command: kubectl -n chaos-mesh delete schedule cart-stress-chaos-memory experiment.chaos-mesh.org/pause='true'
+          text: Delete the schedule.
+  - - steps:
+        - command: kubectl -n otel-demo rollout undo deployment/cart
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n otel-demo edit deployment cart
+          text: Manually edit the manifest and replace the invalid container's resource configuration with the correct value(s).
+tags:
+  - Deployment
+  - Performance

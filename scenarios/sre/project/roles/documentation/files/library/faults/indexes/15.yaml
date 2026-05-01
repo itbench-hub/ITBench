@@ -1,0 +1,66 @@
+---
+alerts:
+  application:
+    - KubePodNotReady
+arguments:
+  jsonSchema:
+    properties:
+      container:
+        properties:
+          name:
+            type: string
+        required:
+          - name
+        type: object
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+      - container
+    type: object
+description: This fault injects an nonexistent image into a designated Kubernetes workload's container.
+expectation: The faulted pod(s) will enter the `Pending` state due to an `ImagePullBackOff` error. The workload will become unable to function.
+name: Nonexistent Kubernetes Workload Container Image
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/containers/images/
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{
+            args.kubernetesObject.metadata.name }}
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{
+            args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and replace the invalid image with the correct value.
+tags:
+  - Deployment
+  - Performance
