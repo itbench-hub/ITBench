@@ -1,14 +1,9 @@
 ---
 # Note: The Prometheus offered by OpenShift is v2, while the one installed
 #       in the chart is v3. While otel-demo supports the `otlphttp` exporter,
-#       this is not easily exposed in OpenShift. So, IT-Bench uses the `prometheus`
+#       this is not easily exposed in OpenShift. So, ITBench uses the `prometheus`
 #       exporter instead to support both platforms until the functionality of
 #       Prometheus is the same on both platforms.
-
-# Note: Due to a Helm bug, the value of the `otlphttp` and `opensearch` exports cannot
-#       be set to null in order to remove the chart's values. So, the configuration of
-#       the exporters is still correctly set, but not used for forwarding the data.
-#       Requires backport: https://github.com/helm/helm/issues/30587
 
 - name: Create Namespace
   kubernetes.core.k8s:
@@ -38,6 +33,40 @@
     tools_cluster:
       kubeconfig: "{{ applications_cluster.kubeconfig }}"
       platform: "{{ applications_cluster.platform }}"
+
+- name: Create Service Account with `anyuid` access
+  when:
+    - applications_cluster.platform == "openshift"
+  block:
+    - name: Create ServiceAccount for OpenTelemetry Demo
+      kubernetes.core.k8s:
+        kubeconfig: "{{ applications_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
+            namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+        state: present
+
+    - name: Create RoleBinding for access to anyuid SecurityContextConstraint
+      kubernetes.core.k8s:
+        kubeconfig: "{{ applications_cluster.kubeconfig }}"
+        resource_definition:
+          kind: RoleBinding
+          apiVersion: rbac.authorization.k8s.io/v1
+          metadata:
+            name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
+            namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+          subjects:
+            - kind: ServiceAccount
+              name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
+              namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: system:openshift:scc:anyuid
+        state: present
 
 - name: Install OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
