@@ -89,146 +89,146 @@ Table Fields:
 #### Using Custom CISO Agents
 
 1. Create Agent Harness config
-```yaml
-# This field defines the path where the scenario's environment information is stored.
-# When the agent harness runs the command below, the scenario data is fetched from the server and saved at this location.
-path_to_data_provided_by_scenario: /tmp/agent/scenario_data.json
+    ```yaml
+    # This field defines the path where the scenario's environment information is stored.
+    # When the agent harness runs the command below, the scenario data is fetched from the server and saved at this location.
+    path_to_data_provided_by_scenario: /tmp/agent/scenario_data.json
 
-# This field defines the path where the agent's output results should be stored.
-# The agent harness uploads this file back to the server for evaluation.
-path_to_data_pushed_to_scenario: /tmp/agent/agent_data.txt
+    # This field defines the path where the agent's output results should be stored.
+    # The agent harness uploads this file back to the server for evaluation.
+    path_to_data_pushed_to_scenario: /tmp/agent/agent_data.txt
 
-# Command to be run by the agent harness
-run:
+    # Command to be run by the agent harness
+    run:
+        command: ["/bin/bash"]
+        args:
+        - -c
+        - |
+        <your command to run Agent>
+    ```
+
+    The `command` is executed with `args` inside a docker container that is built from a Dockerfile you create (we will instruct in the later section).
+
+    For example, the following is [the Agent Harness config](https://github.com/itbench-hub/ITBench-CISO-CAA-Agent/blob/main/agent-harness.yaml) of the sample CISO CAA Agent. It appears complex because it includes error handling. When creating your own harness config, it doesn’t need to be this complicated. However, make sure to include proper termination handling to avoid infinite loops.
+
+    ```yaml
+    path_to_data_provided_by_scenario: /tmp/agent/scenario_data.json
+    path_to_data_pushed_to_scenario: /tmp/agent/agent_data.tar
+    run:
     command: ["/bin/bash"]
     args:
     - -c
     - |
-    <your command to run Agent>
-```
 
-The `command` is executed with `args` inside a docker container that is built from a Dockerfile you create (we will instruct in the later section).
-
-For example, the following is [the Agent Harness config](https://github.com/itbench-hub/ITBench-CISO-CAA-Agent/blob/main/agent-harness.yaml) of the sample CISO CAA Agent. It appears complex because it includes error handling. When creating your own harness config, it doesn’t need to be this complicated. However, make sure to include proper termination handling to avoid infinite loops.
-
-```yaml
-path_to_data_provided_by_scenario: /tmp/agent/scenario_data.json
-path_to_data_pushed_to_scenario: /tmp/agent/agent_data.tar
-run:
-command: ["/bin/bash"]
-args:
-- -c
-- |
-
-    timestamp=$(date +%Y%m%d%H%M%S)
-    tmpdir=/tmp/agent/${timestamp}
-    mkdir -p ${tmpdir}
-
-    cat /tmp/agent/scenario_data.json > ${tmpdir}/scenario_data.json
-
-    jq -r .goal_template ${tmpdir}/scenario_data.json > ${tmpdir}/goal_template.txt
-    jq -r .vars.kubeconfig ${tmpdir}/scenario_data.json > ${tmpdir}/kubeconfig.yaml
-    jq -r .vars.ansible_ini ${tmpdir}/scenario_data.json > ${tmpdir}/ansible.ini
-    jq -r .vars.ansible_user_key ${tmpdir}/scenario_data.json > ${tmpdir}/user_key
-    chmod 600 ${tmpdir}/user_key
-    sed -i.bak -E "s|(ansible_ssh_private_key_file=\")[^\"]*|\1${tmpdir}/user_key|" ${tmpdir}/ansible.ini
-
-    sed "s|{{ kubeconfig }}|${tmpdir}/kubeconfig.yaml|g" ${tmpdir}/goal_template.txt > ${tmpdir}/goal.txt
-    sed -i.bak -E "s|\{\{ path_to_inventory \}\}|${tmpdir}/ansible.ini|g" ${tmpdir}/goal.txt
-
-    echo "You can use \`${tmpdir}\` as your workdir." >> ${tmpdir}/goal.txt
-
-    source .venv/bin/activate
-    timeout 200 python src/ciso_agent/main.py --goal "`cat ${tmpdir}/goal.txt`" --auto-approve -o ${tmpdir}/agent-result.json || true
-
-    tar -C ${tmpdir} -cf /tmp/agent/agent_data.tar .
-```
-
-    1. Timestamped Temporary Directory Creation
-        ```
         timestamp=$(date +%Y%m%d%H%M%S)
         tmpdir=/tmp/agent/${timestamp}
         mkdir -p ${tmpdir}
-        ```
-    2. Scenario Data Processing
-        ```
+
         cat /tmp/agent/scenario_data.json > ${tmpdir}/scenario_data.json
-        ```
-        Copies the downloaded scenario data from IT Bench, which is specified in `path_to_data_provided_by_scenario`, into the temporary directory.
-    3. Extracting Key Variables to be passed to python command arguments to run the CISO CAA Agent
-        ```
+
         jq -r .goal_template ${tmpdir}/scenario_data.json > ${tmpdir}/goal_template.txt
         jq -r .vars.kubeconfig ${tmpdir}/scenario_data.json > ${tmpdir}/kubeconfig.yaml
         jq -r .vars.ansible_ini ${tmpdir}/scenario_data.json > ${tmpdir}/ansible.ini
         jq -r .vars.ansible_user_key ${tmpdir}/scenario_data.json > ${tmpdir}/user_key
         chmod 600 ${tmpdir}/user_key
-        ```
-
-    4. Updating ansible.ini with User Key for RHEL scenario cases.
-        ```
         sed -i.bak -E "s|(ansible_ssh_private_key_file=\")[^\"]*|\1${tmpdir}/user_key|" ${tmpdir}/ansible.ini
-        ```
-    5. Preparing the Goal File to be passed to python command arguments to run the CISO CAA Agent
-        ```
+
         sed "s|{{ kubeconfig }}|${tmpdir}/kubeconfig.yaml|g" ${tmpdir}/goal_template.txt > ${tmpdir}/goal.txt
         sed -i.bak -E "s|\{\{ path_to_inventory \}\}|${tmpdir}/ansible.ini|g" ${tmpdir}/goal.txt
+
         echo "You can use \`${tmpdir}\` as your workdir." >> ${tmpdir}/goal.txt
-        ```
-    6. Running the Agent (Automated or Manual)
-        ```
+
         source .venv/bin/activate
         timeout 200 python src/ciso_agent/main.py --goal "`cat ${tmpdir}/goal.txt`" --auto-approve -o ${tmpdir}/agent-result.json || true
-        ```
-        - Enable python virtual env
-        - Runs main.py with the goal extracted from goal.txt.
-        - Enforces a timeout of 200 seconds to avoid infinite running.
-        - Saves the result as agent-result.json in `${tmpdir}` directory.
-    7. Archiving the Execution Data by the agent
-        The CISO CAA Agent generates compliance policy programs and stores them in the designated working directory. The script ensures that all relevant execution data is archived for further analysis.
-        ```
+
         tar -C ${tmpdir} -cf /tmp/agent/agent_data.tar .
-        ```
+    ```
+
+        1. Timestamped Temporary Directory Creation
+            ```
+            timestamp=$(date +%Y%m%d%H%M%S)
+            tmpdir=/tmp/agent/${timestamp}
+            mkdir -p ${tmpdir}
+            ```
+        2. Scenario Data Processing
+            ```
+            cat /tmp/agent/scenario_data.json > ${tmpdir}/scenario_data.json
+            ```
+            Copies the downloaded scenario data from IT Bench, which is specified in `path_to_data_provided_by_scenario`, into the temporary directory.
+        3. Extracting Key Variables to be passed to python command arguments to run the CISO CAA Agent
+            ```
+            jq -r .goal_template ${tmpdir}/scenario_data.json > ${tmpdir}/goal_template.txt
+            jq -r .vars.kubeconfig ${tmpdir}/scenario_data.json > ${tmpdir}/kubeconfig.yaml
+            jq -r .vars.ansible_ini ${tmpdir}/scenario_data.json > ${tmpdir}/ansible.ini
+            jq -r .vars.ansible_user_key ${tmpdir}/scenario_data.json > ${tmpdir}/user_key
+            chmod 600 ${tmpdir}/user_key
+            ```
+
+        4. Updating ansible.ini with User Key for RHEL scenario cases.
+            ```
+            sed -i.bak -E "s|(ansible_ssh_private_key_file=\")[^\"]*|\1${tmpdir}/user_key|" ${tmpdir}/ansible.ini
+            ```
+        5. Preparing the Goal File to be passed to python command arguments to run the CISO CAA Agent
+            ```
+            sed "s|{{ kubeconfig }}|${tmpdir}/kubeconfig.yaml|g" ${tmpdir}/goal_template.txt > ${tmpdir}/goal.txt
+            sed -i.bak -E "s|\{\{ path_to_inventory \}\}|${tmpdir}/ansible.ini|g" ${tmpdir}/goal.txt
+            echo "You can use \`${tmpdir}\` as your workdir." >> ${tmpdir}/goal.txt
+            ```
+        6. Running the Agent (Automated or Manual)
+            ```
+            source .venv/bin/activate
+            timeout 200 python src/ciso_agent/main.py --goal "`cat ${tmpdir}/goal.txt`" --auto-approve -o ${tmpdir}/agent-result.json || true
+            ```
+            - Enable python virtual env
+            - Runs main.py with the goal extracted from goal.txt.
+            - Enforces a timeout of 200 seconds to avoid infinite running.
+            - Saves the result as agent-result.json in `${tmpdir}` directory.
+        7. Archiving the Execution Data by the agent
+            The CISO CAA Agent generates compliance policy programs and stores them in the designated working directory. The script ensures that all relevant execution data is archived for further analysis.
+            ```
+            tar -C ${tmpdir} -cf /tmp/agent/agent_data.tar .
+            ```
 
 1. Create a Docker image. The docker image is built from Agent Harness base image and is expected to contain your agent (e.g. crewai python program).
 
-For example, the Dockerfile is as follows in the case of CISO Agent:
-```dockerfile
-FROM icr.io/agent-bench/ciso-agent-harness-base:0.0.3 AS base
-RUN ln -sf /bin/bash /bin/sh
-RUN apt update -y && apt install -y curl gnupg2 unzip ssh
+    For example, the Dockerfile is as follows in the case of CISO Agent:
+    ```dockerfile
+    FROM icr.io/agent-bench/ciso-agent-harness-base:0.0.3 AS base
+    RUN ln -sf /bin/bash /bin/sh
+    RUN apt update -y && apt install -y curl gnupg2 unzip ssh
 
-# install dependencies here to avoid too much build time
-COPY itbench-ciso-caa-agent /etc/ciso-agent
-WORKDIR /etc/ciso-agent
-RUN python -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt --no-cache-dir
+    # install dependencies here to avoid too much build time
+    COPY itbench-ciso-caa-agent /etc/ciso-agent
+    WORKDIR /etc/ciso-agent
+    RUN python -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt --no-cache-dir
 
-# install `ansible-playbook`
-RUN pip install --upgrade ansible-core jmespath kubernetes==31.0.0 setuptools==70.0.0 --no-cache-dir
-RUN ansible-galaxy collection install kubernetes.core community.crypto
-RUN echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
-# install `jq`
-RUN apt update -y && apt install -y jq
-# install `kubectl`
-RUN curl -LO https://dl.k8s.io/release/v1.31.0/bin/linux/$(dpkg --print-architecture)/kubectl && \
-    chmod +x ./kubectl && \
-    mv ./kubectl /usr/local/bin/kubectl
-# install `aws` (need this for using kubectl against AWS cluster)
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o "awscliv2.zip" && \
-    unzip awscliv2.zip && \
-    ./aws/install
-# install `opa`
-RUN curl -L -o opa https://github.com/open-policy-agent/opa/releases/download/v1.0.0/opa_linux_$(dpkg --print-architecture)_static && \
-    chmod +x ./opa && \
-    mv ./opa /usr/local/bin/opa
+    # install `ansible-playbook`
+    RUN pip install --upgrade ansible-core jmespath kubernetes==31.0.0 setuptools==70.0.0 --no-cache-dir
+    RUN ansible-galaxy collection install kubernetes.core community.crypto
+    RUN echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
+    # install `jq`
+    RUN apt update -y && apt install -y jq
+    # install `kubectl`
+    RUN curl -LO https://dl.k8s.io/release/v1.31.0/bin/linux/$(dpkg --print-architecture)/kubectl && \
+        chmod +x ./kubectl && \
+        mv ./kubectl /usr/local/bin/kubectl
+    # install `aws` (need this for using kubectl against AWS cluster)
+    RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m).zip" -o "awscliv2.zip" && \
+        unzip awscliv2.zip && \
+        ./aws/install
+    # install `opa`
+    RUN curl -L -o opa https://github.com/open-policy-agent/opa/releases/download/v1.0.0/opa_linux_$(dpkg --print-architecture)_static && \
+        chmod +x ./opa && \
+        mv ./opa /usr/local/bin/opa
 
-RUN python -m venv .venv && source .venv/bin/activate && pip install -e /etc/ciso-agent --no-cache-dir
+    RUN python -m venv .venv && source .venv/bin/activate && pip install -e /etc/ciso-agent --no-cache-dir
 
-COPY agent-bench-automation.wiki/.gist/agent-harness/entrypoint.sh /etc/entrypoint.sh
-RUN chmod +x /etc/entrypoint.sh
-WORKDIR /etc/agent-benchmark
+    COPY agent-bench-automation.wiki/.gist/agent-harness/entrypoint.sh /etc/entrypoint.sh
+    RUN chmod +x /etc/entrypoint.sh
+    WORKDIR /etc/agent-benchmark
 
-ENTRYPOINT ["/etc/entrypoint.sh"]
-```
+    ENTRYPOINT ["/etc/entrypoint.sh"]
+    ```
 
 ### SRE
 
