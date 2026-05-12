@@ -72,10 +72,10 @@ The ITBench Leaderboard tracks agent performance across SRE, FinOps, and CISO sc
 
 | Domain | Leaderboard |
 |--------|-------------|
-| **SRE**     | [View SRE Leaderboard](https://github.com/itbench-hub/ITBench/blob/main/LEADERBOARD_SRE.md) |
-| **CISO**    | [View CISO Leaderboard](https://github.com/itbench-hub/ITBench/blob/main/LEADERBOARD_CISO.md) |
+| **SRE**     | [View SRE Leaderboard](./LEADERBOARD_SRE.md) |
+| **CISO**    | [View CISO Leaderboard](./LEADERBOARD_CISO.md) |
 
-> **Get Started**: Visit [docs/leaderboard.md](docs/leaderboard.md) for access and evaluation guidelines.
+Please see our [documentation](./documentation/getting-started/leaderboard.md) on how to get started.
 
 ---
 
@@ -88,7 +88,7 @@ ITBench incorporates a collection of problems that we call **scenarios**. Each s
 - **CISO**: Assess compliance posture for "new control rule detected for RHEL 9"
 - **FinOps**: Identify and resolve cost overruns and anomalies
 
-**Find all scenarios**: [Scenarios repository](./scenarios/)
+For more information about the scenarios and running them, please consult our [documentation](./documentation/getting-started/scenarios.md).
 
 ---
 

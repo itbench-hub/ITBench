@@ -1,0 +1,34 @@
+---
+alerts:
+  - KubePodCrashLooping
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `product-catalog` service having a malformed command.
+disruptions:
+  - injections:
+      - args:
+          container:
+            name: product-catalog
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: product-catalog
+              namespace: otel-demo
+        id: invalid-kubernetes-workload-container-command
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 105
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo rollout undo deployment/product-catalog
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n otel-demo edit deployment product-catalog
+          text: Manually edit the manifest and replace the invalid command with the correct value.
+tags:
+  - Deployment
+  - Performance

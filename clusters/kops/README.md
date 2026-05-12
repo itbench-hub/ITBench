@@ -4,8 +4,8 @@
 
 [Kyverno](https://kyverno.io/) ensures that registry secrets (used to access private Docker registries) are configured in every namespace on the cluster.
 
-> [!NOTE]
-> As of the time writing (**03/09/2026**) these playbooks in this directory use [Amazon Web Services (AWS)](https://docs.aws.amazon.com/#products) as the provisoner. While other cloud providers may supported by kOps, orchestrating the additional pieces from those providers is not instrumented here.
+>[!NOTE]
+>As of the time writing (**03/09/2026**) these playbooks in this directory use [Amazon Web Services (AWS)](https://docs.aws.amazon.com/#products) as the provisoner. While other cloud providers may supported by kOps, orchestrating the additional pieces from those providers is not instrumented here.
 
 ## Required Software
 
@@ -46,8 +46,8 @@ The playbooks feature a number of [group variables](./inventory/group_vars/). Ea
 | [ssh_keys.yaml](./inventory/group_vars/all/ssh_keys.yaml.example) | Configured the ssh key to access the cluster |
 | [stack.yaml](./inventory/group_vars/awx/stack.yaml) | Configures the name prefix and number of clusters in AWX stack |
 
-> [!NOTE]
-> Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
+>[!NOTE]
+>Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
 
 1. Create the playbooks' group variables from the templates
 ```shell
@@ -56,8 +56,8 @@ make group-vars
 
 2. Edit the group variables files accordingly
 
-> [!NOTE]
-> Before or during this step, one should create an SSH key. This will allow ssh access to the cluster after creation. A guide to making an ssh key can be found [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).
+>[!NOTE]
+>Before or during this step, one should create an SSH key. This will allow ssh access to the cluster after creation. A guide to making an ssh key can be found [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).
 
 3. Configure the AWS CLI tool
 ```shell
@@ -161,8 +161,8 @@ Before use, kOps cluster must pass a validation step. This step is run as part o
 CLUSTER_NAME=<cluster name> make validate-cluster
 ```
 
-> [!NOTE]
-> Generally speaking, the validation results only need to be checked in the case of a validation failure. This will result in the creation command failing.
+>[!NOTE]
+>Generally speaking, the validation results only need to be checked in the case of a validation failure. This will result in the creation command failing.
 
 
 Clusters may fail to validate for a variety of reasons. While not complete, the following command can be used to attempt remidiation of a cluster with validation failures. **This command is not guarenteed to result in a working cluster, but may help recover the cluster in response to a known validation failure.**

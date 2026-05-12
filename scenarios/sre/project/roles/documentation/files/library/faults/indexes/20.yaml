@@ -1,0 +1,64 @@
+---
+alerts:
+  application:
+    - NoRequestsReceived
+  goldenSignal:
+    - HighRequestErrorRate
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+    type: object
+description: This fault scales a Kubernetes workload to 0.
+expectation: There wil be no pods of the workload available, causing reliant workloads to be unable to reach it.
+name: Scaled To Zero Kubernetes Workload
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+  - https://kubernetes.io/docs/tutorials/kubernetes-basics/scale/scale-intro/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{
+            args.kubernetesObject.metadata.name }}
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} scale --replicas=1 {{ args.kubernetesObject.kind | lower }}/{{
+            args.kubernetesObject.metadata.name }}
+          text: Manually scale the workload to the correct value.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{
+            args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and set the `replicas` field to the correct value.
+tags:
+  - Deployment
+  - Performance

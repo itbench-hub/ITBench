@@ -1,0 +1,95 @@
+---
+- name: Retrieve all fault index files
+  ansible.builtin.find:
+    path: |-
+      {{
+        [
+          playbook_dir,
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "faults",
+          "indexes"
+        ] |
+        ansible.builtin.path_join
+      }}
+  register: generator_fault_index_files
+
+- name: Request name
+  ansible.builtin.pause:
+    prompt: Please enter a name for the new fault
+  register: generator_fault_name
+
+- name: Request description
+  ansible.builtin.pause:
+    prompt: Please enter a description for the new fault
+  register: generator_fault_description
+
+- name: Request expectation
+  ansible.builtin.pause:
+    prompt: Please enter the expectation for when the new fault is injected
+  register: generator_fault_expectation
+
+- name: Create new fault index
+  ansible.builtin.copy:
+    content: |-
+      {{
+        fault |
+        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
+      }}
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "faults",
+          "indexes",
+          index ~ ".yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
+    mode: "0644"
+  register: generator_fault_path
+  vars:
+    fault:
+      alerts: []
+      arguments:
+        jsonSchema: {}
+      name: "{{ generator_fault_name.user_input }}"
+      description: "{{ generator_fault_description.user_input }}"
+      expectation: "{{ generator_fault_expectation.user_input }}"
+      platform: ""
+      resources: []
+      solutions:
+        templates: []
+      tags: []
+    index: |-
+      {{
+        (
+          generator_fault_index_files.files |
+          map(attribute="path") |
+          map("ansible.builtin.basename") |
+          map("ansible.builtin.splitext") |
+          map("ansible.builtin.first") |
+          map("ansible.builtin.int") |
+          ansible.builtin.max
+        ) +
+        (
+          1
+        )
+      }}
+
+- name: Display file path
+  ansible.builtin.debug:
+    msg:
+      - The new fault ({{ generator_fault_name.user_input }}) has been generated.
+      - Please edit the file located at the path below to complete the fault.
+      - "{{ generator_fault_path.dest }}"
+      - ""
+      - Once done, use `make generate-docs` and `make validate-docs` to complete the generation and verification of the fault.
+      - ""
+      - Once verified, use `make generate-resource-files` to create the implementation file(s) and add the implementation.

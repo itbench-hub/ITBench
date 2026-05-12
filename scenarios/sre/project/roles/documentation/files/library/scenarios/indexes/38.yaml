@@ -1,0 +1,55 @@
+---
+alerts:
+  - KubeHpaMaxedOut
+category: finops
+complexity: low
+description: This scenario simulates several OpenTelemetry Demo services being incorrectly autoscaled.
+disruptions:
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: fraud-detection
+              namespace: otel-demo
+        id: misconfigured-kubernetes-horizontal-pod-autoscaler
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: frontend
+              namespace: otel-demo
+        id: misconfigured-kubernetes-horizontal-pod-autoscaler
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: image-provider
+              namespace: otel-demo
+        id: misconfigured-kubernetes-horizontal-pod-autoscaler
+environment:
+  applications:
+    - args:
+        autoscaling:
+          kubernetes:
+            hpa: true
+      id: opentelemetry-demo
+id: 38
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo edit horizontalpodautoscaler fraud-detection
+          text: Manually edit the manifest and replace the utilization values with the correct values.
+  - - steps:
+        - command: kubectl -n otel-demo edit horizontalpodautoscaler frontend
+          text: Manually edit the manifest and replace the utilization values with the correct values.
+  - - steps:
+        - command: kubectl -n otel-demo edit horizontalpodautoscaler image-provider
+          text: Manually edit the manifest and replace the utilization values with the correct values.
+tags:
+  - Deployment
+  - Performance

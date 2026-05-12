@@ -1,0 +1,36 @@
+---
+alerts:
+  - KubePodNotReady
+category: sre
+complexity: medium
+description: This scenario simulates the OpenTelemetry Demo's `kafka` service being evicted from the node.
+disruptions:
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: kafka
+              namespace: otel-demo
+        id: priority-kubernetes-workload-priority-preemption
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 42
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo rollout undo deployment/kafka
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n otel-demo edit deployment kafka
+          text: Manually edit the manifest and remove the node selector value with the correct value(s).
+    - steps:
+        - text: Create a new priority class with a higher value than the workload which caused its preemption.
+        - command: kubectl -n otel-demo edit deployment kafka
+          text: Manually edit the manifest and change the priority of the workload to the new priority.
+tags:
+  - Deployment
+  - Performance

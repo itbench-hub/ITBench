@@ -1,0 +1,58 @@
+---
+alerts:
+  goldenSignal:
+    - HighRequestLatency
+arguments:
+  jsonSchema:
+    properties:
+      container:
+        properties:
+          name:
+            type: string
+        required:
+          - name
+        type: object
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+      - container
+    type: object
+description: This fault changes the password of a Valkey workload.
+expectation: Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.
+name: Valkey Workload Changed Password
+platform: Kubernetes
+resources:
+  - https://valkey.io/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit secret valkey-credentials
+          text: Change the password back to the original by modifying the value of `valkey-password` in the secrete.
+tags:
+  - Deployment
+  - Authentication

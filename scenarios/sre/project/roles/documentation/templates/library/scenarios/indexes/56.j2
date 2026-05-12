@@ -1,0 +1,33 @@
+---
+category: sre
+complexity: low
+description: This scenario simulates the OpenTelemetry Demo's `product-catalog` service using a nonexistent image.
+disruptions:
+  - injections:
+    - args:
+        container:
+          name: product-catalog
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: product-catalog
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: nonexistent-kubernetes-workload-container-image
+    waitFor:
+      postInjection:
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: checkout
+                namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+          id: delete-workload-pods
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 56
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

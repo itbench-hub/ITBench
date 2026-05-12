@@ -7,18 +7,18 @@
 ## Required Software
 
 - [Golang](https://go.dev/) **v1.24+**
-- [Podman](https://podman.io/)
+- [Podman](https://podman.io/) or [Docker](https://www.docker.com/)
 
-> [!NOTE]
-> Generally, there are minimal differences between using Podman or Docker for Kind. For simplicity, only instructions for Podman have been provided. However, if one wants to use Docker, the instructions for downloading it are provided [here](https://docs.docker.com/get-started/get-docker/).
+>[!NOTE]
+>Generally, there are minimal differences between using Podman or Docker for Kind. For simplicity, only instructions for Podman have been provided. However, if one wants to use Docker, the instructions for downloading it are provided [here](https://docs.docker.com/get-started/get-docker/).
 
-> [!WARNING]
-> If using a Kind cluster for SRE scenarios, please ensure that the machine has the necessary [hardware requirements](../../documentation/getting-started/awx.md#requirements).
+>[!WARNING]
+>If using a Kind cluster for SRE scenarios, please ensure that the machine has the necessary [hardware requirements](../../documentation/getting-started/awx.md#requirements).
 
 ## Installation
 
-> [!NOTE]
-> Kind and Cloud Provider Kind are installed and managed by Golang. Thus, neither tool needs to be installed independently of this process.
+>[!NOTE]
+>Kind and Cloud Provider Kind are installed and managed by Golang. Thus, neither tool needs to be installed independently of this process.
 
 ### MacOS ([Homebrew](https://brew.sh/))
 

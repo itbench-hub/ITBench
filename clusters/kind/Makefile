@@ -9,7 +9,7 @@ help: ## Display this help.
 
 .PHONY: lint
 lint: ## Lints files
-	uv run ansible-lint
+	$(UV) run ansible-lint
 
 .PHONY: group-vars
 group-vars: ## Generates the group variables

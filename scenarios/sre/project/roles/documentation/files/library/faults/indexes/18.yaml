@@ -1,0 +1,63 @@
+---
+arguments:
+  jsonSchema:
+    properties:
+      flag:
+        properties:
+          name:
+            type: string
+          state:
+            type: string
+        required:
+          - name
+          - state
+        type: object
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - v1
+            type: string
+          kind:
+            enum:
+              - ConfigMap
+            type: string
+          metadata:
+            properties:
+              name:
+                enum:
+                  - flagd-config
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+      - flag
+    type: object
+description: This fault activates an implemented fault in the OpenTelemetry Demo.
+expectation: The effects of the faults are listed [here](https://opentelemetry.io/docs/demo/feature-flags/#implemented-feature-flags).
+name: OpenTelemetry Demo Feature Flag
+platform: Kubernetes
+resources:
+  - https://opentelemetry.io/docs/demo/
+  - https://opentelemetry.io/docs/demo/feature-flags/
+  - https://opentelemetry.io/docs/demo/services/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit configmap {{ args.kubernetesObject.metadata.name }}
+          text: Disable the feature flag ({{ args.flag.name }}) by manually editing the contents of the ConfigMap
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout restart deployment
+          text: Restart all of the Deployment workloads.
+tags:
+  - Deployment
+  - Performance

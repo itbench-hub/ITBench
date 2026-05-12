@@ -1,5 +1,20 @@
 ---
-- name: Create identifiers for faults
+- name: Retrieve all fault index templates
+  ansible.builtin.find:
+    path: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "faults",
+          "indexes"
+        ] |
+        ansible.builtin.path_join
+      }}
+  register: documentation_faults_indexes
+
+- name: Create identifiers for fault indexes
   ansible.builtin.set_fact:
     documentation_faults_library: |
       {{
@@ -16,20 +31,29 @@
                   fault.name |
                   ansible.builtin.lower |
                   ansible.builtin.replace(" ", "-")
+                ),
+                "index": (
+                  fault_index.path |
+                  ansible.builtin.basename |
+                  ansible.builtin.splitext |
+                  ansible.builtin.first |
+                  ansible.builtin.int
                 )
               }
             )
           )
         ]
       }}
-  loop: |-
-    {{
-      lookup("ansible.builtin.file", "files/library/faults/index.json") |
-      ansible.builtin.from_json
-    }}
+  loop: "{{ documentation_faults_indexes.files }}"
   loop_control:
-    label: fault/{{ fault.name }}
-    loop_var: fault
+    label: file/{{ fault_index.path | ansible.builtin.basename }}
+    loop_var: fault_index
+  vars:
+    fault: |-
+      {{
+        lookup("ansible.builtin.file", fault_index.path) |
+        ansible.builtin.from_yaml
+      }}
 
 - name: Generate faults library index
   ansible.builtin.copy:
@@ -39,17 +63,149 @@
         ansible.builtin.sort(attribute="name") |
         ansible.builtin.to_nice_json
       }}
-    dest: "{{ [role_path, 'files', 'library', 'faults', 'index.json'] | ansible.builtin.path_join }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "files",
+          "library",
+          "faults",
+          "index.json"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
 
-- name: Generate Faults README
+- name: Generate fault library readme
   ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.template', 'templates/readmes/faults.j2') }}"
-    dest: "{{ playbook_dir }}/../docs/faults.md"
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/faults/readmes/index.j2') }}"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "faults",
+          "README.md"
+        ] |
+        ansible.builtin.path_join
+      }}
     mode: "0644"
   vars:
-    documentation_contents: |-
+    faults: |-
       {{
         lookup("ansible.builtin.file", "files/library/faults/index.json") |
         ansible.builtin.from_json
       }}
+
+- name: Generate fault library index readmes
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/faults/readmes/fault.j2') }}"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "faults",
+          fault.id ~ ".md"
+        ] |
+        ansible.builtin.path_join
+      }}
+    mode: "0644"
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/faults/index.json") |
+      ansible.builtin.from_json
+    }}
+  loop_control:
+    label: fault/{{ fault.id }}
+    loop_var: fault
+  vars:
+    fault_tags: "{{ fault.tags | ansible.builtin.sort | ansible.builtin.join(', ') }}"
+    implementation_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "scenarios",
+          "sre",
+          "project",
+          "roles",
+          "faults",
+          "tasks",
+          "inject_" ~ (fault.id | ansible.builtin.replace("-", "_")) ~ ".yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
+    schema_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "schemas",
+          "json",
+          "faults",
+          fault.id ~ ".json"
+        ] |
+        ansible.builtin.path_join
+      }}
+    source_file_path: |-
+      {{
+        [
+          "..",
+          "..",
+          "..",
+          "scenarios",
+          "sre",
+          "project",
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "faults",
+          "indexes",
+          fault.index ~ ".yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
+
+- name: Generate fault library index json schemas
+  ansible.builtin.copy:
+    content: |-
+      {{
+        fault.arguments.jsonSchema |
+        ansible.builtin.combine({"$schema": "https://json-schema.org/draft/2020-12/schema"}) |
+        ansible.builtin.to_nice_json
+      }}
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "schemas",
+          "json",
+          "faults",
+          fault.id ~ ".json"
+        ] |
+        ansible.builtin.path_join
+      }}
+    mode: "0644"
+  loop: |-
+    {{
+      lookup("ansible.builtin.file", "files/library/faults/index.json") |
+      ansible.builtin.from_json
+    }}
+  loop_control:
+    label: fault/{{ fault.id }}
+    loop_var: fault

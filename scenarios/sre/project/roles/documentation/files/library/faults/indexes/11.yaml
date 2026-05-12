@@ -1,0 +1,53 @@
+---
+alerts:
+  application:
+    - KubeHpaMaxedOut
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+    type: object
+description: This fault injects a configuration into a horizontal pod autoscaler that causes it to react to low resource usage
+expectation: The faulted autoscaler will take scale up or down actions more aggressively (often more than required).
+name: Misconfigured Kubernetes Horizontal Pod Autoscaler
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/workloads/autoscaling/
+  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+  - https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit horizontalpodautoscaler {{ args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and replace the utilization values with the correct values.
+tags:
+  - Deployment
+  - Performance

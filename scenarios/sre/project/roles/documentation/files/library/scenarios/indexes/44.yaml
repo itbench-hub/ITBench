@@ -1,0 +1,32 @@
+---
+alerts:
+  - KubePodNotReady
+category: sre
+complexity: medium
+description: This scenario simulates new pods of OpenTelemetry Demo's `payment` service being unscheduleable.
+disruptions:
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: payment
+              namespace: otel-demo
+        id: unschedulable-kubernetes-workload-pod-anti-affinity-rule
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 44
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo rollout undo deployment/payment
+          text: Revert the last change done to the manifest.
+    - steps:
+        - command: kubectl -n otel-demo edit deployment payment
+          text: Manually edit the manifest and remove the faulty pod anti-affinity rule with the correct value.
+tags:
+  - Deployment
+  - Performance

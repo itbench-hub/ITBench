@@ -1,0 +1,30 @@
+---
+alerts:
+  - HighRequestErrorRate
+category: sre
+complexity: low
+description: This scenario changes the specified port of OpenTelemetry Demo's `ad` service.
+disruptions:
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: v1
+            kind: Service
+            metadata:
+              name: ad
+              namespace: otel-demo
+          targetPort: 8080
+        id: modified-target-port-kubernetes-service
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 30
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo edit service ad
+          text: Manually edit the manifest and replace the target port (8080) with the correct value.
+tags:
+  - Deployment
+  - Networking

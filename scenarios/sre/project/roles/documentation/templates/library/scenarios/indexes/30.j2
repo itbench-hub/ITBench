@@ -1,0 +1,22 @@
+---
+category: sre
+complexity: low
+description: This scenario changes the specified port of OpenTelemetry Demo's `ad` service.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: ad
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+        targetPort: 8080
+      id: modified-target-port-kubernetes-service
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 30
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

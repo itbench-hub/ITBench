@@ -1,0 +1,42 @@
+---
+category: sre
+complexity: medium
+description: This scenario simulates the OpenTelemetry Demo's `ad` service experiencing high CPU usage.
+disruptions:
+  - injections:
+    - args:
+        flag:
+          name: adHighCpu
+          state: "on"
+        kubernetesObject:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: flagd-config
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: opentelemetry-demo-feature-flag
+    waitFor:
+      postInjection:
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: flagd
+                namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+          id: restart-kubernetes-workload
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: ad
+                namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+          id: restart-kubernetes-workload
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 3
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

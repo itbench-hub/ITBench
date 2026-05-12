@@ -1,0 +1,34 @@
+---
+alerts:
+  - NoRequestsReceived
+category: sre
+complexity: medium
+description: This scenario simulates BookInfo's `gateway` service unable to receive GET HTTP requests.
+disruptions:
+  - injections:
+      - args:
+          httpMethods:
+            - GET
+          kubernetesObject:
+            apiVersion: gateway.networking.k8s.io/v1
+            kind: Gateway
+            metadata:
+              name: bookinfo-gateway
+              namespace: book-info
+        id: traffic-denying-istio-gateway-authorization-policy
+environment:
+  applications:
+    - id: book-info
+id: 47
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n book-info edit authorizationpolicy bookinfo-gateway-deny
+          text: Manually edit the manifest and replace the invalid rule with the correct value.
+    - steps:
+        - command: kubectl -n book-info delete authorizationpolicy bookinfo-gateway-deny
+          text: Delete the faulty authorization policy.
+tags:
+  - Deployment
+  - Networking

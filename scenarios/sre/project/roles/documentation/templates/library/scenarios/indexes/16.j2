@@ -1,0 +1,26 @@
+---
+category: sre
+complexity: medium
+description: This scenario changes the environment variables of OpenTelemetry Demo's `shipping` service, causing it to be unable to reach the `quote` service.
+disruptions:
+  - injections:
+    - args:
+        container:
+          env:
+            name: QUOTE_ADDR
+            value: quote:0000
+          name: shipping
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: shipping
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: modified-kubernetes-workload-container-environment-variable
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 16
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

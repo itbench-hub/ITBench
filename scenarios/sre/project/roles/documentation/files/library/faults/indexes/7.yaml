@@ -1,0 +1,58 @@
+---
+alerts:
+  application:
+    - KubePodNotReady
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+    type: object
+description: This fault injects a resource quota with hard resource requirements that are underprovisioned for the namespace.
+expectation: The new pod(s) for the workload in the faulted namespace will enter the `Pending` state.
+name: Insufficient Kubernetes Resource Quota
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+  - https://kubernetes.io/docs/concepts/policy/resource-quotas/
+  - https://kubernetes.io/docs/tasks/administer-cluster/quota-api-object/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+  - https://kubernetes.io/docs/reference/kubernetes-api/policy-resources/resource-quota-v1/
+solutions:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit resourcequota memory
+          text: Manually edit the manifest(s) and increase the values of the resource quota(s).
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete resourcequota memory
+          text: Delete the offending resource quota(s) if it is no longer required.
+tags:
+  - Deployment
+  - Performance

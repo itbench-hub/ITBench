@@ -1,0 +1,82 @@
+---
+- name: Retrieve all scenario index files
+  ansible.builtin.find:
+    path: |-
+      {{
+        [
+          playbook_dir,
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "scenarios",
+          "indexes"
+        ] |
+        ansible.builtin.path_join
+      }}
+  register: generator_scenario_index_files
+
+- name: Request description
+  ansible.builtin.pause:
+    prompt: Please enter a description for the new scenario
+  register: generator_scenario_description
+
+- name: Create new scenario index
+  ansible.builtin.copy:
+    content: |
+      {{
+        scenario |
+        ansible.builtin.combine({"id": index}) |
+        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
+      }}
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "roles",
+          "documentation",
+          "files",
+          "library",
+          "scenarios",
+          "indexes",
+          index ~ ".j2"
+        ] |
+        ansible.builtin.path_join
+      }}
+    mode: "0644"
+  register: generator_scenario_path
+  vars:
+    scenario:
+      category: ""
+      complexity: low
+      description: "{{ generator_scenario_description.user_input }}"
+      disruptions: []
+      environment:
+        applications: []
+      solutionTemplates: []
+    index: |-
+      {{
+        (
+          generator_scenario_index_files.files |
+          map(attribute="path") |
+          map("ansible.builtin.basename") |
+          map("ansible.builtin.splitext") |
+          map("ansible.builtin.first") |
+          map("ansible.builtin.int") |
+          ansible.builtin.max
+        ) +
+        (
+          1
+        )
+      }}
+
+- name: Display file path
+  ansible.builtin.debug:
+    msg:
+      - The new scenario has been generated.
+      - Please edit the file located at the path below to complete the scenario.
+      - "{{ generator_scenario_path.dest }}"
+      - ""
+      - Once done, use `make generate-docs` and `make validate-docs` to complete the generation and verification of the scenario.
+      - ""
+      - Once verified, use `make generate-resource-files` to create the implementation file(s) and add the implementation.
