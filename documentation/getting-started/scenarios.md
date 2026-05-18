@@ -39,10 +39,10 @@ brew install python@3.14
 brew install openshift-cli
 ```
 
->![NOTE]
+>[!NOTE]
 >Installing `python` through Homebrew is not required as `uv` will install a version of Python if one is not provided. However, it can be helpful from a dependency management perspective to just have Homebrew manage the installation.
 
->![NOTE]
+>[!NOTE]
 >The OpenShift CLI is only required if using an OpenShift cluster.
 
 ### Linux
@@ -56,10 +56,10 @@ brew install openshift-cli
     - **a.** Install Python by downloading the package [here](https://www.python.org/downloads/source/)
     - **b.** Install the OpenShift CLI by following the instructions [here](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/cli_tools/openshift-cli-oc#cli-installing-cli_cli-developer-commands)
 
->![NOTE]
+>[!NOTE]
 >Python 3.14 can be downloaded and managed by various managers on Linux. However, some may not yet offer this version of python through the default package manager. To ensure that the correct version is used, the binary can either be downloaded through the link above or the `uv` version of Python 3.14 can be used. `uv` will automatically download its version of Python if it does not detect an available version on the machine.
 
->![NOTE]
+>[!NOTE]
 >The OpenShift CLI is only required if using an OpenShift cluster.
 
 ## Set Up
