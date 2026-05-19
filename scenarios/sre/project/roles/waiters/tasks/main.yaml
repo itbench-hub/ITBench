@@ -13,13 +13,11 @@
 
     - name: Include wait tasks
       ansible.builtin.include_tasks:
-        file: "{{ waiters_library_map[waiter_task.id].taskFile }}"
+        file: "{{ waiters_library_map[wait_task.id].taskFile }}"
         apply:
           tags:
             - inject_faults
-          vars:
-            waiter_args: "{{ waiter_task.args }}"
       loop: "{{ waiters_tasks }}"
       loop_control:
         label: task/{{ waiter_task.id }}
-        loop_var: waiter_task
+        loop_var: wait_task
