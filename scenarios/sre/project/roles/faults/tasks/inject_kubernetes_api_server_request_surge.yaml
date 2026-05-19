@@ -1,19 +1,7 @@
 ---
-- name: Retrieve namespace
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
-    kind: "{{ injection_task.args.kubernetesObject.kind }}"
-    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
-  register: faults_namespace
-
-- name: Validate that namespace exists
-  ansible.builtin.assert:
-    that:
-      - faults_namespace.api_found
-      - faults_namespace.resources | ansible.builtin.length == 1
-    fail_msg: Unable to find namespace. Please verify that the namespace exists.
-    success_msg: Found namespace.
+- name: Import fault argument validation tasks
+  ansible.builtin.import_tasks:
+    file: validate_fault_arguments.yaml
 
 - name: Create ServiceAccount
   kubernetes.core.k8s:
@@ -23,7 +11,7 @@
       kind: ServiceAccount
       metadata:
         name: workload-scanner
-        namespace: "{{ faults_namespace.resources[0].metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.name }}"
     state: present
   register: faults_service_account
 
@@ -88,7 +76,7 @@
       subjects:
         - kind: "{{ faults_service_account.result.kind }}"
           name: "{{ faults_service_account.result.metadata.name }}"
-          namespace: "{{ faults_namespace.resources[0].metadata.name }}"
+          namespace: "{{ faults_kubernetes_object.metadata.name }}"
     state: present
 
 - name: Create ConfigMap
@@ -99,7 +87,7 @@
       kind: ConfigMap
       metadata:
         name: generator-script
-        namespace: "{{ faults_namespace.resources[0].metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.name }}"
       data:
         deps: "{{ lookup('ansible.builtin.file', 'files/scripts/kubernetes_api_server_request_surge/requirements.txt') }}"
         script: "{{ lookup('ansible.builtin.file', 'files/scripts/kubernetes_api_server_request_surge/generate_load.py') }}"
@@ -114,7 +102,7 @@
       kind: Deployment
       metadata:
         name: workload-scanner
-        namespace: "{{ faults_namespace.resources[0].metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.name }}"
       spec:
         replicas: 5
         selector:
