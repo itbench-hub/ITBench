@@ -1,15 +1,15 @@
 ---
 - name: Validate `kubernetesObject` fault argument
   when:
-    - injection_task.args.kubernetesObject is ansible.builtin.defined
+    - fault_args.kubernetesObject is ansible.builtin.defined
   block:
-    - name: Retrieve {{ injection_task.args.kubernetesObject.kind | ansible.builtin.lower }}
+    - name: Retrieve {{ fault_args.kubernetesObject.kind | ansible.builtin.lower }}
       kubernetes.core.k8s_info:
         kubeconfig: "{{ faults_cluster.kubeconfig }}"
-        api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
-        kind: "{{ injection_task.args.kubernetesObject.kind }}"
-        name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
-        namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace | ansible.builtin.default(omit) }}"
+        api_version: "{{ fault_args.kubernetesObject.apiVersion }}"
+        kind: "{{ fault_args.kubernetesObject.kind }}"
+        name: "{{ fault_args.kubernetesObject.metadata.name }}"
+        namespace: "{{ fault_args.kubernetesObject.metadata.namespace | ansible.builtin.default(omit) }}"
       register: faults_args_kubernetes_object
 
     - name: Fail playbook due to `kubernetes object not found` error
@@ -17,8 +17,8 @@
         msg: "{{ object.kind }}/{{ object.name }} not found. please ensure object exists before injecting this fault."
       vars:
         object:
-          kind: "{{ injection_task.args.kubernetesObject.kind }}"
-          name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
+          kind: "{{ fault_args.kubernetesObject.kind }}"
+          name: "{{ fault_args.kubernetesObject.metadata.name }}"
       when:
         - not faults_args_kubernetes_object.api_found
         - faults_args_kubernetes_object.resources | ansible.builtin.length != 1
@@ -29,7 +29,7 @@
 
 - name: Validate `container` fault argument
   when:
-    - injection_task.args.container is ansible.builtin.defined
+    - fault_args.container is ansible.builtin.defined
     - faults_kubernetes_object is ansible.builtin.defined
   block:
     - name: Retrieve container from {{ faults_kubernetes_object.name }}
@@ -37,12 +37,12 @@
         faults_args_container: |-
           {{
             faults_kubernetes_object.spec.template.spec.containers |
-            ansible.builtin.selectattr("name", "==", injection_task.args.container.name)
+            ansible.builtin.selectattr("name", "==", fault_args.container.name)
           }}
 
     - name: Fail playbook due to `kubernetes workload container not found` error
       ansible.builtin.fail:
-        msg: "{{ injection_task.args.container.name }} not found. please ensure container exists before injecting this fault."
+        msg: "{{ fault_args.container.name }} not found. please ensure container exists before injecting this fault."
       when:
         - faults_args_container | ansible.builtin.length != 1
 
@@ -52,7 +52,7 @@
 
 - name: Validate `container.env` fault argument
   when:
-    - injection_task.args.container.env is ansible.builtin.defined
+    - fault_args.container.env is ansible.builtin.defined
     - faults_container is ansible.builtin.defined
   block:
     - name: Retrieve container from {{ faults_kubernetes_object.name }}
@@ -60,12 +60,12 @@
         faults_args_container_environment_variable: |-
           {{
             faults_container.env |
-            ansible.builtin.selectattr("name", "==", injection_task.args.container.env.name)
+            ansible.builtin.selectattr("name", "==", fault_args.container.env.name)
           }}
 
     - name: Fail playbook due to `kubernetes workload container environmental variable not found` error
       ansible.builtin.fail:
-        msg: "{{ injection_task.args.container.env.name }} not found. please ensure env var exists before injecting this fault."
+        msg: "{{ fault_args.container.env.name }} not found. please ensure env var exists before injecting this fault."
       when:
         - faults_args_container_environment_variable | ansible.builtin.length != 1
 
@@ -75,7 +75,7 @@
 
 - name: Validate `targetPort` fault argument
   when:
-    - injection_task.args.targetPort is ansible.builtin.defined
+    - fault_args.targetPort is ansible.builtin.defined
     - faults_kubernetes_object is ansible.builtin.defined
   block:
     - name: Retrieve port from {{ faults_kubernetes_object.name }}
@@ -83,12 +83,12 @@
         faults_args_port: |-
           {{
             faults_kubernetes_object.spec.ports |
-            ansible.builtin.selectattr("targetPort", "==", injection_task.args.targetPort)
+            ansible.builtin.selectattr("targetPort", "==", fault_args.targetPort)
           }}
 
     - name: Fail playbook due to `kubernetes service port not found` error
       ansible.builtin.fail:
-        msg: "{{ injection_task.args.targetPort }} not found. please ensure port exists before injecting this fault."
+        msg: "{{ fault_args.targetPort }} not found. please ensure port exists before injecting this fault."
       when:
         - faults_args_port | ansible.builtin.length != 1
 

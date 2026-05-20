@@ -1,19 +1,15 @@
 ---
-- name: Import waiter argument validation tasks
-  ansible.builtin.import_tasks:
-    file: validate_waiter_arguments.yaml
-
 - name: Validate `kubernetesObject` fault argument
   when:
-    - wait_task.args.kubernetesObject is ansible.builtin.defined
+    - waiter_args.kubernetesObject is ansible.builtin.defined
   block:
-    - name: Retrieve {{ wait_task.args.kubernetesObject.kind | ansible.builtin.lower }}
+    - name: Retrieve {{ waiter_args.kubernetesObject.kind | ansible.builtin.lower }}
       kubernetes.core.k8s_info:
         kubeconfig: "{{ waiters_cluster.kubeconfig }}"
-        api_version: "{{ wait_task.args.kubernetesObject.apiVersion }}"
-        kind: "{{ wait_task.args.kubernetesObject.kind }}"
-        name: "{{ wait_task.args.kubernetesObject.metadata.name }}"
-        namespace: "{{ wait_task.args.kubernetesObject.metadata.namespace | ansible.builtin.default(omit) }}"
+        api_version: "{{ waiter_args.kubernetesObject.apiVersion }}"
+        kind: "{{ waiter_args.kubernetesObject.kind }}"
+        name: "{{ waiter_args.kubernetesObject.metadata.name }}"
+        namespace: "{{ waiter_args.kubernetesObject.metadata.namespace | ansible.builtin.default(omit) }}"
       register: waiters_args_kubernetes_object
 
     - name: Fail playbook due to `kubernetes object not found` error
@@ -21,11 +17,11 @@
         msg: "{{ object.kind }}/{{ object.name }} not found. please ensure object exists before injecting this fault."
       vars:
         object:
-          kind: "{{ wait_task.args.kubernetesObject.kind }}"
-          name: "{{ wait_task.args.kubernetesObject.metadata.name }}"
+          kind: "{{ waiter_args.kubernetesObject.kind }}"
+          name: "{{ waiter_args.kubernetesObject.metadata.name }}"
       when:
-        - waiters_args_kubernetes_object.api_found
-        - waiters_args_kubernetes_object.resources | ansible.builtin.length == 1
+        - not waiters_args_kubernetes_object.api_found
+        - waiters_args_kubernetes_object.resources | ansible.builtin.length != 1
 
     - name: Extract object information from output
       ansible.builtin.set_fact:
