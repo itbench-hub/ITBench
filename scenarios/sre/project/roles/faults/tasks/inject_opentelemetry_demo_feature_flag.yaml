@@ -1,47 +1,33 @@
 ---
-- name: Retrieve configmap
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
-    kind: "{{ injection_task.args.kubernetesObject.kind }}"
-    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
-    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
-  register: faults_config_map
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
 
-- name: Validate that valid configmap exists
-  ansible.builtin.assert:
-    that:
-      - faults_config_map is ansible.builtin.defined
-      - faults_config_map.resources | ansible.builtin.length == 1
-    fail_msg: Unable to find configmap. Please verify that the configmap exists.
-    success_msg: Found configmap.
-
-- name: Validate that flagd data exists
-  ansible.builtin.assert:
-    that:
-      - faults_config_map.resources[0].data["demo.flagd.json"] is ansible.builtin.defined
-    fail_msg: Unable to find data. Please verify that the flagd data exists.
-    success_msg: Found data.
+- name: Fail playbook with `opentelemetry demo flagd data not found` error
+  ansible.builtin.fail:
+    msg: Unable to find `flagd` configuration data. Please ensure the correct config map is configured for this injection.
+  when:
+    - faults_kubernetes_object.data["demo.flagd.json"] is ansible.builtin.undefined
 
 - name: Update configmap data
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
-      apiVersion: "{{ faults_config_map.resources[0].apiVersion }}"
-      kind: "{{ faults_config_map.resources[0].kind }}"
+      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+      kind: "{{ faults_kubernetes_object.kind }}"
       metadata:
-        name: "{{ faults_config_map.resources[0].metadata.name }}"
-        namespace: "{{ faults_config_map.resources[0].metadata.namespace }}"
+        name: "{{ faults_kubernetes_object.metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       data:
         "demo.flagd.json": |-
           {{
-            faults_config_map.resources[0].data["demo.flagd.json"] |
+            faults_kubernetes_object.data["demo.flagd.json"] |
             ansible.builtin.from_json |
             ansible.builtin.combine(
               {
                 "flags": {
-                  injection_task.args.flag.name: {
-                    "defaultVariant": injection_task.args.flag.state
+                  fault_args.flag.name: {
+                    "defaultVariant": fault_args.flag.state
                   }
                 }
               },

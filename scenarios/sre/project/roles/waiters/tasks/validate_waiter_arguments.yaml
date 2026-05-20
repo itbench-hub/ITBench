@@ -1,0 +1,28 @@
+---
+- name: Validate `kubernetesObject` fault argument
+  when:
+    - waiter_args.kubernetesObject is ansible.builtin.defined
+  block:
+    - name: Retrieve {{ waiter_args.kubernetesObject.kind | ansible.builtin.lower }}
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ waiters_cluster.kubeconfig }}"
+        api_version: "{{ waiter_args.kubernetesObject.apiVersion }}"
+        kind: "{{ waiter_args.kubernetesObject.kind }}"
+        name: "{{ waiter_args.kubernetesObject.metadata.name }}"
+        namespace: "{{ waiter_args.kubernetesObject.metadata.namespace | ansible.builtin.default(omit) }}"
+      register: waiters_args_kubernetes_object
+
+    - name: Fail playbook due to `kubernetes object not found` error
+      ansible.builtin.fail:
+        msg: "{{ object.kind }}/{{ object.name }} not found. please ensure object exists before injecting this fault."
+      vars:
+        object:
+          kind: "{{ waiter_args.kubernetesObject.kind }}"
+          name: "{{ waiter_args.kubernetesObject.metadata.name }}"
+      when:
+        - not waiters_args_kubernetes_object.api_found
+        - waiters_args_kubernetes_object.resources | ansible.builtin.length != 1
+
+    - name: Extract object information from output
+      ansible.builtin.set_fact:
+        waiters_kubernetes_object: "{{ waiters_args_kubernetes_object.resources | ansible.builtin.first }}"

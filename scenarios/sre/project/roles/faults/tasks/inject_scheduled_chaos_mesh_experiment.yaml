@@ -3,14 +3,14 @@
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
-      apiVersion: "{{ injection_task.args.kubernetesObject.apiVersion }}"
-      kind: "{{ injection_task.args.kubernetesObject.kind }}"
+      apiVersion: "{{ fault_args.kubernetesObject.apiVersion }}"
+      kind: "{{ fault_args.kubernetesObject.kind }}"
       metadata:
-        name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
-        namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+        name: "{{ fault_args.kubernetesObject.metadata.name }}"
+        namespace: "{{ fault_args.kubernetesObject.metadata.namespace }}"
       spec: |-
         {{
-          injection_task.args.scheduleSpec |
+          fault_args.scheduleSpec |
           ansible.builtin.combine(
             {
               "concurrencyPolicy": "Forbid",
@@ -23,11 +23,11 @@
 
 - name: Extract experiment information from schedule
   kubernetes.core.k8s_info:
-    api_version: "{{ injection_task.args.kubernetesObject.apiVersion }}"
-    kind: "{{ injection_task.args.kubernetesObject.kind }}"
+    api_version: "{{ fault_args.kubernetesObject.apiVersion }}"
+    kind: "{{ fault_args.kubernetesObject.kind }}"
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    name: "{{ injection_task.args.kubernetesObject.metadata.name }}"
-    namespace: "{{ injection_task.args.kubernetesObject.metadata.namespace }}"
+    name: "{{ fault_args.kubernetesObject.metadata.name }}"
+    namespace: "{{ fault_args.kubernetesObject.metadata.namespace }}"
   register: faults_schedule
   until:
     - faults_schedule.api_found
