@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/python-312-minimal:10.2-1777495228
+FROM registry.access.redhat.com/ubi10/python-314-minimal:10.2-1777970431
 
 ENV DATA_DIRECTORY=/app/topology_data
 
@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY requirements.txt requirements.txt
 
-RUN python3.12 -m pip install --no-cache-dir -r requirements.txt
+RUN python3.14 -m pip install --no-cache-dir -r requirements.txt
 
 COPY __init__.py __init__.py
 COPY app.py app.py
@@ -25,4 +25,4 @@ RUN mkdir ${DATA_DIRECTORY} && \
 
 USER 1001
 
-CMD ["python3.12", "main.py"]
+CMD ["python3.14", "main.py"]
