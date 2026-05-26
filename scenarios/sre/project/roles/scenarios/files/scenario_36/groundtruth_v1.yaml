@@ -1,0 +1,88 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-36
+spec:
+  alerts:
+    - group_id: productpage-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: "Request error rate (code: 500) between productpage and details is above 0 due to Service selector corruption causing no endpoints at
+           ztunnel L4 layer"
+    - id: HighRequestErrorRate
+      metadata:
+        description: "Cascade effect: HighRequestErrorRate due to fault propagation"
+    - id: NoRequestsOpened
+      group_id: details-service
+      metadata:
+        description: "Cascade effect: NoRequestsOpened for details service due to upstream failures"
+  groups:
+    - id: details-service-1
+      kind: Service
+      namespace: book-info
+      filter:
+        - details\b
+      root_cause: true
+    - id: details-pod-1
+      kind: Pod
+      namespace: book-info
+      filter:
+        - details-.*
+    - id: productpage-service-1
+      kind: Service
+      namespace: book-info
+      filter:
+        - productpage\b
+    - id: productpage-pod-1
+      kind: Pod
+      namespace: book-info
+      filter:
+        - productpage-.*
+  aliases:
+    - - details-service-1
+      - details-pod-1
+    - - productpage-service-1
+      - productpage-pod-1
+  propagations:
+    - source: details-service-1
+      target: details-pod-1
+      condition: Service selector corrupted to match non-existent labels (app=nonexistent-backend-itbench) instead of actual details pods
+      effect: details pods remain healthy but unreachable because Service has no endpoints - ztunnel cannot establish connections
+    - source: details-service-1
+      target: productpage-service-1
+      condition: Service selector points to non-existent pods, resulting in empty endpoints list that ztunnel sees
+      effect: productpage service receives connection errors (Operation not permitted) when attempting to call details at L4 layer, similar to BGP routing
+        corruption causing unreachable destinations
+    - source: productpage-service-1
+      target: productpage-pod-1
+      condition: productpage service cannot route requests to details successfully
+      effect: productpage pod experiences increased error rate in its details service calls, while reviews service calls remain unaffected
+  fault:
+    - category: Modify
+      condition: Kubernetes Service selector corrupted to point to non-existent pods at ztunnel (L4) layer
+      entity:
+        group_id: details-service-1
+        kind: Service
+        name: details
+      fault_mechanism: Istio ambient mode service discovery corruption via modified Service selector pointing to non-existent pods, simulating the November 2023
+        Optus BGP routing storm where routing tables became corrupted and pointed to unreachable destinations. Operates at ztunnel L4 layer.
+  recommendedActions:
+    - solution:
+        actions:
+          - Check service selector using kubectl get service details -n book-info -o jsonpath='{.spec.selector}'
+          - Verify no endpoints with kubectl get endpoints details -n book-info
+          - Restore correct selector using kubectl patch service details -n book-info --type=merge -p '{"spec":{"selector":{"app":"details"}}}'
+        id: restore-service-selector
+    - solution:
+        actions:
+          - Manually edit the service using kubectl edit service details -n book-info
+          - Replace corrupted selector labels with correct ones matching the pods
+          - Verify endpoints are restored
+        id: edit-service-selector
+    - solution:
+        actions:
+          - "List pod labels to identify correct selector: kubectl get pods -n book-info -l app=details --show-labels"
+          - Patch service with correct selector based on pod labels
+          - Confirm service has endpoints and connectivity is restored
+        id: identify-and-restore-selector

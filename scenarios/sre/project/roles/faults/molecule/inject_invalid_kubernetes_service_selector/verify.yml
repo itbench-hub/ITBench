@@ -1,0 +1,51 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve Service
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Service
+        name: test-service
+        namespace: invalid-service-selector-test
+      register: faults_service
+
+    - name: Validate that Service exists
+      ansible.builtin.assert:
+        that:
+          - faults_service.resources | ansible.builtin.length == 1
+        fail_msg: Service not found. Fault injection failed.
+        success_msg: Service found.
+
+    - name: Validate that Service selector was changed
+      ansible.builtin.assert:
+        that:
+          - faults_service.resources[0].spec.selector["app.kubernetes.io/name"] is ansible.builtin.defined
+          - faults_service.resources[0].spec.selector["app.kubernetes.io/name"] != "test-workload"
+        fail_msg: Service selector was not changed to invalid value. Fault injection failed.
+        success_msg: Service selector was changed to invalid value.
+
+    - name: Retrieve Endpoints
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Endpoints
+        name: test-service
+        namespace: invalid-service-selector-test
+      register: faults_endpoints
+
+    - name: Validate that Endpoints exist
+      ansible.builtin.assert:
+        that:
+          - faults_endpoints.resources | ansible.builtin.length == 1
+        fail_msg: Endpoints not found. Fault injection failed.
+        success_msg: Endpoints found.
+
+    - name: Validate that Endpoints have no subsets
+      ansible.builtin.assert:
+        that:
+          - faults_endpoints.resources[0].subsets | ansible.builtin.default([]) | ansible.builtin.length == 0
+        fail_msg: Endpoints still have subsets. Fault injection failed.
+        success_msg: Endpoints have no subsets (service has no backend pods).

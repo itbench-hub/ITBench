@@ -1,0 +1,34 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Update service selector
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+      kind: "{{ faults_kubernetes_object.kind }}"
+      metadata:
+        name: "{{ faults_kubernetes_object.metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+      spec:
+        selector:
+          "app.kubernetes.io/name": invalid-workload-{{ 1000 | ansible.builtin.random }}
+    state: patched
+
+- name: Wait for service endpoints to be removed
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: Endpoints
+    name: "{{ faults_kubernetes_object.metadata.name }}"
+    namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+  register: faults_endpoints
+  until:
+    - faults_endpoints.api_found
+    - faults_endpoints.resources | ansible.builtin.length == 1
+    - faults_endpoints.resources[0].subsets | ansible.builtin.default([]) | ansible.builtin.length == 0
+  delay: 2
+  retries: 15
+  failed_when: false
