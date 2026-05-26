@@ -12,6 +12,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Ingress Port Blocking Network Policy](./ingress-port-blocking-network-policy.md) | Kubernetes |
 | [Insufficient Kubernetes Resource Quota](./insufficient-kubernetes-resource-quota.md) | Kubernetes |
 | [Insufficient Kubernetes Workload Container Resources](./insufficient-kubernetes-workload-container-resources.md) | Kubernetes |
+| [Invalid Kubernetes Service Selector](./invalid-kubernetes-service-selector.md) | Kubernetes |
 | [Invalid Kubernetes Workload Container Command](./invalid-kubernetes-workload-container-command.md) | Kubernetes |
 | [Kubernetes API Server Request Surge](./kubernetes-api-server-request-surge.md) | Kubernetes |
 | [Misconfigured Kubernetes Horizontal Pod Autoscaler](./misconfigured-kubernetes-horizontal-pod-autoscaler.md) | Kubernetes |

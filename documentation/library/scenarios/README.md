@@ -17,6 +17,7 @@
 | [31](./sre/31.md) | sre | low |
 | [33](./sre/33.md) | sre | low |
 | [34](./sre/34.md) | sre | low |
+| [36](./sre/36.md) | sre | medium |
 | [37](./finops/37.md) | finops | low |
 | [38](./finops/38.md) | finops | low |
 | [39](./sre/39.md) | sre | low |
@@ -50,16 +51,16 @@
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 4 | 34 |
+| 5 | 34 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 36 |
+| 2 | 37 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 16 | 21 | 1 |
+| 16 | 22 | 1 |
