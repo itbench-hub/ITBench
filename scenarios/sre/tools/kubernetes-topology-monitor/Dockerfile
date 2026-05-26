@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/python-314-minimal:10.2-1777970431
+FROM registry.access.redhat.com/ubi10/python-314-minimal:10.2-1779774002
 
 ENV DATA_DIRECTORY=/app/topology_data
 
