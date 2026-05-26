@@ -1,0 +1,22 @@
+---
+- name: Inject traffic denying Istio Gateway AuthorizationPolicy
+  hosts:
+    - localhost
+  tasks:
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        faults_injection_tasks:
+          - id: traffic-denying-istio-gateway-authorization-policy
+            args:
+              httpMethods:
+                - GET
+              kubernetesObject:
+                apiVersion: gateway.networking.k8s.io/v1
+                kind: Gateway
+                metadata:
+                  name: test-gateway
+                  namespace: gateway-authz-test

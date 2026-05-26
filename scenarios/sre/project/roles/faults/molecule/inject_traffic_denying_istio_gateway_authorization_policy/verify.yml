@@ -1,0 +1,45 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve AuthorizationPolicy
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: security.istio.io/v1
+        kind: AuthorizationPolicy
+        name: test-gateway-deny
+        namespace: gateway-authz-test
+      register: faults_authorization_policy
+
+    - name: Validate that AuthorizationPolicy exists
+      ansible.builtin.assert:
+        that:
+          - faults_authorization_policy.resources | ansible.builtin.length == 1
+        fail_msg: AuthorizationPolicy not found. Fault injection failed.
+        success_msg: AuthorizationPolicy found.
+
+    - name: Validate that AuthorizationPolicy action is DENY
+      ansible.builtin.assert:
+        that:
+          - faults_authorization_policy.resources[0].spec.action == "DENY"
+        fail_msg: AuthorizationPolicy action is not DENY. Fault injection failed.
+        success_msg: AuthorizationPolicy action is DENY.
+
+    - name: Validate that AuthorizationPolicy targets Gateway
+      ansible.builtin.assert:
+        that:
+          - faults_authorization_policy.resources[0].spec.targetRef.group == "gateway.networking.k8s.io"
+          - faults_authorization_policy.resources[0].spec.targetRef.kind == "Gateway"
+          - faults_authorization_policy.resources[0].spec.targetRef.name == "test-gateway"
+        fail_msg: AuthorizationPolicy does not target the correct Gateway. Fault injection failed.
+        success_msg: AuthorizationPolicy targets the correct Gateway.
+
+    - name: Validate that AuthorizationPolicy has HTTP methods rule
+      ansible.builtin.assert:
+        that:
+          - faults_authorization_policy.resources[0].spec.rules | ansible.builtin.length > 0
+          - faults_authorization_policy.resources[0].spec.rules[0].to[0].operation.methods is ansible.builtin.defined
+          - "'GET' in faults_authorization_policy.resources[0].spec.rules[0].to[0].operation.methods"
+        fail_msg: AuthorizationPolicy does not have correct HTTP methods rule. Fault injection failed.
+        success_msg: AuthorizationPolicy has correct HTTP methods rule.
