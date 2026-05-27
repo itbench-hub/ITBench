@@ -195,7 +195,7 @@ test-molecule-recorders: ## Runs Molecule tests for the Recorders role
 
 .PHONY: test-molecule-tools
 test-molecule-tools: ## Runs Molecule tests for the Tools role
-	cd project/roles/tools && $(UV) run molecule test test --all --exclude-scenario external_endpoints --report --command-borders
+	cd project/roles/tools && $(UV) run molecule test --all --exclude external_endpoints --report --command-borders
 
 .PHONY: test-molecule-waiters
 test-molecule-waiters: ## Runs Molecule tests for the Waiters role
