@@ -41,26 +41,6 @@
         release_state: present
         wait: true
 
-    - name: Install Istio CNI
-      kubernetes.core.helm:
-        chart_ref: "{{ tools_managers.istio_cni.helm.chart.reference }}"
-        chart_version: "{{ tools_managers.istio_cni.helm.chart.version }}"
-        kubeconfig: "{{ cluster.kubeconfig }}"
-        release_name: "{{ tools_managers.istio_cni.helm.release.name }}"
-        release_namespace: "{{ tools_managers.istio_cni.kubernetes.namespace }}"
-        release_state: present
-        wait: true
-
-    - name: Install Istio Ztunnel
-      kubernetes.core.helm:
-        chart_ref: "{{ tools_managers.istio_ztunnel.helm.chart.reference }}"
-        chart_version: "{{ tools_managers.istio_ztunnel.helm.chart.version }}"
-        kubeconfig: "{{ cluster.kubeconfig }}"
-        release_name: "{{ tools_managers.istio_ztunnel.helm.release.name }}"
-        release_namespace: "{{ tools_managers.istio_ztunnel.kubernetes.namespace }}"
-        release_state: present
-        wait: true
-
     - name: Apply Kubernetes Gateway API Custom Resource Definitions
       ansible.builtin.command:
         argv:
