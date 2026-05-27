@@ -59,7 +59,7 @@ make generate-resource-files
 
 3. Create a [Molecule test](../../scenarios/sre/project/roles/faults/molecule/) to test the fault. The name of directory should be the exact same name as the task file. Use the following command to run the fault test suite:
 ```shell
-make test-unit-faults
+make test-molecule-faults
 ```
 
 ### Validating New Fault

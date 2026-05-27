@@ -1,0 +1,106 @@
+---
+- name: Verify that Book Info was deployed
+  hosts:
+    - localhost
+  tasks:
+    - name: Include applications role variables
+      ansible.builtin.include_vars:
+        file: |-
+          {{
+            [
+              playbook_dir,
+              "..",
+              "..",
+              "..",
+              "applications",
+              "defaults",
+              "main",
+              "managers.yaml"
+            ] |
+            ansible.builtin.path_join
+          }}
+
+    - name: Retrieve namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: "{{ applications_managers.book_info.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: applications_namespace
+
+    - name: Validate that namespace exists
+      ansible.builtin.assert:
+        that:
+          - applications_namespace.resources | ansible.builtin.length == 1
+        fail_msg: Namespace not found. Deployment failed.
+        success_msg: Namespace found.
+
+    - name: Retrieve Gateway
+      kubernetes.core.k8s_info:
+        api_version: gateway.networking.k8s.io/v1
+        kind: Gateway
+        name: bookinfo-gateway
+        namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: applications_gateway
+
+    - name: Validate that Gateway exists
+      ansible.builtin.assert:
+        that:
+          - applications_gateway.resources | ansible.builtin.length == 1
+        fail_msg: Gateway not found. Deployment failed.
+        success_msg: Gateway found.
+
+    - name: Validate that Gateway is programmed
+      ansible.builtin.assert:
+        that:
+          - applications_gateway.resources[0].status.conditions is ansible.builtin.defined
+          - applications_gateway.resources[0].status.conditions | selectattr('type', 'equalto', 'Programmed') | selectattr('status', 'equalto', 'True') | list | length == 1
+        fail_msg: Gateway is not programmed. Deployment failed.
+        success_msg: Gateway is programmed.
+
+    - name: Retrieve deployments
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: applications_deployments
+
+    - name: Validate that deployments exist
+      ansible.builtin.assert:
+        that:
+          - applications_deployments.resources | ansible.builtin.length >= 4
+        fail_msg: Expected deployments not found. Deployment failed.
+        success_msg: Deployments found.
+
+    - name: Retrieve HorizontalPodAutoscalers
+      kubernetes.core.k8s_info:
+        api_version: autoscaling/v2
+        kind: HorizontalPodAutoscaler
+        namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: applications_hpas
+
+    - name: Validate that HPAs exist
+      ansible.builtin.assert:
+        that:
+          - applications_hpas.resources | ansible.builtin.length >= 4
+        fail_msg: Expected HPAs not found. Deployment failed.
+        success_msg: HPAs found.
+
+    - name: Retrieve load generator deployment
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: load-generator-product-page
+        namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: applications_load_generator
+
+    - name: Validate that load generator exists
+      ansible.builtin.assert:
+        that:
+          - applications_load_generator.resources | ansible.builtin.length == 1
+        fail_msg: Load generator not found. Deployment failed.
+        success_msg: Load generator found.

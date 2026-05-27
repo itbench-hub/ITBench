@@ -3,11 +3,28 @@
   hosts:
     - environment
   tasks:
+    - name: Include recorders role variables
+      ansible.builtin.include_vars:
+        file: |-
+          {{
+            [
+              playbook_dir,
+              "..",
+              "..",
+              "..",
+              "recorders",
+              "defaults",
+              "main",
+              "managers.yaml"
+            ] |
+            ansible.builtin.path_join
+          }}
+
     - name: Retrieve namespace
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: data-recorders
+        name: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: recorders_namespace
 
@@ -22,8 +39,8 @@
       kubernetes.core.k8s_info:
         api_version: batch/v1
         kind: Job
-        name: clickhouse-recorder
-        namespace: data-recorders
+        name: "{{ recorders_managers.data_recorders.instances.clickhouse }}"
+        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: recorders_clickhouse_job
 
@@ -38,8 +55,8 @@
       kubernetes.core.k8s_info:
         api_version: batch/v1
         kind: CronJob
-        name: jaeger-recorder
-        namespace: data-recorders
+        name: "{{ recorders_managers.data_recorders.instances.jaeger }}"
+        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: recorders_jaeger_cronjob
 
@@ -54,8 +71,8 @@
       kubernetes.core.k8s_info:
         api_version: batch/v1
         kind: CronJob
-        name: prometheus-recorder
-        namespace: data-recorders
+        name: "{{ recorders_managers.data_recorders.instances.prometheus }}"
+        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: recorders_prometheus_cronjob
 
@@ -70,8 +87,8 @@
       kubernetes.core.k8s_info:
         api_version: batch/v1
         kind: Job
-        name: kubernetes-topology-monitor-recorder
-        namespace: data-recorders
+        name: "{{ recorders_managers.data_recorders.instances.kubernetes_topology_monitor }}"
+        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: recorders_topology_monitor_job
 

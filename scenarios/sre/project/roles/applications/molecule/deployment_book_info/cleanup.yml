@@ -1,0 +1,13 @@
+---
+- name: Uninstall application
+  hosts:
+    - localhost
+  tasks:
+    - name: Import applications role
+      ansible.builtin.import_role:
+        name: applications
+        tasks_from: uninstall_book_info.yaml
+      vars:
+        applications_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"

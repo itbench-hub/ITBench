@@ -173,32 +173,35 @@ launch-data-collection-workflow: ## Launches the data collection execution workf
 	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
 		--extra-vars "workflow_type=data"
 
-.PHONY: test-unit-agent
-test-unit-agent: ## Runs agent access unit tests
+.PHONY: test-molecule-agent
+test-molecule-agent: ## Runs Molecule tests for the Agent role
 	cd project/roles/agent && $(UV) run molecule test --all --report --command-borders
 
-.PHONY: test-unit-awx
-test-unit-awx: ## Runs AWX unit tests
+.PHONY: test-molecule-applications
+test-molecule-applications: ## Runs Molecule tests for the Applications role
+	cd project/roles/applications && $(UV) run molecule test --all --report --command-borders
+
+.PHONY: test-molecule-awx
+test-molecule-awx: ## Runs Molecule tests for the AWX role
 	cd project/roles/awx && $(UV) run molecule test --all --report --command-borders
 
-.PHONY: test-unit-faults
-test-unit-faults: ## Runs fault injection unit tests
+.PHONY: test-molecule-faults
+test-molecule-faults: ## Runs Molecule tests for the Faults role
 	cd project/roles/faults && $(UV) run molecule test --all --report --command-borders
 
-.PHONY: test-unit-recorders
-test-unit-recorders: ## Runs recorder installation unit tests
+.PHONY: test-molecule-recorders
+test-molecule-recorders: ## Runs Molecule tests for the Recorders role
 	cd project/roles/recorders && $(UV) run molecule test --all --report --command-borders
 
-.PHONY: test-unit-tools
-test-unit-tools: ## Runs tool installation unit tests
-	cd project/roles/tools && $(UV) run molecule test --scenario-name install_sre --report --command-borders
-	cd project/roles/tools && $(UV) run molecule test --scenario-name install_finops --report --command-borders
+.PHONY: test-molecule-tools
+test-molecule-tools: ## Runs Molecule tests for the Tools role
+	cd project/roles/tools && $(UV) run molecule test test --all --exclude-scenario external_endpoints --report --command-borders
 
-.PHONY: test-unit-waiters
-test-unit-waiters: ## Runs waiter unit tests
+.PHONY: test-molecule-waiters
+test-molecule-waiters: ## Runs Molecule tests for the Waiters role
 	cd project/roles/waiters && $(UV) run molecule test --all --report --command-borders
 
-.PHONY:
+.PHONY: test-network-gateway
 test-network-gateway: ## Run tool gateway network tests
 	cd project/roles/tools && $(UV) run molecule test --scenario-name external_endpoints --report --command-borders
 

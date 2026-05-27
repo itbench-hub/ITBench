@@ -10,16 +10,21 @@ ansible:
     args:
       ansible_playbook:
         - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../../inventory
-        - --tags=install_tools,untagged
+        - --tags=install_recorders,untagged
+        - --extra-vars="out_directory=${MOLECULE_PROJECT_DIRECTORY}/test-recorders"
   playbooks:
     cleanup: cleanup.yml
     converge: converge.yml
+    create: create.yml
+    destroy: destroy.yml
     verify: verify.yml
 
 scenario:
-  name: install_sre
+  name: deployment
   test_sequence:
     - syntax
+    - create
     - converge
     - verify
     - cleanup
+    - destroy

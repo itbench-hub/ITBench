@@ -1,0 +1,81 @@
+---
+- name: Verify that OpenTelemetry Demo was deployed
+  hosts:
+    - localhost
+  tasks:
+    - name: Include applications role variables
+      ansible.builtin.include_vars:
+        file: |-
+          {{
+            [
+              playbook_dir,
+              "..",
+              "..",
+              "..",
+              "applications",
+              "defaults",
+              "main",
+              "managers.yaml"
+            ] |
+            ansible.builtin.path_join
+          }}
+
+    - name: Retrieve namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: applications_namespace
+
+    - name: Validate that namespace exists
+      ansible.builtin.assert:
+        that:
+          - applications_namespace.resources | ansible.builtin.length == 1
+        fail_msg: Namespace not found. Deployment failed.
+        success_msg: Namespace found.
+
+    - name: Retrieve Helm release
+      kubernetes.core.helm_info:
+        name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
+        namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: applications_helm_release
+
+    - name: Validate that Helm release exists
+      ansible.builtin.assert:
+        that:
+          - applications_helm_release.status is ansible.builtin.defined
+          - applications_helm_release.status.status == "deployed"
+        fail_msg: Helm release not found or not deployed. Deployment failed.
+        success_msg: Helm release is deployed.
+
+    - name: Retrieve deployments
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: applications_deployments
+
+    - name: Validate that deployments exist
+      ansible.builtin.assert:
+        that:
+          - applications_deployments.resources | ansible.builtin.length >= 10
+        fail_msg: Expected deployments not found. Deployment failed.
+        success_msg: Deployments found.
+
+    - name: Retrieve services
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Service
+        namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: applications_services
+
+    - name: Validate that services exist
+      ansible.builtin.assert:
+        that:
+          - applications_services.resources | ansible.builtin.length >= 10
+        fail_msg: Expected services not found. Deployment failed.
+        success_msg: Services found.

@@ -1,0 +1,118 @@
+---
+- name: Deploy tools and application
+  hosts:
+    - localhost
+  tasks:
+    - name: Include tools role variables
+      ansible.builtin.include_vars:
+        file: |-
+          {{
+            [
+              playbook_dir,
+              "..",
+              "..",
+              "..",
+              "tools",
+              "defaults",
+              "main",
+              "managers.yaml"
+            ] |
+            ansible.builtin.path_join
+          }}
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Install Prometheus Operator
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.prometheus_operator.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.prometheus_operator.helm.chart.version }}"
+        create_namespace: true
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.prometheus_operator.helm.release.name }}"
+        release_namespace: "{{ tools_managers.prometheus_operator.kubernetes.namespace }}"
+        release_state: present
+        wait: true
+
+    - name: Install Istio Base (CRDs)
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.istio_base.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.istio_base.helm.chart.version }}"
+        create_namespace: true
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.istio_base.helm.release.name }}"
+        release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+        release_state: present
+        wait: true
+
+    - name: Install Istio Istiod (Control Plane)
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.istio_istiod.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.istio_istiod.helm.chart.version }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.istio_istiod.helm.release.name }}"
+        release_namespace: "{{ tools_managers.istio_istiod.kubernetes.namespace }}"
+        release_state: present
+        wait: true
+
+    - name: Install Istio CNI
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.istio_cni.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.istio_cni.helm.chart.version }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.istio_cni.helm.release.name }}"
+        release_namespace: "{{ tools_managers.istio_cni.kubernetes.namespace }}"
+        release_state: present
+        wait: true
+
+    - name: Install Istio Ztunnel
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.istio_ztunnel.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.istio_ztunnel.helm.chart.version }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.istio_ztunnel.helm.release.name }}"
+        release_namespace: "{{ tools_managers.istio_ztunnel.kubernetes.namespace }}"
+        release_state: present
+        wait: true
+
+    - name: Apply Kubernetes Gateway API Custom Resource Definitions
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - --server-side
+          - -f
+          - |-
+            {{
+              [
+                tools_managers.kubernetes_gateway.git.repository.removesuffix(".git"),
+                "releases",
+                "download",
+                tools_managers.kubernetes_gateway.git.tag,
+                "standard-install.yaml"
+              ] |
+              ansible.builtin.join('/')
+            }}
+          - --kubeconfig={{ cluster.kubeconfig | ansible.builtin.expanduser }}
+      register: applications_gateway_crds_apply
+      changed_when:
+        - applications_gateway_crds_apply.rc == 0
+
+    - name: Import applications role
+      ansible.builtin.import_role:
+        name: applications
+      vars:
+        applications_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+        applications_configuration:
+          bookInfo:
+            enabled: true
+            options:
+              autoscaling:
+                kubernetes:
+                  hpa: true
