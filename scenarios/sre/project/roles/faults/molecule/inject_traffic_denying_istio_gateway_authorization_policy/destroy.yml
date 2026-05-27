@@ -31,6 +31,22 @@
         state: absent
         wait: true
 
+    - name: Uninstall Istio Ztunnel
+      kubernetes.core.helm:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.istio_ztunnel.helm.release.name }}"
+        release_namespace: "{{ tools_managers.istio_ztunnel.kubernetes.namespace }}"
+        release_state: absent
+        wait: true
+
+    - name: Uninstall Istio CNI
+      kubernetes.core.helm:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.istio_cni.helm.release.name }}"
+        release_namespace: "{{ tools_managers.istio_cni.kubernetes.namespace }}"
+        release_state: absent
+        wait: true
+
     - name: Uninstall Istio Istiod (Control Plane)
       kubernetes.core.helm:
         kubeconfig: "{{ cluster.kubeconfig }}"
