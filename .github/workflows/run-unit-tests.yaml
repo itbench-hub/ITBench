@@ -1,0 +1,26 @@
+name: Run ITBench Unit Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scenarios/sre/scripts/**
+
+concurrency:
+  group: ci-unit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sre:
+    name: SRE Scripts Unit Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: astral-sh/setup-uv@v8.1.0
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Run unit tests
+        run: |
+          make -C scenarios/sre test-scripts

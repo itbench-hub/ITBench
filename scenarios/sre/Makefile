@@ -205,6 +205,10 @@ test-molecule-waiters: ## Runs Molecule tests for the Waiters role
 test-network-gateway: ## Run tool gateway network tests
 	cd project/roles/tools && $(UV) run molecule test --scenario-name external_endpoints --report --command-borders
 
+.PHONY: test-scripts
+test-scripts: ## Run unit tests for Python scripts
+	$(PYTHON) -m unittest discover -s scripts/unittests -p "test_*.py"
+
 .PHONY: generate-agent-bundle
 generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with
 	ANSIBLE_STDOUT_CALLBACK=ansible.posix.json $(UV) run ansible-playbook -i inventory project/generate_agent_bundle.yaml | jq -r '.plays[].tasks[] | select(.task.name == "Print agent bundle") | .hosts.localhost.msg'

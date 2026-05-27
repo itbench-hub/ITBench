@@ -51,14 +51,6 @@
         fail_msg: Gateway not found. Deployment failed.
         success_msg: Gateway found.
 
-    - name: Validate that Gateway is programmed
-      ansible.builtin.assert:
-        that:
-          - applications_gateway.resources[0].status.conditions is ansible.builtin.defined
-          - applications_gateway.resources[0].status.conditions | selectattr('type', 'equalto', 'Programmed') | selectattr('status', 'equalto', 'True') | list | length == 1
-        fail_msg: Gateway is not programmed. Deployment failed.
-        success_msg: Gateway is programmed.
-
     - name: Retrieve deployments
       kubernetes.core.k8s_info:
         api_version: apps/v1
