@@ -1,0 +1,44 @@
+---
+- name: Load index and schema for {{ library_name }}
+  ansible.builtin.set_fact:
+    documentation_index: |-
+      {{
+        lookup(
+          "ansible.builtin.file",
+          ["files", "library", library_name, "index.json"] | ansible.builtin.path_join
+        ) |
+        ansible.builtin.from_json
+      }}
+    documentation_schema: |-
+      {{
+        lookup(
+          "ansible.builtin.file",
+          ["files", "library", library_name, "schema.json"] | ansible.builtin.path_join
+        ) |
+        ansible.builtin.from_json
+      }}
+
+- name: Validate all entries in index against schema for library {{ library_name }}
+  ansible.utils.validate:
+    data: "{{ entry }}"
+    criteria: "{{ documentation_schema }}"
+    engine: ansible.utils.jsonschema
+  loop: "{{ documentation_index }}"
+  loop_control:
+    label: "{{ library_name }}/{{ entry.id }}"
+    loop_var: entry
+
+- name: Fail playbook with `duplicate library index id` error
+  ansible.builtin.fail:
+    msg: Duplicate id discovered in {{ library_name }} index. Please ensure all entries have a unique id.
+  when:
+    - |-
+        (
+          documentation_index |
+          ansible.builtin.unique(attribute="id") |
+          ansible.builtin.length
+        ) !=
+        (
+          documentation_index |
+          ansible.builtin.length
+        )
