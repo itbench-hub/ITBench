@@ -3,6 +3,12 @@
   hosts:
     - environment
   tasks:
+    - name: Create temporary directory
+      ansible.builtin.file:
+        mode: "0755"
+        path: "{{ [playbook_dir, 'test'] | ansible.builtin.path_join }}"
+        state: directory
+
     - name: Import cluster role
       ansible.builtin.import_role:
         name: cluster
@@ -20,9 +26,9 @@
           platform: "{{ cluster_platform }}"
         recorders_storage:
           local:
-            directory: /tmp/recorders-test
+            directory: "{{ [playbook_dir, 'test'] | ansible.builtin.path_join }}"
 
     - name: Delete temporary directory
       ansible.builtin.file:
-        path: /tmp/recorders-test
+        path: "{{ [playbook_dir, 'test'] | ansible.builtin.path_join }}"
         state: absent

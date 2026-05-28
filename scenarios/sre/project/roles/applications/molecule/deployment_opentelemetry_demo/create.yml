@@ -1,19 +1,11 @@
 ---
-- name: Create tools
+- name: Create infrastructure and deploy OpenTelemetry Demo
   hosts:
-    - environment
+    - localhost
   tasks:
-    - name: Create temporary directory
-      ansible.builtin.file:
-        mode: "0755"
-        path: /tmp/recorders-test
-        state: directory
-
     - name: Import cluster role
       ansible.builtin.import_role:
         name: cluster
-      tags:
-        - always
       vars:
         cluster_files:
           kubeconfig: "{{ cluster.kubeconfig }}"
@@ -30,3 +22,18 @@
         tools_configuration:
           sre:
             enabled: true
+
+    - name: Import applications role
+      ansible.builtin.import_role:
+        name: applications
+      vars:
+        applications_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+        applications_configuration:
+          opentelemetryDemo:
+            enabled: true
+            options:
+              autoscaling:
+                kubernetes:
+                  hpa: true

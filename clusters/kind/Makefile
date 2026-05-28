@@ -44,6 +44,6 @@ run-service-provider: ## Runs Cloud Provider Kind for Load Balancer services
 sync-network-group-vars: ## Syncs the network info with the scenarios group variables
 	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml
 
-.PHONY: test-unit-containers
-test-unit-containers: ## Runs containers unit tests
+.PHONY: test-molecule-containers
+test-molecule-containers: ## Runs Molecule tests for Containers role
 	cd playbooks/roles/containers && uv run molecule test --all --report --command-borders

@@ -1,0 +1,39 @@
+---
+- name: Create infrastructure and deploy Book Info
+  hosts:
+    - localhost
+  tasks:
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: install.yaml
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+        tools_configuration:
+          sre:
+            enabled: true
+
+    - name: Import applications role
+      ansible.builtin.import_role:
+        name: applications
+      vars:
+        applications_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+        applications_configuration:
+          bookInfo:
+            enabled: true
+            options:
+              autoscaling:
+                kubernetes:
+                  hpa: true

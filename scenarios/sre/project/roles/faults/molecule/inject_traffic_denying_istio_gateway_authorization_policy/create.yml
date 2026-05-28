@@ -1,0 +1,148 @@
+---
+- name: Create test resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Include tools role variables
+      ansible.builtin.include_vars:
+        file: |-
+          {{
+            [
+              playbook_dir,
+              "..",
+              "..",
+              "..",
+              "tools",
+              "defaults",
+              "main",
+              "managers.yaml"
+            ] |
+            ansible.builtin.path_join
+          }}
+
+    - name: Install Istio Base (CRDs)
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.istio_base.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.istio_base.helm.chart.version }}"
+        create_namespace: true
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.istio_base.helm.release.name }}"
+        release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+        release_state: present
+        wait: true
+
+    - name: Install Istio Istiod (Control Plane)
+      kubernetes.core.helm:
+        chart_ref: "{{ tools_managers.istio_istiod.helm.chart.reference }}"
+        chart_version: "{{ tools_managers.istio_istiod.helm.chart.version }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.istio_istiod.helm.release.name }}"
+        release_namespace: "{{ tools_managers.istio_istiod.kubernetes.namespace }}"
+        release_state: present
+        wait: true
+
+    - name: Apply Kubernetes Gateway API Custom Resource Definitions
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - apply
+          - --server-side
+          - -f
+          - |-
+            {{
+              [
+                tools_managers.kubernetes_gateway.git.repository.removesuffix(".git"),
+                "releases",
+                "download",
+                tools_managers.kubernetes_gateway.git.tag,
+                "standard-install.yaml"
+              ] |
+              ansible.builtin.join('/')
+            }}
+          - --kubeconfig={{ cluster.kubeconfig | ansible.builtin.expanduser }}
+      register: faults_kubernetes_gateway_crds_apply
+      changed_when:
+        - faults_kubernetes_gateway_crds_apply.rc == 0
+
+    - name: Create test namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: gateway-authz-test
+        state: present
+
+    - name: Create Gateway
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: Gateway
+          metadata:
+            name: test-gateway
+            namespace: gateway-authz-test
+          spec:
+            gatewayClassName: istio
+            listeners:
+              - name: http
+                port: 80
+                protocol: HTTP
+                allowedRoutes:
+                  namespaces:
+                    from: Same
+        state: present
+        wait: true
+        wait_condition:
+          reason: Accepted
+          status: "True"
+          type: Accepted
+
+    - name: Create test deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-workload
+            namespace: gateway-authz-test
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                "app.kubernetes.io/name": test-workload
+            template:
+              metadata:
+                labels:
+                  "app.kubernetes.io/name": test-workload
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.2-1779773684
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+        state: present
+        wait: true
+
+    - name: Create test service
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: test-service
+            namespace: gateway-authz-test
+          spec:
+            selector:
+              "app.kubernetes.io/name": test-workload
+            ports:
+              - port: 80
+                targetPort: 8080
+                protocol: TCP
+        state: present

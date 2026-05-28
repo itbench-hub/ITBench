@@ -1,0 +1,27 @@
+---
+dependency:
+  name: galaxy
+
+ansible:
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../../inventory
+        - --tags=install_tools,untagged
+  playbooks:
+    converge: converge.yml
+    create: create.yml
+    destroy: destroy.yml
+    verify: verify.yml
+
+scenario:
+  name: deployment_sre
+  test_sequence:
+    - syntax
+    - create
+    - converge
+    - verify
+    - destroy
