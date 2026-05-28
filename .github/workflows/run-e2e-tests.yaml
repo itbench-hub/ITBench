@@ -49,12 +49,14 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
-      - name: Start FinOps Scenario 37
+      - name: Start FinOps Scenario 37 # Due to resources, skip deploying recorders
         run: |
-          SCENARIO_NUMBER=37 make -C scenarios/sre start-scenario
+          SCENARIO_NUMBER=37 make -C scenarios/sre create-environment
+          SCENARIO_NUMBER=37 make -C scenarios/sre inject-scenario-faults
       - name: Stop FinOps Scenario 37
         run: |
-          SCENARIO_NUMBER=37 make -C scenarios/sre stop-scenario
+          SCENARIO_NUMBER=37 make -C scenarios/sre remove-fault-resources
+          SCENARIO_NUMBER=37 make -C scenarios/sre destroy-environment
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
