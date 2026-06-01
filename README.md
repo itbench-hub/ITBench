@@ -14,7 +14,7 @@
 - **[September 18, 2025]** Our paper **STRATUS: A Multi-agent System for Autonomous Reliability Engineering of Modern Clouds** was accepted at NeurIPS 2025. [Read the paper](https://arxiv.org/abs/2506.02009).
 - **[July 17, 2025]** ITBench was presented as an **oral** at ICML 2025 (Oral 6A: Applications in Agents and Coding) in Vancouver. [View the talk](https://icml.cc/virtual/2025/oral/47199).
 - **[June 13, 2025]** Identified 25+ additional scenarios to be developed over the summer.
-- **[May 2, 2025]** 🚀 ITBench now provides **fully-managed scenario environments** for everyone! Our platform handles the complete workflow—from scenario deployment to agent evaluation and leaderboard updates. Visit our GitHub repository [here](https://github.com/ibm/ITBench-Leaderboard) for guidelines and get started today.
+- **[May 2, 2025]** 🚀 ITBench now provides **fully-managed scenario environments** for everyone! Our platform handles the complete workflow—from scenario deployment to agent evaluation and leaderboard updates. Visit our GitHub repository [here](#leaderboard) for guidelines and get started today.
 - **[February 28, 2025]** 🏆 **Limited Access Beta**: Invite-only access to the ITBench hosted scenario environments. ITBench handles scenario deployment, agent evaluation, and leaderboard updates. To request access, e-mail us [here](mailto:agent-bench-automation@ibm.com).
 - **[February 7, 2025]** 🎉 **Initial release!** Includes research paper, self-hosted environment setup tooling, sample scenarios, and baseline agents.
 
@@ -104,8 +104,8 @@ Two baseline agents are being open-sourced with ITBench, built using the **CrewA
 
 | Agent | Repository |
 |-------|------------|
-| **SRE Agent** | [itbench-sre-agent](https://github.com/IBM/itbench-sre-agent) |
-| **CISO Agent** | [itbench-ciso-caa-agent](https://github.com/IBM/itbench-ciso-caa-agent) |
+| **SRE Agent** | [itbench-sre-agent](https://github.com/itbench-hub/ITBench-CISO-SRE-FinOps-Agent) |
+| **CISO Agent** | [itbench-ciso-caa-agent](https://github.com/itbench-hub/ITBench-CISO-CAA-Agent) |
 
 ---
 
@@ -116,7 +116,7 @@ Two baseline agents are being open-sourced with ITBench, built using the **CrewA
       title={ITBench: Evaluating AI Agents across Diverse Real-World IT Automation Tasks},
       author={Jha, Saurabh and Arora, Rohan and Watanabe, Yuji and others},
       year={2025},
-      url={https://github.com/IBM/itbench-sample-scenarios/blob/main/it_bench_arxiv.pdf}
+      url={https://github.com/itbench-hub/ITBench/blob/main/it_bench_arxiv.pdf}
 }
 ```
 
@@ -126,7 +126,7 @@ Two baseline agents are being open-sourced with ITBench, built using the **CrewA
 
 Have questions or need help getting started with ITBench?
 
-- [**Create a GitHub issue**](https://github.com/IBM/ITBench/issues/new) for bug reports or feature requests
+- [**Create a GitHub issue**](https://github.com/itbench-hub/ITBench/issues) for bug reports or feature requests
 - [**Join our Discord community**](https://discord.gg/6fzy3JRHmt) for real-time discussions
 - For formal inquiries, please see the [contacts section](#contacts)
 

@@ -39,7 +39,7 @@ brew install python@3.14
 brew install openshift-cli
 ```
 
->[!NOTE]
+>[!TIP]
 >Installing `python` through Homebrew is not required as `uv` will install a version of Python if one is not provided. However, it can be helpful from a dependency management perspective to just have Homebrew manage the installation.
 
 >[!NOTE]
@@ -56,7 +56,7 @@ brew install openshift-cli
     - **a.** Install Python by downloading the package [here](https://www.python.org/downloads/source/)
     - **b.** Install the OpenShift CLI by following the instructions [here](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/cli_tools/openshift-cli-oc#cli-installing-cli_cli-developer-commands)
 
->[!NOTE]
+>[!TIP]
 >Python 3.14 can be downloaded and managed by various managers on Linux. However, some may not yet offer this version of python through the default package manager. To ensure that the correct version is used, the binary can either be downloaded through the link above or the `uv` version of Python 3.14 can be used. `uv` will automatically download its version of Python if it does not detect an available version on the machine.
 
 >[!NOTE]
@@ -92,7 +92,7 @@ ITBench uses [Ansible](https://docs.ansible.com/ansible/latest/getting_started/i
 
 This document functions as `quick-start` guide to running scenarios. Thus, it will not go through all the options available to develop them. For more infomation, please consult the `developer` section of the documentation.
 
->[!NOTE]
+>[!TIP]
 >See [scenario library](../library/scenarios/README.md) for a full comprehensive list of runnable scenarios.
 
 1. Create and configure the group variables.
@@ -100,7 +100,7 @@ This document functions as `quick-start` guide to running scenarios. Thus, it wi
 make group-vars
 ```
 
->[!NOTE]
+>[!TIP]
 >If using [our kops setup](../../clusters/kops/README.md), use `make sync-cluster-group-vars` to export the kubeconfig files and configure the [`stack.yaml`](../../scenarios/sre/inventory/group_vars/runner/stack.yaml) group variables. If using [our kind setup](../../clusters/kind/README.md), the default group variables made at creation will suffice.
 
 >[!WARNING]
@@ -113,17 +113,17 @@ make group-vars
 SCENARIO_NUMBER=1 make start-scenario
 ```
 
->[!NOTE]
+>[!TIP]
 >Switching to a different scenario can be done by changing the value of the `SCENARIO_NUMBER` variable. Documentation for the available scenarios can be found [here](../library/scenarios/README.md).
 
 ### Running an Agent
 
 Once a scenario has started, one can begin runnning an agent to pull information from the cluster and the various observability tools so that it can attempt to diagnose and remidiate a problem.
 
->[!NOTE]
+>[!TIP]
 >If you don't have an agent yet, you can use the [SRE-Agent](https://github.com/itbench-hub/itbench-sre-agent) to see how it works.
 
->[!NOTE]
+>[!IMPORTANT]
 >A scenario starts once fault injection has begun. Since faults may be injected after [certain conditions](../library/waiters/README.md) have been fulfilled, an agent may be running before one or multiple faults have been injected.
 
 ### Stopping Scenarios

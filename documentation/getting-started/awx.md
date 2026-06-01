@@ -12,11 +12,8 @@ For the clusters running the experiements (also known referred to as `runners`),
 
 If running both AWX and a `runner` on the same cluster (ie: Kind, Minikube, etc), please ensure that the machine has **at least**: [24 CPUs, 32 GB of memory, 100 GB of disk storage](./hardware-specification.md#development-on-awx).
 
->[!NOTE]
->When creating an AWX stack with a `Kind` cluster with [our provided setup](../../clusters/kind/README.md), this hardware check is done as a part of the creation process. It will produce a warning message in the console when the machine lacks the necessary requirements. **When running on an underprovisoned cluster, poor performance is expected.**
-
->[!NOTE]
->When creating an AWX stack with AWS and `kOps` [our provided setup](../../clusters/kops/README.md), this hardware check is done as a part of the creation process. It will produce a warning message in the console when the machine lacks the necessary requirements. **When running on an underprovisoned cluster, poor performance is expected.**
+>[!WARNING]
+>When creating an AWX stack with our provided setup for [`Kind`](../../clusters/kind/README.md) or [AWS and `kOps`](../../clusters/kops/README.md), this hardware check is done as a part of the creation process. It will produce a warning message in the console when the machine lacks the necessary requirements. **When running on an underprovisoned cluster, poor performance is expected.**
 
 ## Set Up
 
@@ -34,8 +31,8 @@ The playbooks feature a number of [group variables](../../scenarios/sre/inventor
 | [stack.yaml](../../scenarios/sre/inventory/group_vars/runner/stack.yaml.example) | Configures the head and runner clusters |
 | [storage.yaml](../../scenarios/sre/inventory/group_vars/all/storage.yaml.example) | Configures the storage options for data files |
 
-> [!NOTE]
-> Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
+>[!NOTE]
+>Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
 
 After creating an AWX stack, go to the `scenarios/sre` directory.
 
@@ -46,7 +43,7 @@ After creating an AWX stack, go to the `scenarios/sre` directory.
 make group-vars
 ```
 
->[!NOTE]
+>[!TIP]
 >If using [our kops setup](../../clusters/kops/README.md), use `make sync-stack-group-vars` to export the kubeconfig files and configure the [`stack.yaml`](../../scenarios/sre/inventory/group_vars/runner/stack.yaml) group variables. If using [our kind setup](../../clusters/kind/README.md), the default group variables made at creation will suffice.
 
 >[!WARNING]
@@ -82,7 +79,7 @@ make launch-full-workflow
 
 ![running_workflows](../images/awx-running-workflows.png)
 
->[!NOTE]
+>[!TIP]
 >While there are several `launch` workflow make commands, the one listed above is the one of most interest to the general popoulation (`full`).
 >![workflow_types](../images/awx-workflow-types.png)
 >The `data-collection` workflow is primarily used to collect data from a scenario for our offline offering, [ITBench-Lite](https://huggingface.co/spaces/ibm-research/ITBench-Lite). The `start` and `stop` workflows are launched by our system for runs against the leaderboard. All three of the workflows mentioned **do not** run the agent as a part of the workflow. Generally speaking, these workflows should not be used for general or development use.
@@ -94,12 +91,12 @@ make launch-full-workflow
 make undeploy-awx
 ```
 
->[!NOTE]
+>[!WARNING]
 >The runner clusters are not automatically cleaned once AWX has been uninstalled. So, if runs were left in an unfinished state, they would need to be cleaned up manually.
 
 ## Troubleshooting
 
->[!NOTE]
+>[!TIP]
 >Due to the amount of resources needed to run the AWX stack, it should not be considered as a proper development environment for creating or troubleshooting scenarios. Those whould be done on a standalone cluster first and hardended **before** running on the AWX stack.
 
 ### Cluster Workflow Failed

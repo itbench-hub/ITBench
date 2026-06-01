@@ -42,7 +42,7 @@ OPENAI_MODEL_NAME = gpt-4o-mini
 CODE_GEN_MODEL = gpt-4o-mini
 ```
 
->[!NOTE]
+>[!TIP]
 >If you want to use other models, refer to [this section](https://github.com/itbench-hub/itbench-ciso-caa-agent?tab=readme-ov-file#3-create-env-file-and-set-llm-api-credentials)
 
 2. Run CISO Agent Harness Docker container
@@ -66,7 +66,7 @@ docker run --rm -it --name ciso-bench-runner \
     --runner_id my-ciso-runner-1
 ```
 
->[!NOTE]
+>[!TIP]
 >If you are benchmarking a RHEL scenario, please refer to [the full specification.](#full-specification-of-bench-runner)
 
 4. The benchmark will typically complete after an hour. The Docker processes will close automatically and the terminal windows can be safely closed. The benchamrk registration issue will be updated approximately every 10 minutes with the results summarized in a table. Once completes, the registration issue will update its status to `Finished` and will be closed.

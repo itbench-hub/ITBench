@@ -56,7 +56,7 @@ make group-vars
 
 2. Edit the group variables files accordingly
 
->[!NOTE]
+>[!IMPORTANT]
 >Before or during this step, one should create an SSH key. This will allow ssh access to the cluster after creation. A guide to making an ssh key can be found [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).
 
 3. Configure the AWS CLI tool
@@ -163,7 +163,6 @@ CLUSTER_NAME=<cluster name> make validate-cluster
 
 >[!NOTE]
 >Generally speaking, the validation results only need to be checked in the case of a validation failure. This will result in the creation command failing.
-
 
 Clusters may fail to validate for a variety of reasons. While not complete, the following command can be used to attempt remidiation of a cluster with validation failures. **This command is not guarenteed to result in a working cluster, but may help recover the cluster in response to a known validation failure.**
 ```shell
