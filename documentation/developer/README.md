@@ -2,14 +2,14 @@
 
 This document will detail how to set up a developer environment for contributing to ITBench.
 
->[!WARNING]
+>[!IMPORTANT]
 >**When creating a pull requests, please ensure that all the commits are signed. The request will not be reviewed or accepted otherwise.**
 
 ## Required Software
 
 Please follow the requirements listed [here](../getting-started/scenarios.md#required-software).
 
->[!NOTE]
+>[!TIP]
 >See [here](./software.md) for a comprehensive list of the ITBench software stack.
 
 ## Installation

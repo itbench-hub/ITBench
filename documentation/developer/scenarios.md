@@ -2,7 +2,7 @@
 
 This document will detail how to create new SRE and FinOps scenarios in ITBench which can be used in SRE or FinOps [scenarios](../getting-started/scenarios.md).
 
->[!NOTE]
+>[!IMPORTANT]
 >To add new scenarios to the ITBench project, please follow this guide and make a pull request titled: `feat: add scenario <scenario id>` (ie: `feat: add scenario 1`).
 
 ## Required Software
@@ -26,14 +26,14 @@ Please follow the instructions listed [here](../getting-started/scenarios.md#set
 make generate-scenario-index
 ```
 
->[!NOTE]
+>[!TIP]
 >To see a list of all the added and changed files, use `git status`.
 
 ### Editing New Scenario
 
 1. Edit the new scenario index template. This will be located in the [scenario library index template directory](../../scenarios/sre/project/roles/documentation/templates/library/scenarios/indexes/). If using an [ITBench supported application](../library/applications/README.md), please ensure that [proper template variables are used](../../scenarios/sre/project/roles/applications/defaults/main/managers.yaml).
 
->[!NOTE]
+>[!TIP]
 >Use the existing templates to see how to add the variables for templating.
 
 
