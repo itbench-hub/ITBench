@@ -1,0 +1,52 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve Service
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Service
+        name: test-service
+        namespace: deleted-service-test
+      register: faults_service
+
+    - name: Validate that Service was deleted
+      ansible.builtin.assert:
+        that:
+          - faults_service.resources | ansible.builtin.length == 0
+        fail_msg: Service still exists. Fault injection failed.
+        success_msg: Service was successfully deleted.
+
+    - name: Retrieve Endpoints
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Endpoints
+        name: test-service
+        namespace: deleted-service-test
+      register: faults_endpoints
+
+    - name: Validate that Endpoints were also deleted
+      ansible.builtin.assert:
+        that:
+          - faults_endpoints.resources | ansible.builtin.length == 0
+        fail_msg: Endpoints still exist. When a Service is deleted, its Endpoints should also be deleted.
+        success_msg: Endpoints were also deleted (expected behavior when Service is deleted).
+
+    - name: Retrieve Deployment
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: test-workload
+        namespace: deleted-service-test
+      register: faults_deployment
+
+    - name: Validate that Deployment still exists
+      ansible.builtin.assert:
+        that:
+          - faults_deployment.resources | ansible.builtin.length == 1
+        fail_msg: Deployment was unexpectedly deleted. Only the Service should be deleted.
+        success_msg: Deployment still exists (only Service was deleted, workload remains).

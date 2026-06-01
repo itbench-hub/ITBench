@@ -44,6 +44,7 @@
 | [60](./sre/60.md) | sre | medium |
 | [102](./sre/102.md) | sre | medium |
 | [105](./sre/105.md) | sre | medium |
+| [114](./sre/114.md) | sre | low |
 
 ## Statistics
 
@@ -51,16 +52,16 @@
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 5 | 34 |
+| 5 | 35 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 37 |
+| 2 | 38 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 16 | 22 | 1 |
+| 17 | 22 | 1 |
