@@ -1,0 +1,110 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-114
+spec:
+  alerts:
+    - group_id: checkout-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Checkout experiencing errors when calling product-catalog service after service deletion
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend experiencing errors when calling product-catalog and checkout services
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend proxy experiencing errors cascading from frontend
+  aliases:
+    - - product-catalog-service-1
+      - product-catalog-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+    - - frontend-proxy-service-1
+      - frontend-proxy-pod-1
+  fault:
+    - category: Other
+      condition: Service deleted
+      entity:
+        group_id: product-catalog-service-1
+        kind: Service
+        name: product-catalog-service-1
+      fault_mechanism: custom
+  groups:
+    - filter:
+        - product-catalog\b
+      id: product-catalog-service-1
+      kind: Service
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - ^product-catalog-[a-z0-9]+-[a-z0-9]+$
+      id: product-catalog-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - ^checkout-[a-z0-9]+-[a-z0-9]+$
+      id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - ^frontend-[a-z0-9]+-[a-z0-9]+$
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - ^frontend-proxy-[a-z0-9]+-[a-z0-9]+$
+      id: frontend-proxy-pod-1
+      kind: Pod
+      namespace: otel-demo
+  propagations:
+    - condition: product-catalog service deleted
+      effect: checkout cannot resolve product-catalog service DNS
+      source: product-catalog-service-1
+      target: checkout-service-1
+    - condition: checkout cannot connect to product-catalog service
+      effect: checkout service error rate is above threshold
+      source: product-catalog-service-1
+      target: checkout-service-1
+    - condition: product-catalog service deleted
+      effect: frontend cannot resolve product-catalog service DNS
+      source: product-catalog-service-1
+      target: frontend-service-1
+    - condition: checkout service experiencing errors
+      effect: frontend service error rate increases when calling checkout
+      source: checkout-service-1
+      target: frontend-service-1
+    - condition: frontend cannot connect to product-catalog service
+      effect: frontend service error rate is above threshold
+      source: product-catalog-service-1
+      target: frontend-service-1
+    - condition: frontend service experiencing errors
+      effect: frontend-proxy service error rate is above threshold
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - check if service exists in namespace
+          - identify missing service configuration
+          - recreate service by exposing deployment or applying manifest from backup
+        id: restore_deleted_service

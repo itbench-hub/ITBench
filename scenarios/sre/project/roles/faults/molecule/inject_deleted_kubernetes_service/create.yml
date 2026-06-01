@@ -1,0 +1,81 @@
+---
+- name: Create test resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Create test namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: deleted-service-test
+        state: present
+
+    - name: Create test deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-workload
+            namespace: deleted-service-test
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: test-workload
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: test-workload
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.2-1779862102
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+                    ports:
+                      - containerPort: 8080
+                        name: http
+        state: present
+        wait: true
+
+    - name: Create test service
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: test-service
+            namespace: deleted-service-test
+          spec:
+            selector:
+              app.kubernetes.io/name: test-workload
+            ports:
+              - port: 80
+                targetPort: 8080
+                protocol: TCP
+                name: http
+        state: present
+
+    - name: Wait for service endpoints to be populated
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Endpoints
+        name: test-service
+        namespace: deleted-service-test
+      register: faults_service_endpoints
+      until:
+        - faults_service_endpoints.resources | ansible.builtin.length == 1
+        - faults_service_endpoints.resources[0].subsets is ansible.builtin.defined
+        - faults_service_endpoints.resources[0].subsets | ansible.builtin.length > 0
+      delay: 2
+      retries: 30

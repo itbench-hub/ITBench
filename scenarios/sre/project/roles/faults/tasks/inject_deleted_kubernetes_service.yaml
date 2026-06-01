@@ -1,0 +1,16 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Delete service
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+      kind: "{{ faults_kubernetes_object.kind }}"
+      metadata:
+        name: "{{ faults_kubernetes_object.metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+    state: absent
+    wait: true
