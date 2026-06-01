@@ -149,10 +149,6 @@ undeploy-awx: ## Undeploys AWX to a cluster
 configure-awx-stack: ## Add job and workflow templates to AWX pipeline
 	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "configure_awx"
 
-.PHONY: launch-sync-workflow
-launch-sync-workflow: ## Launches the scenario sync workflow
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "sync_scenarios"
-
 .PHONY: launch-start-workflow
 launch-start-workflow: ## Launches the workflow equivalent of start_incident on AWX
 	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
