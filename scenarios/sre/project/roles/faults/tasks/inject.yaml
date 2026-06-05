@@ -1,21 +1,13 @@
 ---
-- name: Load injections library index map
-  ansible.builtin.set_fact:
-    faults_library_map: |-
-      {{
-        lookup('ansible.builtin.file', 'files/library/map.json') |
-        ansible.builtin.from_json
-      }}
-
 - name: Include injection tasks
   ansible.builtin.include_tasks:
-    file: "{{ faults_library_map[injection_task.id].taskFile }}"
+    file: "{{ faults_task_files[injection_task.id] }}"
     apply:
       tags:
         - inject_faults
       vars:
         fault_args: "{{ injection_task.args }}"
-  loop: "{{ faults_injection_tasks | ansible.builtin.default([]) }}"
+  loop: "{{ faults_injection_tasks }}"
   loop_control:
     label: task/{{ injection_task.id }}
     loop_var: injection_task
