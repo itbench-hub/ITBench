@@ -40,12 +40,7 @@
 
 - name: Create scenarios roles meta argument specs file
   ansible.builtin.copy:
-    content: |-
-      {{
-        lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') |
-        ansible.builtin.from_yaml |
-        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
-      }}
+    content: "{{ lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') }}"
     dest: |-
       {{
         [
@@ -57,7 +52,7 @@
       }}
     mode: "0644"
   vars:
-    scenario_ids: "{{ documentation_library_index.scenarios | map(attribute='id') }}"
+    scenarios: "{{ documentation_library_index.scenarios }}"
 
 - name: Generate scenario specs
   ansible.builtin.copy:
