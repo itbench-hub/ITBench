@@ -5,8 +5,6 @@ argument_specs:
       - Gerard Vanloo
     options:
       awx_cluster:
-        required: true
-        type: dict
         options:
           kubeconfig:
             required: true
@@ -20,115 +18,114 @@ argument_specs:
           provider:
             required: true
             type: str
-      awx_configuration:
-        required: false
+        required: true
         type: dict
+      awx_configuration:
         options:
           agent:
-            required: false
-            type: dict
             options:
               configuration:
                 required: true
                 type: dict
-          github:
-            required: true
-            type: dict
-            options:
-              agent:
-                required: true
-                type: dict
-                options:
-                  ssh:
-                    required: false
-                    type: dict
-                    options:
-                      private_key_passphrase:
-                        required: true
-                        type: str
-                      private_key_path:
-                        required: true
-                        type: str
-                  url:
-                    required: true
-                    type: str
-                  branch:
-                    required: true
-                    type: str
-              itbench:
-                required: true
-                type: dict
-                options:
-                  ssh:
-                    required: false
-                    type: dict
-                    options:
-                      private_key_passphrase:
-                        required: true
-                        type: str
-                      private_key_path:
-                        required: true
-                        type: str
-                  url:
-                    required: true
-                    type: str
-                  branch:
-                    required: true
-                    type: str
-          providers:
             required: false
             type: dict
+          github:
+            options:
+              agent:
+                options:
+                  branch:
+                    required: true
+                    type: str
+                  ssh:
+                    options:
+                      private_key_passphrase:
+                        required: true
+                        type: str
+                      private_key_path:
+                        required: true
+                        type: str
+                    required: false
+                    type: dict
+                  url:
+                    required: true
+                    type: str
+                required: true
+                type: dict
+              itbench:
+                options:
+                  branch:
+                    required: true
+                    type: str
+                  ssh:
+                    options:
+                      private_key_passphrase:
+                        required: true
+                        type: str
+                      private_key_path:
+                        required: true
+                        type: str
+                    required: false
+                    type: dict
+                  url:
+                    required: true
+                    type: str
+                required: true
+                type: dict
+            required: true
+            type: dict
+          providers:
             options:
               aws:
-                required: false
-                type: dict
                 options:
                   enabled:
                     default: false
                     required: false
                     type: bool
-          scenarios:
-            elements: dict
-            required: true
-            type: list
-            options:
-              id:
-                choices: {{ scenario_ids }}
-                required: true
-                type: int
-      awx_experiments:
-        required: false
-        type: dict
-        options:
-          agent:
+                required: false
+                type: dict
             required: false
             type: dict
+          scenarios:
+            elements: dict
+            options:
+              id:
+                choices:
+{% for scenario in scenarios %}
+                  - {{ scenario.id }}
+{% endfor %}
+                required: true
+                type: int
+            required: true
+            type: list
+        required: false
+        type: dict
+      awx_experiments:
+        options:
+          agent:
             options:
               version:
                 required: true
                 type: str
-          runners:
-            required: true
+            required: false
             type: dict
+          runners:
             options:
               kubeconfigs:
                 elements: str
                 required: true
                 type: list
-          storage:
-            required: false
+            required: true
             type: dict
+          storage:
             options:
               local:
-                required: false
-                type: dict
                 options:
                   directory:
                     required: true
                     type: str
-              s3:
                 required: false
                 type: dict
+              s3:
                 options:
                   bucket:
                     required: true
@@ -139,10 +136,19 @@ argument_specs:
                   endpoint:
                     required: true
                     type: str
+                required: false
+                type: dict
+            required: false
+            type: dict
           trials:
             required: false
             type: int
           workflow:
-            choices: {{ awx_workflow_template_suffixes.keys() }}
+            choices:
+{% for key in awx_workflow_template_suffixes.keys() %}
+              - {{ key }}
+{% endfor %}
             required: false
             type: str
+        required: false
+        type: dict

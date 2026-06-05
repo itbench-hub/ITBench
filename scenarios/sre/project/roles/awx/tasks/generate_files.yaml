@@ -4,14 +4,26 @@
     name: documentation
     tasks_from: load
 
+- name: Create waiters `scenario_fault_count` variable
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/vars/scenario_fault_count.j2') }}"
+    dest: |-
+      {{
+        [
+          role_path,
+          "vars",
+          "main",
+          "scenario_fault_count.yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
+    mode: "0644"
+  vars:
+   scenarios: "{{ documentation_library_index.scenarios }}"
+
 - name: Create awx roles meta argument specs file
   ansible.builtin.copy:
-    content: |-
-      {{
-        lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') |
-        ansible.builtin.from_yaml |
-        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
-      }}
+    content: "{{ lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') }}"
     dest: |-
       {{
         [
@@ -23,4 +35,4 @@
       }}
     mode: "0644"
   vars:
-    scenario_ids: "{{ documentation_library_index.scenarios | map(attribute='id') }}"
+    scenarios: "{{ documentation_library_index.scenarios }}"
