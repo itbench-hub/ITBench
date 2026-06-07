@@ -1,0 +1,39 @@
+---
+alerts:
+  - KubePodCrashLooping
+  - KubePodNotReady
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `recommendation` service controller crashing due to a corrupted container command, causing the pod to
+  enter CrashLoopBackOff and degrading upstream services that depend on it.
+disruptions:
+  - injections:
+      - args:
+          container:
+            name: recommendation
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: recommendation
+              namespace: otel-demo
+        id: crashing-kubernetes-controller-workload
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 115
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo rollout undo deployment/recommendation
+          text: Revert the last change done to the controller manifest.
+    - steps:
+        - command: kubectl -n otel-demo edit deployment recommendation
+          text: Manually edit the manifest and replace the container command with the correct value.
+    - steps:
+        - command: kubectl -n otel-demo logs -l app=recommendation -c recommendation --previous
+          text: Check the previous container logs to understand the crash reason.
+tags:
+  - Deployment
+  - Performance

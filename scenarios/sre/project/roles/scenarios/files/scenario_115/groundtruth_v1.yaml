@@ -1,0 +1,87 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-115
+spec:
+  alerts:
+    - group_id: recommendation-pod-1
+      id: KubePodCrashLooping
+      metadata:
+        description: Pod recommendation in namespace otel-demo is restarting frequently due to invalid container command
+    - group_id: recommendation-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Pod recommendation in namespace otel-demo has been in a non-ready state for longer than 15 minutes
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in service frontend in namespace otel-demo is elevated due to recommendation service unavailability
+  groups:
+    - id: recommendation-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - recommendation\b
+      root_cause: true
+    - id: recommendation-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - recommendation-.*
+    - id: recommendation-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - recommendation\b
+    - id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - frontend\b
+    - id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - frontend-.*
+  aliases:
+    - - recommendation-deployment-1
+      - recommendation-pod-1
+    - - recommendation-service-1
+      - recommendation-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+  propagations:
+    - source: recommendation-deployment-1
+      target: recommendation-pod-1
+      condition: Deployment container command modified to invalid value
+      effect: Pod enters CrashLoopBackOff as container fails to start with invalid entrypoint
+    - source: recommendation-pod-1
+      target: recommendation-service-1
+      condition: Recommendation pod is in CrashLoopBackOff with no healthy containers
+      effect: Recommendation service has no ready endpoints and cannot serve requests
+    - source: recommendation-service-1
+      target: frontend-service-1
+      condition: Frontend service depends on recommendation service for product recommendations
+      effect: Frontend experiences errors when calling recommendation service, increasing error rate
+  fault:
+    - category: Modify
+      condition: Container command replaced with invalid value causing immediate crash on startup
+      entity:
+        group_id: recommendation-deployment-1
+        kind: Deployment
+        name: recommendation
+      fault_mechanism: Container entrypoint corruption simulating controller crash due to bad configuration push or incompatible upgrade
+  recommendedActions:
+    - solution:
+        actions:
+          - Rollback the deployment using kubectl rollout undo deployment/recommendation -n otel-demo
+          - Verify pods return to Running state
+          - Confirm recommendation service has healthy endpoints
+        id: rollback-deployment
+    - solution:
+        actions:
+          - Check pod logs with kubectl logs -c recommendation --previous to identify crash reason
+          - Edit the deployment and fix the container command
+          - Restart the deployment and verify recovery
+        id: fix-container-command

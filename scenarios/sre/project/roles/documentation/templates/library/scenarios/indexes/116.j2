@@ -1,0 +1,24 @@
+---
+category: sre
+complexity: high
+description: >-
+  This scenario simulates etcd storage exhaustion by filling the cluster's etcd database
+  with large ConfigMaps, causing the API server to reject writes and degrading cluster-wide
+  operations including the OpenTelemetry Demo application.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: StatefulSet
+          metadata:
+            name: etcd
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: exhausted-etcd-database-storage
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 116
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

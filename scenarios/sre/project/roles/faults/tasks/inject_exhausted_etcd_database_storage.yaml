@@ -1,0 +1,36 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Create ConfigMaps to fill etcd storage
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "etcd-fill-{{ item }}"
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+        labels:
+          app: etcd-storage-fill
+      data:
+        payload: "{{ lookup('pipe', 'head -c 900000 /dev/urandom | base64 | head -c 900000') }}"
+    state: present
+  loop: "{{ range(1, 201) | list }}"
+  loop_control:
+    label: "etcd-fill-{{ item }}"
+
+- name: Verify etcd storage pressure
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: ConfigMap
+    namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+    label_selectors:
+      - app=etcd-storage-fill
+  register: faults_etcd_fill_result
+  until:
+    - faults_etcd_fill_result.resources | length >= 200
+  retries: 5
+  delay: 10

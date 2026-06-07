@@ -5,9 +5,11 @@ A fault is a solvable issue injected into an environment to create an incident.
 | Name | Platform |
 | --- | --- |
 | [Cordoned Kubernetes Worker Node](./cordoned-kubernetes-worker-node.md) | Kubernetes |
+| [Crashing Kubernetes Controller Workload](./crashing-kubernetes-controller-workload.md) | Kubernetes |
 | [Crashing Kubernetes Workload Init Container](./crashing-kubernetes-workload-init-container.md) | Kubernetes |
 | [Deleted Kubernetes Service](./deleted-kubernetes-service.md) | Kubernetes |
 | [Disabled Istio Ambient Mode Kubernetes Namespace](./disabled-istio-ambient-mode-kubernetes-namespace.md) | Kubernetes |
+| [Exhausted Etcd Database Storage](./exhausted-etcd-database-storage.md) | Kubernetes |
 | [Failing Name Resolution Kubernetes Workload DNS Policy](./failing-name-resolution-kubernetes-workload-dns-policy.md) | Kubernetes |
 | [Hanging Kubernetes Workload Init Container](./hanging-kubernetes-workload-init-container.md) | Kubernetes |
 | [Ingress Port Blocking Network Policy](./ingress-port-blocking-network-policy.md) | Kubernetes |
@@ -27,6 +29,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Priority Kubernetes Workload Priority Preemption](./priority-kubernetes-workload-priority-preemption.md) | Kubernetes |
 | [Scaled To Zero Kubernetes Workload](./scaled-to-zero-kubernetes-workload.md) | Kubernetes |
 | [Scheduled Chaos Mesh Experiment](./scheduled-chaos-mesh-experiment.md) | Kubernetes |
+| [Stalled Pipeline Controller](./stalled-pipeline-controller.md) | Kubernetes |
 | [Strict Mutual TLS Istio Service Mesh Enforcement](./strict-mutual-tls-istio-service-mesh-enforcement.md) | Kubernetes |
 | [Traffic Denying Istio Gateway Authorization Policy](./traffic-denying-istio-gateway-authorization-policy.md) | Kubernetes |
 | [Unassigned Kubernetes Workload Container Resource Limits](./unassigned-kubernetes-workload-container-resource-limits.md) | Kubernetes |

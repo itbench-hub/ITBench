@@ -1,0 +1,33 @@
+---
+alerts:
+  - KubePodNotReady
+category: sre
+complexity: medium
+description: This scenario simulates a pipeline controller failure by scaling the OpenTelemetry Demo's `kafka` deployment to zero replicas, causing downstream
+  services that depend on event processing to stall, similar to a Tekton pipeline controller becoming unavailable.
+disruptions:
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: kafka
+              namespace: otel-demo
+        id: stalled-pipeline-controller
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 117
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo scale deployment/kafka --replicas=1
+          text: Scale the pipeline controller deployment back to at least 1 replica.
+    - steps:
+        - command: kubectl -n otel-demo rollout restart deployment/kafka
+          text: Restart the pipeline controller deployment to recover from a stuck state.
+tags:
+  - Deployment
+  - Performance

@@ -1,0 +1,60 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-116
+spec:
+  alerts:
+    - group_id: etcd-statefulset-1
+      id: KubePodNotReady
+      metadata:
+        description: etcd pod in namespace otel-demo is experiencing storage pressure due to excessive ConfigMap creation
+  groups:
+    - id: etcd-statefulset-1
+      kind: StatefulSet
+      namespace: otel-demo
+      filter:
+        - etcd\b
+      root_cause: true
+    - id: etcd-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - etcd-.*
+    - id: configmap-fill-1
+      kind: ConfigMap
+      namespace: otel-demo
+      filter:
+        - etcd-fill-.*
+  aliases:
+    - - etcd-statefulset-1
+      - etcd-pod-1
+  propagations:
+    - source: configmap-fill-1
+      target: etcd-statefulset-1
+      condition: Large number of ConfigMaps created consuming etcd storage beyond quota threshold
+      effect: etcd database approaches storage quota limit, API server begins rejecting mutating requests
+    - source: etcd-statefulset-1
+      target: etcd-pod-1
+      condition: etcd storage quota exceeded or nearly exceeded
+      effect: etcd pods report high storage usage, cluster operations degrade as writes are rejected
+  fault:
+    - category: Fill
+      condition: etcd database filled with large ConfigMaps pushing storage past quota threshold
+      entity:
+        group_id: configmap-fill-1
+        kind: ConfigMap
+        name: etcd-fill
+      fault_mechanism: Storage exhaustion via bulk ConfigMap creation simulating real-world etcd quota incidents
+  recommendedActions:
+    - solution:
+        actions:
+          - Delete the etcd-fill ConfigMaps using kubectl delete configmap -l app=etcd-storage-fill -n otel-demo
+          - Compact and defragment etcd to reclaim space
+          - Monitor etcd storage usage returning to normal levels
+        id: cleanup-configmaps
+    - solution:
+        actions:
+          - Increase etcd storage quota if current limit is insufficient
+          - Review resource creation patterns to prevent future exhaustion
+        id: increase-quota

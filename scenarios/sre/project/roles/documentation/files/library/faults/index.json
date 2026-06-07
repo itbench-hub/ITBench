@@ -104,6 +104,118 @@
     {
         "alerts": {
             "application": [
+                "KubePodCrashLooping",
+                "KubePodNotReady"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "container": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name"
+                        ],
+                        "type": "object"
+                    },
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment",
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject",
+                    "container"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault modifies a controller or operator workload's container command to an invalid value, causing the pod to enter a CrashLoopBackOff state. This simulates real-world incidents where controller pods crash due to configuration errors, incompatible upgrades, or corrupted state, leading to service degradation across the cluster.",
+        "expectation": "The faulted controller pod(s) will enter CrashLoopBackOff state. Dependent services will experience degradation as the controller is unable to reconcile resources.",
+        "id": "crashing-kubernetes-controller-workload",
+        "index": 31,
+        "name": "Crashing Kubernetes Controller Workload",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+            "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
+            "https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                            "text": "Revert the last change done to the controller manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                            "text": "Manually edit the manifest and replace the container command with the correct value."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} logs -l app={{ args.kubernetesObject.metadata.name }} -c {{ args.container.name }} --previous",
+                            "text": "Check the previous container logs to understand the crash reason."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": {
+            "application": [
                 "KubeContainerWaiting"
             ]
         },
@@ -363,6 +475,96 @@
         "tags": [
             "Deployment",
             "Networking"
+        ]
+    },
+    {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "StatefulSet"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault fills the etcd database storage by creating a large number of ConfigMaps, pushing etcd usage past its quota threshold. This simulates real-world incidents where etcd storage exhaustion causes the API server to reject writes, leading to cluster-wide degradation or complete outage.",
+        "expectation": "The etcd database will approach or exceed its storage quota. The Kubernetes API server will begin rejecting mutating requests. New pod scheduling and resource creation will fail.",
+        "id": "exhausted-etcd-database-storage",
+        "index": 32,
+        "name": "Exhausted Etcd Database Storage",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/",
+            "https://etcd.io/docs/v3.5/op-guide/maintenance/",
+            "https://kubernetes.io/docs/concepts/overview/components/#etcd",
+            "https://kubernetes.io/docs/tasks/debug/debug-cluster/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "text": "Compact and defragment the etcd database to reclaim storage space."
+                        },
+                        {
+                            "text": "Remove unnecessary resources (completed jobs, orphaned ConfigMaps) to reduce etcd storage usage."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "text": "Increase the etcd storage quota if the current limit is too low for the cluster workload."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Performance"
         ]
     },
     {
@@ -2224,6 +2426,96 @@
                         {
                             "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete schedule {{ args.kubernetesObject.metadata.name }} experiment.chaos-mesh.org/pause='true'",
                             "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": {
+            "application": [
+                "KubePodNotReady"
+            ]
+        },
+        "arguments": {
+            "jsonSchema": {
+                "properties": {
+                    "kubernetesObject": {
+                        "properties": {
+                            "apiVersion": {
+                                "enum": [
+                                    "apps/v1"
+                                ],
+                                "type": "string"
+                            },
+                            "kind": {
+                                "enum": [
+                                    "Deployment"
+                                ],
+                                "type": "string"
+                            },
+                            "metadata": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "namespace": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "namespace"
+                                ],
+                                "type": "object"
+                            }
+                        },
+                        "required": [
+                            "apiVersion",
+                            "kind",
+                            "metadata"
+                        ],
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "kubernetesObject"
+                ],
+                "type": "object"
+            }
+        },
+        "description": "This fault scales down a pipeline controller deployment to zero replicas, simulating a controller failure that prevents new pipeline runs from being processed. This reproduces real-world incidents where Tekton or similar CI/CD controllers become unavailable, causing pipeline runs to stall in a pending state.",
+        "expectation": "New pipeline runs will not be processed and will remain in a pending or queued state. Existing running pipelines may complete but no new work will be picked up by the controller.",
+        "id": "stalled-pipeline-controller",
+        "index": 33,
+        "name": "Stalled Pipeline Controller",
+        "platform": "Kubernetes",
+        "resources": [
+            "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
+            "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/deployment-v1/",
+            "https://tekton.dev/docs/pipelines/",
+            "https://kubernetes.io/docs/tasks/debug/debug-application/"
+        ],
+        "solutions": {
+            "templates": [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} scale {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} --replicas=1",
+                            "text": "Scale the pipeline controller deployment back to at least 1 replica."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout restart {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                            "text": "Restart the pipeline controller deployment to recover from a stuck state."
                         }
                     ]
                 }

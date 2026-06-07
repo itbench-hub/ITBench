@@ -1,0 +1,24 @@
+---
+category: sre
+complexity: medium
+description: >-
+  This scenario simulates a pipeline controller failure by scaling the OpenTelemetry Demo's
+  `kafka` deployment to zero replicas, causing downstream services that depend on event
+  processing to stall, similar to a Tekton pipeline controller becoming unavailable.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: kafka
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: stalled-pipeline-controller
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 117
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

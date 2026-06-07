@@ -1,0 +1,26 @@
+---
+category: sre
+complexity: medium
+description: >-
+  This scenario simulates OpenTelemetry Demo's `recommendation` service controller
+  crashing due to a corrupted container command, causing the pod to enter CrashLoopBackOff
+  and degrading upstream services that depend on it.
+disruptions:
+  - injections:
+    - args:
+        container:
+          name: recommendation
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: recommendation
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: crashing-kubernetes-controller-workload
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 115
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0
