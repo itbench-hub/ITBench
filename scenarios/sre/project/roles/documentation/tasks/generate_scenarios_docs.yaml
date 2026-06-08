@@ -324,6 +324,26 @@
         lookup("ansible.builtin.file", "files/library/scenarios/index.json") |
         ansible.builtin.from_json
       }}
+
+- name: Generate scenario library statistics readme
+  ansible.builtin.copy:
+    content: "{{ lookup('ansible.builtin.template', 'templates/library/scenarios/readmes/statistics.j2') }}"
+    dest: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "..",
+          "documentation",
+          "library",
+          "scenarios",
+          "statistics.md"
+        ] |
+        ansible.builtin.path_join
+      }}
+    mode: "0644"
+  vars:
     statistics:
       application:
         book_info: |-
