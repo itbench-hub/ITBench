@@ -41,22 +41,14 @@
 - name: Create scenarios roles meta argument specs file
   ansible.builtin.copy:
     content: "{{ lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') }}"
-    dest: |-
-      {{
-        [
-          role_path,
-          "meta",
-          "argument_specs.yaml"
-        ] |
-        ansible.builtin.path_join
-      }}
+    dest: "{{ [role_path, 'meta', 'argument_specs.yaml'] | ansible.builtin.path_join }}"
     mode: "0644"
   vars:
     scenarios: "{{ documentation_library_index.scenarios }}"
 
 - name: Generate scenario specs
   ansible.builtin.copy:
-    content: |-
+    content: |+
       {{
         lookup('ansible.builtin.template', 'templates/manifests/scenario.j2') |
         ansible.builtin.from_yaml |
@@ -78,7 +70,7 @@
 
 - name: Generate scenario ground truths
   ansible.builtin.copy:
-    content: |
+    content: |+
       {{
         lookup('ansible.builtin.template', 'templates/manifests/groundtruth.j2') |
         ansible.builtin.from_yaml |
