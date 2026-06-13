@@ -20,8 +20,18 @@ group-vars: ## Generates the group variables
 
 .PHONY: generate-docs
 generate-docs: ## Generates library indexes, schemas, and other related documentation
-	$(UV) run ansible-playbook -i inventory project/manage_documentation.yaml --tags "generate_docs"
-	$(UV) run ansible-lint project/roles/documentation/files --fix
+	$(PYTHON) scripts/generate_library_indexes.py \
+		--templates_directory=$(abspath ./templates/library/indexes) \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--playbooks_directory=$(abspath ./project)
+	$(PYTHON) scripts/generate_library_index_schemas.py \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--schemas_directory=$(abspath ../../schemas/json) \
+		--templates_directory=$(abspath ./templates/schemas/json/library/index)
+	$(PYTHON) scripts/generate_library_readmes.py \
+		--templates_directory=$(abspath ./templates/documentation/library) \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--documentation_directory=$(abspath ../../documentation/library)
 
 .PHONY: generate-fault-index
 generate-fault-index: ## Generate a new fault index based on user input
@@ -102,7 +112,7 @@ endif
 inject-scenario-faults: ## Injects the fault used in a specific scenario
 ifdef SCENARIO_NUMBER
 	$(PYTHON) scripts/inject_scenario_faults.py \
-		--private_project_directory $(shell pwd) \
+		--private_project_directory $(abspath .) \
 		--scenario_id $(SCENARIO_NUMBER)
 else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."

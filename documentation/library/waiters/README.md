@@ -8,6 +8,6 @@ ITBench uses waiters before and after fault injection to ensure that certain act
 | Name | Platform |
 | --- | --- |
 | [Delete Workload Pods](./delete-workload-pods.md) | Kubernetes |
-| [Pause Execution](./pause-execution.md) | Any |
+| [Pause Execution](./pause-execution.md) | Kubernetes |
 | [Restart Kubernetes Workload](./restart-kubernetes-workload.md) | Kubernetes |
 | [Scale Kubernetes Workload](./scale-kubernetes-workload.md) | Kubernetes |

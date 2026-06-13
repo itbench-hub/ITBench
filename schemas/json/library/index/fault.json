@@ -1,0 +1,130 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "alerts": {
+            "minProperties": 1,
+            "properties": {
+                "application": {
+                    "items": {
+                        "enum": [
+                            "KubeContainerWaiting",
+                            "KubeHpaMaxedOut",
+                            "KubePodCrashLooping",
+                            "KubePodNotReady",
+                            "NoRequestsReceived"
+                        ],
+                        "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "goldenSignal": {
+                    "items": {
+                        "enum": [
+                            "HighRequestErrorRate",
+                            "HighRequestLatency"
+                        ],
+                        "type": "string"
+                    },
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "type": "object"
+        },
+        "arguments": {
+            "properties": {
+                "jsonSchema": {
+                    "type": "object"
+                }
+            },
+            "required": [
+                "jsonSchema"
+            ],
+            "type": "object"
+        },
+        "description": {
+            "type": "string"
+        },
+        "expectation": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "platform": {
+            "enum": [
+                "Kubernetes"
+            ],
+            "type": "string"
+        },
+        "resources": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+        },
+        "solutions": {
+            "properties": {
+                "templates": {
+                    "items": {
+                        "properties": {
+                            "steps": {
+                                "items": {
+                                    "properties": {
+                                        "command": {
+                                            "type": "string"
+                                        },
+                                        "text": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "text"
+                                    ],
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            }
+                        },
+                        "required": [
+                            "steps"
+                        ],
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            },
+            "required": [
+                "templates"
+            ],
+            "type": "object"
+        },
+        "tags": {
+            "items": {
+                "enum": [
+                    "Authentication",
+                    "Code",
+                    "Deployment",
+                    "Networking",
+                    "Performance"
+                ],
+                "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+        }
+    },
+    "required": [
+        "arguments",
+        "description",
+        "expectation",
+        "name",
+        "platform",
+        "resources",
+        "solutions",
+        "tags"
+    ],
+    "type": "object"
+}

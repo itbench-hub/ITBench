@@ -3,6 +3,6 @@
 
 # Delete Workload Pods
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/waiters/indexes/1.yaml) | [Schema](../../../schemas/json/waiters/delete-workload-pods.json) | Kubernetes |
+| [Source](../../../../scenarios/sre/library/indexes/waiters/delete-workload-pods.json) | [Schema](../../../../schemas/json/waiters/delete-workload-pods.json) | Kubernetes |
 
 Deletes all the pods associated with a Kubernetes workload.

@@ -1,12 +1,11 @@
-import os
 import sys
 import unittest
+
+from pathlib import Path
 from unittest.mock import Mock, mock_open, patch
 
-import yaml
-
 # Add parent directory to path to import the module under test
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 import inject_scenario_faults
 
 
@@ -15,7 +14,7 @@ class TestInjectScenarioFaults(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        self.test_project_dir = "/tmp/test_project"
+        self.test_project_dir = Path("/tmp/test_project")
 
     @patch('inject_scenario_faults.ansible_runner')
     @patch('builtins.open', new_callable=mock_open)
@@ -55,7 +54,7 @@ class TestInjectScenarioFaults(unittest.TestCase):
 
         test_args = [
             'inject_scenario_faults.py',
-            '--private_project_directory', self.test_project_dir,
+            '--private_project_directory', str(self.test_project_dir),
             '--scenario_id', '1'
         ]
 
@@ -67,7 +66,7 @@ class TestInjectScenarioFaults(unittest.TestCase):
 
         # Verify the call parameters
         call_args = mock_ansible_runner.interface.run_async.call_args_list[0]
-        self.assertEqual(call_args[1]['private_data_dir'], self.test_project_dir)
+        self.assertEqual(call_args[1]['private_data_dir'], str(self.test_project_dir))
         self.assertEqual(call_args[1]['playbook'], 'manage_faults.yaml')
         self.assertEqual(call_args[1]['ident'], 'scenario-1-fault-0')
         self.assertIn('--tags inject_faults', call_args[1]['cmdline'])
@@ -157,7 +156,7 @@ class TestInjectScenarioFaults(unittest.TestCase):
 
         test_args = [
             'inject_scenario_faults.py',
-            '--private_project_directory', self.test_project_dir,
+            '--private_project_directory', str(self.test_project_dir),
             '--scenario_id', '60'
         ]
 
@@ -170,7 +169,7 @@ class TestInjectScenarioFaults(unittest.TestCase):
         # Verify each call has correct parameters
         for i in range(3):
             call_args = mock_ansible_runner.interface.run_async.call_args_list[i]
-            self.assertEqual(call_args[1]['private_data_dir'], self.test_project_dir)
+            self.assertEqual(call_args[1]['private_data_dir'], str(self.test_project_dir))
             self.assertEqual(call_args[1]['playbook'], 'manage_faults.yaml')
             self.assertEqual(call_args[1]['ident'], f'scenario-60-fault-{i}')
             self.assertIn('--tags inject_faults', call_args[1]['cmdline'])
