@@ -1,9 +1,4 @@
 ---
-- name: Import documentation role
-  ansible.builtin.import_role:
-    name: documentation
-    tasks_from: load
-
 - name: Generate scenario directory paths
   ansible.builtin.set_fact:
     scenarios_directory_paths: |-
@@ -23,7 +18,7 @@
           }
         )
       }}
-  loop: "{{ documentation_library_index.scenarios }}"
+  loop: "{{ generator_library_index.scenarios }}"
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
@@ -33,18 +28,18 @@
     mode: "0755"
     path: "{{ scenarios_directory_paths[scenario.id] }}"
     state: directory
-  loop: "{{ documentation_library_index.scenarios }}"
+  loop: "{{ generator_library_index.scenarios }}"
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
 
 - name: Create scenarios roles meta argument specs file
-  ansible.builtin.copy:
-    content: "{{ lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') }}"
+  ansible.builtin.template:
     dest: "{{ [role_path, 'meta', 'argument_specs.yaml'] | ansible.builtin.path_join }}"
     mode: "0644"
+    src: templates/meta/argument_specs.j2
   vars:
-    scenarios: "{{ documentation_library_index.scenarios }}"
+    scenarios: "{{ generator_library_index.scenarios }}"
 
 - name: Generate scenario specs
   ansible.builtin.copy:
@@ -63,7 +58,7 @@
         ansible.builtin.path_join
       }}
     mode: "0644"
-  loop: "{{ documentation_library_index.scenarios }}"
+  loop: "{{ generator_library_index.scenarios }}"
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
@@ -85,7 +80,7 @@
         ansible.builtin.path_join
       }}
     mode: "0644"
-  loop: "{{ documentation_library_index.scenarios }}"
+  loop: "{{ generator_library_index.scenarios }}"
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario

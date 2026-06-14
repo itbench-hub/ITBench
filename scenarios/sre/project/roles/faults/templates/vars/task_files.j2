@@ -1,9 +1,10 @@
 ---
 faults_task_files:
 {% for fault in faults %}
+  {{ fault.id }}:
 {% if "password" in fault.id %}
-  {{ fault.id }}: inject_{{ fault.id | ansible.builtin.replace('-', '_') }}.yaml # pragma: allowlist secret
+    injection: inject_{{ fault.id | ansible.builtin.replace('-', '_') }}.yaml # pragma: allowlist secret
 {% else %}
-  {{ fault.id }}: inject_{{ fault.id | ansible.builtin.replace('-', '_') }}.yaml
+    injection: inject_{{ fault.id | ansible.builtin.replace('-', '_') }}.yaml
 {% endif %}
 {% endfor %}
