@@ -45,7 +45,6 @@ def load_scenario_spec(private_project_directory: Path, scenario_id: int) -> Dic
         logger.exception(f"Unexpected error loading scenario spec: {e}")
         sys.exit(1)
 
-
 def inject_fault_group(
     private_project_directory: Path,
     scenario_id: int,
@@ -62,7 +61,6 @@ def inject_fault_group(
 
     return runner
 
-
 def wait_for_runners(runners: List[Any]) -> None:
     logger.info(f"Waiting for {len(runners)} fault injection tasks to complete")
 
@@ -74,24 +72,11 @@ def wait_for_runners(runners: List[Any]) -> None:
 
         logger.info(f"Runner {idx}/{len(runners)} completed with status: {runner.status}")
 
-
 def main() -> None:
-    """Main entry point for asynchronous fault injection."""
-    parser = argparse.ArgumentParser(
-        description="CLI for asynchronous fault injection for live ITBench SRE and FinOps scenarios"
-    )
-    parser.add_argument(
-        "--private_project_directory",
-        type=Path,
-        required=True,
-        help="Path to the private project directory"
-    )
-    parser.add_argument(
-        "--scenario_id",
-        type=int,
-        required=True,
-        help="Identifier for the scenario"
-    )
+    parser = argparse.ArgumentParser(description="CLI for asynchronous fault injection for live ITBench SRE and FinOps scenarios")
+
+    parser.add_argument("--private_project_directory", type=Path, required=True,)
+    parser.add_argument("--scenario_id", type=int, required=True)
 
     args = parser.parse_args()
 

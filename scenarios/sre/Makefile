@@ -1,14 +1,12 @@
 UV = $(shell which uv)
 
-PYTHON = $(shell $(UV) python find)
-
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .PHONY: group-vars
 group-vars: ## Generates the group variables
-	echo "---\nansible_python_interpreter: $(PYTHON)" > inventory/group_vars/all/python.yaml
+	echo "---\nansible_python_interpreter: $(shell $(UV) python find)" > inventory/group_vars/all/python.yaml
 	cp inventory/group_vars/all/storage.yaml.example inventory/group_vars/all/storage.yaml
 	cp inventory/group_vars/environment/applications.yaml.example inventory/group_vars/environment/applications.yaml
 	cp inventory/group_vars/environment/cluster.yaml.example inventory/group_vars/environment/cluster.yaml
@@ -18,17 +16,17 @@ group-vars: ## Generates the group variables
 	cp inventory/group_vars/runner/github.yaml.example inventory/group_vars/runner/github.yaml
 	cp inventory/group_vars/runner/stack.yaml.example inventory/group_vars/runner/stack.yaml
 
-.PHONY: generate-docs
-generate-docs: ## Generates library indexes, schemas, and other related documentation
-	$(PYTHON) scripts/generate_library_indexes.py \
+.PHONY: generate-library
+generate-library: ## Generates library indexes, schemas, and other related documentation
+	$(UV) run scripts/generate_library_indexes.py \
 		--templates_directory=$(abspath ./templates/library/indexes) \
 		--library_index_directory=$(abspath ./library/indexes) \
 		--playbooks_directory=$(abspath ./project)
-	$(PYTHON) scripts/generate_library_index_schemas.py \
+	$(UV) run scripts/generate_library_index_schemas.py \
 		--library_index_directory=$(abspath ./library/indexes) \
 		--schemas_directory=$(abspath ../../schemas/json) \
 		--templates_directory=$(abspath ./templates/schemas/json/library/index)
-	$(PYTHON) scripts/generate_library_readmes.py \
+	$(UV) run scripts/generate_library_readmes.py \
 		--templates_directory=$(abspath ./templates/documentation/library) \
 		--library_index_directory=$(abspath ./library/indexes) \
 		--documentation_directory=$(abspath ../../documentation/library)
@@ -46,9 +44,11 @@ generate-resource-files: ## Generates task files, scenario manifests, and other 
 	$(UV) run ansible-playbook -i inventory project/manage_resource_files.yaml --tags "generate_files"
 	$(UV) run ansible-lint project/roles/scenarios/files --fix
 
-.PHONY: validate-docs
-validate-docs: ## Validates library indexes
-	$(UV) run ansible-playbook -i inventory project/manage_documentation.yaml --tags "validate_docs"
+.PHONY: validate-library
+validate-library: ## Validates library indexes
+	$(UV) run scripts/validate_library_indexes.py \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--schemas_directory=$(abspath ../../schemas/json)
 
 .PHONY: deploy-tools
 deploy-tools: ## Deploys the observability and fault tools to cluster

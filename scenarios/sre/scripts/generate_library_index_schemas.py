@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from jinja2 import Environment, FileSystemLoader
+from jsonschema import Draft202012Validator
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,7 +29,7 @@ def process_library_type(library_type: str, index_dir: Path, schema_dir: Path) -
         index_id = index["id"]
 
         schema = index["arguments"]["jsonSchema"]
-        schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+        schema["$schema"] = Draft202012Validator.META_SCHEMA["$id"]
 
         write_json_schema_file(schema_dir / f"{index_id}.json", schema)
 
@@ -80,12 +81,12 @@ def main():
     # Create the index JSON schema for a scenario object
 
     env = Environment(loader=FileSystemLoader(args.templates_directory))
-    template = env.get_template("scenarios.json.j2")
+    template = env.get_template("scenario.json.j2")
 
     schema = json.loads(template.render(ids=template_ids, items=template_items))
 
     schema_dir = args.schemas_directory / "library" / "index"
-    write_json_schema_file(schema_dir / "scenarios.json", schema)
+    write_json_schema_file(schema_dir / "scenario.json", schema)
 
 if __name__ == "__main__":
     sys.exit(main())
