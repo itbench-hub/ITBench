@@ -12,7 +12,7 @@ import yaml
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -62,15 +62,15 @@ def inject_fault_group(
     return runner
 
 def wait_for_runners(runners: List[Any]) -> None:
-    logger.info(f"Waiting for {len(runners)} fault injection tasks to complete")
+    logger.info(f"waiting for {len(runners)} fault injection tasks to complete")
 
     for idx, runner in enumerate(runners, 1):
-        logger.debug(f"Waiting for runner {idx}/{len(runners)} to complete")
+        logger.debug(f"waiting for runner {idx}/{len(runners)} to complete")
 
         while runner.status not in ["canceled", "successful", "timeout", "failed"]:
             time.sleep(1)
 
-        logger.info(f"Runner {idx}/{len(runners)} completed with status: {runner.status}")
+        logger.info(f"runner {idx}/{len(runners)} completed with status: {runner.status}")
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="CLI for asynchronous fault injection for live ITBench SRE and FinOps scenarios")
@@ -79,8 +79,6 @@ def main() -> None:
     parser.add_argument("--scenario_id", type=int, required=True)
 
     args = parser.parse_args()
-
-    logger.info(f"Starting fault injection for scenario {args.scenario_id}")
 
     spec = load_scenario_spec(args.private_project_directory, args.scenario_id)
 
@@ -94,8 +92,6 @@ def main() -> None:
         runners.append(runner)
 
     wait_for_runners(runners)
-
-    logger.info("All fault injection tasks completed successfully")
 
 if __name__ == "__main__":
     main()

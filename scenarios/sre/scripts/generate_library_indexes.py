@@ -13,13 +13,13 @@ from jinja2 import Environment, FileSystemLoader
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 
 def write_json_file(file_path: Path, content: Union[Dict[str, Any], List[Dict[str, Any]]]) -> None:
-    logger.info(f"writing JSON file: {file_path}")
+    logger.info(f"writing index file: {file_path}")
     file_path.write_text(json.dumps(content, sort_keys=True, indent=4) + "\n", encoding="utf-8")
 
 def extract_index_from_filename(filename: str) -> int:
@@ -38,6 +38,8 @@ def load_managers(applications: Path, tools: Path) -> Dict[str, Any]:
     }
 
 def load_and_write_library_index(library_type: str, templates_directory: Path, index_directory: Path, generator_directory: Path) -> Dict[str, Any]:
+    logger.info(f"writing {library_type} library indexes")
+
     indexes = []
     faults_lookup = {}
 
@@ -47,7 +49,7 @@ def load_and_write_library_index(library_type: str, templates_directory: Path, i
 
         index["id"] = index_id
         index["index"] = extract_index_from_filename(template_file.name)
-        index["$schema"] = f"https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/{library_type}.json"
+        index["$schema"] = f"https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/{library_type.removesuffix("s")}.json"
 
         indexes.append(index)
 
@@ -61,6 +63,8 @@ def load_and_write_library_index(library_type: str, templates_directory: Path, i
 
         write_json_file(index_directory / template_file.stem, index)
 
+    logger.info("writing combined index file")
+
     write_json_file(
         generator_directory / f"{library_type}.json",
         sorted(indexes, key=itemgetter("name"))
@@ -69,6 +73,8 @@ def load_and_write_library_index(library_type: str, templates_directory: Path, i
     return faults_lookup
 
 def create_scenarios_indexes(templates_directory: Path, index_directory: Path, playbooks_directory: Path, generator_directory: Path, faults: Dict[str, Any]) -> None:
+    logger.info("writing scenarios library indexes")
+
     managers = load_managers(
         playbooks_directory / "roles" / "applications" / "defaults" / "main" / "managers.yaml",
         playbooks_directory / "roles" / "tools" / "defaults" / "main" / "managers.yaml"
@@ -115,12 +121,13 @@ def create_scenarios_indexes(templates_directory: Path, index_directory: Path, p
         index["platforms"] = sorted(platforms)
         index["solutions"] = solutions
         index["tags"] = sorted(tags)
-        index["$schema"] = "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenarios.json"
+        index["$schema"] = "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json"
 
         indexes.append(index)
 
         write_json_file(index_directory / template_file.stem, index)
 
+    logger.info("writing combined index file")
     write_json_file(generator_directory / "scenarios.json", sorted(indexes, key=itemgetter("index")))
 
 def main() -> None:

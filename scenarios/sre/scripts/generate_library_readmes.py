@@ -11,7 +11,7 @@ from jinja2 import Environment, FileSystemLoader
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,8 @@ def create_applications_documentation(
     environment: Environment,
     indexes: List[Dict[str, Any]]
 ) -> None:
+    logger.info("creating applications documentation")
+
     create_library_readme("applications", documentation_directory, environment, indexes)
     template = environment.get_template("applications/application.md.j2")
 
@@ -63,6 +65,8 @@ def create_faults_documentation(
     environment: Environment,
     indexes: List[Dict[str, Any]]
 ) -> None:
+    logger.info("creating faults documentation")
+
     create_library_readme("faults", documentation_directory, environment, indexes)
     template = environment.get_template("faults/fault.md.j2")
 
@@ -83,6 +87,8 @@ def create_waiters_documentation(
     environment: Environment,
     indexes: List[Dict[str, Any]]
 ) -> None:
+    logger.info("creating waiters documentation")
+
     create_library_readme("waiters", documentation_directory, environment, indexes)
     template = environment.get_template("waiters/waiter.md.j2")
 
@@ -139,6 +145,8 @@ def create_scenarios_documentation(
     application_indexes: List[Dict[str, Any]],
     faults_indexes: List[Dict[str, Any]]
 ) -> None:
+    logger.info("creating scenarios documentation")
+
     create_library_readme("scenarios", documentation_directory, environment, scenarios_indexes)
     create_scenarios_statistics(documentation_directory, environment, scenarios_indexes)
 

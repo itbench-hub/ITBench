@@ -11,7 +11,7 @@ from jsonschema import Draft202012Validator
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -69,6 +69,8 @@ def main():
     # These types all render the same way due to the same key/value pairings
 
     for library_type in ["applications", "faults", "waiters"]:
+        logger.info(f"writing {library_type} library index JSON schema")
+
         ids, items = process_library_type(
             library_type,
             args.library_index_directory / library_type,
@@ -78,7 +80,7 @@ def main():
         template_ids[library_type] = ids
         template_items[library_type] = items
 
-    # Create the index JSON schema for a scenario object
+    logger.info("writing scenarios library index JSON schema")
 
     env = Environment(loader=FileSystemLoader(args.templates_directory))
     template = env.get_template("scenario.json.j2")
