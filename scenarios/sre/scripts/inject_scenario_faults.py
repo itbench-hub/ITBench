@@ -28,7 +28,7 @@ def load_scenario_spec(private_project_directory: Path, scenario_id: int) -> Dic
         / "scenario.yaml"
     )
 
-    logger.info(f"Loading scenario spec from: {file_path}")
+    logger.info(f"loading scenario spec from: {file_path}")
 
     try:
         with open(file_path) as f:

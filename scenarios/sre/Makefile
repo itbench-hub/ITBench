@@ -111,7 +111,7 @@ endif
 .PHONY: inject-scenario-faults
 inject-scenario-faults: ## Injects the fault used in a specific scenario
 ifdef SCENARIO_NUMBER
-	$(PYTHON) scripts/inject_scenario_faults.py \
+	$(UV) run scripts/inject_scenario_faults.py \
 		--private_project_directory $(abspath .) \
 		--scenario_id $(SCENARIO_NUMBER)
 else
@@ -213,7 +213,7 @@ test-network-gateway: ## Run tool gateway network tests
 
 .PHONY: test-scripts
 test-scripts: ## Run unit tests for Python scripts
-	$(PYTHON) -m unittest discover -s scripts/unittests -p "test_*.py"
+	$(UV) run python -m unittest discover -s scripts/unittests -p "test_*.py"
 
 .PHONY: generate-agent-bundle
 generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with
