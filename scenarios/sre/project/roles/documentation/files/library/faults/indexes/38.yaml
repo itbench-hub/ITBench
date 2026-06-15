@@ -1,0 +1,74 @@
+---
+alerts:
+  goldenSignal:
+    - HighRequestErrorRate
+arguments:
+  jsonSchema:
+    properties:
+      container:
+        properties:
+          name:
+            type: string
+        required:
+          - name
+        type: object
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+      - container
+    type: object
+description: >-
+  This fault modifies a release pipeline service's container to use an invalid
+  image tag, simulating real-world incidents where release signing failures,
+  broken trusted task lists, or release stage blockages prevent software from
+  being released to production.
+expectation: >-
+  The release pipeline service will fail to start due to the invalid image.
+  Dependent release workflows will stall as the service becomes unavailable.
+name: Failed Release Pipeline Service
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+  - https://kubernetes.io/docs/concepts/containers/images/
+  - https://kubernetes.io/docs/tasks/debug/debug-application/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+solutions:
+  templates:
+    - steps:
+        - command: >-
+            kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo
+            {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}
+          text: Revert the deployment to the previous working image.
+    - steps:
+        - command: >-
+            kubectl -n {{ args.kubernetesObject.metadata.namespace }} set image
+            {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}
+            {{ args.container.name }}=correct-image:latest
+          text: Set the container image to the correct version.
+tags:
+  - Code
+  - Deployment

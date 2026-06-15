@@ -1,0 +1,75 @@
+---
+alerts:
+  goldenSignal:
+    - HighRequestErrorRate
+arguments:
+  jsonSchema:
+    properties:
+      container:
+        properties:
+          name:
+            type: string
+        required:
+          - name
+        type: object
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+      - container
+    type: object
+description: >-
+  This fault modifies a workload's environment variable to inject a breaking
+  configuration change, simulating real-world incidents where policy updates,
+  ArgoCD sync issues, or operator index corruption cause cascading failures
+  across dependent services.
+expectation: >-
+  The faulted workload will fail to function correctly due to the misconfigured
+  environment variable. Dependent services will experience errors as the broken
+  configuration propagates through the service chain.
+name: Breaking Configuration Change
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/
+  - https://kubernetes.io/docs/concepts/configuration/configmap/
+  - https://kubernetes.io/docs/tasks/manage-kubernetes-objects/update-api-object-kubectl-patch/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+solutions:
+  templates:
+    - steps:
+        - command: >-
+            kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo
+            {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}
+          text: Revert the last change done to the workload manifest.
+    - steps:
+        - command: >-
+            kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit
+            {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and replace the environment variable with the correct value.
+tags:
+  - Code
+  - Deployment

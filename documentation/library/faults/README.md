@@ -4,12 +4,16 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 | Name | Platform |
 | --- | --- |
+| [Breaking Configuration Change](./breaking-configuration-change.md) | Kubernetes |
+| [Cluster Availability Loss](./cluster-availability-loss.md) | Kubernetes |
 | [Cordoned Kubernetes Worker Node](./cordoned-kubernetes-worker-node.md) | Kubernetes |
+| [Corrupted Kubernetes Secret Credentials](./corrupted-kubernetes-secret-credentials.md) | Kubernetes |
 | [Crashing Kubernetes Controller Workload](./crashing-kubernetes-controller-workload.md) | Kubernetes |
 | [Crashing Kubernetes Workload Init Container](./crashing-kubernetes-workload-init-container.md) | Kubernetes |
 | [Deleted Kubernetes Service](./deleted-kubernetes-service.md) | Kubernetes |
 | [Disabled Istio Ambient Mode Kubernetes Namespace](./disabled-istio-ambient-mode-kubernetes-namespace.md) | Kubernetes |
 | [Exhausted Etcd Database Storage](./exhausted-etcd-database-storage.md) | Kubernetes |
+| [Failed Release Pipeline Service](./failed-release-pipeline-service.md) | Kubernetes |
 | [Failing Name Resolution Kubernetes Workload DNS Policy](./failing-name-resolution-kubernetes-workload-dns-policy.md) | Kubernetes |
 | [Hanging Kubernetes Workload Init Container](./hanging-kubernetes-workload-init-container.md) | Kubernetes |
 | [Ingress Port Blocking Network Policy](./ingress-port-blocking-network-policy.md) | Kubernetes |
@@ -22,6 +26,8 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Misconfigured Kubernetes Workload Container Readiness Probe](./misconfigured-kubernetes-workload-container-readiness-probe.md) | Kubernetes |
 | [Modified Kubernetes Workload Container Environment Variable](./modified-kubernetes-workload-container-environment-variable.md) | Kubernetes |
 | [Modified Target Port Kubernetes Service](./modified-target-port-kubernetes-service.md) | Kubernetes |
+| [Monitoring Probe Failure](./monitoring-probe-failure.md) | Kubernetes |
+| [Node Resource Exhaustion](./node-resource-exhaustion.md) | Kubernetes |
 | [Nonexistent Kubernetes Workload Container Image](./nonexistent-kubernetes-workload-container-image.md) | Kubernetes |
 | [Nonexistent Kubernetes Workload Node](./nonexistent-kubernetes-workload-node.md) | Kubernetes |
 | [Nonexistent Kubernetes Workload Persistent Volume Claim](./nonexistent-kubernetes-workload-persistent-volume-claim.md) | Kubernetes |

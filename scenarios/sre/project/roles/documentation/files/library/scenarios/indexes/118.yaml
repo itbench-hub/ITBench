@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../schema.json
+---
+alerts:
+  - KubePodNotReady
+  - HighRequestErrorRate
+category: sre
+complexity: high
+description: This scenario simulates a cluster availability loss by cordoning worker nodes and evicting the OpenTelemetry Demo's `checkout` service, causing it
+  to become unschedulable and degrading the entire checkout flow.
+disruptions:
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: checkout
+              namespace: otel-demo
+        id: cluster-availability-loss
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 118
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl get nodes
+          text: Identify which worker nodes are cordoned.
+        - text: Uncordon all affected worker nodes to restore scheduling.
+    - steps:
+        - text: Investigate the root cause of the cluster unavailability (etcd health, API server logs, node conditions) before uncordoning.
+tags:
+  - Deployment
+  - Performance

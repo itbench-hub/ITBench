@@ -1,0 +1,67 @@
+---
+alerts:
+  application:
+    - KubePodNotReady
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - DaemonSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+    type: object
+description: >-
+  This fault scales down a monitoring or probe deployment to zero replicas,
+  simulating real-world incidents where multiple monitoring probes go down
+  simultaneously, masking real issues and creating blind spots in observability.
+expectation: >-
+  The monitoring probe workload will be unavailable. Alerts that depend on
+  the probe data will stop firing, creating a false sense of health while
+  actual issues may go undetected.
+name: Monitoring Probe Failure
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+  - https://kubernetes.io/docs/tasks/debug/debug-application/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/deployment-v1/
+  - https://kubernetes.io/docs/concepts/cluster-administration/monitoring/
+solutions:
+  templates:
+    - steps:
+        - command: >-
+            kubectl -n {{ args.kubernetesObject.metadata.namespace }} scale
+            {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}
+            --replicas=1
+          text: Scale the monitoring probe deployment back to at least 1 replica.
+    - steps:
+        - command: >-
+            kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout restart
+            {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}
+          text: Restart the monitoring probe deployment to recover from a stuck state.
+tags:
+  - Deployment
+  - Performance

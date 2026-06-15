@@ -1,0 +1,24 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-118
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+    - labels: {}
+      name: HighRequestErrorRate
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: checkout
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl get nodes
+            text: Identify which worker nodes are cordoned.
+          - text: Uncordon all affected worker nodes to restore scheduling.
+      - steps:
+          - text: Investigate the root cause of the cluster unavailability (etcd health, API server logs, node conditions) before uncordoning.

@@ -1,0 +1,24 @@
+---
+category: sre
+complexity: medium
+description: >-
+  This scenario simulates a credential failure by corrupting the Secret used by
+  the OpenTelemetry Demo's `email` service, causing it to fail when attempting
+  to authenticate with external services.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: email-service-secret
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: corrupted-kubernetes-secret-credentials
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 120
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

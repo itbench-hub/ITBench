@@ -1,0 +1,26 @@
+---
+category: sre
+complexity: medium
+description: >-
+  This scenario simulates a breaking configuration change on the OpenTelemetry Demo's
+  `cart` service by injecting an invalid environment variable, causing the service to
+  malfunction and degrading the shopping cart workflow.
+disruptions:
+  - injections:
+    - args:
+        container:
+          name: cart
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: cart
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: breaking-configuration-change
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 119
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

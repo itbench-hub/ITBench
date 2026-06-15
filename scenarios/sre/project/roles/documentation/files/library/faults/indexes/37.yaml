@@ -1,0 +1,67 @@
+---
+alerts:
+  application:
+    - KubePodNotReady
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - apps/v1
+            type: string
+          kind:
+            enum:
+              - Deployment
+              - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+    type: object
+description: >-
+  This fault injects excessive resource requests into a workload, causing nodes
+  to run out of allocatable resources. This simulates real-world incidents where
+  node-level resource exhaustion, compute capacity shortages, or cluster autoscaler
+  failures lead to pods stuck in Pending state and service degradation.
+expectation: >-
+  The faulted workload pods will consume excessive resources, causing other pods
+  on the same node to be evicted or fail to schedule. The node may become
+  NotReady if resource pressure is severe enough.
+name: Node Resource Exhaustion
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  - https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/
+  - https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/
+  - https://kubernetes.io/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/
+solutions:
+  templates:
+    - steps:
+        - command: >-
+            kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo
+            {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}
+          text: Revert the resource request changes to restore normal resource usage.
+    - steps:
+        - command: >-
+            kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit
+            {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and set resource requests to appropriate values.
+tags:
+  - Deployment
+  - Performance

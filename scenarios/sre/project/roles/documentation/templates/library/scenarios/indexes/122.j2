@@ -1,0 +1,26 @@
+---
+category: sre
+complexity: medium
+description: >-
+  This scenario simulates a release pipeline failure by injecting an invalid image
+  into the OpenTelemetry Demo's `shipping` service, causing it to fail to start
+  and blocking the shipping workflow.
+disruptions:
+  - injections:
+    - args:
+        container:
+          name: shipping
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: shipping
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: failed-release-pipeline-service
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 122
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

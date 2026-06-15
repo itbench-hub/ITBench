@@ -48,6 +48,12 @@
 | [115](./sre/115.md) | sre | medium |
 | [116](./sre/116.md) | sre | high |
 | [117](./sre/117.md) | sre | medium |
+| [118](./sre/118.md) | sre | high |
+| [119](./sre/119.md) | sre | medium |
+| [120](./sre/120.md) | sre | medium |
+| [121](./sre/121.md) | sre | medium |
+| [122](./sre/122.md) | sre | medium |
+| [123](./sre/123.md) | sre | low |
 
 ## Statistics
 
@@ -55,16 +61,16 @@
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 5 | 38 |
+| 5 | 44 |
 
 ### Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 41 |
+| 2 | 47 |
 
 ### Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 17 | 24 | 2 |
+| 18 | 28 | 3 |

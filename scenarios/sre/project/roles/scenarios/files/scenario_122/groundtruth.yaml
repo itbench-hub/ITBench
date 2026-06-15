@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-122
+spec:
+  alerts:
+    - labels: {}
+      name: HighRequestErrorRate
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: shipping
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/shipping
+            text: Revert the deployment to the previous working image.
+      - steps:
+          - command: kubectl -n otel-demo set image deployment/shipping shipping=correct-image:latest
+            text: Set the container image to the correct version.

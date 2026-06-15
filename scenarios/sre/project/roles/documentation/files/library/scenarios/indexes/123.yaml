@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../schema.json
+---
+alerts:
+  - KubePodNotReady
+category: sre
+complexity: low
+description: This scenario simulates a monitoring probe failure by scaling down the OpenTelemetry Demo's `load-generator` deployment to zero, causing the loss
+  of synthetic traffic that monitoring relies on to detect issues.
+disruptions:
+  - injections:
+      - args:
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: load-generator
+              namespace: otel-demo
+        id: monitoring-probe-failure
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 123
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo scale deployment/load-generator --replicas=1
+          text: Scale the monitoring probe deployment back to at least 1 replica.
+    - steps:
+        - command: kubectl -n otel-demo rollout restart deployment/load-generator
+          text: Restart the monitoring probe deployment to recover from a stuck state.
+tags:
+  - Deployment
+  - Performance

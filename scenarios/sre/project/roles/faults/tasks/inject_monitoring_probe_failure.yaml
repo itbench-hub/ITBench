@@ -1,0 +1,33 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Scale monitoring probe to zero replicas
+  kubernetes.core.k8s_scale:
+    api_version: "{{ faults_kubernetes_object.apiVersion }}"
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    kind: "{{ faults_kubernetes_object.kind }}"
+    name: "{{ faults_kubernetes_object.metadata.name }}"
+    namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+    replicas: 0
+    wait: true
+    wait_timeout: 120
+
+- name: Verify probe pods are terminated
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: Pod
+    namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+    label_selectors:
+      - "app={{ faults_kubernetes_object.metadata.name }}"
+  register: faults_probe_pods
+  until:
+    - >-
+      faults_probe_pods.resources |
+      selectattr('status.phase', 'equalto', 'Running') |
+      list |
+      length == 0
+  retries: 10
+  delay: 10

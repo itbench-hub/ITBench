@@ -1,0 +1,63 @@
+---
+alerts:
+  goldenSignal:
+    - HighRequestErrorRate
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+              - v1
+            type: string
+          kind:
+            enum:
+              - Secret
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+              - name
+              - namespace
+            type: object
+        required:
+          - apiVersion
+          - kind
+          - metadata
+        type: object
+    required:
+      - kubernetesObject
+    type: object
+description: >-
+  This fault corrupts a Kubernetes Secret by replacing its data with invalid
+  credentials, simulating real-world incidents where secret rotation failures,
+  registry authentication issues, or Vault access problems cause service outages.
+expectation: >-
+  Workloads that depend on the corrupted Secret will fail to authenticate with
+  external services (registries, databases, APIs). Pods may crash or enter error
+  states when they attempt to use the invalid credentials.
+name: Corrupted Kubernetes Secret Credentials
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/configuration/secret/
+  - https://kubernetes.io/docs/tasks/configmap-secret/managing-secret-using-kubectl/
+  - https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/secret-v1/
+  - https://kubernetes.io/docs/tasks/debug/debug-application/
+solutions:
+  templates:
+    - steps:
+        - command: >-
+            kubectl -n {{ args.kubernetesObject.metadata.namespace }} get secret
+            {{ args.kubernetesObject.metadata.name }} -o yaml
+          text: Inspect the corrupted secret to identify the invalid data.
+        - text: Restore the secret with correct credentials from the credential management system.
+    - steps:
+        - text: Rotate the credentials in the external system and update the Kubernetes Secret to match.
+tags:
+  - Authentication
+  - Deployment

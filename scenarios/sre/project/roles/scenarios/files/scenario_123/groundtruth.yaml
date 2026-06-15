@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-123
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: load-generator
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo scale deployment/load-generator --replicas=1
+            text: Scale the monitoring probe deployment back to at least 1 replica.
+      - steps:
+          - command: kubectl -n otel-demo rollout restart deployment/load-generator
+            text: Restart the monitoring probe deployment to recover from a stuck state.

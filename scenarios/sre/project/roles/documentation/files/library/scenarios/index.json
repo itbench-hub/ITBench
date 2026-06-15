@@ -3257,5 +3257,394 @@
             "Deployment",
             "Performance"
         ]
+    },
+    {
+        "alerts": [
+            "KubePodNotReady",
+            "HighRequestErrorRate"
+        ],
+        "category": "sre",
+        "complexity": "high",
+        "description": "This scenario simulates a cluster availability loss by cordoning worker nodes and evicting the OpenTelemetry Demo's `checkout` service, causing it to become unschedulable and degrading the entire checkout flow.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "checkout",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "cluster-availability-loss"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 118,
+        "index": 118,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl get nodes",
+                            "text": "Identify which worker nodes are cordoned."
+                        },
+                        {
+                            "text": "Uncordon all affected worker nodes to restore scheduling."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "text": "Investigate the root cause of the cluster unavailability (etcd health, API server logs, node conditions) before uncordoning."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [
+            "HighRequestErrorRate"
+        ],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates a breaking configuration change on the OpenTelemetry Demo's `cart` service by injecting an invalid environment variable, causing the service to malfunction and degrading the shopping cart workflow.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "container": {
+                                "name": "cart"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "cart",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "breaking-configuration-change"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 119,
+        "index": 119,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/cart",
+                            "text": "Revert the last change done to the workload manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment cart",
+                            "text": "Manually edit the manifest and replace the environment variable with the correct value."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Code",
+            "Deployment"
+        ]
+    },
+    {
+        "alerts": [
+            "HighRequestErrorRate"
+        ],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates a credential failure by corrupting the Secret used by the OpenTelemetry Demo's `email` service, causing it to fail when attempting to authenticate with external services.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "Secret",
+                                "metadata": {
+                                    "name": "email-service-secret",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "corrupted-kubernetes-secret-credentials"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 120,
+        "index": 120,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo get secret email-service-secret -o yaml",
+                            "text": "Inspect the corrupted secret to identify the invalid data."
+                        },
+                        {
+                            "text": "Restore the secret with correct credentials from the credential management system."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "text": "Rotate the credentials in the external system and update the Kubernetes Secret to match."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Authentication",
+            "Deployment"
+        ]
+    },
+    {
+        "alerts": [
+            "KubePodNotReady"
+        ],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates node resource exhaustion by injecting excessive resource requests into the OpenTelemetry Demo's `product-catalog` service, causing resource pressure on the node and affecting co-located workloads.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "product-catalog",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "node-resource-exhaustion"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 121,
+        "index": 121,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/product-catalog",
+                            "text": "Revert the resource request changes to restore normal resource usage."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment product-catalog",
+                            "text": "Manually edit the manifest and set resource requests to appropriate values."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "alerts": [
+            "HighRequestErrorRate"
+        ],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates a release pipeline failure by injecting an invalid image into the OpenTelemetry Demo's `shipping` service, causing it to fail to start and blocking the shipping workflow.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "container": {
+                                "name": "shipping"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "shipping",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "failed-release-pipeline-service"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 122,
+        "index": 122,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/shipping",
+                            "text": "Revert the deployment to the previous working image."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo set image deployment/shipping shipping=correct-image:latest",
+                            "text": "Set the container image to the correct version."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Code",
+            "Deployment"
+        ]
+    },
+    {
+        "alerts": [
+            "KubePodNotReady"
+        ],
+        "category": "sre",
+        "complexity": "low",
+        "description": "This scenario simulates a monitoring probe failure by scaling down the OpenTelemetry Demo's `load-generator` deployment to zero, causing the loss of synthetic traffic that monitoring relies on to detect issues.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "load-generator",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "monitoring-probe-failure"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 123,
+        "index": 123,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo scale deployment/load-generator --replicas=1",
+                            "text": "Scale the monitoring probe deployment back to at least 1 replica."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment/load-generator",
+                            "text": "Restart the monitoring probe deployment to recover from a stuck state."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
     }
 ]

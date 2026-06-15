@@ -1,0 +1,24 @@
+---
+category: sre
+complexity: low
+description: >-
+  This scenario simulates a monitoring probe failure by scaling down the OpenTelemetry
+  Demo's `load-generator` deployment to zero, causing the loss of synthetic traffic
+  that monitoring relies on to detect issues.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: load-generator
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: monitoring-probe-failure
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 123
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

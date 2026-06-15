@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../schema.json
+---
+alerts:
+  - HighRequestErrorRate
+category: sre
+complexity: medium
+description: This scenario simulates a release pipeline failure by injecting an invalid image into the OpenTelemetry Demo's `shipping` service, causing it to
+  fail to start and blocking the shipping workflow.
+disruptions:
+  - injections:
+      - args:
+          container:
+            name: shipping
+          kubernetesObject:
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: shipping
+              namespace: otel-demo
+        id: failed-release-pipeline-service
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 122
+platforms:
+  - Kubernetes
+solutions:
+  - - steps:
+        - command: kubectl -n otel-demo rollout undo deployment/shipping
+          text: Revert the deployment to the previous working image.
+    - steps:
+        - command: kubectl -n otel-demo set image deployment/shipping shipping=correct-image:latest
+          text: Set the container image to the correct version.
+tags:
+  - Code
+  - Deployment

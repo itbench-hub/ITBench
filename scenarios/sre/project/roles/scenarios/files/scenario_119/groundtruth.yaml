@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-119
+spec:
+  alerts:
+    - labels: {}
+      name: HighRequestErrorRate
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: cart
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/cart
+            text: Revert the last change done to the workload manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment cart
+            text: Manually edit the manifest and replace the environment variable with the correct value.

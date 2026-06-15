@@ -1,0 +1,24 @@
+---
+category: sre
+complexity: high
+description: >-
+  This scenario simulates a cluster availability loss by cordoning worker nodes and
+  evicting the OpenTelemetry Demo's `checkout` service, causing it to become unschedulable
+  and degrading the entire checkout flow.
+disruptions:
+  - injections:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: checkout
+            namespace: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+      id: cluster-availability-loss
+environment:
+  applications:
+    - id: opentelemetry-demo
+id: 118
+solutionTemplates:
+  - disruptionIndex: 0
+    injectionIndex: 0

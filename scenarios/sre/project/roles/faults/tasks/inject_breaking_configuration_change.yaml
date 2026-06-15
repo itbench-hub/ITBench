@@ -1,0 +1,25 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Update workload with breaking environment variable
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+      kind: "{{ faults_kubernetes_object.kind }}"
+      metadata:
+        name: "{{ faults_kubernetes_object.metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ faults_container.name }}"
+                env:
+                  - name: OTEL_SERVICE_NAME
+                    value: ""
+                  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+                    value: "http://nonexistent-collector:4317"
+    state: patched
