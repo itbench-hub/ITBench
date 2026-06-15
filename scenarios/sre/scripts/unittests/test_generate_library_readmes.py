@@ -379,11 +379,12 @@ class TestMain(unittest.TestCase):
     def test_main(self, mock_load, mock_apps, mock_faults, mock_waiters, mock_scenarios):
         """Test main function orchestration."""
         # Mock load_library_indexes to return different data for each call
+        # IMPORTANT: All indexes must have "name" field for sorting
         mock_load.side_effect = [
-            [{"id": "app1"}],  # applications
-            [{"id": "fault1"}],  # faults
-            [{"id": "waiter1"}],  # waiters
-            [{"id": "scenario1"}]  # scenarios
+            [{"id": "app1", "name": "App 1"}],  # applications
+            [{"id": "fault1", "name": "Fault 1"}],  # faults
+            [{"id": "waiter1", "name": "Waiter 1"}],  # waiters
+            [{"id": "scenario1", "name": "Scenario 1"}]  # scenarios
         ]
 
         with patch("generate_library_readmes.Environment"):

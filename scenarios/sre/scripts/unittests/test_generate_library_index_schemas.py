@@ -140,15 +140,11 @@ class TestProcessLibraryType(unittest.TestCase):
             schema_dir
         )
 
-        # Verify schema was written with $schema property
+        # Verify schema was written
         mock_write_schema.assert_called_once()
-        written_schema = mock_write_schema.call_args[0][1]
-
-        # Get the schema that was written
-        call_args = mock_write_schema.call_args[0]
-        schema_path = call_args[0]
 
         # Verify the path is correct
+        schema_path = mock_write_schema.call_args[0][0]
         self.assertEqual(schema_path, schema_dir / "test-fault.json")
 
 
@@ -185,6 +181,9 @@ class TestMain(unittest.TestCase):
 
         # Verify process_library_type was called for each library type
         self.assertEqual(mock_process.call_count, 3)
+
+        # Verify template was requested with correct name
+        mock_env.get_template.assert_called_once_with("scenario.json.j2")
 
         # Verify scenarios schema was written
         mock_write_schema.assert_called_once()

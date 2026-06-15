@@ -1,7 +1,6 @@
 import json
 import sys
 import unittest
-
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
@@ -13,10 +12,10 @@ import validate_library_indexes
 class TestLoadAndValidateLibraryIndex(unittest.TestCase):
     """Test loading and validating library indexes."""
 
-    @patch("builtins.print")
+    @patch("validate_library_indexes.logger")
     @patch.object(Path, "read_text")
     @patch.object(Path, "glob")
-    def test_load_and_validate_library_index_success(self, mock_glob, mock_read, mock_print):
+    def test_load_and_validate_library_index_success(self, mock_glob, mock_read, mock_logger):
         """Test successful validation of library indexes."""
         index_directory = Path("/test/indexes/applications")
         schema_file = Path("/test/schemas/library/index/application.json")
@@ -48,13 +47,13 @@ class TestLoadAndValidateLibraryIndex(unittest.TestCase):
         # Verify validator was called
         mock_validator.validate.assert_called_once_with(index_data)
 
-        # Verify success message was printed
-        mock_print.assert_called_with("Success: The local object matches the local schema copy perfectly!")
+        # Verify info log was called
+        mock_logger.info.assert_called()
 
-    @patch("builtins.print")
+    @patch("validate_library_indexes.logger")
     @patch.object(Path, "read_text")
     @patch.object(Path, "glob")
-    def test_load_and_validate_library_index_validation_error(self, mock_glob, mock_read, mock_print):
+    def test_load_and_validate_library_index_validation_error(self, mock_glob, mock_read, mock_logger):
         """Test validation failure with ValidationError."""
         from jsonschema.exceptions import ValidationError
 
@@ -85,13 +84,13 @@ class TestLoadAndValidateLibraryIndex(unittest.TestCase):
                 schema_file
             )
 
-        # Verify error message was printed
-        mock_print.assert_called_with("Validation failed: 'name' is a required property")
+        # Verify exception log was called
+        mock_logger.exception.assert_called()
 
-    @patch("builtins.print")
+    @patch("validate_library_indexes.logger")
     @patch.object(Path, "read_text")
     @patch.object(Path, "glob")
-    def test_load_and_validate_library_index_multiple_files(self, mock_glob, mock_read, mock_print):
+    def test_load_and_validate_library_index_multiple_files(self, mock_glob, mock_read, mock_logger):
         """Test validation of multiple index files."""
         index_directory = Path("/test/indexes/waiters")
         schema_file = Path("/test/schemas/library/index/waiter.json")
@@ -127,20 +126,21 @@ class TestLoadAndValidateLibraryIndex(unittest.TestCase):
         # Verify validator was called for each index
         self.assertEqual(mock_validator.validate.call_count, 3)
 
-        # Verify success message was printed for each
-        self.assertEqual(mock_print.call_count, 3)
+        # Verify info log was called for each file
+        self.assertEqual(mock_logger.info.call_count, 3)
 
 
 class TestMain(unittest.TestCase):
     """Test main function."""
 
     @patch("validate_library_indexes.load_and_validate_library_index")
+    @patch("validate_library_indexes.logger")
     @patch.object(Path, "read_text")
     @patch.object(Path, "rglob")
     @patch("sys.argv", ["script.py",
                         "--library_index_directory", "/test/indexes",
                         "--schemas_directory", "/test/schemas"])
-    def test_main_builds_registry(self, mock_rglob, mock_read, mock_validate):
+    def test_main_builds_registry(self, mock_rglob, mock_read, mock_logger, mock_validate):
         """Test main function builds schema registry."""
         # Mock schema files
         schema_files = [
@@ -178,12 +178,13 @@ class TestMain(unittest.TestCase):
         self.assertEqual(mock_validate.call_count, 4)  # applications, faults, scenarios, waiters
 
     @patch("validate_library_indexes.load_and_validate_library_index")
+    @patch("validate_library_indexes.logger")
     @patch.object(Path, "read_text")
     @patch.object(Path, "rglob")
     @patch("sys.argv", ["script.py",
                         "--library_index_directory", "/test/indexes",
                         "--schemas_directory", "/test/schemas"])
-    def test_main_validates_all_library_types(self, mock_rglob, mock_read, mock_validate):
+    def test_main_validates_all_library_types(self, mock_rglob, mock_read, mock_logger, mock_validate):
         """Test main function validates all library types."""
         # Mock schema files
         mock_rglob.return_value = [Path("/test/schemas/test.json")]
@@ -214,12 +215,12 @@ class TestMain(unittest.TestCase):
         self.assertIn("waiter.json", schema_names)
 
     @patch("validate_library_indexes.load_and_validate_library_index")
-    @patch.object(Path, "read_text")
+    @patch("validate_library_indexes.logger")
     @patch.object(Path, "rglob")
     @patch("sys.argv", ["script.py",
                         "--library_index_directory", "/test/indexes",
                         "--schemas_directory", "/test/schemas"])
-    def test_main_handles_schema_file_name_conversion(self, mock_rglob, mock_read, mock_validate):
+    def test_main_handles_schema_file_name_conversion(self, mock_rglob, mock_logger, mock_validate):
         """Test main function correctly converts library type names to schema file names."""
         mock_rglob.return_value = []
 
@@ -245,10 +246,10 @@ class TestMain(unittest.TestCase):
 class TestIntegration(unittest.TestCase):
     """Integration tests for validation."""
 
-    @patch("builtins.print")
+    @patch("validate_library_indexes.logger")
     @patch.object(Path, "read_text")
     @patch.object(Path, "glob")
-    def test_full_validation_flow(self, mock_glob, mock_read, mock_print):
+    def test_full_validation_flow(self, mock_glob, mock_read, mock_logger):
         """Test complete validation flow from index to schema."""
         from jsonschema.exceptions import ValidationError
 
@@ -299,18 +300,11 @@ class TestIntegration(unittest.TestCase):
         # Verify both indexes were validated
         self.assertEqual(mock_validator.validate.call_count, 2)
 
-        # Verify both success and failure messages were printed
-        self.assertEqual(mock_print.call_count, 2)
+        # Verify info log was called for both files
+        self.assertEqual(mock_logger.info.call_count, 2)
 
-        # Check for success message
-        success_calls = [call for call in mock_print.call_args_list
-                        if "Success" in str(call)]
-        self.assertEqual(len(success_calls), 1)
-
-        # Check for failure message
-        failure_calls = [call for call in mock_print.call_args_list
-                        if "Validation failed" in str(call)]
-        self.assertEqual(len(failure_calls), 1)
+        # Verify exception log was called once for the invalid index
+        self.assertEqual(mock_logger.exception.call_count, 1)
 
 
 if __name__ == "__main__":
