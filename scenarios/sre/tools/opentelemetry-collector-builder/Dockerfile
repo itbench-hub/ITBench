@@ -11,9 +11,9 @@ COPY go.sum go.sum
 
 RUN go mod download
 
-COPY manafest.yaml manafest.yaml
+COPY builder-config.yaml builder-config.yaml
 
-RUN go tool builder --config manafest.yaml
+RUN go tool builder --config builder-config.yaml
 
 FROM gcr.io/distroless/static-debian13:nonroot
 
