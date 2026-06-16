@@ -1,0 +1,59 @@
+{
+    "category": "sre",
+    "complexity": "low",
+    "description": "This scenario simulates Kubernetes API server being stressed during OpenTelemetry Demo's execution.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "chaos-mesh.org/v1alpha1",
+                            "kind": "Schedule",
+                            "metadata": {
+                                "name": "api-server-memory-stress",
+                                "namespace": "{{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}"
+                            }
+                        },
+                        "scheduleSpec": {
+                            "stressChaos": {
+                                "duration": "55s",
+                                "mode": "one",
+                                "selector": {
+                                    "labelSelectors": {
+                                        "component": "kube-apiserver"
+                                    },
+                                    "namespaces": [
+                                        "kube-system"
+                                    ]
+                                },
+                                "stressors": {
+                                    "memory": {
+                                        "size": "6GB",
+                                        "workers": 4
+                                    }
+                                }
+                            },
+                            "type": "StressChaos"
+                        }
+                    },
+                    "id": "scheduled-chaos-mesh-experiment"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 54,
+    "solutionTemplates": [
+        {
+            "disruptionIndex": 0,
+            "injectionIndex": 0
+        }
+    ]
+}

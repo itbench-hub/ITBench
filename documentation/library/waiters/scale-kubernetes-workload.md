@@ -3,6 +3,6 @@
 
 # Scale Kubernetes Workload
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/waiters/indexes/4.yaml) | [Schema](../../../schemas/json/waiters/scale-kubernetes-workload.json) | Kubernetes |
+| [Source](../../../../scenarios/sre/library/indexes/waiters/scale-kubernetes-workload.json) | [Schema](../../../../schemas/json/waiters/scale-kubernetes-workload.json) | Kubernetes |
 
 Waits for a Kubernetes workload to scale to the requested number of replicas.

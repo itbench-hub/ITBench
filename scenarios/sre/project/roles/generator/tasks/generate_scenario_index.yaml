@@ -1,21 +1,4 @@
 ---
-- name: Retrieve all scenario index files
-  ansible.builtin.find:
-    path: |-
-      {{
-        [
-          playbook_dir,
-          "roles",
-          "documentation",
-          "files",
-          "library",
-          "scenarios",
-          "indexes"
-        ] |
-        ansible.builtin.path_join
-      }}
-  register: generator_scenario_index_files
-
 - name: Request description
   ansible.builtin.pause:
     prompt: Please enter a description for the new scenario
@@ -27,19 +10,18 @@
       {{
         scenario |
         ansible.builtin.combine({"id": index}) |
-        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
+        ansible.builtin.to_nice_json
       }}
     dest: |-
       {{
         [
           playbook_dir,
-          "roles",
-          "documentation",
+          "..",
           "templates",
           "library",
-          "scenarios",
           "indexes",
-          index ~ ".j2"
+          "scenarios",
+          index ~ ".json.j2"
         ] |
         ansible.builtin.path_join
       }}
@@ -57,12 +39,8 @@
     index: |-
       {{
         (
-          generator_scenario_index_files.files |
-          map(attribute="path") |
-          map("ansible.builtin.basename") |
-          map("ansible.builtin.splitext") |
-          map("ansible.builtin.first") |
-          map("ansible.builtin.int") |
+          generator_library_index.scenarios |
+          map(attribute="index") |
           ansible.builtin.max
         ) +
         (
@@ -75,8 +53,8 @@
     msg:
       - The new scenario has been generated.
       - Please edit the file located at the path below to complete the scenario.
-      - "{{ generator_scenario_path.dest }}"
+      - "{{ generator_scenario_path.dest | ansible.builtin.realpath }}"
       - ""
-      - Once done, use `make generate-docs` and `make validate-docs` to complete the generation and verification of the scenario.
+      - Once done, use `make generate-library` and `make validate-library` to complete the generation and verification of the scenario.
       - ""
       - Once verified, use `make generate-resource-files` to create the implementation file(s) and add the implementation.

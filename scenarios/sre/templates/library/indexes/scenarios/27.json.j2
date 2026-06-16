@@ -1,0 +1,58 @@
+{
+    "category": "sre",
+    "complexity": "medium",
+    "description": "This scenario simulates aborted HTTP requests to OpenTelemetry Demo's `quote` service.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "chaos-mesh.org/v1alpha1",
+                            "kind": "Schedule",
+                            "metadata": {
+                                "name": "quote-http-chaos-abort",
+                                "namespace": "{{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}"
+                            }
+                        },
+                        "scheduleSpec": {
+                            "httpChaos": {
+                                "abort": true,
+                                "duration": "55s",
+                                "method": "POST",
+                                "mode": "all",
+                                "path": "*",
+                                "port": 8080,
+                                "selector": {
+                                    "labelSelectors": {
+                                        "app.kubernetes.io/component": "quote"
+                                    },
+                                    "namespaces": [
+                                        "{{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}"
+                                    ]
+                                },
+                                "target": "Request"
+                            },
+                            "type": "HTTPChaos"
+                        }
+                    },
+                    "id": "scheduled-chaos-mesh-experiment"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 27,
+    "solutionTemplates": [
+        {
+            "disruptionIndex": 0,
+            "injectionIndex": 0
+        }
+    ]
+}

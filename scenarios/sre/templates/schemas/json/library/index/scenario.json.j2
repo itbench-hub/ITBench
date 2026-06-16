@@ -1,0 +1,184 @@
+{
+    "$defs": {
+        "applicationItem": {
+            "allOf": {{ items["applications"] | tojson }},
+            "properties": {
+                "args": {
+                    "type": "object"
+                },
+                "id": {
+                    "enum": {{ ids["applications"] | tojson }},
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ],
+            "type": "object"
+        },
+        "faultItem": {
+            "allOf": {{ items["faults"] | tojson }},
+            "properties": {
+                "args": {
+                    "type": "object"
+                },
+                "id": {
+                    "enum": {{ ids["faults"] | tojson }},
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ],
+            "type": "object"
+        },
+        "waiterItem": {
+            "allOf": {{ items["waiters"] | tojson }},
+            "properties": {
+                "args": {
+                    "type": "object"
+                },
+                "id": {
+                    "enum": {{ ids["waiters"] | tojson }},
+                    "type": "string"
+                }
+            },
+            "required": [
+                "args",
+                "id"
+            ],
+            "type": "object"
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "alerts": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "category": {
+            "enum": [
+                "finops",
+                "sre"
+            ],
+            "type": "string"
+        },
+        "complexity": {
+            "enum": [
+                "high",
+                "low",
+                "medium"
+            ],
+            "type": "string"
+        },
+        "disruptions": {
+            "items": {
+                "properties": {
+                    "injections": {
+                        "items": {
+                            "$ref": "#/$defs/faultItem"
+                        },
+                        "minItems": 1,
+                        "type": "array"
+                    },
+                    "waitFor": {
+                        "minProperties": 1,
+                        "properties": {
+                            "postInjection": {
+                                "items": {
+                                    "$ref": "#/$defs/waiterItem"
+                                },
+                                "minItems": 1,
+                                "type": "array"
+                            },
+                            "preInjection": {
+                                "items": {
+                                    "$ref": "#/$defs/waiterItem"
+                                },
+                                "minItems": 1,
+                                "type": "array"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "type": "object"
+            },
+            "type": "array"
+        },
+        "environment": {
+            "properties": {
+                "applications": {
+                    "items": {
+                        "$ref": "#/$defs/applicationItem"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                }
+            },
+            "required": [
+                "applications"
+            ],
+            "type": "object"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "platforms": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "solutions": {
+            "items": {
+                "items": {
+                    "properties": {
+                        "steps": {
+                            "items": {
+                                "properties": {
+                                    "command": {
+                                        "type": "string"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "text"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "steps"
+                    ],
+                    "type": "object"
+                },
+                "type": "array"
+            },
+            "type": "array"
+        },
+        "tags": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        }
+    },
+    "required": [
+        "alerts",
+        "category",
+        "complexity",
+        "disruptions",
+        "environment",
+        "id",
+        "platforms",
+        "tags"
+    ],
+    "type": "object"
+}

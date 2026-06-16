@@ -41,10 +41,10 @@ make generate-scenario-index
 
 1. Run the following command to generate the documentation for the new scenario:
 ```shell
-make generate-docs
+make generate-library
 ```
 
 2. Run the following command to validate the structure of the new scenario:
 ```shell
-make validate-docs
+make validate-library
 ```

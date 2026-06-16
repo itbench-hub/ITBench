@@ -30,7 +30,7 @@ make generate-fault-index
 
 2. Run the following commands to generate the new files for the fault
 ```shell
-make generate-docs
+make generate-library
 make generate-resource-files
 ```
 
@@ -66,12 +66,12 @@ make test-molecule-faults
 
 1. Run the following command to generate the documentation for the new fault:
 ```shell
-make generate-docs
+make generate-library
 ```
 
 2. Run the following command to validate the structure of the new fault:
 ```shell
-make validate-docs
+make validate-library
 ```
 
 3. Run your fault in a scenario and ensure that the alerts listed in the new fault configuration are firing appropriately.

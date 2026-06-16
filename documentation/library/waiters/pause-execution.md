@@ -3,6 +3,6 @@
 
 # Pause Execution
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/waiters/indexes/2.yaml) | [Schema](../../../schemas/json/waiters/pause-execution.json) | Any |
+| [Source](../../../../scenarios/sre/library/indexes/waiters/pause-execution.json) | [Schema](../../../../schemas/json/waiters/pause-execution.json) | Kubernetes |
 
 Pauses for the requested number of seconds.
