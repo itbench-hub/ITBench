@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/fault.json
+---
+alerts:
+  goldenSignal:
+  - HighRequestErrorRate
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+            - v1
+            type: string
+          kind:
+            enum:
+            - Service
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+            - name
+            - namespace
+            type: object
+        required:
+        - apiVersion
+        - kind
+        - metadata
+        type: object
+    required:
+    - kubernetesObject
+    type: object
+description: This fault deletes the services attached to a Kubernetes workload, preventing other workloads from being able to communicate with it.
+expectation: Existing workloads will be unable to communicate with faulted workload.
+name: Deleted Kubernetes Service
+platform: Kubernetes
+resources:
+- https://kubernetes.io/docs/concepts/workloads/
+- https://kubernetes.io/docs/concepts/services-networking/service/
+- https://kubernetes.io/docs/tasks/access-application-cluster/connecting-frontend-backend/
+- https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
+solutions:
+  templates:
+  - steps:
+    - text: Create the manifest with the expected values.
+  - steps:
+    - text: Apply the manifest file with the expected values to the application namespace.
+tags:
+- Deployment
+- Networking

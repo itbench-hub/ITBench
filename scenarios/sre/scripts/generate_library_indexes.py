@@ -43,8 +43,8 @@ def load_and_write_library_index(library_type: str, templates_directory: Path, i
     indexes = []
     faults_lookup = {}
 
-    for template_file in templates_directory.glob("*.json.j2"):
-        index = json.loads(template_file.read_text(encoding="utf-8"))
+    for template_file in templates_directory.glob("*.yaml.j2"):
+        index = yaml.safe_load(template_file.read_text(encoding="utf-8"))
         index_id = generate_id_from_name(index["name"])
 
         index["id"] = index_id
@@ -61,7 +61,7 @@ def load_and_write_library_index(library_type: str, templates_directory: Path, i
         if library_type == "faults":
             faults_lookup[index_id] = index
 
-        write_json_file(index_directory / template_file.stem, index)
+        write_json_file(index_directory / (template_file.stem.split(".")[0] + ".json"), index)
 
     logger.info("writing combined index file")
 
@@ -85,9 +85,9 @@ def create_scenarios_indexes(templates_directory: Path, index_directory: Path, p
 
     env = Environment(loader=FileSystemLoader(templates_directory))
 
-    for template_file in templates_directory.glob("*.json.j2"):
+    for template_file in templates_directory.glob("*.yaml.j2"):
         template = env.get_template(template_file.name)
-        index = json.loads(template.render(managers=managers))
+        index = yaml.safe_load(template.render(managers=managers))
 
         alerts = set()
         tags = set(index.get("tags", []))
@@ -125,7 +125,7 @@ def create_scenarios_indexes(templates_directory: Path, index_directory: Path, p
 
         indexes.append(index)
 
-        write_json_file(index_directory / template_file.stem, index)
+        write_json_file(index_directory / (template_file.stem.split(".")[0] + ".json"), index)
 
     logger.info("writing combined index file")
     write_json_file(generator_directory / "scenarios.json", sorted(indexes, key=itemgetter("index")))
