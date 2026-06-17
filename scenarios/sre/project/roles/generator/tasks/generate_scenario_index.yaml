@@ -7,10 +7,11 @@
 - name: Create new scenario index
   ansible.builtin.copy:
     content: |
+      # yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
       {{
         scenario |
         ansible.builtin.combine({"id": index}) |
-        ansible.builtin.to_nice_json
+        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
       }}
     dest: |-
       {{
@@ -21,7 +22,7 @@
           "library",
           "indexes",
           "scenarios",
-          index ~ ".json.j2"
+          index ~ ".yaml.j2"
         ] |
         ansible.builtin.path_join
       }}
