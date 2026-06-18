@@ -1,6 +1,6 @@
 FROM registry.access.redhat.com/ubi10-minimal:10.2-1781509346 AS certs
 
-FROM registry.access.redhat.com/ubi10/go-toolset:1.26.3-1781631187 AS builder
+FROM registry.access.redhat.com/ubi10/go-toolset:1.26.3-1781732400 AS builder
 
 ENV CGO_ENABLED=0
 
