@@ -16,11 +16,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def load_and_validate_library_index(registry: Registry, index_directory: Path, schema_file: Path) -> int:
+def load_and_validate_library_index(registry: Registry, index_directory: Path, schema_file: Path) -> None:
     schema = { "$ref": schema_file.as_uri() }
     validator = Draft202012Validator(schema=schema, registry=registry)
 
-    failures = 0
     for index_file in index_directory.glob("*.json"):
         logger.info(f"validating index: {index_file}")
 
@@ -30,9 +29,7 @@ def load_and_validate_library_index(registry: Registry, index_directory: Path, s
             validator.validate(index)
         except ValidationError as e:
             logger.exception(f"validation failed: {e}")
-            failures += 1
-
-    return failures
+            sys.exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Generate schemas from library indexes")
@@ -55,21 +52,16 @@ def main():
             )
         )
 
-    total_failures = 0
     for library_type in ["applications", "faults", "scenarios", "waiters"]:
         logger.info(f"validating {library_type} library indexes")
 
         schema_name = library_type.removesuffix("s")
 
-        total_failures += load_and_validate_library_index(
+        load_and_validate_library_index(
             registry,
             args.library_index_directory / library_type,
             args.schemas_directory / "library" / "index" / f"{schema_name}.json"
         )
-
-    if total_failures:
-        logger.error(f"validation failed: {total_failures} index file(s) are invalid")
-        sys.exit(1)
 
 if __name__ == "__main__":
     main()

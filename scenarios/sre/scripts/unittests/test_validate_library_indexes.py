@@ -2,7 +2,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 # Add parent directory to path to import the module under test
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -54,7 +54,7 @@ class TestLoadAndValidateLibraryIndex(unittest.TestCase):
     @patch.object(Path, "read_text")
     @patch.object(Path, "glob")
     def test_load_and_validate_library_index_validation_error(self, mock_glob, mock_read, mock_logger):
-        """Test validation failure returns failure count and logs the error."""
+        """Test validation failure logs the error and exits with code 1."""
         from jsonschema.exceptions import ValidationError
 
         index_directory = Path("/test/indexes/faults")
@@ -78,13 +78,14 @@ class TestLoadAndValidateLibraryIndex(unittest.TestCase):
         mock_validator.validate = Mock(side_effect=validation_error)
 
         with patch("validate_library_indexes.Draft202012Validator", return_value=mock_validator):
-            failures = validate_library_indexes.load_and_validate_library_index(
-                mock_registry,
-                index_directory,
-                schema_file
-            )
+            with self.assertRaises(SystemExit) as ctx:
+                validate_library_indexes.load_and_validate_library_index(
+                    mock_registry,
+                    index_directory,
+                    schema_file
+                )
 
-        self.assertEqual(failures, 1)
+        self.assertEqual(ctx.exception.code, 1)
         mock_logger.exception.assert_called()
 
     @patch("validate_library_indexes.logger")
@@ -152,7 +153,6 @@ class TestMain(unittest.TestCase):
             Path("/test/schemas/library/index/waiter.json")
         ]
         mock_rglob.return_value = schema_files
-        mock_validate.return_value = 0
 
         # Mock schema content
         schema_data = {
@@ -190,7 +190,6 @@ class TestMain(unittest.TestCase):
         # Mock schema files
         mock_rglob.return_value = [Path("/test/schemas/test.json")]
         mock_read.return_value = json.dumps({"type": "object"})
-        mock_validate.return_value = 0
 
         with patch("validate_library_indexes.Registry") as mock_registry_class:
             mock_registry = Mock()
@@ -218,30 +217,6 @@ class TestMain(unittest.TestCase):
 
     @patch("validate_library_indexes.load_and_validate_library_index")
     @patch("validate_library_indexes.logger")
-    @patch.object(Path, "read_text")
-    @patch.object(Path, "rglob")
-    @patch("sys.argv", ["script.py",
-                        "--library_index_directory", "/test/indexes",
-                        "--schemas_directory", "/test/schemas"])
-    def test_main_exits_nonzero_on_validation_failure(self, mock_rglob, mock_read, mock_logger, mock_validate):
-        """Test main exits with code 1 when any index fails validation."""
-        mock_rglob.return_value = []
-        # First library type returns 1 failure, rest return 0
-        mock_validate.side_effect = [1, 0, 0, 0]
-
-        with patch("validate_library_indexes.Registry") as mock_registry_class:
-            mock_registry = Mock()
-            mock_registry.with_resource = Mock(return_value=mock_registry)
-            mock_registry_class.return_value = mock_registry
-
-            with patch("validate_library_indexes.Resource"):
-                with self.assertRaises(SystemExit) as ctx:
-                    validate_library_indexes.main()
-
-        self.assertEqual(ctx.exception.code, 1)
-
-    @patch("validate_library_indexes.load_and_validate_library_index")
-    @patch("validate_library_indexes.logger")
     @patch.object(Path, "rglob")
     @patch("sys.argv", ["script.py",
                         "--library_index_directory", "/test/indexes",
@@ -249,7 +224,6 @@ class TestMain(unittest.TestCase):
     def test_main_handles_schema_file_name_conversion(self, mock_rglob, mock_logger, mock_validate):
         """Test main function correctly converts library type names to schema file names."""
         mock_rglob.return_value = []
-        mock_validate.return_value = 0
 
         with patch("validate_library_indexes.Registry") as mock_registry_class:
             mock_registry = Mock()
@@ -276,8 +250,8 @@ class TestIntegration(unittest.TestCase):
     @patch("validate_library_indexes.logger")
     @patch.object(Path, "read_text")
     @patch.object(Path, "glob")
-    def test_full_validation_flow(self, mock_glob, mock_read, mock_logger):
-        """Test complete validation flow from index to schema."""
+    def test_full_validation_flow_exits_on_invalid_index(self, mock_glob, mock_read, mock_logger):
+        """Test that validation exits with code 1 on the first invalid index."""
         from jsonschema.exceptions import ValidationError
 
         index_directory = Path("/test/indexes/scenarios")
@@ -318,22 +292,16 @@ class TestIntegration(unittest.TestCase):
         mock_validator.validate = Mock(side_effect=[None, validation_error])
 
         with patch("validate_library_indexes.Draft202012Validator", return_value=mock_validator):
-            failures = validate_library_indexes.load_and_validate_library_index(
-                mock_registry,
-                index_directory,
-                schema_file
-            )
+            with self.assertRaises(SystemExit) as ctx:
+                validate_library_indexes.load_and_validate_library_index(
+                    mock_registry,
+                    index_directory,
+                    schema_file
+                )
 
-        self.assertEqual(failures, 1)
-
-        # Verify both indexes were validated
+        self.assertEqual(ctx.exception.code, 1)
         self.assertEqual(mock_validator.validate.call_count, 2)
-
-        # Verify info log was called for both files
-        self.assertEqual(mock_logger.info.call_count, 2)
-
-        # Verify exception log was called once for the invalid index
-        self.assertEqual(mock_logger.exception.call_count, 1)
+        mock_logger.exception.assert_called_once()
 
 
 if __name__ == "__main__":
