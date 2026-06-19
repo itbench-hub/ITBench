@@ -2,7 +2,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 # Add parent directory to path to import the module under test
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -54,7 +54,7 @@ class TestLoadAndValidateLibraryIndex(unittest.TestCase):
     @patch.object(Path, "read_text")
     @patch.object(Path, "glob")
     def test_load_and_validate_library_index_validation_error(self, mock_glob, mock_read, mock_logger):
-        """Test validation failure with ValidationError."""
+        """Test validation failure logs the error and exits with code 1."""
         from jsonschema.exceptions import ValidationError
 
         index_directory = Path("/test/indexes/faults")
@@ -78,13 +78,14 @@ class TestLoadAndValidateLibraryIndex(unittest.TestCase):
         mock_validator.validate = Mock(side_effect=validation_error)
 
         with patch("validate_library_indexes.Draft202012Validator", return_value=mock_validator):
-            validate_library_indexes.load_and_validate_library_index(
-                mock_registry,
-                index_directory,
-                schema_file
-            )
+            with self.assertRaises(SystemExit) as ctx:
+                validate_library_indexes.load_and_validate_library_index(
+                    mock_registry,
+                    index_directory,
+                    schema_file
+                )
 
-        # Verify exception log was called
+        self.assertEqual(ctx.exception.code, 1)
         mock_logger.exception.assert_called()
 
     @patch("validate_library_indexes.logger")
@@ -249,8 +250,8 @@ class TestIntegration(unittest.TestCase):
     @patch("validate_library_indexes.logger")
     @patch.object(Path, "read_text")
     @patch.object(Path, "glob")
-    def test_full_validation_flow(self, mock_glob, mock_read, mock_logger):
-        """Test complete validation flow from index to schema."""
+    def test_full_validation_flow_exits_on_invalid_index(self, mock_glob, mock_read, mock_logger):
+        """Test that validation exits with code 1 on the first invalid index."""
         from jsonschema.exceptions import ValidationError
 
         index_directory = Path("/test/indexes/scenarios")
@@ -291,20 +292,16 @@ class TestIntegration(unittest.TestCase):
         mock_validator.validate = Mock(side_effect=[None, validation_error])
 
         with patch("validate_library_indexes.Draft202012Validator", return_value=mock_validator):
-            validate_library_indexes.load_and_validate_library_index(
-                mock_registry,
-                index_directory,
-                schema_file
-            )
+            with self.assertRaises(SystemExit) as ctx:
+                validate_library_indexes.load_and_validate_library_index(
+                    mock_registry,
+                    index_directory,
+                    schema_file
+                )
 
-        # Verify both indexes were validated
+        self.assertEqual(ctx.exception.code, 1)
         self.assertEqual(mock_validator.validate.call_count, 2)
-
-        # Verify info log was called for both files
-        self.assertEqual(mock_logger.info.call_count, 2)
-
-        # Verify exception log was called once for the invalid index
-        self.assertEqual(mock_logger.exception.call_count, 1)
+        mock_logger.exception.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import argparse
 import json
 import logging
+import sys
 
 from pathlib import Path
 
@@ -28,6 +29,7 @@ def load_and_validate_library_index(registry: Registry, index_directory: Path, s
             validator.validate(index)
         except ValidationError as e:
             logger.exception(f"validation failed: {e}")
+            sys.exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description="Generate schemas from library indexes")
