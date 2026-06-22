@@ -1,13 +1,13 @@
 # ITBench
 
-**[Paper](./it_bench_arxiv.pdf) | [Leaderboard](#leaderboard) | [Scenarios](#scenarios) | [Agents](#agents) | [How to Cite](#how-to-cite) | [Contributors](./CONTRIBUTORS.md) | [Contacts](#contacts)**
+**[Paper](./it_bench_arxiv.pdf) | [Leaderboard](#leaderboard) | [Scenarios](#scenarios) | [Agents](#agents) | [Related Benchmarks](#related-benchmarks) | [How to Cite](#how-to-cite) | [Contributors](./CONTRIBUTORS.md) | [Contacts](#contacts)**
 
 ---
 
 ## 📢 Announcements
 
 ### Latest Updates
-- **[January 21, 2026]** IBM Research has published the **Enterprise Agents and Benchmarks** collection on Hugging Face, featuring ITBench alongside other enterprise AI agent ecosystems and benchmarks. [View the collection](https://huggingface.co/collections/ibm-research/enterprise-agents-and-benchmarks).
+- **[January 21, 2026]** IBM Research has published the **Enterprise Agents and Benchmarks** collection on Hugging Face, featuring ITBench alongside other enterprise AI agent ecosystems and benchmarks — including the new sibling project **[AssetOpsBench](https://github.com/IBM/AssetOpsBench)** for industrial asset operations & maintenance. [View the collection](https://huggingface.co/collections/ibm-research/enterprise-agents-and-benchmarks) · See the new [Related Benchmarks](#related-benchmarks) section below.
 - **[December 19, 2025]** UC Berkeley's MAST team published a blog post analyzing ITBench SRE agent traces using MAST (Multi-Agent System Failure Taxonomy), revealing structured failure signatures that explain *how* and *why* agents fail. [Read more](https://ucb-mast.notion.site/).
 - **[December 2, 2025]** ITBench is now available on Kaggle! IBM has partnered with Kaggle to launch new AI leaderboards for enterprise tasks, including ITBench. [Read more](https://research.ibm.com/blog/ibm-kaggle-leaderboards-enterprise-ai).
 - **[November 30, 2025]** A big shoutout to [@phylisscity](https://github.com/phylisscity), [@preespp](https://github.com/preespp), [@tylrnguyen](https://github.com/tylrnguyen), [@VincentCCandela](https://github.com/VincentCCandela), and [@RMalone8](https://github.com/RMalone8) from Boston University for their contributions to ITBench, and to [@Red-GV](https://github.com/Red-GV) for mentoring them!
@@ -106,6 +106,19 @@ Two baseline agents are being open-sourced with ITBench, built using the **CrewA
 |-------|------------|
 | **SRE Agent** | [itbench-sre-agent](https://github.com/itbench-hub/ITBench-CISO-SRE-FinOps-Agent) |
 | **CISO Agent** | [itbench-ciso-caa-agent](https://github.com/itbench-hub/ITBench-CISO-CAA-Agent) |
+
+---
+
+## Related Benchmarks
+
+ITBench is part of IBM Research's **[Enterprise Agents and Benchmarks](https://huggingface.co/collections/ibm-research/enterprise-agents-and-benchmarks)** collection on Hugging Face — a family of open benchmarks for evaluating AI agents on enterprise tasks. If you are working across this ecosystem, you may also be interested in:
+
+| Benchmark | Focus | Repository |
+|-----------|-------|------------|
+| **ITBench** | IT automation: SRE, CISO (compliance & security), FinOps | [itbench-hub/ITBench](https://github.com/itbench-hub/ITBench) |
+| **AssetOpsBench** | Industrial asset operations & maintenance (Industry 4.0); LLMs + Time Series Foundation Models over sensor data, FMEA, and work orders | [IBM/AssetOpsBench](https://github.com/IBM/AssetOpsBench) |
+
+Both projects share a common goal: providing reproducible scenarios and evaluation pipelines for domain-specific AI agents on real-world enterprise workflows.
 
 ---
 
