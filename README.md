@@ -118,10 +118,6 @@ ITBench is part of IBM Research's **[Enterprise Agents and Benchmarks](https://h
 | **ITBench** | IT automation: SRE, CISO (compliance & security), FinOps | [itbench-hub/ITBench](https://github.com/itbench-hub/ITBench) |
 | **AssetOpsBench** | Industrial asset operations & maintenance (Industry 4.0); LLMs + Time Series Foundation Models over sensor data, FMEA, and work orders | [IBM/AssetOpsBench](https://github.com/IBM/AssetOpsBench) |
 
-Both projects share a common goal: providing reproducible scenarios and evaluation pipelines for domain-specific AI agents on real-world enterprise workflows.
-
----
-
 ## How to Cite
 
 ```bibtex
