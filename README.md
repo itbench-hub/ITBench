@@ -1,6 +1,6 @@
 # ITBench
 
-**[Paper](./it_bench_arxiv.pdf) | [Leaderboard](#leaderboard) | [Scenarios](#scenarios) | [Agents](#agents) | [How to Cite](#how-to-cite) | [Contributors](./CONTRIBUTORS.md) | [Contacts](#contacts)**
+**[Paper](./it_bench_arxiv.pdf) | [Leaderboard](#leaderboard) | [Scenarios](#scenarios) | [Agents](#agents) | [Related Benchmarks](#related-benchmarks) | [How to Cite](#how-to-cite) | [Contributors](./CONTRIBUTORS.md) | [Contacts](#contacts)**
 
 ---
 
@@ -109,6 +109,15 @@ Two baseline agents are being open-sourced with ITBench, built using the **CrewA
 | **CISO Agent** | [itbench-ciso-caa-agent](https://github.com/itbench-hub/ITBench-CISO-CAA-Agent) |
 
 ---
+
+## Related Benchmarks
+
+ITBench is part of IBM Research's **[Enterprise Agents and Benchmarks](https://huggingface.co/collections/ibm-research/enterprise-agents-and-benchmarks)** collection on Hugging Face, a family of open benchmarks for evaluating AI agents on enterprise tasks. This collection aims to provide reproducible scenarios and evaluation pipelines for domain-specific AI agents on real-world enterprise workflows. For information on these and other related projects, please see the table below:
+
+| Benchmark | Focus | Repository |
+|-----------|-------|------------|
+| **ITBench** | IT automation: SRE, CISO (compliance & security), FinOps | [itbench-hub/ITBench](https://github.com/itbench-hub/ITBench) |
+| **AssetOpsBench** | Industrial asset operations & maintenance (Industry 4.0); LLMs + Time Series Foundation Models over sensor data, FMEA, and work orders | [IBM/AssetOpsBench](https://github.com/IBM/AssetOpsBench) |
 
 ## How to Cite
 
