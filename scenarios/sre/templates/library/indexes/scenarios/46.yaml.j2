@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `postgresql` service not having enough resources.
+disruptions:
+- injections:
+  - args:
+      container:
+        name: postgresql
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: postgresql
+          namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+    id: insufficient-kubernetes-workload-container-resources
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 46
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

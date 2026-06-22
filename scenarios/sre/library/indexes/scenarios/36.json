@@ -1,0 +1,56 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [
+        "HighRequestErrorRate"
+    ],
+    "category": "sre",
+    "complexity": "medium",
+    "description": "This scenario simulates BookInfo's `details` service being unable to accept traffic due to a misconfigured service.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "v1",
+                            "kind": "Service",
+                            "metadata": {
+                                "name": "details",
+                                "namespace": "book-info"
+                            }
+                        }
+                    },
+                    "id": "invalid-kubernetes-service-selector"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "book-info"
+            }
+        ]
+    },
+    "id": 36,
+    "index": 36,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n book-info edit service details",
+                        "text": "Manually edit the manifest and replace the selector with the correct value."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Deployment",
+        "Networking"
+    ]
+}

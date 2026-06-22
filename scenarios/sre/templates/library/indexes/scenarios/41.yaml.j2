@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: low
+description: This scenario simulates the OpenTelemetry Demo's `cart` service consuming most of the node's available memory.
+disruptions:
+- injections:
+  - args:
+      container:
+        name: cart
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: cart
+          namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+    id: unassigned-kubernetes-workload-container-resource-limits
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: cart-stress-chaos-memory
+          namespace: {{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}
+      scheduleSpec:
+        stressChaos:
+          duration: 55s
+          mode: all
+          selector:
+            labelSelectors:
+              app.kubernetes.io/component: cart
+            namespaces:
+            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+          stressors:
+            memory:
+              size: 85%
+              workers: 10
+        type: StressChaos
+    id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 41
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 1
+- disruptionIndex: 0
+  injectionIndex: 0

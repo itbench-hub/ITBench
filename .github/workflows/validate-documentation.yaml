@@ -1,0 +1,27 @@
+name: Validate ITBench documentation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - scenarios/sre/library/**
+      - scenarios/sre/scripts/generate_library_*.py
+      - scenarios/sre/scripts/validate_library_*.py
+      - scenarios/sre/templates/documentation/**
+      - scenarios/sre/templates/library/**
+      - scenarios/sre/templates/schemas/**
+
+jobs:
+  validate-library:
+    name: Validate documents
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - uses: astral-sh/setup-uv@v8.2.0
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Run validation scripts
+        run: |
+          make -C scenarios/sre validate-library

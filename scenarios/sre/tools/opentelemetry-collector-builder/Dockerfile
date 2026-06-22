@@ -1,6 +1,6 @@
-FROM registry.access.redhat.com/ubi10-minimal:10.2-1779862102 AS certs
+FROM registry.access.redhat.com/ubi10-minimal:10.2-1781509346 AS certs
 
-FROM registry.access.redhat.com/ubi10/go-toolset:1.26.2-1779974565 AS builder
+FROM registry.access.redhat.com/ubi10/go-toolset:1.26.3-1782117301 AS builder
 
 ENV CGO_ENABLED=0
 
@@ -11,9 +11,9 @@ COPY go.sum go.sum
 
 RUN go mod download
 
-COPY manafest.yaml manafest.yaml
+COPY builder-config.yaml builder-config.yaml
 
-RUN go tool builder --config manafest.yaml
+RUN go tool builder --config builder-config.yaml
 
 FROM gcr.io/distroless/static-debian13:nonroot
 

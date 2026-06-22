@@ -3,7 +3,7 @@
 
 # Deleted Kubernetes Service
 
-| [Source](../../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/30.yaml) | [Schema](../../../schemas/json/faults/deleted-kubernetes-service.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_deleted_kubernetes_service.yaml) | Kubernetes | Deployment, Networking |
+| [Source](../../../../scenarios/sre/library/indexes/faults/deleted-kubernetes-service.json) | [Schema](../../../../schemas/json/faults/deleted-kubernetes-service.json) | [Implementation](../../../../scenarios/sre/project/roles/faults/tasks/inject_deleted_kubernetes_service.yaml) | Kubernetes | Deployment, Networking |
 
 This fault deletes the services attached to a Kubernetes workload, preventing other workloads from being able to communicate with it.
 

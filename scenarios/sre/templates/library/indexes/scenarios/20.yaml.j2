@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: low
+description: This scenario simulates the OpenTelemetry Demo's `product-catalog` service using the wrong image.
+disruptions:
+- injections:
+  - args:
+      container:
+        name: product-catalog
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: product-catalog
+          namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+    id: nonexistent-kubernetes-workload-container-image
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 20
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

@@ -3,32 +3,16 @@
   ansible.builtin.set_fact:
     scenarios_scenario: |-
       {{
-        lookup(
-          'ansible.builtin.file',
-          [directory_path, 'scenario.yaml'] | ansible.builtin.path_join
-        ) |
+        lookup("ansible.builtin.file", scenario_path) |
         ansible.builtin.from_yaml
       }}
     scenarios_ground_truth: |-
       {{
-        lookup(
-          'ansible.builtin.file',
-          [directory_path, 'groundtruth.yaml'] | ansible.builtin.path_join
-        ) |
+        lookup("ansible.builtin.file", ground_truth_path) |
         ansible.builtin.from_yaml
       }}
   vars:
-    directory_path: |-
-      {{
-        [
-          role_path,
-          "files",
-          [
-            'scenario',
-            scenarios_identifier
-          ] | ansible.builtin.join('_')
-        ] |
-        ansible.builtin.path_join
-      }}
+    ground_truth_path: files/scenario_{{ scenarios_identifier }}/groundtruth.yaml
+    scenario_path: files/scenario_{{ scenarios_identifier }}/scenario.yaml
   tags:
     - always

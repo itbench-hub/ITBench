@@ -1,93 +1,29 @@
 ---
-- name: Import documentation role
-  ansible.builtin.import_role:
-    name: documentation
-    tasks_from: load
-
-- name: Generate faults library index-task map
-  ansible.builtin.set_fact:
-    faults_library_map: |-
-      {{
-        faults_library_map |
-        ansible.builtin.default({}) |
-        ansible.builtin.combine(
-          {
-            fault.id: {
-              "taskFile": task_file
-            }
-          }
-        )
-      }}
-  loop: "{{ documentation_library_index.faults }}"
-  loop_control:
-    label: fault/{{ fault.id }}
-    loop_var: fault
+- name: Generate files from templates
   vars:
-    task_file: inject_{{ fault.id | ansible.builtin.replace('-', '_') }}.yaml
+    faults: "{{ generator_library_index.faults }}"
+  block:
+    - name: Create faults roles meta argument specs file
+      ansible.builtin.template:
+        dest: "{{ [role_path, 'meta', 'argument_specs.yaml'] | ansible.builtin.path_join }}"
+        mode: "0644"
+        src: templates/meta/argument_specs.j2
 
-- name: Create faults library index-task map file
-  ansible.builtin.copy:
-    content: |+
-      {{
-        faults_library_map |
-        ansible.builtin.to_nice_json
-      }}
-    dest: |-
-      {{
-        [
-          role_path,
-          "files",
-          "library",
-          "map.json"
-        ] |
-        ansible.builtin.path_join
-      }}
-    mode: "0644"
+    - name: Create faults `task_files` variable
+      ansible.builtin.template:
+        dest: "{{ [role_path, 'vars', 'main', 'task_files.yaml'] | ansible.builtin.path_join }}"
+        mode: "0644"
+        src: templates/vars/task_files.j2
 
-- name: Create faults roles meta argument specs file
-  ansible.builtin.copy:
-    content: |-
-      {{
-        lookup('ansible.builtin.template', 'templates/meta/argument_specs.j2') |
-        ansible.builtin.from_yaml |
-        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
-      }}
-    dest: |-
-      {{
-        [
-          role_path,
-          "meta",
-          "argument_specs.yaml"
-        ] |
-        ansible.builtin.path_join
-      }}
-    mode: "0644"
-
-- name: Create fault injection tasks files
-  ansible.builtin.copy:
-    content: |
-      ---
-      - name: Include fault argument validation tasks
-        ansible.builtin.include_tasks:
-          file: validate_fault_arguments.yaml
-
-      - name: Print message
-        ansible.builtin.debug:
-          msg: This fault injection ({{ fault.id }}) is unimplemented.
-    dest: |-
-      {{
-        [
-          role_path,
-          "tasks",
-          task_file_name
-        ] |
-        ansible.builtin.path_join
-      }}
-    force: false
-    mode: "0644"
-  loop: "{{ documentation_library_index.faults }}"
-  loop_control:
-    label: fault/{{ fault.id }}
-    loop_var: fault
-  vars:
-    task_file_name: inject_{{ fault.id | ansible.builtin.replace('-', '_') }}.yaml
+    - name: Create faults unimplemeneted injection task
+      ansible.builtin.template:
+        dest: "{{ [role_path, 'tasks', task_file_name] | ansible.builtin.path_join }}"
+        force: false
+        mode: "0644"
+        src: templates/tasks/inject_unimplemented.j2
+      loop: "{{ faults }}"
+      loop_control:
+        label: fault/{{ fault.id }}
+        loop_var: fault
+      vars:
+        task_file_name: inject_{{ fault.id | ansible.builtin.replace('-', '_') }}.yaml

@@ -33,7 +33,8 @@
 
 - name: Create new fault index
   ansible.builtin.copy:
-    content: |-
+    content: |+
+      # yaml-language-server: $schema=../../../../../../schemas/json/library/index/fault.json
       {{
         fault |
         ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
@@ -42,13 +43,12 @@
       {{
         [
           playbook_dir,
-          "roles",
-          "documentation",
-          "files",
+          "..",
+          "templates",
           "library",
-          "faults",
           "indexes",
-          index ~ ".yaml"
+          "faults",
+          index ~ ".yaml.j2"
         ] |
         ansible.builtin.path_join
       }}
@@ -70,12 +70,8 @@
     index: |-
       {{
         (
-          generator_fault_index_files.files |
-          map(attribute="path") |
-          map("ansible.builtin.basename") |
-          map("ansible.builtin.splitext") |
-          map("ansible.builtin.first") |
-          map("ansible.builtin.int") |
+          generator_library_index.faults |
+          map(attribute="index") |
           ansible.builtin.max
         ) +
         (
@@ -88,8 +84,8 @@
     msg:
       - The new fault ({{ generator_fault_name.user_input }}) has been generated.
       - Please edit the file located at the path below to complete the fault.
-      - "{{ generator_fault_path.dest }}"
+      - "{{ generator_fault_path.dest | ansible.builtin.realpath }}"
       - ""
-      - Once done, use `make generate-docs` and `make validate-docs` to complete the generation and verification of the fault.
+      - Once done, use `make generate-library` and `make validate-library` to complete the generation and verification of the fault.
       - ""
       - Once verified, use `make generate-resource-files` to create the implementation file(s) and add the implementation.

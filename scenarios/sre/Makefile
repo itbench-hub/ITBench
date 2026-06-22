@@ -1,14 +1,12 @@
 UV = $(shell which uv)
 
-PYTHON = $(shell $(UV) python find)
-
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 .PHONY: group-vars
 group-vars: ## Generates the group variables
-	echo "---\nansible_python_interpreter: $(PYTHON)" > inventory/group_vars/all/python.yaml
+	echo "---\nansible_python_interpreter: $(shell $(UV) python find)" > inventory/group_vars/all/python.yaml
 	cp inventory/group_vars/all/storage.yaml.example inventory/group_vars/all/storage.yaml
 	cp inventory/group_vars/environment/applications.yaml.example inventory/group_vars/environment/applications.yaml
 	cp inventory/group_vars/environment/cluster.yaml.example inventory/group_vars/environment/cluster.yaml
@@ -18,10 +16,20 @@ group-vars: ## Generates the group variables
 	cp inventory/group_vars/runner/github.yaml.example inventory/group_vars/runner/github.yaml
 	cp inventory/group_vars/runner/stack.yaml.example inventory/group_vars/runner/stack.yaml
 
-.PHONY: generate-docs
-generate-docs: ## Generates library indexes, schemas, and other related documentation
-	$(UV) run ansible-playbook -i inventory project/manage_documentation.yaml --tags "generate_docs"
-	$(UV) run ansible-lint project/roles/documentation/files --fix
+.PHONY: generate-library
+generate-library: ## Generates library indexes, schemas, and other related documentation
+	$(UV) run scripts/generate_library_indexes.py \
+		--templates_directory=$(abspath ./templates/library/indexes) \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--playbooks_directory=$(abspath ./project)
+	$(UV) run scripts/generate_library_index_schemas.py \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--schemas_directory=$(abspath ../../schemas/json) \
+		--templates_directory=$(abspath ./templates/schemas/json/library/index)
+	$(UV) run scripts/generate_library_readmes.py \
+		--templates_directory=$(abspath ./templates/documentation/library) \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--documentation_directory=$(abspath ../../documentation/library)
 
 .PHONY: generate-fault-index
 generate-fault-index: ## Generate a new fault index based on user input
@@ -34,11 +42,13 @@ generate-scenario-index: ## Generate a new scenario index based on user input
 .PHONY: generate-resource-files
 generate-resource-files: ## Generates task files, scenario manifests, and other related files
 	$(UV) run ansible-playbook -i inventory project/manage_resource_files.yaml --tags "generate_files"
-	$(UV) run ansible-lint project/roles/scenarios/files project/roles/scenarios/meta project/roles/waiters/meta project/roles/faults/meta project/roles/awx/meta --fix
+	$(UV) run ansible-lint project/roles/scenarios/files --fix
 
-.PHONY: validate-docs
-validate-docs: ## Validates library indexes
-	$(UV) run ansible-playbook -i inventory project/manage_documentation.yaml --tags "validate_docs"
+.PHONY: validate-library
+validate-library: ## Validates library indexes
+	$(UV) run scripts/validate_library_indexes.py \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--schemas_directory=$(abspath ../../schemas/json)
 
 .PHONY: deploy-tools
 deploy-tools: ## Deploys the observability and fault tools to cluster
@@ -101,8 +111,8 @@ endif
 .PHONY: inject-scenario-faults
 inject-scenario-faults: ## Injects the fault used in a specific scenario
 ifdef SCENARIO_NUMBER
-	$(PYTHON) scripts/inject_scenario_faults.py \
-		--private_project_directory $(shell pwd) \
+	$(UV) run scripts/inject_scenario_faults.py \
+		--private_project_directory $(abspath .) \
 		--scenario_id $(SCENARIO_NUMBER)
 else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
@@ -203,7 +213,7 @@ test-network-gateway: ## Run tool gateway network tests
 
 .PHONY: test-scripts
 test-scripts: ## Run unit tests for Python scripts
-	$(PYTHON) -m unittest discover -s scripts/unittests -p "test_*.py"
+	$(UV) run python -m unittest discover -s scripts/unittests -p "test_*.py"
 
 .PHONY: generate-agent-bundle
 generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with

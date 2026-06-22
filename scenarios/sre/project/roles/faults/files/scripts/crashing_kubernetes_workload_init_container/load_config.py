@@ -2,7 +2,7 @@ import json
 import os
 import sys
 
-def main()
+def main():
     try:
         with open(os.path.expanduser("~/config/config.json"), "r") as f:
             data = json.load(f)
