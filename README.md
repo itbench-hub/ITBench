@@ -111,7 +111,7 @@ Two baseline agents are being open-sourced with ITBench, built using the **CrewA
 
 ## Related Benchmarks
 
-ITBench is part of IBM Research's **[Enterprise Agents and Benchmarks](https://huggingface.co/collections/ibm-research/enterprise-agents-and-benchmarks)** collection on Hugging Face — a family of open benchmarks for evaluating AI agents on enterprise tasks. If you are working across this ecosystem, you may also be interested in:
+ITBench is part of IBM Research's **[Enterprise Agents and Benchmarks](https://huggingface.co/collections/ibm-research/enterprise-agents-and-benchmarks)** collection on Hugging Face, a family of open benchmarks for evaluating AI agents on enterprise tasks. This collection aims to provide reproducible scenarios and evaluation pipelines for domain-specific AI agents on real-world enterprise workflows. For information on these and other related projects, please see the table below:
 
 | Benchmark | Focus | Repository |
 |-----------|-------|------------|
