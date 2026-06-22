@@ -7,7 +7,8 @@
 ## 📢 Announcements
 
 ### Latest Updates
-
+- **[May 27, 2026]** Artificial Analysis and IBM Research launched **ITBench-AA**, the first in a new series of benchmarks evaluating frontier models on agentic enterprise IT tasks—starting with 59 SRE tasks where all evaluated models score below 50%, with FinOps and CISO tasks to follow. [View the evaluation](https://artificialanalysis.ai/evaluations/itbench-aa).
+- **[January 21, 2026]** IBM Research has published the **Enterprise Agents and Benchmarks** collection on Hugging Face, featuring ITBench alongside other enterprise AI agent ecosystems and benchmarks. [View the collection](https://huggingface.co/collections/ibm-research/enterprise-agents-and-benchmarks).
 - **[December 19, 2025]** UC Berkeley's MAST team published a blog post analyzing ITBench SRE agent traces using MAST (Multi-Agent System Failure Taxonomy), revealing structured failure signatures that explain *how* and *why* agents fail. [Read more](https://ucb-mast.notion.site/).
 - **[December 2, 2025]** ITBench is now available on Kaggle! IBM has partnered with Kaggle to launch new AI leaderboards for enterprise tasks, including ITBench. [Read more](https://research.ibm.com/blog/ibm-kaggle-leaderboards-enterprise-ai).
 - **[November 30, 2025]** A big shoutout to [@phylisscity](https://github.com/phylisscity), [@preespp](https://github.com/preespp), [@tylrnguyen](https://github.com/tylrnguyen), [@VincentCCandela](https://github.com/VincentCCandela), and [@RMalone8](https://github.com/RMalone8) from Boston University for their contributions to ITBench, and to [@Red-GV](https://github.com/Red-GV) for mentoring them!
