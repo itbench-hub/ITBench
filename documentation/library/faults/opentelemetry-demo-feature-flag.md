@@ -3,7 +3,7 @@
 
 # OpenTelemetry Demo Feature Flag
 
-| [Source](../../../../scenarios/sre/library/indexes/faults/opentelemetry-demo-feature-flag.json) | [Schema](../../../../schemas/json/faults/opentelemetry-demo-feature-flag.json) | [Implementation](../../../../scenarios/sre/project/roles/faults/tasks/inject_opentelemetry_demo_feature_flag.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/library/indexes/faults/opentelemetry-demo-feature-flag.json) | [Schema](../../../schemas/json/faults/opentelemetry-demo-feature-flag.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_opentelemetry_demo_feature_flag.yaml) | Kubernetes | Deployment, Performance |
 
 This fault activates an implemented fault in the OpenTelemetry Demo.
 

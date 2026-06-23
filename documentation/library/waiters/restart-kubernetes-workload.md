@@ -3,6 +3,6 @@
 
 # Restart Kubernetes Workload
 
-| [Source](../../../../scenarios/sre/library/indexes/waiters/restart-kubernetes-workload.json) | [Schema](../../../../schemas/json/waiters/restart-kubernetes-workload.json) | Kubernetes |
+| [Source](../../../scenarios/sre/library/indexes/waiters/restart-kubernetes-workload.json) | [Schema](../../../schemas/json/waiters/restart-kubernetes-workload.json) | Kubernetes |
 
 Waits for a Kubernetes workload to be restarted.

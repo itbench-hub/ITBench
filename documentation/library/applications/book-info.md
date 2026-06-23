@@ -3,7 +3,7 @@
 
 # Book Info
 
-| [Source](../../../../scenarios/sre/library/indexes/applications/book-info.json) | [Schema](../../../../schemas/json/applications/book-info.json) | [Repository](https://github.com/istio/istio) | Kubernetes |
+| [Source](../../../scenarios/sre/library/indexes/applications/book-info.json) | [Schema](../../../schemas/json/applications/book-info.json) | [Repository](https://github.com/istio/istio) | Kubernetes |
 
 This microservice application is primarily used to showcase the capabitlities of Istio.
 

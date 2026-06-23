@@ -3,7 +3,7 @@
 
 # OpenTelemetry Demo
 
-| [Source](../../../../scenarios/sre/library/indexes/applications/opentelemetry-demo.json) | [Schema](../../../../schemas/json/applications/opentelemetry-demo.json) | [Repository](https://github.com/open-telemetry/opentelemetry-demo) | Kubernetes |
+| [Source](../../../scenarios/sre/library/indexes/applications/opentelemetry-demo.json) | [Schema](../../../schemas/json/applications/opentelemetry-demo.json) | [Repository](https://github.com/open-telemetry/opentelemetry-demo) | Kubernetes |
 
 This microservice application is primarily used to showcase the capabitlities of OpenTelemetry.
 

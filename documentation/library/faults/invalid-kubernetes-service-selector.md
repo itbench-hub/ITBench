@@ -3,7 +3,7 @@
 
 # Invalid Kubernetes Service Selector
 
-| [Source](../../../../scenarios/sre/library/indexes/faults/invalid-kubernetes-service-selector.json) | [Schema](../../../../schemas/json/faults/invalid-kubernetes-service-selector.json) | [Implementation](../../../../scenarios/sre/project/roles/faults/tasks/inject_invalid_kubernetes_service_selector.yaml) | Kubernetes | Deployment, Networking |
+| [Source](../../../scenarios/sre/library/indexes/faults/invalid-kubernetes-service-selector.json) | [Schema](../../../schemas/json/faults/invalid-kubernetes-service-selector.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_invalid_kubernetes_service_selector.yaml) | Kubernetes | Deployment, Networking |
 
 This fault modifies an existing service's selector, causing the service to be unable to find its intended workload.
 

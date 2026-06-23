@@ -55,8 +55,8 @@ def create_applications_documentation(
             documentation_directory / f"{index_id}.md",
             template.render({
                 "application": index,
-                "source_file_path": f"../../../../scenarios/sre/library/indexes/applications/{index_id}.json",
-                "schema_file_path": f"../../../../schemas/json/applications/{index_id}.json"
+                "source_file_path": f"../../../scenarios/sre/library/indexes/applications/{index_id}.json",
+                "schema_file_path": f"../../../schemas/json/applications/{index_id}.json"
             })
         )
 
@@ -76,9 +76,9 @@ def create_faults_documentation(
             documentation_directory / f"{index_id}.md",
             template.render({
                 "fault": index,
-                "source_file_path": f"../../../../scenarios/sre/library/indexes/faults/{index_id}.json",
-                "schema_file_path": f"../../../../schemas/json/faults/{index_id}.json",
-                "implementation_file_path": f"../../../../scenarios/sre/project/roles/faults/tasks/inject_{index_id.replace('-', '_')}.yaml"
+                "source_file_path": f"../../../scenarios/sre/library/indexes/faults/{index_id}.json",
+                "schema_file_path": f"../../../schemas/json/faults/{index_id}.json",
+                "implementation_file_path": f"../../../scenarios/sre/project/roles/faults/tasks/inject_{index_id.replace('-', '_')}.yaml"
             })
         )
 
@@ -98,8 +98,8 @@ def create_waiters_documentation(
             documentation_directory / f"{index_id}.md",
             template.render({
                 "waiter": index,
-                "source_file_path": f"../../../../scenarios/sre/library/indexes/waiters/{index_id}.json",
-                "schema_file_path": f"../../../../schemas/json/waiters/{index_id}.json"
+                "source_file_path": f"../../../scenarios/sre/library/indexes/waiters/{index_id}.json",
+                "schema_file_path": f"../../../schemas/json/waiters/{index_id}.json"
             })
         )
 
