@@ -3,7 +3,7 @@
 
 # Valkey Workload Out of Memory
 
-| [Source](../../../../scenarios/sre/library/indexes/faults/valkey-workload-out-of-memory.json) | [Schema](../../../../schemas/json/faults/valkey-workload-out-of-memory.json) | [Implementation](../../../../scenarios/sre/project/roles/faults/tasks/inject_valkey_workload_out_of_memory.yaml) | Kubernetes | Deployment, Code |
+| [Source](../../../scenarios/sre/library/indexes/faults/valkey-workload-out-of-memory.json) | [Schema](../../../schemas/json/faults/valkey-workload-out-of-memory.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_valkey_workload_out_of_memory.yaml) | Kubernetes | Deployment, Code |
 
 This fault adds a code change to a Valkey workload. This modifies the container to also contain a process which will consume memory.
 

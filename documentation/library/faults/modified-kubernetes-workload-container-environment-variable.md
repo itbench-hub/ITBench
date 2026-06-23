@@ -3,7 +3,7 @@
 
 # Modified Kubernetes Workload Container Environment Variable
 
-| [Source](../../../../scenarios/sre/library/indexes/faults/modified-kubernetes-workload-container-environment-variable.json) | [Schema](../../../../schemas/json/faults/modified-kubernetes-workload-container-environment-variable.json) | [Implementation](../../../../scenarios/sre/project/roles/faults/tasks/inject_modified_kubernetes_workload_container_environment_variable.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/library/indexes/faults/modified-kubernetes-workload-container-environment-variable.json) | [Schema](../../../schemas/json/faults/modified-kubernetes-workload-container-environment-variable.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_modified_kubernetes_workload_container_environment_variable.yaml) | Kubernetes | Deployment, Performance |
 
 This fault overwrites an environment variable value with one provided in the argument.
 

@@ -3,7 +3,7 @@
 
 # Invalid Kubernetes Workload Container Command
 
-| [Source](../../../../scenarios/sre/library/indexes/faults/invalid-kubernetes-workload-container-command.json) | [Schema](../../../../schemas/json/faults/invalid-kubernetes-workload-container-command.json) | [Implementation](../../../../scenarios/sre/project/roles/faults/tasks/inject_invalid_kubernetes_workload_container_command.yaml) | Kubernetes | Deployment, Performance |
+| [Source](../../../scenarios/sre/library/indexes/faults/invalid-kubernetes-workload-container-command.json) | [Schema](../../../schemas/json/faults/invalid-kubernetes-workload-container-command.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_invalid_kubernetes_workload_container_command.yaml) | Kubernetes | Deployment, Performance |
 
 This fault injects an invalid command into a designated Kubernetes workload's container.
 

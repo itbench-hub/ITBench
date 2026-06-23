@@ -3,7 +3,7 @@
 
 # Valkey Workload Changed Password
 
-| [Source](../../../../scenarios/sre/library/indexes/faults/valkey-workload-changed-password.json) | [Schema](../../../../schemas/json/faults/valkey-workload-changed-password.json) | [Implementation](../../../../scenarios/sre/project/roles/faults/tasks/inject_valkey_workload_changed_password.yaml) | Kubernetes | Deployment, Authentication |
+| [Source](../../../scenarios/sre/library/indexes/faults/valkey-workload-changed-password.json) | [Schema](../../../schemas/json/faults/valkey-workload-changed-password.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_valkey_workload_changed_password.yaml) | Kubernetes | Deployment, Authentication |
 
 This fault changes the password of a Valkey workload.
 

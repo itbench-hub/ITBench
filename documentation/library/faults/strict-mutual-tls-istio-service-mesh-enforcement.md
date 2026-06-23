@@ -3,7 +3,7 @@
 
 # Strict Mutual TLS Istio Service Mesh Enforcement
 
-| [Source](../../../../scenarios/sre/library/indexes/faults/strict-mutual-tls-istio-service-mesh-enforcement.json) | [Schema](../../../../schemas/json/faults/strict-mutual-tls-istio-service-mesh-enforcement.json) | [Implementation](../../../../scenarios/sre/project/roles/faults/tasks/inject_strict_mutual_tls_istio_service_mesh_enforcement.yaml) | Kubernetes | Deployment, Networking |
+| [Source](../../../scenarios/sre/library/indexes/faults/strict-mutual-tls-istio-service-mesh-enforcement.json) | [Schema](../../../schemas/json/faults/strict-mutual-tls-istio-service-mesh-enforcement.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_strict_mutual_tls_istio_service_mesh_enforcement.yaml) | Kubernetes | Deployment, Networking |
 
 This fault injects a policy which causes the affected workload to be unable to communicate with other pods in the service mesh.
 
