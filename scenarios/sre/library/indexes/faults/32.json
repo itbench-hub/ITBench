@@ -1,0 +1,91 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/fault.json",
+    "alerts": {
+        "application": [
+            "KubePodNotReady"
+        ]
+    },
+    "arguments": {
+        "jsonSchema": {
+            "properties": {
+                "kubernetesObject": {
+                    "properties": {
+                        "apiVersion": {
+                            "enum": [
+                                "apps/v1"
+                            ],
+                            "type": "string"
+                        },
+                        "kind": {
+                            "enum": [
+                                "StatefulSet"
+                            ],
+                            "type": "string"
+                        },
+                        "metadata": {
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "namespace": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "namespace"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "apiVersion",
+                        "kind",
+                        "metadata"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "kubernetesObject"
+            ],
+            "type": "object"
+        }
+    },
+    "description": "This fault fills the etcd database storage by creating a large number of ConfigMaps, pushing etcd usage past its quota threshold. This simulates real-world incidents where etcd storage exhaustion causes the API server to reject writes, leading to cluster-wide degradation or complete outage.",
+    "expectation": "The etcd database will approach or exceed its storage quota. The Kubernetes API server will begin rejecting mutating requests.",
+    "id": "exhausted-etcd-database-storage",
+    "index": 32,
+    "name": "Exhausted Etcd Database Storage",
+    "platform": "Kubernetes",
+    "resources": [
+        "https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/",
+        "https://etcd.io/docs/v3.5/op-guide/maintenance/",
+        "https://kubernetes.io/docs/concepts/overview/components/#etcd",
+        "https://kubernetes.io/docs/tasks/debug/debug-cluster/"
+    ],
+    "solutions": {
+        "templates": [
+            {
+                "steps": [
+                    {
+                        "text": "Compact and defragment the etcd database to reclaim storage space."
+                    },
+                    {
+                        "text": "Remove unnecessary resources (completed jobs, orphaned ConfigMaps) to reduce etcd storage usage."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "text": "Increase the etcd storage quota if the current limit is too low for the cluster workload."
+                    }
+                ]
+            }
+        ]
+    },
+    "tags": [
+        "Performance"
+    ]
+}
