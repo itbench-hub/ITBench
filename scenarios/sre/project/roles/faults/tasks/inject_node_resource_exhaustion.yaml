@@ -1,0 +1,43 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Inject excessive resource requests
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+      kind: "{{ faults_kubernetes_object.kind }}"
+      metadata:
+        name: "{{ faults_kubernetes_object.metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ faults_kubernetes_object.metadata.name }}"
+                resources:
+                  requests:
+                    memory: "64Gi"
+                    cpu: "32"
+    state: patched
+
+- name: Wait for pods to be in Pending state
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: Pod
+    namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+    label_selectors:
+      - "app={{ faults_kubernetes_object.metadata.name }}"
+  register: faults_resource_pods
+  until:
+    - faults_resource_pods.resources | length > 0
+    - >-
+      faults_resource_pods.resources |
+      selectattr('status.phase', 'equalto', 'Pending') |
+      list |
+      length > 0
+  retries: 15
+  delay: 10
