@@ -1,0 +1,21 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve ConfigMaps
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: ConfigMap
+        namespace: exhausted-etcd-database-storage-test
+        label_selectors:
+          - app=etcd-storage-fill
+      register: faults_configmaps
+
+    - name: Validate ConfigMaps were created
+      ansible.builtin.assert:
+        that:
+          - faults_configmaps.resources | length > 0
+        fail_msg: No fill ConfigMaps found. Fault injection may have failed.
+        success_msg: ConfigMaps created successfully for etcd storage pressure.
