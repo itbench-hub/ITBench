@@ -1,0 +1,46 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Update workload containers
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+      kind: "{{ faults_kubernetes_object.kind }}"
+      metadata:
+        name: "{{ faults_kubernetes_object.metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ faults_container.name }}"
+                command:
+                  - invalid-command
+    state: patched
+
+- name: Wait for pod to enter CrashLoopBackOff
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: v1
+    kind: Pod
+    namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+    label_selectors:
+      - "app={{ faults_kubernetes_object.metadata.name }}"
+  register: faults_crashing_pods
+  until:
+    - faults_crashing_pods.resources | length > 0
+    - >-
+      faults_crashing_pods.resources |
+      map(attribute='status') |
+      map(attribute='containerStatuses', default=[]) |
+      flatten |
+      selectattr('name', 'equalto', faults_container.name) |
+      selectattr('state.waiting.reason', 'defined') |
+      selectattr('state.waiting.reason', 'in', ['CrashLoopBackOff', 'Error']) |
+      list |
+      length > 0
+  retries: 20
+  delay: 15
