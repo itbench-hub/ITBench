@@ -47,3 +47,4 @@ _For statistics on the distrubution spread of scenarios, please see [here](./sta
 | [102](./sre/102.md) | sre | medium |
 | [105](./sre/105.md) | sre | medium |
 | [114](./sre/114.md) | sre | low |
+| [118](./sre/118.md) | sre | high |

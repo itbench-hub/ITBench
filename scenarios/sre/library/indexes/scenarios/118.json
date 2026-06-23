@@ -1,0 +1,67 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [
+        "KubePodNotReady",
+        "HighRequestErrorRate"
+    ],
+    "category": "sre",
+    "complexity": "high",
+    "description": "This scenario simulates a cluster availability loss by cordoning worker nodes and evicting the OpenTelemetry Demo's `checkout` service.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "checkout",
+                                "namespace": "otel-demo"
+                            }
+                        }
+                    },
+                    "id": "cluster-availability-loss"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 118,
+    "index": 118,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl get nodes",
+                        "text": "Identify which worker nodes are cordoned."
+                    },
+                    {
+                        "text": "Uncordon all affected worker nodes to restore scheduling."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "text": "Investigate the root cause of the cluster unavailability before uncordoning."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Deployment",
+        "Performance"
+    ]
+}

@@ -1,0 +1,21 @@
+---
+- name: Remove fault objects
+  hosts:
+    - localhost
+  tasks:
+    - name: Get all nodes
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Node
+      register: all_nodes
+
+    - name: Uncordon all nodes
+      ansible.builtin.command:
+        cmd: >-
+          kubectl --kubeconfig={{ cluster.kubeconfig }}
+          uncordon {{ item.metadata.name }}
+      loop: "{{ all_nodes.resources }}"
+      loop_control:
+        label: "{{ item.metadata.name }}"
+      when: item.spec.unschedulable | default(false)

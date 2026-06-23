@@ -1,0 +1,83 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-118
+spec:
+  alerts:
+    - group_id: checkout-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Pod checkout in namespace otel-demo has been in a non-ready state due to nodes being cordoned and pods evicted to Pending
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in service frontend in namespace otel-demo is elevated due to checkout service unavailability
+  groups:
+    - id: checkout-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - checkout\b
+      root_cause: true
+    - id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - checkout-.*
+    - id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - checkout\b
+    - id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - frontend\b
+    - id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - frontend-.*
+  aliases:
+    - - checkout-deployment-1
+      - checkout-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+  propagations:
+    - source: checkout-deployment-1
+      target: checkout-pod-1
+      condition: Nodes cordoned causing checkout pods to be evicted
+      effect: Checkout pods stuck in Pending state with no schedulable nodes available
+    - source: checkout-pod-1
+      target: checkout-service-1
+      condition: Checkout pods are in Pending state with no healthy containers
+      effect: Checkout service has no ready endpoints and cannot serve requests
+    - source: checkout-service-1
+      target: frontend-service-1
+      condition: Frontend service depends on checkout service for order processing
+      effect: Frontend experiences errors when calling checkout service, increasing error rate
+  fault:
+    - category: Cordon
+      condition: Nodes cordoned causing pod eviction and inability to reschedule
+      entity:
+        group_id: checkout-deployment-1
+        kind: Deployment
+        name: checkout
+      fault_mechanism: Cluster availability loss via node cordoning simulating node drain or maintenance event leaving pods unschedulable
+  recommendedActions:
+    - solution:
+        actions:
+          - Identify cordoned nodes using kubectl get nodes and check for SchedulingDisabled status
+          - Uncordon the affected nodes using kubectl uncordon <node-name>
+          - Verify checkout pods transition from Pending to Running state
+          - Confirm checkout service has healthy endpoints and frontend errors resolve
+        id: uncordon-nodes
+    - solution:
+        actions:
+          - Add additional nodes to the cluster to provide scheduling capacity
+          - Verify checkout pods are scheduled and running on new nodes
+        id: add-cluster-capacity

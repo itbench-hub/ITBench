@@ -7,6 +7,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 
 | Name | Platform |
 | --- | --- |
+| [Cluster Availability Loss](./cluster-availability-loss.md) | Kubernetes |
 | [Cordoned Kubernetes Worker Node](./cordoned-kubernetes-worker-node.md) | Kubernetes |
 | [Crashing Kubernetes Workload Init Container](./crashing-kubernetes-workload-init-container.md) | Kubernetes |
 | [Deleted Kubernetes Service](./deleted-kubernetes-service.md) | Kubernetes |
