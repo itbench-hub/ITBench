@@ -1,0 +1,72 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-123
+spec:
+  alerts:
+    - group_id: load-generator-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Pod load-generator in namespace otel-demo has been terminated due to deployment scaled to zero replicas
+    - group_id: frontend-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Frontend service receives no synthetic traffic as load-generator is unavailable, creating a monitoring blind spot
+  groups:
+    - id: load-generator-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - load-generator\b
+      root_cause: true
+    - id: load-generator-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - load-generator-.*
+    - id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - frontend\b
+    - id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - frontend-.*
+  aliases:
+    - - load-generator-deployment-1
+      - load-generator-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+  propagations:
+    - source: load-generator-deployment-1
+      target: load-generator-pod-1
+      condition: Load-generator deployment scaled to zero replicas
+      effect: All load-generator pods are terminated, synthetic traffic generation stops completely
+    - source: load-generator-pod-1
+      target: frontend-service-1
+      condition: No load-generator pods running to send synthetic monitoring traffic
+      effect: Frontend service and all downstream services receive no synthetic requests, monitoring probes go silent and real issues may go undetected
+  fault:
+    - category: Scale
+      condition: Deployment replicas set to zero causing complete loss of synthetic monitoring traffic
+      entity:
+        group_id: load-generator-deployment-1
+        kind: Deployment
+        name: load-generator
+      fault_mechanism: Monitoring probe failure via zero-replica scaling simulating accidental scale-down of synthetic traffic generator leaving services unmonitored
+  recommendedActions:
+    - solution:
+        actions:
+          - Scale load-generator deployment back using kubectl scale deployment/load-generator --replicas=1 -n otel-demo
+          - Verify load-generator pod starts and begins sending synthetic traffic
+          - Confirm monitoring dashboards and alerts resume receiving request data
+        id: restore-replicas
+    - solution:
+        actions:
+          - Restart load-generator deployment using kubectl rollout restart deployment/load-generator -n otel-demo
+          - Monitor pod status for successful startup
+          - Verify synthetic traffic is flowing to frontend and downstream services
+        id: restart-deployment

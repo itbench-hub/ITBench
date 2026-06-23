@@ -23,6 +23,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Misconfigured Kubernetes Workload Container Readiness Probe](./misconfigured-kubernetes-workload-container-readiness-probe.md) | Kubernetes |
 | [Modified Kubernetes Workload Container Environment Variable](./modified-kubernetes-workload-container-environment-variable.md) | Kubernetes |
 | [Modified Target Port Kubernetes Service](./modified-target-port-kubernetes-service.md) | Kubernetes |
+| [Monitoring Probe Failure](./monitoring-probe-failure.md) | Kubernetes |
 | [Nonexistent Kubernetes Workload Container Image](./nonexistent-kubernetes-workload-container-image.md) | Kubernetes |
 | [Nonexistent Kubernetes Workload Node](./nonexistent-kubernetes-workload-node.md) | Kubernetes |
 | [Nonexistent Kubernetes Workload Persistent Volume Claim](./nonexistent-kubernetes-workload-persistent-volume-claim.md) | Kubernetes |
