@@ -1,0 +1,67 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [
+        "HighRequestErrorRate"
+    ],
+    "category": "sre",
+    "complexity": "medium",
+    "description": "This scenario simulates a breaking configuration change on the OpenTelemetry Demo's `cart` service by injecting an invalid environment variable.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "container": {
+                            "name": "cart"
+                        },
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "cart",
+                                "namespace": "otel-demo"
+                            }
+                        }
+                    },
+                    "id": "breaking-configuration-change"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 119,
+    "index": 119,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                        "text": "Revert the last change done to the workload manifest."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                        "text": "Manually edit the manifest and replace the environment variable with the correct value."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Code",
+        "Deployment"
+    ]
+}

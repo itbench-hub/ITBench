@@ -1,0 +1,80 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-119
+spec:
+  alerts:
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in service frontend in namespace otel-demo is elevated due to cart service returning errors from corrupted configuration
+  groups:
+    - id: cart-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - cart\b
+      root_cause: true
+    - id: cart-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - cart-.*
+    - id: cart-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - cart\b
+    - id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - frontend\b
+    - id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - frontend-.*
+  aliases:
+    - - cart-deployment-1
+      - cart-pod-1
+    - - cart-service-1
+      - cart-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+  propagations:
+    - source: cart-deployment-1
+      target: cart-pod-1
+      condition: Environment variable OTEL_EXPORTER_OTLP_ENDPOINT set to nonexistent collector address
+      effect: Cart pod starts but experiences errors when attempting to export telemetry to invalid endpoint
+    - source: cart-pod-1
+      target: cart-service-1
+      condition: Cart pod is running but returning error responses due to corrupted configuration
+      effect: Cart service returns errors to callers on cart operations
+    - source: cart-service-1
+      target: frontend-service-1
+      condition: Frontend service depends on cart service for shopping cart functionality
+      effect: Frontend experiences errors when calling cart service, increasing error rate
+  fault:
+    - category: Modify
+      condition: Environment variable OTEL_EXPORTER_OTLP_ENDPOINT corrupted to point to nonexistent collector
+      entity:
+        group_id: cart-deployment-1
+        kind: Deployment
+        name: cart
+      fault_mechanism: Configuration corruption via environment variable modification simulating bad configuration push or misconfigured deployment
+  recommendedActions:
+    - solution:
+        actions:
+          - Inspect cart deployment environment variables using kubectl describe deployment/cart -n otel-demo
+          - Identify the corrupted OTEL_EXPORTER_OTLP_ENDPOINT value
+          - Fix the environment variable to point to the correct collector endpoint
+          - Restart the deployment and verify cart service recovers
+        id: fix-environment-variable
+    - solution:
+        actions:
+          - Rollback the deployment using kubectl rollout undo deployment/cart -n otel-demo
+          - Verify cart pods return to healthy state
+          - Confirm frontend error rate returns to normal
+        id: rollback-deployment

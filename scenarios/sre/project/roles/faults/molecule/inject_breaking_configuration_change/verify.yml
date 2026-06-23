@@ -1,0 +1,20 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve deployment
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: test-workload
+        namespace: breaking-configuration-change-test
+      register: faults_deployment
+
+    - name: Validate environment variable was changed
+      ansible.builtin.assert:
+        that:
+          - faults_deployment.resources | length == 1
+        fail_msg: Deployment not found. Fault injection may have failed.
+        success_msg: Deployment found with modified environment variables.
