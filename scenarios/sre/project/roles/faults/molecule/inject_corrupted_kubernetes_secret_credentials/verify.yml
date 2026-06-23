@@ -1,0 +1,21 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve secret
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Secret
+        name: test-secret
+        namespace: corrupted-kubernetes-secret-credentials-test
+      register: faults_secret
+
+    - name: Validate secret data was corrupted
+      ansible.builtin.assert:
+        that:
+          - faults_secret.resources | length == 1
+          - faults_secret.resources[0].data.password == "aW52YWxpZC1jcmVkZW50aWFscw=="
+        fail_msg: Secret was not corrupted. Fault injection failed.
+        success_msg: Secret data successfully corrupted with invalid credentials.

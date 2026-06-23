@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-120
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: email-service-secret
+                namespace: otel-demo
+          id: corrupted-kubernetes-secret-credentials
+  tools:
+    sre:
+      enabled: true
