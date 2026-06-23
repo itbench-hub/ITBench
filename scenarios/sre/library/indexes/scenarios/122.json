@@ -1,0 +1,67 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [
+        "HighRequestErrorRate"
+    ],
+    "category": "sre",
+    "complexity": "medium",
+    "description": "This scenario simulates a release pipeline failure by injecting an invalid image into the OpenTelemetry Demo's `shipping` service.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "container": {
+                            "name": "shipping"
+                        },
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "shipping",
+                                "namespace": "otel-demo"
+                            }
+                        }
+                    },
+                    "id": "failed-release-pipeline-service"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 122,
+    "index": 122,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                        "text": "Revert the deployment to the previous working image."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} set image {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} {{ args.container.name }}=correct-image:latest",
+                        "text": "Set the container image to the correct version."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Code",
+        "Deployment"
+    ]
+}

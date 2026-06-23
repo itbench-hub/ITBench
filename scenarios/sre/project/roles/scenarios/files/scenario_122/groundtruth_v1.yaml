@@ -1,0 +1,88 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-122
+spec:
+  alerts:
+    - group_id: shipping-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Pod shipping in namespace otel-demo has been in a non-ready state due to container image pull failure (ImagePullBackOff)
+    - group_id: shipping-pod-1
+      id: KubeContainerWaiting
+      metadata:
+        description: Container in pod shipping in namespace otel-demo is stuck in Waiting state due to ImagePullBackOff
+    - group_id: checkout-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in service checkout in namespace otel-demo is elevated due to shipping service unavailability
+  groups:
+    - id: shipping-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - shipping\b
+      root_cause: true
+    - id: shipping-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - shipping-.*
+    - id: shipping-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - shipping\b
+    - id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - checkout\b
+    - id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - checkout-.*
+  aliases:
+    - - shipping-deployment-1
+      - shipping-pod-1
+    - - shipping-service-1
+      - shipping-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+  propagations:
+    - source: shipping-deployment-1
+      target: shipping-pod-1
+      condition: Container image set to nonexistent image tag or registry path
+      effect: Shipping pod enters ImagePullBackOff as kubelet cannot pull the specified container image
+    - source: shipping-pod-1
+      target: shipping-service-1
+      condition: Shipping pod is stuck in ImagePullBackOff with no running containers
+      effect: Shipping service has no ready endpoints and cannot serve requests
+    - source: shipping-service-1
+      target: checkout-service-1
+      condition: Checkout service depends on shipping service for shipping cost calculation and order fulfillment
+      effect: Checkout service experiences errors when calling shipping service, increasing error rate
+  fault:
+    - category: Modify
+      condition: Container image changed to nonexistent image causing ImagePullBackOff
+      entity:
+        group_id: shipping-deployment-1
+        kind: Deployment
+        name: shipping
+      fault_mechanism: Failed release pipeline via invalid container image simulating bad CI/CD deployment with wrong image tag or deleted registry artifact
+  recommendedActions:
+    - solution:
+        actions:
+          - Check pod events using kubectl describe pod -l app=shipping -n otel-demo for image pull errors
+          - Identify the incorrect container image in the deployment spec
+          - Update the container image to the correct tag using kubectl set image deployment/shipping shipping=<correct-image> -n otel-demo
+          - Verify shipping pod transitions to Running state
+        id: fix-container-image
+    - solution:
+        actions:
+          - Rollback the deployment using kubectl rollout undo deployment/shipping -n otel-demo
+          - Verify shipping pod starts with the previous working image
+          - Confirm checkout service error rate returns to normal
+        id: rollback-deployment

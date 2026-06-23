@@ -1,0 +1,103 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/fault.json",
+    "alerts": {
+        "goldenSignal": [
+            "HighRequestErrorRate"
+        ]
+    },
+    "arguments": {
+        "jsonSchema": {
+            "properties": {
+                "container": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name"
+                    ],
+                    "type": "object"
+                },
+                "kubernetesObject": {
+                    "properties": {
+                        "apiVersion": {
+                            "enum": [
+                                "apps/v1"
+                            ],
+                            "type": "string"
+                        },
+                        "kind": {
+                            "enum": [
+                                "Deployment"
+                            ],
+                            "type": "string"
+                        },
+                        "metadata": {
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "namespace": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "namespace"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "apiVersion",
+                        "kind",
+                        "metadata"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "kubernetesObject",
+                "container"
+            ],
+            "type": "object"
+        }
+    },
+    "description": "This fault modifies a release pipeline service's container to use an invalid image tag, simulating real-world incidents where release signing failures or broken trusted task lists prevent software from being released.",
+    "expectation": "The release pipeline service will fail to start due to the invalid image. Dependent release workflows will stall.",
+    "id": "failed-release-pipeline-service",
+    "index": 38,
+    "name": "Failed Release Pipeline Service",
+    "platform": "Kubernetes",
+    "resources": [
+        "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
+        "https://kubernetes.io/docs/concepts/containers/images/",
+        "https://kubernetes.io/docs/tasks/debug/debug-application/",
+        "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/"
+    ],
+    "solutions": {
+        "templates": [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout undo {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                        "text": "Revert the deployment to the previous working image."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} set image {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} {{ args.container.name }}=correct-image:latest",
+                        "text": "Set the container image to the correct version."
+                    }
+                ]
+            }
+        ]
+    },
+    "tags": [
+        "Code",
+        "Deployment"
+    ]
+}

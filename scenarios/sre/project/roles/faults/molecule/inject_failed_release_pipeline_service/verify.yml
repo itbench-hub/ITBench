@@ -1,0 +1,21 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve pods
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Pod
+        namespace: failed-release-pipeline-service-test
+        label_selectors:
+          - app=test-workload
+      register: faults_pods
+
+    - name: Validate pod has image pull error
+      ansible.builtin.assert:
+        that:
+          - faults_pods.resources | length > 0
+        fail_msg: No pods found. Fault injection may have failed.
+        success_msg: Pod found in expected ImagePullBackOff state.

@@ -1,0 +1,48 @@
+---
+- name: Create test resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Create test namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: failed-release-pipeline-service-test
+        state: present
+
+    - name: Create test deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-workload
+            namespace: failed-release-pipeline-service-test
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: test-workload
+            template:
+              metadata:
+                labels:
+                  app: test-workload
+              spec:
+                containers:
+                  - name: server
+                    image: registry.access.redhat.com/ubi10-minimal:10.2-1781509346
+                    command:
+                      - /bin/sh
+                    args:
+                      - -c
+                      - "sleep infinity"
+                    ports:
+                      - containerPort: 8080
+                        name: http
+        state: present
+        wait: true
+        wait_timeout: 120
