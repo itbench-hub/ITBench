@@ -1,0 +1,64 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [
+        "KubePodNotReady"
+    ],
+    "category": "sre",
+    "complexity": "medium",
+    "description": "This scenario simulates a pipeline controller failure by scaling the OpenTelemetry Demo's `kafka` deployment to zero replicas, causing downstream services that depend on event processing to stall.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "kafka",
+                                "namespace": "otel-demo"
+                            }
+                        }
+                    },
+                    "id": "stalled-pipeline-controller"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 117,
+    "index": 117,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} scale {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} --replicas=1",
+                        "text": "Scale the pipeline controller deployment back to at least 1 replica."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout restart {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                        "text": "Restart the pipeline controller deployment to recover from a stuck state."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Deployment",
+        "Performance"
+    ]
+}

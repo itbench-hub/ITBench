@@ -1,0 +1,103 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-117
+spec:
+  alerts:
+    - group_id: kafka-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Kafka pod in namespace otel-demo has been terminated due to deployment scaled to zero replicas
+    - group_id: accounting-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Accounting service receives no events as Kafka message broker is unavailable
+    - group_id: fraud-service-1
+      id: NoRequestsReceived
+      metadata:
+        description: Fraud detection service receives no events as Kafka message broker is unavailable
+  groups:
+    - id: kafka-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - kafka\b
+      root_cause: true
+    - id: kafka-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - kafka-.*
+    - id: kafka-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - kafka\b
+    - id: accounting-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - accounting\b
+    - id: accounting-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - accounting-.*
+    - id: fraud-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - fraud.*
+    - id: fraud-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - fraud.*
+  aliases:
+    - - kafka-deployment-1
+      - kafka-pod-1
+    - - kafka-service-1
+      - kafka-pod-1
+    - - accounting-service-1
+      - accounting-pod-1
+    - - fraud-service-1
+      - fraud-pod-1
+  propagations:
+    - source: kafka-deployment-1
+      target: kafka-pod-1
+      condition: Kafka deployment scaled to zero replicas simulating controller failure
+      effect: All Kafka pods are terminated, message broker becomes completely unavailable
+    - source: kafka-pod-1
+      target: kafka-service-1
+      condition: No Kafka pods running to serve as endpoints
+      effect: Kafka service has no ready endpoints, all connections to the message broker fail
+    - source: kafka-service-1
+      target: accounting-service-1
+      condition: Accounting service consumes events from Kafka for order processing
+      effect: Accounting service cannot consume events, order processing stalls
+    - source: kafka-service-1
+      target: fraud-service-1
+      condition: Fraud detection service consumes events from Kafka for transaction analysis
+      effect: Fraud detection service cannot consume events, transaction monitoring stalls
+  fault:
+    - category: Scale
+      condition: Deployment replicas set to zero causing complete service unavailability
+      entity:
+        group_id: kafka-deployment-1
+        kind: Deployment
+        name: kafka
+      fault_mechanism: Controller unavailability via zero-replica scaling simulating pipeline controller failure
+  recommendedActions:
+    - solution:
+        actions:
+          - Scale Kafka deployment back using kubectl scale deployment/kafka --replicas=1 -n otel-demo
+          - Verify Kafka pods are running and ready
+          - Confirm downstream services resume event processing
+        id: restore-replicas
+    - solution:
+        actions:
+          - Restart Kafka deployment using kubectl rollout restart deployment/kafka -n otel-demo
+          - Monitor pod status for successful startup
+          - Verify event consumers reconnect successfully
+        id: restart-deployment

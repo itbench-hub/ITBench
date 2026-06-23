@@ -30,6 +30,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | [Priority Kubernetes Workload Priority Preemption](./priority-kubernetes-workload-priority-preemption.md) | Kubernetes |
 | [Scaled To Zero Kubernetes Workload](./scaled-to-zero-kubernetes-workload.md) | Kubernetes |
 | [Scheduled Chaos Mesh Experiment](./scheduled-chaos-mesh-experiment.md) | Kubernetes |
+| [Stalled Pipeline Controller](./stalled-pipeline-controller.md) | Kubernetes |
 | [Strict Mutual TLS Istio Service Mesh Enforcement](./strict-mutual-tls-istio-service-mesh-enforcement.md) | Kubernetes |
 | [Traffic Denying Istio Gateway Authorization Policy](./traffic-denying-istio-gateway-authorization-policy.md) | Kubernetes |
 | [Unassigned Kubernetes Workload Container Resource Limits](./unassigned-kubernetes-workload-container-resource-limits.md) | Kubernetes |

@@ -1,0 +1,21 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve deployment
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: test-workload
+        namespace: stalled-pipeline-controller-test
+      register: faults_deployment
+
+    - name: Validate deployment is scaled to zero
+      ansible.builtin.assert:
+        that:
+          - faults_deployment.resources | length == 1
+          - faults_deployment.resources[0].spec.replicas == 0
+        fail_msg: Deployment is not scaled to zero. Fault injection failed.
+        success_msg: Deployment successfully scaled to zero replicas.

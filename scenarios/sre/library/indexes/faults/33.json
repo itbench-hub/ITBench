@@ -1,0 +1,91 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/fault.json",
+    "alerts": {
+        "application": [
+            "KubePodNotReady"
+        ]
+    },
+    "arguments": {
+        "jsonSchema": {
+            "properties": {
+                "kubernetesObject": {
+                    "properties": {
+                        "apiVersion": {
+                            "enum": [
+                                "apps/v1"
+                            ],
+                            "type": "string"
+                        },
+                        "kind": {
+                            "enum": [
+                                "Deployment"
+                            ],
+                            "type": "string"
+                        },
+                        "metadata": {
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "namespace": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "namespace"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "apiVersion",
+                        "kind",
+                        "metadata"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "kubernetesObject"
+            ],
+            "type": "object"
+        }
+    },
+    "description": "This fault scales down a pipeline controller deployment to zero replicas, simulating a controller failure that prevents new pipeline runs from being processed.",
+    "expectation": "New pipeline runs will not be processed and will remain in a pending or queued state. Existing running pipelines may complete but no new work will be picked up.",
+    "id": "stalled-pipeline-controller",
+    "index": 33,
+    "name": "Stalled Pipeline Controller",
+    "platform": "Kubernetes",
+    "resources": [
+        "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
+        "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/deployment-v1/",
+        "https://tekton.dev/docs/pipelines/",
+        "https://kubernetes.io/docs/tasks/debug/debug-application/"
+    ],
+    "solutions": {
+        "templates": [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} scale {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }} --replicas=1",
+                        "text": "Scale the pipeline controller deployment back to at least 1 replica."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} rollout restart {{ args.kubernetesObject.kind | lower }}/{{ args.kubernetesObject.metadata.name }}",
+                        "text": "Restart the pipeline controller deployment to recover from a stuck state."
+                    }
+                ]
+            }
+        ]
+    },
+    "tags": [
+        "Deployment",
+        "Performance"
+    ]
+}

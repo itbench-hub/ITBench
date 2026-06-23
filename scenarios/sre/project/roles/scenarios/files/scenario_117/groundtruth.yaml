@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-117
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: kafka
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo scale deployment/kafka --replicas=1
+            text: Scale the pipeline controller deployment back to at least 1 replica.
+      - steps:
+          - command: kubectl -n otel-demo rollout restart deployment/kafka
+            text: Restart the pipeline controller deployment to recover from a stuck state.
