@@ -1,0 +1,68 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-404
+spec:
+  alerts:
+    - group_id: recommendation-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Recommendation service experiencing errors due to faulty container image
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend experiencing errors when calling failed recommendation service
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Frontend-proxy experiencing cascading errors from frontend failures
+  aliases:
+    - - recommendation-deployment-1
+      - recommendation-service-1
+    - - frontend-service-1
+    - - frontend-proxy-service-1
+  fault:
+    - category: Change
+      condition: Deployment updated with image that causes request errors
+      entity:
+        group_id: recommendation-deployment-1
+        kind: Deployment
+        name: recommendation
+      fault_mechanism: modify-kubernetes-workload-container-image
+  groups:
+    - filter:
+        - recommendation-.*
+      id: recommendation-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - recommendation\b
+      id: recommendation-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+  propagations:
+    - condition: Recommendation deployment updated with faulty container image
+      effect: Recommendation service returns errors for all requests
+      source: recommendation-deployment-1
+      target: recommendation-service-1
+    - condition: Recommendation service returning errors
+      effect: Frontend experiences errors when fetching recommendations
+      source: recommendation-service-1
+      target: frontend-service-1
+    - condition: Frontend experiencing errors from recommendation failures
+      effect: Frontend-proxy experiences cascading errors
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+  recommended_actions: []
