@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-116
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: StatefulSet
+              metadata:
+                name: etcd
+                namespace: otel-demo
+          id: exhausted-etcd-database-storage
+  tools:
+    sre:
+      enabled: true
