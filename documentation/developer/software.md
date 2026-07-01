@@ -72,6 +72,7 @@ For issues and support directly related to the software, it is often best to rea
 | Name | Repository |
 | --- | --- |
 | Altinity Clickhouse Operator | https://github.com/Altinity/clickhouse-operator |
+| cert-manager | https://github.com/cert-manager/cert-manager |
 | OpenTelemetry Operator | https://github.com/open-telemetry/opentelemetry-operator |
 | Prometheus Operator | https://github.com/prometheus-operator/prometheus-operator |
 
