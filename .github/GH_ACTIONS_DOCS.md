@@ -47,7 +47,7 @@ To onboard your agent and get started benchmarking, please follow the following 
     - The onboarding process will create a file called `agent-manifest.json` at the root of the repository, so if using an existing repository make sure that there will not be a clash.
 2. Install the [`ibm-itbench`](https://github.com/apps/ibm-itbench) app into the repository that you created in step 1.
 3. Fill out and submit [this issue template](https://github.com/jpwsutton/itbenchautomation/issues/new?template=onboarding.yaml) with the details of the agent you are developing and provide the URL to the GitHub Repo you created in step 1 e.g. https://github.com/jpwsutton/my-test-agent
-4. Once the registration issue has been approved, an automated process will generate a manifest for your agent to access the IT Bench Server and will save it to the root of your repository from step 1. You can now download this file and use it with the agent harness to initiate a benchmark. 
+4. Once the registration issue has been approved, an automated process will generate a manifest for your agent to access the IT Bench Server and will save it to the root of your repository from step 1. You can now download this file and use it with the agent harness to initiate a benchmark.
 
 
 ## Public Leaderboard updates
@@ -117,7 +117,7 @@ openssl s_client -showcerts  -connect tokyo-itbench-1.sl.cloud9.ibm.com:443 2>/d
 ```
 
 Setting up a self hosted runner is relatively straightforward to do:
-1. In the relevant GitHub Repository, go to Settings  -> Runners and follow the process to create and install a new self hosted runner either on your local machine or an appropritate server on the IBM Network. 
+1. In the relevant GitHub Repository, go to Settings  -> Runners and follow the process to create and install a new self hosted runner either on your local machine or an appropritate server on the IBM Network.
 2. Create a file on the same machine where the self hosted runner will run called `itbench_res.pem` and enter the ca certificate below:
 
 ```

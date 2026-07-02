@@ -1,5 +1,5 @@
 ## 📊 IT Bench Leaderboard (CISO)
-This leaderboard shows the performance of agents on CISO-related IT automation scenarios.  
+This leaderboard shows the performance of agents on CISO-related IT automation scenarios.
 For details on how to participate or interpret results, see the [README](../main/README.md).
 
 **Column Descriptions:**

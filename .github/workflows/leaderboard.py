@@ -145,7 +145,7 @@ def build_ciso_table(leaderboard) -> str:
     texts = []
     texts.append("## 📊 IT Bench Leaderboard (CISO)")
     header = """\
-This leaderboard shows the performance of agents on CISO-related IT automation scenarios.  
+This leaderboard shows the performance of agents on CISO-related IT automation scenarios.
 For details on how to participate or interpret results, see the [README](../main/README.md).
 
 **Column Descriptions:**
@@ -215,7 +215,7 @@ def build_sre_table(leaderboard) -> str:
     texts = []
     texts.append("## 📊 IT Bench Leaderboard (SRE)")
     header = f"""\
-This leaderboard shows the performance of agents on SRE-related IT automation scenarios.  
+This leaderboard shows the performance of agents on SRE-related IT automation scenarios.
 For details on how to participate or interpret results, see the [README](../main/README.md).
 
 **Column Descriptions:**

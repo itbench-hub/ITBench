@@ -1,5 +1,5 @@
-## 📊 IT Bench Leaderboard (SRE) 
-This leaderboard shows the performance of agents on SRE-related IT automation scenarios.  
+## 📊 IT Bench Leaderboard (SRE)
+This leaderboard shows the performance of agents on SRE-related IT automation scenarios.
 
 **Column Descriptions:**
 - *Diagnosis - NTAM Fault Localization*: Normalized Topology Aware Metric (NTAM) Average Fault Propagation Chain
