@@ -54,22 +54,31 @@ jobs:
       - uses: azure/setup-helm@v5.0.1
         with:
           version: v4.2.2
+      - uses: medyagh/setup-minikube@v0.0.21
+        with:
+          cache: false
+          cni: cilium
+          container-runtime: containerd
+          driver: docker
+          kubernetes-version: v1.35.0
+          minikube-version: 1.38.1
+          start: false
       - name: Install project dependencies
         run: |
           make deps
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
-      - name: Create Kind cluster
+      - name: Create Minikube cluster
         run: |
           make -C clusters/minikube create-simple-cluster
-      - name: Run Cloud Provider
+      - name: Start Minikube tunnel
         run: |
           make -C clusters/minikube start-simple-tunnel &
           sleep 10
       - name: Run connection tests
         run: |
           make -C scenarios/sre test-network-gateway
-      - name: Destroy Kind cluster
+      - name: Destroy Minikube cluster
         run: |
           make -C clusters/minikube destroy-simple-cluster
