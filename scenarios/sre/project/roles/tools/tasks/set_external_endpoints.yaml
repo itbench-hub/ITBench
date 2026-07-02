@@ -40,45 +40,17 @@
   delay: 15
   retries: 20
 
-- name: Extract Kubernetes Gateway address
+- name: Extract hostname address information
+  ansible.builtin.set_fact:
+    tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}
   when:
-    - tools_cluster.platform == "kubernetes"
-    - (tools_cluster.provider != "kind") or (tools_cluster.provider == "kind" and ansible_facts["system"] == "Linux")
-  block:
-    - name: Extract hostname address information
-      ansible.builtin.set_fact:
-        tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}
-      when:
-        - tools_istio_gateway.resources[0].status.addresses[0].type == "Hostname"
+    - tools_istio_gateway.resources[0].status.addresses[0].type == "Hostname"
 
-    - name: Extract ip address information
-      ansible.builtin.set_fact:
-        tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}:80
-      when:
-        - tools_istio_gateway.resources[0].status.addresses[0].type == "IPAddress"
-
-- name: Extract localhost address from container runtime
-  vars:
-    istio_gateway_service:
-      name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}-istio"
-      namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+- name: Extract ip address information
+  ansible.builtin.set_fact:
+    tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}:80
   when:
-    - tools_cluster.provider == "kind" and ansible_facts["system"] == "Darwin"
-  block:
-    - name: Fail playbook for `invalid network configuration` error
-      ansible.builtin.fail:
-        msg: "Network settings for cloud provider kind have not been provided."
-      when:
-        - tools_network_configuration is ansible.builtin.undefined
-        - tools_network_configuration.cloud_provider_kind is ansible.builtin.undefined
-        - tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace] is ansible.builtin.undefined
-        - tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name] is ansible.builtin.undefined
-
-    - name: Create localhost address based on service provider
-      ansible.builtin.set_fact:
-        tools_gateway_http_address: http://localhost:{{ service.host_port }}
-      vars:
-        service: "{{ tools_network_configuration.cloud_provider_kind[istio_gateway_service.namespace][istio_gateway_service.name] }}"
+    - tools_istio_gateway.resources[0].status.addresses[0].type == "IPAddress"
 
 - name: Fail playbook due to `no gateway address found` error
   ansible.builtin.fail:
