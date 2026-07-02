@@ -1,0 +1,109 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [
+        "KubePodNotReady"
+    ],
+    "category": "sre",
+    "complexity": "low",
+    "description": "This scenario simulates several OpenTelemetry Demo services being unable to scale up under increased load due to aggressively high HPA utilization thresholds.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "frontend",
+                                "namespace": "otel-demo"
+                            }
+                        }
+                    },
+                    "id": "aggressive-scaledown-kubernetes-horizontal-pod-autoscaler"
+                },
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "checkout",
+                                "namespace": "otel-demo"
+                            }
+                        }
+                    },
+                    "id": "aggressive-scaledown-kubernetes-horizontal-pod-autoscaler"
+                },
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "product-catalog",
+                                "namespace": "otel-demo"
+                            }
+                        }
+                    },
+                    "id": "aggressive-scaledown-kubernetes-horizontal-pod-autoscaler"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "args": {
+                    "autoscaling": {
+                        "kubernetes": {
+                            "hpa": true
+                        }
+                    }
+                },
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 115,
+    "index": 115,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n otel-demo edit horizontalpodautoscaler frontend",
+                        "text": "Manually edit the manifest and replace the utilization values with the correct values."
+                    }
+                ]
+            }
+        ],
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n otel-demo edit horizontalpodautoscaler checkout",
+                        "text": "Manually edit the manifest and replace the utilization values with the correct values."
+                    }
+                ]
+            }
+        ],
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n otel-demo edit horizontalpodautoscaler product-catalog",
+                        "text": "Manually edit the manifest and replace the utilization values with the correct values."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Deployment",
+        "Performance"
+    ]
+}

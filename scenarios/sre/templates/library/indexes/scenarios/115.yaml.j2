@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: low
+description: This scenario simulates several OpenTelemetry Demo services being unable to scale up under increased load due to aggressively high HPA utilization thresholds.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: frontend
+          namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+    id: aggressive-scaledown-kubernetes-horizontal-pod-autoscaler
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: checkout
+          namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+    id: aggressive-scaledown-kubernetes-horizontal-pod-autoscaler
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: product-catalog
+          namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+    id: aggressive-scaledown-kubernetes-horizontal-pod-autoscaler
+environment:
+  applications:
+  - args:
+      autoscaling:
+        kubernetes:
+          hpa: true
+    id: opentelemetry-demo
+id: 115
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0
+- disruptionIndex: 0
+  injectionIndex: 1
+- disruptionIndex: 0
+  injectionIndex: 2

@@ -1,0 +1,37 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Update autoscaler metrics and scale-down behavior
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+      kind: "{{ faults_kubernetes_object.kind }}"
+      metadata:
+        name: "{{ faults_kubernetes_object.metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+      spec:
+        metrics:
+          - type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 99
+          - type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 99
+        behavior:
+          scaleDown:
+            stabilizationWindowSeconds: 0
+            policies:
+              - type: Percent
+                value: 100
+                periodSeconds: 15
+            selectPolicy: Max
+    state: patched

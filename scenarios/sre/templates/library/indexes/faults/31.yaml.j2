@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/fault.json
+---
+alerts:
+  application:
+  - KubePodNotReady
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+            - apps/v1
+            type: string
+          kind:
+            enum:
+            - Deployment
+            - StatefulSet
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+            - name
+            - namespace
+            type: object
+        required:
+        - apiVersion
+        - kind
+        - metadata
+        type: object
+    required:
+    - kubernetesObject
+    type: object
+description: This fault misconfigures a horizontal pod autoscaler to make aggressive scale-down actions. Utilization thresholds are set to 99% so scale-up is almost never triggered. The scale-down policy is set to remove 100% of pods in 15 seconds with no stabilization window, so any brief dip in load immediately collapses the replica count. This simulates a cost-saving misconfiguration where an operator has tuned the HPA to keep as few pods as possible.
+expectation: The faulted autoscaler will aggressively scale the workload down to its minimum replica count whenever load briefly drops, then refuse to scale back up until utilization reaches 99%. During demand surges the workload will have too few pods to handle traffic, causing latency, timeouts, and service disruption.
+name: Aggressive Scaledown Kubernetes Horizontal Pod Autoscaler
+platform: Kubernetes
+resources:
+- https://kubernetes.io/docs/concepts/workloads/autoscaling/
+- https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+- https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/
+- https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/
+solutions:
+  templates:
+  - steps:
+    - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit horizontalpodautoscaler {{ args.kubernetesObject.metadata.name }}
+      text: Manually edit the manifest and replace the utilization values with the correct values.
+tags:
+- Deployment
+- Performance
