@@ -197,7 +197,8 @@ When using `make display-endpoints`, sometimes the value of the address given is
 
 1. The tool is not installed and thus was not connected to the gateway. To fix this, run `make deploy-tools` with the correct `SCENARIO_NUMBER` or `tools.yaml` group variable configuration.
 2. **Kind**: Cloud Provider Kind is not running. Please consult the [Troubleshooting section](../../clusters/kind/README.md#load-balancer-ip-address-is-unreacheable) for more information on how to fix this issue.
-3. **Cloud Provider**: Sometimes it takes some time for a cloud provider (ie: AWS, GCP, Azure, etc) to generate a domain name for the new load balancer. This should be made in time, but may need further debuging in their respective dashboards to fix.
+3. **Minikube**: Minikube is not running a tunnel for the cluster, thus an external IP address is not being generated.
+4. **Cloud Provider**: Sometimes it takes some time for a cloud provider (ie: AWS, GCP, Azure, etc) to generate a domain name for the new load balancer. This should be made in time, but may need further debuging in their respective dashboards to fix.
 
 ### Dashboard is unreachable
 

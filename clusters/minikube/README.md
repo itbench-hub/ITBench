@@ -158,4 +158,4 @@ This section will mainly highlight key issues that one may encounter when runnin
 "too many files open"
 ```
 
-**Solution:** Please refer to this [link](https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files).
+**Solution:** Please ensure that you have following the instructions during the RHEL set up highlighted [here](#installation).
