@@ -69,7 +69,7 @@ brew install openshift-cli
 make deps
 ```
 
-2. Create a Kubernetes cluster. ITBench offers setup help for running a cluster on a [local machine](../../clusters/kind/README.md) or on [AWS](../../clusters/kops/README.md).
+2. Create a Kubernetes cluster. ITBench offers setup help for running a cluster on a local machine with [Kind](../../clusters/kind/README.md) or [Minikube](../../clusters/minikube/README.md) or on [AWS](../../clusters/kops/README.md).
 
 3. Run the following command from the root directory, to go to the scenarios directory:
 ```shell

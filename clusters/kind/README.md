@@ -114,7 +114,7 @@ make create-awx-cluster
 
 2. Open a new terminal window and run the following command to start the Cloud Provider Kind
 ```shell
-sudo make run-service-provider
+make run-service-provider
 ```
 
 #### Deletion
@@ -137,7 +137,7 @@ make create-simple-cluster
 
 2. Open a new terminal window and run the following command to start the Cloud Provider Kind
 ```shell
-sudo make run-service-provider
+make run-service-provider
 ```
 
 #### Deletion
