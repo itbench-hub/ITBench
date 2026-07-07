@@ -1,0 +1,24 @@
+---
+- name: Destroy LoadBalancer services
+  hosts:
+    - localhost
+  tasks:
+    - name: Delete namespace lb-test-one
+      kubernetes.core.k8s:
+        kubeconfig: "{{ '~/.kube/config' | ansible.builtin.expanduser }}"
+        state: absent
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: lb-test-one
+
+    - name: Delete namespace lb-test-two
+      kubernetes.core.k8s:
+        kubeconfig: "{{ '~/.kube/config' | ansible.builtin.expanduser }}"
+        state: absent
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: lb-test-two

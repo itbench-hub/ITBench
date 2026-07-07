@@ -23,7 +23,7 @@
 ### MacOS ([Homebrew](https://brew.sh/))
 
 >[!IMPORTANT]
->Previous versions of ITBench used an older version of Cloud Provider Kind to provide IP addresses on MacOS. Since upgrading to v0.11.0 of this tool, this functionality is no longer possible as ITBench can use multiple gateways that ask for the same port (ie, Book Info). Thus, [**Minikube**](../minikube/README.md) is the new recommended development environment for MacOS. However, scenarios involving applications which do not creating additional gateways (ie, OpenTelemetry Demo) can still function as is on MacOS with the following information.
+>Previous versions of ITBench used an older version of Cloud Provider Kind to provide IP addresses on MacOS. Since upgrading to v0.11+ of this tool, this functionality is no longer possible as ITBench can use multiple gateways that ask for the same port (ie, Book Info). Thus, [**Minikube**](../minikube/README.md) is the now recommended development environment for MacOS. However, scenarios involving applications which do not creating additional gateways (ie, OpenTelemetry Demo) can still function as is on MacOS with the following information.
 
 1. Download the following packages
 ```shell

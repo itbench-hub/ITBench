@@ -1,0 +1,56 @@
+---
+- name: Create LoadBalancer services
+  hosts:
+    - localhost
+  tasks:
+    - name: Create namespace lb-test-one
+      kubernetes.core.k8s:
+        kubeconfig: "{{ '~/.kube/config' | ansible.builtin.expanduser }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: lb-test-one
+
+    - name: Create namespace lb-test-two
+      kubernetes.core.k8s:
+        kubeconfig: "{{ '~/.kube/config' | ansible.builtin.expanduser }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: lb-test-two
+
+    - name: Create LoadBalancer service in lb-test-one
+      kubernetes.core.k8s:
+        kubeconfig: "{{ '~/.kube/config' | ansible.builtin.expanduser }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: service-one
+            namespace: lb-test-one
+          spec:
+            type: LoadBalancer
+            ports:
+              - port: 80
+                targetPort: 8080
+
+    - name: Create LoadBalancer service in lb-test-two
+      kubernetes.core.k8s:
+        kubeconfig: "{{ '~/.kube/config' | ansible.builtin.expanduser }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: service-two
+            namespace: lb-test-two
+          spec:
+            type: LoadBalancer
+            ports:
+              - port: 80
+                targetPort: 8080

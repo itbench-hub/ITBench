@@ -1,5 +1,5 @@
-GO = $(shell which go)
-UV = $(shell which uv)
+GO := $(shell command -v go)
+UV := $(shell command -v uv)
 
 .PHONY: help
 help: ## Display this help.
@@ -12,28 +12,49 @@ lint: ## Lints files
 .PHONY: group-vars
 group-vars: ## Generates the group variables
 	mkdir -p inventory/group_vars/all
-	echo "ansible_python_interpreter: $(shell $(UV) python find)" > inventory/group_vars/all/ansible.yaml
+	echo "ansible_python_interpreter: $$($(UV) python find)" > inventory/group_vars/all/ansible.yaml
+
+.PHONY: check-resources
+check-resources:
+	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml \
+		--extra-vars "target=$(CLUSTER_TARGET)"
+
+.PHONY: create-cluster
+create-cluster:
+	$(GO) tool kind create cluster --config configs/$(CLUSTER_CONFIG_FILE)
+
+.PHONY: destroy-cluster
+destroy-cluster:
+	$(GO) tool kind delete cluster --name $(CLUSTER_NAME)
 
 .PHONY: create-simple-cluster
+create-simple-cluster: CLUSTER_CONFIG_FILE=simple.yaml
+create-simple-cluster: CLUSTER_TARGET=single-cluster
 create-simple-cluster: group-vars ## Creates a Kind cluster for local development
-	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml \
-		--extra-vars "target=single-cluster"
-	$(GO) tool kind create cluster --config configs/simple.yaml
+	$(MAKE) check-resources CLUSTER_TARGET=$(CLUSTER_TARGET)
+	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=$(CLUSTER_CONFIG_FILE)
 
 .PHONY: destroy-simple-cluster
+destroy-simple-cluster: CLUSTER_NAME=kind-dev
 destroy-simple-cluster: ## Deletes the local development Kind cluster
-	$(GO) tool kind delete cluster --name kind-dev
+	$(MAKE) destroy-cluster CLUSTER_NAME=$(CLUSTER_NAME)
 
 .PHONY: create-awx-cluster
+create-awx-cluster: CLUSTER_CONFIG_FILE=awx.yaml
+create-awx-cluster: CLUSTER_TARGET=awx-stack
 create-awx-cluster: group-vars ## Create a Kind cluster for local development on AWX
-	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml \
-		--extra-vars "target=awx-stack"
-	$(GO) tool kind create cluster --config configs/awx.yaml
+	$(MAKE) check-resources CLUSTER_TARGET=$(CLUSTER_TARGET)
+	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=$(CLUSTER_CONFIG_FILE)
 
 .PHONY: destroy-awx-cluster
+destroy-awx-cluster: CLUSTER_NAME=kind-awx
 destroy-awx-cluster: ## Deletes the local development AWX Kind cluster
-	$(GO) tool kind delete cluster --name kind-awx
+	$(MAKE) destroy-cluster CLUSTER_NAME=$(CLUSTER_NAME)
 
 .PHONY: run-service-provider
 run-service-provider: ## Runs Cloud Provider Kind for Load Balancer services
 	sudo $(GO) tool cloud-provider-kind --gateway-channel disabled
+
+.PHONY: test-molecule
+test-molecule: ## Run Molecule tests
+	$(UV) run molecule test --all --report --command-borders
