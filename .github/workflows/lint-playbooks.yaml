@@ -6,9 +6,9 @@ on:
       - main
 
 jobs:
-  lint-playbooks:
+  lint-kind-playbooks:
     name: Lint playbooks and roles
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@v7.0.0
       - uses: astral-sh/setup-uv@v8.3.0
@@ -20,11 +20,29 @@ jobs:
         with:
           setup_python: "false"
           working_directory: clusters/kind
+  lint-kops-playbooks:
+    name: Lint playbooks and roles
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - uses: astral-sh/setup-uv@v8.3.0
+      - name: Install project dependencies
+        run: |
+          make deps
       - name: Lint kops playbooks
         uses: ansible/ansible-lint@v26.6.0
         with:
           setup_python: "false"
           working_directory: clusters/kops
+  lint-scenario-playbooks:
+    name: Lint playbooks and roles
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - uses: astral-sh/setup-uv@v8.3.0
+      - name: Install project dependencies
+        run: |
+          make deps
       - name: Lint scenario playbooks
         uses: ansible/ansible-lint@v26.6.0
         with:
