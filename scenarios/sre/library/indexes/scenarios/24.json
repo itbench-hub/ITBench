@@ -1,0 +1,69 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [],
+    "category": "sre",
+    "complexity": "medium",
+    "description": "This scenario changes the environment variables of OpenTelemetry Demo's `checkout` service, causing it to be unable to reach the `kafka` service.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "container": {
+                            "env": {
+                                "name": "KAFKA_ADDR",
+                                "value": "kafka:9999"
+                            },
+                            "name": "checkout"
+                        },
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "checkout",
+                                "namespace": "otel-demo"
+                            }
+                        }
+                    },
+                    "id": "modified-kubernetes-workload-container-environment-variable"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 24,
+    "index": 24,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n otel-demo rollout undo deployment/checkout",
+                        "text": "Revert the last change done to the manifest."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n otel-demo edit deployment checkout",
+                        "text": "Manually edit the manifest and replace the environment variable(s) value with the correct value(s)."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Deployment",
+        "Performance"
+    ]
+}

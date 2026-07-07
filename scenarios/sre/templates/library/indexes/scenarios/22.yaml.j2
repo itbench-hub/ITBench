@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `ad` service experiencing memory stress.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: ad-memory-stress
+          namespace: chaos-mesh
+      scheduleSpec:
+        stressChaos:
+          duration: 55s
+          mode: all
+          selector:
+            labelSelectors:
+              app.kubernetes.io/component: ad
+            namespaces:
+            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+          stressors:
+            memory:
+              size: 100%
+              workers: 4
+        type: StressChaos
+    id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 22
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

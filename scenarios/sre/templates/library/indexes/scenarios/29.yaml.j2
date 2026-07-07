@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `ad` service having a Java virtual machine return error.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: ad-jvm-return
+          namespace: {{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}
+      scheduleSpec:
+        jvmChaos:
+          action: ruleData
+          mode: all
+          ruleData: 'RULE modifyReturnValue
+
+            CLASS AdService
+
+            METHOD getInstance
+
+            AT ENTRY
+
+            IF true
+
+            DO return null
+
+            ENDRULE'
+          selector:
+            labelSelectors:
+              app.kubernetes.io/component: ad
+            namespaces:
+            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+        type: JVMChaos
+    id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 29
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

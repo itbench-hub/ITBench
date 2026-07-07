@@ -1,0 +1,83 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [],
+    "category": "sre",
+    "complexity": "high",
+    "description": "This scenario simulates OpenTelemetry Demo's `product-catalog` service experiencing network delays.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "chaos-mesh.org/v1alpha1",
+                            "kind": "Schedule",
+                            "metadata": {
+                                "name": "product-catalog-network-delay",
+                                "namespace": "chaos-mesh"
+                            }
+                        },
+                        "scheduleSpec": {
+                            "networkChaos": {
+                                "action": "delay",
+                                "delay": {
+                                    "latency": "20000ms"
+                                },
+                                "mode": "all",
+                                "selector": {
+                                    "labelSelectors": {
+                                        "app.kubernetes.io/component": "product-catalog"
+                                    },
+                                    "namespaces": [
+                                        "otel-demo"
+                                    ]
+                                }
+                            },
+                            "type": "NetworkChaos"
+                        }
+                    },
+                    "id": "scheduled-chaos-mesh-experiment"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 17,
+    "index": 17,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n chaos-mesh annotate schedule product-catalog-network-delay experiment.chaos-mesh.org/pause='true'",
+                        "text": "Annotate the schedule to pause the active experiment."
+                    },
+                    {
+                        "command": "kubectl -n chaos-mesh get networkchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                        "text": "Retrieve the associated experiment managed by the schedule."
+                    },
+                    {
+                        "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                    },
+                    {
+                        "command": "kubectl -n chaos-mesh delete schedule product-catalog-network-delay experiment.chaos-mesh.org/pause='true'",
+                        "text": "Delete the schedule."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Deployment",
+        "Performance"
+    ]
+}

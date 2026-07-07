@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: medium
+description: This scenario simulates OpenTelemetry Demo's `valkey-cart` service experiencing memory stress.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: valkey-memory-stress
+          namespace: chaos-mesh
+      scheduleSpec:
+        stressChaos:
+          duration: 55s
+          mode: all
+          selector:
+            labelSelectors:
+              app.kubernetes.io/component: valkey-cart
+            namespaces:
+            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+          stressors:
+            memory:
+              size: 100%
+              workers: 4
+        type: StressChaos
+    id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 21
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

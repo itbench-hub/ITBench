@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: medium
+description: This scenario simulates the OpenTelemetry Demo's `product catalog` service failing.
+disruptions:
+- injections:
+  - args:
+      flag:
+        name: productCatalogFailure
+        state: 'on'
+      kubernetesObject:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: flagd-config
+          namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+    id: opentelemetry-demo-feature-flag
+  waitFor:
+    postInjection:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: flagd
+            namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+      id: restart-kubernetes-workload
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: product-catalog
+            namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+      id: restart-kubernetes-workload
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 4
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

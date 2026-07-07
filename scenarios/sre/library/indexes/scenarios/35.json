@@ -1,0 +1,81 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [],
+    "category": "sre",
+    "complexity": "high",
+    "description": "This scenario simulates OpenTelemetry Demo's `ad` service experiencing heap stress in a Java Virtual Machine.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "chaos-mesh.org/v1alpha1",
+                            "kind": "Schedule",
+                            "metadata": {
+                                "name": "ad-jvm-chaos",
+                                "namespace": "chaos-mesh"
+                            }
+                        },
+                        "scheduleSpec": {
+                            "jvmChaos": {
+                                "action": "stress",
+                                "memType": "heap",
+                                "mode": "all",
+                                "selector": {
+                                    "labelSelectors": {
+                                        "app.kubernetes.io/component": "ad"
+                                    },
+                                    "namespaces": [
+                                        "otel-demo"
+                                    ]
+                                }
+                            },
+                            "type": "JVMChaos"
+                        }
+                    },
+                    "id": "scheduled-chaos-mesh-experiment"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 35,
+    "index": 35,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n chaos-mesh annotate schedule ad-jvm-chaos experiment.chaos-mesh.org/pause='true'",
+                        "text": "Annotate the schedule to pause the active experiment."
+                    },
+                    {
+                        "command": "kubectl -n chaos-mesh get jvmchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                        "text": "Retrieve the associated experiment managed by the schedule."
+                    },
+                    {
+                        "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                    },
+                    {
+                        "command": "kubectl -n chaos-mesh delete schedule ad-jvm-chaos experiment.chaos-mesh.org/pause='true'",
+                        "text": "Delete the schedule."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Deployment",
+        "Performance"
+    ]
+}

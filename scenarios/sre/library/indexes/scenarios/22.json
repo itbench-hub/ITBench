@@ -1,0 +1,86 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [],
+    "category": "sre",
+    "complexity": "medium",
+    "description": "This scenario simulates OpenTelemetry Demo's `ad` service experiencing memory stress.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "chaos-mesh.org/v1alpha1",
+                            "kind": "Schedule",
+                            "metadata": {
+                                "name": "ad-memory-stress",
+                                "namespace": "chaos-mesh"
+                            }
+                        },
+                        "scheduleSpec": {
+                            "stressChaos": {
+                                "duration": "55s",
+                                "mode": "all",
+                                "selector": {
+                                    "labelSelectors": {
+                                        "app.kubernetes.io/component": "ad"
+                                    },
+                                    "namespaces": [
+                                        "otel-demo"
+                                    ]
+                                },
+                                "stressors": {
+                                    "memory": {
+                                        "size": "100%",
+                                        "workers": 4
+                                    }
+                                }
+                            },
+                            "type": "StressChaos"
+                        }
+                    },
+                    "id": "scheduled-chaos-mesh-experiment"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 22,
+    "index": 22,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n chaos-mesh annotate schedule ad-memory-stress experiment.chaos-mesh.org/pause='true'",
+                        "text": "Annotate the schedule to pause the active experiment."
+                    },
+                    {
+                        "command": "kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'",
+                        "text": "Retrieve the associated experiment managed by the schedule."
+                    },
+                    {
+                        "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                    },
+                    {
+                        "command": "kubectl -n chaos-mesh delete schedule ad-memory-stress experiment.chaos-mesh.org/pause='true'",
+                        "text": "Delete the schedule."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Deployment",
+        "Performance"
+    ]
+}
