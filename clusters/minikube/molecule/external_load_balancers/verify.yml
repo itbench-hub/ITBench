@@ -1,0 +1,64 @@
+---
+- name: Verify LoadBalancer services receive distinct external IPs
+  hosts:
+    - localhost
+  tasks:
+    - name: Wait for service-one to receive an external IP
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ '~/.kube/config' | ansible.builtin.expanduser }}"
+        api_version: v1
+        kind: Service
+        name: service-one
+        namespace: lb-test-one
+      register: service_one_info
+      until:
+        - service_one_info.resources | length > 0
+        - service_one_info.resources[0].status.loadBalancer.ingress is ansible.builtin.defined
+        - service_one_info.resources[0].status.loadBalancer.ingress | length > 0
+        - service_one_info.resources[0].status.loadBalancer.ingress[0].ip is ansible.builtin.defined
+        - service_one_info.resources[0].status.loadBalancer.ingress[0].ip | length > 0
+      retries: 20
+      delay: 15
+
+    - name: Set lb_ip_one fact
+      ansible.builtin.set_fact:
+        lb_ip_one: "{{ service_one_info.resources[0].status.loadBalancer.ingress[0].ip }}"
+
+    - name: Wait for service-two to receive an external IP
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ '~/.kube/config' | ansible.builtin.expanduser }}"
+        api_version: v1
+        kind: Service
+        name: service-two
+        namespace: lb-test-two
+      register: service_two_info
+      until:
+        - service_two_info.resources | length > 0
+        - service_two_info.resources[0].status.loadBalancer.ingress is ansible.builtin.defined
+        - service_two_info.resources[0].status.loadBalancer.ingress | length > 0
+        - service_two_info.resources[0].status.loadBalancer.ingress[0].ip is ansible.builtin.defined
+        - service_two_info.resources[0].status.loadBalancer.ingress[0].ip | length > 0
+      retries: 20
+      delay: 15
+
+    - name: Set lb_ip_two fact
+      ansible.builtin.set_fact:
+        lb_ip_two: "{{ service_two_info.resources[0].status.loadBalancer.ingress[0].ip }}"
+
+    - name: Assert service-one has a non-empty external IP
+      ansible.builtin.assert:
+        that:
+          - lb_ip_one | length > 0
+        fail_msg: "service-one in lb-test-one did not receive an external IP"
+
+    - name: Assert service-two has a non-empty external IP
+      ansible.builtin.assert:
+        that:
+          - lb_ip_two | length > 0
+        fail_msg: "service-two in lb-test-two did not receive an external IP"
+
+    - name: Assert service-one and service-two have different external IPs
+      ansible.builtin.assert:
+        that:
+          - lb_ip_one != lb_ip_two
+        fail_msg: "Both services received the same external IP ({{ lb_ip_one }}). Minikube tunnel must assign unique IPs per LoadBalancer service."

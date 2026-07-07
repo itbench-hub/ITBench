@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - clusters/kind/go.*
+      - clusters/minikube/**
       - scenarios/sre/project/roles/agent/**
       - scenarios/sre/project/roles/applications/**
       - scenarios/sre/project/roles/awx/**
@@ -13,6 +14,7 @@ on:
       - scenarios/sre/project/roles/recorders/**
       - scenarios/sre/project/roles/tools/**
       - scenarios/sre/project/roles/waiters/**
+      - '!clusters/minikube/README.md'
       - '!scenarios/sre/project/roles/awx/tasks/generate_files.yaml'
       - '!scenarios/sre/project/roles/faults/tasks/generate_files.yaml'
       - '!scenarios/sre/project/roles/waiters/tasks/generate_files.yaml'
@@ -22,6 +24,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  clusters-minikube:
+    name: ITBench Minikube Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.0
+      - uses: astral-sh/setup-uv@v8.3.0
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.2.2
+      - uses: medyagh/setup-minikube@v0.0.21
+        with:
+          cache: false
+          cni: cilium
+          container-runtime: containerd
+          driver: docker
+          kubernetes-version: v1.35.0
+          minikube-version: 1.38.1
+          start: false
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Create Minikube cluster
+        run: |
+          make -C clusters/minikube create-simple-cluster
+      - name: Start Minikube tunnel
+        run: |
+          make -C clusters/minikube start-simple-tunnel &
+          sleep 10
+      - name: Run Molecule tests
+        run: |
+          make -C clusters/minikube test-molecule
+      - name: Destroy Minikube cluster
+        run: |
+          make -C clusters/minikube destroy-simple-cluster
   environment-applications:
     name: ITBench Environment Applications Tests
     runs-on: ubuntu-24.04
