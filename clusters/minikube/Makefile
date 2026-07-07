@@ -33,7 +33,7 @@ create-cluster:
 .PHONY: destroy-cluster
 destroy-cluster:
 	-sudo pkill -f "minikube.*$(CLUSTER_PROFILE).*tunnel"
-	-sudo $(MINIKUBE) tunnel --cleanup
+	-sudo $(MINIKUBE) tunnel -p $(CLUSTER_PROFILE) --cleanup
 	$(MINIKUBE) delete -p $(CLUSTER_PROFILE)
 
 .PHONY: start-tunnel
