@@ -1,0 +1,87 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/fault.json",
+    "alerts": {
+        "application": [
+            "KubePodNotReady"
+        ],
+        "goldenSignal": [
+            "HighRequestErrorRate",
+            "HighRequestLatency"
+        ]
+    },
+    "arguments": {
+        "jsonSchema": {
+            "properties": {
+                "kubernetesObject": {
+                    "properties": {
+                        "apiVersion": {
+                          "enum": [
+                            "autoscaling/v2"
+                          ],
+                          "type": "string"
+                        },
+                        "kind": {
+                          "enum": [
+                            "HorizontalPodAutoscaler"
+                          ],
+                          "type": "string"
+                        },
+                        "metadata": {
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "namespace": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "namespace"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "apiVersion",
+                        "kind",
+                        "metadata"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "kubernetesObject"
+            ],
+            "type": "object"
+        }
+    },
+    "description": "This fault injects a configuration into a horizontal pod autoscaler that causes it to aggressively scale down workloads, keeping replica counts at a minimum even under high demand.",
+    "expectation": "The faulted autoscaler will rapidly scale down the workload to its minimum replica count. Under load, the reduced number of pods will be unable to handle incoming traffic, causing request errors and elevated latency.",
+    "id": "aggressive-scaledown-kubernetes-horizontal-pod-autoscaler",
+    "index": 31,
+    "name": "Aggressive Scaledown Kubernetes Horizontal Pod Autoscaler",
+    "platform": "Kubernetes",
+    "resources": [
+        "https://kubernetes.io/docs/concepts/workloads/autoscaling/",
+        "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/",
+        "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/",
+        "https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/horizontal-pod-autoscaler-v2/"
+    ],
+    "solutions": {
+        "templates": [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit horizontalpodautoscaler {{ args.kubernetesObject.metadata.name }}",
+                        "text": "Manually edit the manifest and remove or correct the scale-down behavior block and restore the metrics thresholds to appropriate values."
+                    }
+                ]
+            }
+        ]
+    },
+    "tags": [
+        "Deployment",
+        "Performance"
+    ]
+}

@@ -1,0 +1,57 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve HorizontalPodAutoscaler
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: autoscaling/v2
+        kind: HorizontalPodAutoscaler
+        name: test-workload-hpa
+        namespace: aggressive-scaledown-hpa-test
+      register: faults_hpa
+
+    - name: Validate that HPA exists
+      ansible.builtin.assert:
+        that:
+          - faults_hpa.resources | ansible.builtin.length == 1
+        fail_msg: Unable to find HPA. Fault injection failed.
+        success_msg: Found HPA.
+
+    - name: Retrieve CPU metric configuration
+      ansible.builtin.set_fact:
+        faults_cpu_metric: |-
+          {{
+            faults_hpa.resources[0].spec.metrics |
+            ansible.builtin.selectattr('resource.name', '==', 'cpu')
+          }}
+
+    - name: Validate that CPU metric was set to aggressive scale-down threshold
+      ansible.builtin.assert:
+        that:
+          - faults_cpu_metric | ansible.builtin.length == 1
+          - faults_cpu_metric[0].resource.target.averageUtilization == 99
+        fail_msg: CPU metric was not set to 99%. Fault injection failed.
+        success_msg: CPU metric was set to 99%.
+
+    - name: Retrieve scale-down behavior configuration
+      ansible.builtin.set_fact:
+        faults_scaledown_behavior: "{{ faults_hpa.resources[0].spec.behavior.scaleDown }}"
+
+    - name: Validate that scale-down stabilization window was removed
+      ansible.builtin.assert:
+        that:
+          - faults_scaledown_behavior.stabilizationWindowSeconds == 0
+        fail_msg: Scale-down stabilization window was not set to 0. Fault injection failed.
+        success_msg: Scale-down stabilization window set to 0.
+
+    - name: Validate that scale-down policy allows 100% removal in 15 seconds
+      ansible.builtin.assert:
+        that:
+          - faults_scaledown_behavior.policies | ansible.builtin.length == 1
+          - faults_scaledown_behavior.policies[0].type == "Percent"
+          - faults_scaledown_behavior.policies[0].value == 100
+          - faults_scaledown_behavior.policies[0].periodSeconds == 15
+        fail_msg: Scale-down policy was not configured for aggressive removal. Fault injection failed.
+        success_msg: Scale-down policy configured for 100% removal in 15 seconds.
