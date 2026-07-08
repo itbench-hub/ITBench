@@ -1,0 +1,175 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-110
+spec:
+  alerts:
+    - group_id: checkout-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in checkout service is above threshold due to packet loss when calling payment service
+    - group_id: checkout-service-1
+      id: HighRequestLatency
+      metadata:
+        description: Request latency in checkout service is above 1500ms due to timeouts from packet loss (some packets timeout before failing)
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in frontend service is above threshold due to cascading failures from checkout service
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in frontend-proxy is above threshold due to errors propagating from frontend/checkout
+    - group_id: frontend-proxy-service
+      id: HighRequestErrorRate
+      metadata:
+        description: "Cascade effect: HighRequestErrorRate for frontend-proxy service due to upstream failures"
+    - group_id: fraud-detection-service
+      id: NoRequestsReceived
+      metadata:
+        description: "Cascade effect: NoRequestsReceived for fraud-detection service due to upstream failures"
+    - group_id: email-service
+      id: NoRequestsReceived
+      metadata:
+        description: "Cascade effect: NoRequestsReceived for email service due to upstream failures"
+    - group_id: payment-service
+      id: NoRequestsReceived
+      metadata:
+        description: "Cascade effect: NoRequestsReceived for payment service due to upstream failures"
+    - group_id: accounting-service
+      id: NoRequestsReceived
+      metadata:
+        description: "Cascade effect: NoRequestsReceived for accounting service due to upstream failures"
+    - group_id: accounting-service
+      id: NoDatabaseOperations
+      metadata:
+        description: "Cascade effect: NoDatabaseOperations for accounting service due to upstream failures"
+  aliases:
+    - - checkout-payment-network-loss-schedule
+      - checkout-payment-network-loss-chaos
+    - - checkout-pod-1
+      - checkout-service-1
+    - - payment-pod-1
+      - payment-service-1
+    - - frontend-pod-1
+      - frontend-service-1
+    - - frontend-proxy-pod-1
+      - frontend-proxy-service-1
+  fault:
+    - category: Change
+      condition: Network packet loss injected between checkout and payment services
+      entity:
+        group_id: checkout-payment-network-loss-schedule
+        kind: Schedule
+        name: checkout-payment-network-loss
+      fault_mechanism: Chaos Mesh NetworkChaos with 10% packet loss rate simulating network infrastructure degradation (fiber cut, router hardware failure)
+  groups:
+    - filter:
+        - checkout-payment-network-loss
+      id: checkout-payment-network-loss-schedule
+      kind: Schedule
+      namespace: chaos-mesh
+      root_cause: true
+    - filter:
+        - .*checkout-payment-network-loss.*
+      id: checkout-payment-network-loss-chaos
+      kind: NetworkChaos
+      namespace: chaos-mesh
+    - filter:
+        - .*checkout.*
+      id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - .*payment.*
+      id: payment-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - .*frontend-[a-z0-9]+-[a-z0-9]+$
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - .*frontendproxy.*
+      id: frontend-proxy-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - frontendproxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - fraud-detection\b
+      id: fraud-detection-service
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - email\b
+      id: email-service
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - accounting\b
+      id: accounting-service
+      kind: Service
+      namespace: otel-demo
+  propagations:
+    - condition: Chaos Mesh Schedule continuously creates NetworkChaos experiments to inject packet loss
+      effect: NetworkChaos experiment is active and injecting 10% packet loss from checkout to payment
+      source: checkout-payment-network-loss-schedule
+      target: checkout-payment-network-loss-chaos
+    - condition: NetworkChaos injects 10% packet loss on outgoing traffic from checkout pods to payment pods
+      effect: Checkout pods experience intermittent connection failures and timeouts when making gRPC calls to payment service
+      source: checkout-payment-network-loss-chaos
+      target: checkout-pod-1
+    - condition: Checkout pods fail to complete payment processing due to packet loss
+      effect: Checkout service exhibits high error rates and increased latency, failing to process orders
+      source: checkout-pod-1
+      target: checkout-service-1
+    - condition: Frontend calls checkout service for order placement
+      effect: Frontend service receives errors from checkout, propagating failures upstream
+      source: checkout-service-1
+      target: frontend-service-1
+    - condition: Frontend service routes requests to frontend pods which depend on checkout
+      effect: Frontend pods return error responses to users when checkout operations fail
+      source: frontend-service-1
+      target: frontend-pod-1
+    - condition: Frontend-proxy (Envoy) forwards requests to frontend and receives error responses
+      effect: Frontend-proxy returns HTTP 500/503 errors to end users, resulting in visible transaction failures
+      source: frontend-pod-1
+      target: frontend-proxy-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Identify and delete the Chaos Mesh Schedule resource causing packet loss
+          - Verify NetworkChaos experiments are removed
+          - Confirm checkout service can successfully communicate with payment service
+        id: delete-chaos-mesh-schedule
+    - solution:
+        actions:
+          - Pause the Chaos Mesh experiment by annotating the Schedule with experiment.chaos-mesh.org/pause=true
+          - Monitor checkout service logs and metrics to confirm recovery
+        id: pause-chaos-experiment

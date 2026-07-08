@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: medium
+description: This scenario simulates network loss between OpenTelemetry Demo `checkout` and `payment` services.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: checkout-payment-network-loss
+          namespace: {{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}
+      scheduleSpec:
+        type: NetworkChaos
+        networkChaos:
+          action: loss
+          direction: to
+          duration: 55s
+          loss:
+            correlation: "0"
+            loss: "100"
+          mode: all
+          selector:
+            namespaces:
+            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+            labelSelectors:
+              "app.kubernetes.io/component": checkout
+          target:
+            mode: all
+            selector:
+              namespaces:
+              - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+              labelSelectors:
+                "app.kubernetes.io/component": payment
+    id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 61
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

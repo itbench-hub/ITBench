@@ -15,6 +15,7 @@ _For statistics on the distrubution spread of scenarios, please see [here](./sta
 | [6](./sre/6.md) | sre | medium |
 | [7](./sre/7.md) | sre | medium |
 | [8](./sre/8.md) | sre | medium |
+| [10](./sre/10.md) | sre | medium |
 | [11](./sre/11.md) | sre | medium |
 | [12](./sre/12.md) | sre | medium |
 | [13](./sre/13.md) | sre | medium |
@@ -63,6 +64,8 @@ _For statistics on the distrubution spread of scenarios, please see [here](./sta
 | [58](./sre/58.md) | sre | low |
 | [59](./sre/59.md) | sre | medium |
 | [60](./sre/60.md) | sre | medium |
+| [61](./sre/61.md) | sre | medium |
+| [62](./sre/62.md) | sre | medium |
 | [80](./sre/80.md) | sre | medium |
 | [81](./sre/81.md) | sre | medium |
 | [83](./sre/83.md) | sre | medium |

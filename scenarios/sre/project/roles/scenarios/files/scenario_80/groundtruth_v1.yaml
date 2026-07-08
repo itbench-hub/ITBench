@@ -1,0 +1,103 @@
+---
+alerts:
+  - group_id: frontend-proxy-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend proxy experiencing errors due to checkout's inability to complete orders (cannot publish to Kafka)
+  - group_id: frontend-proxy-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Frontend proxy experiencing latency due to checkout delays from Kafka connection issues
+  - group_id: accounting-service-1
+    id: NoRequestsReceived
+    metadata:
+      description: Accounting receiving no order events because checkout cannot publish to Kafka due to network partition
+  - group_id: fraud-detection-service-1
+    id: NoRequestsReceived
+    metadata:
+      description: Fraud detection receiving no order events because checkout cannot publish to Kafka due to network partition
+  - group_id: accounting-service-1
+    id: NoDatabaseOperations
+    metadata:
+      description: Accounting has no database operations due to receiving no order events from Kafka
+aliases:
+  - - checkout-service-1
+    - checkout-pod-1
+fault:
+  - category: Network
+    condition: Chaos Mesh network partition blocking checkout pods from reaching Kafka
+    entity:
+      group_id: otel-demo-checkout-kafka-network-partition
+      kind: NetworkChaos
+      name: otel-demo-checkout-kafka-network-partition
+    fault_mechanism: network_partition
+groups:
+  - filter:
+      - otel-demo-checkout-kafka-network-partition
+    id: otel-demo-checkout-kafka-network-partition
+    kind: NetworkChaos
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - checkout-.*
+    id: checkout-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - checkout\b
+    id: checkout-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - kafka\b
+    id: kafka-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - accounting\b
+    id: accounting-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - fraud-detection\b
+    id: fraud-detection-service-1
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Chaos Mesh NetworkChaos resource injects network partition blocking checkout pods from reaching Kafka
+    effect: Checkout pods cannot establish or maintain connections to Kafka
+    source: otel-demo-checkout-kafka-network-partition
+    target: checkout-pod-1
+  - condition: Checkout pods cannot communicate with Kafka due to network partition
+    effect: Checkout service cannot publish order events to Kafka, causing order processing delays and eventual failures
+    source: checkout-pod-1
+    target: checkout-service-1
+  - condition: Checkout cannot complete orders successfully due to Kafka publishing failures
+    effect: Frontend proxy experiences errors and latency from checkout service delays
+    source: checkout-service-1
+    target: frontend-proxy-service-1
+  - condition: Network partition prevents checkout from publishing to Kafka
+    effect: Order events are not published to Kafka queue
+    source: checkout-service-1
+    target: kafka-service-1
+  - condition: No order events published to Kafka
+    effect: Accounting service receives no order events and has no database operations
+    source: kafka-service-1
+    target: accounting-service-1
+  - condition: No order events published to Kafka
+    effect: Fraud detection service receives no order events to process
+    source: kafka-service-1
+    target: fraud-detection-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Identify and resolve network partition between checkout and Kafka pods
+        - Verify network policies and connectivity between the services
+      id: resolve_network_partition

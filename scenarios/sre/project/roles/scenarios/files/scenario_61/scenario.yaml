@@ -1,0 +1,44 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-61
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: checkout-payment-network-loss
+                namespace: chaos-mesh
+            scheduleSpec:
+              networkChaos:
+                action: loss
+                direction: to
+                duration: 55s
+                loss:
+                  correlation: "0"
+                  loss: "100"
+                mode: all
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: checkout
+                  namespaces:
+                    - otel-demo
+                target:
+                  mode: all
+                  selector:
+                    labelSelectors:
+                      app.kubernetes.io/component: payment
+                    namespaces:
+                      - otel-demo
+              type: NetworkChaos
+          id: scheduled-chaos-mesh-experiment
+  tools:
+    sre:
+      enabled: true

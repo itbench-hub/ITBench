@@ -1,0 +1,81 @@
+---
+alerts:
+  - group_id: ad-service-1
+    id: NoRequestsReceived
+    metadata:
+      description: Ad service not receiving successful requests due to JVM heap stress causing failures
+  - group_id: ad-pod-1
+    id: CPUThrottlingHigh
+    metadata:
+      description: Ad pod experiencing CPU throttling due to JVM heap stress and garbage collection
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend service experiencing errors when calling ad service under JVM heap stress
+  - group_id: frontend-proxy-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend proxy experiencing errors cascading from frontend
+aliases:
+  - - ad-service-1
+    - ad-pod-1
+fault:
+  - category: Resource
+    condition: Chaos Mesh JVM stress injecting heap memory pressure on ad service
+    entity:
+      group_id: otel-demo-ad-jvm-chaos
+      kind: JVMChaos
+      name: otel-demo-ad-jvm-chaos
+    fault_mechanism: jvm_heap_stress
+groups:
+  - filter:
+      - otel-demo-ad-jvm-chaos
+    id: otel-demo-ad-jvm-chaos
+    kind: JVMChaos
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - ad-.*
+    id: ad-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - ad\b
+    id: ad-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Chaos Mesh JVMChaos resource injects heap memory stress on ad service JVM
+    effect: Ad pods fail to respond to requests properly under memory pressure
+    source: otel-demo-ad-jvm-chaos
+    target: ad-pod-1
+  - condition: Ad pods under JVM heap stress fail to process requests
+    effect: Ad service returns errors or fails to respond
+    source: ad-pod-1
+    target: ad-service-1
+  - condition: Frontend service calls to ad service fail or timeout
+    effect: Frontend returns errors when unable to load advertisement content
+    source: ad-service-1
+    target: frontend-service-1
+  - condition: Frontend returns errors to proxy
+    effect: Frontend proxy propagates errors to users
+    source: frontend-service-1
+    target: frontend-proxy-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Identify and stop the JVM chaos experiment affecting ad service
+        - Monitor ad service heap memory usage and garbage collection metrics
+      id: resolve_jvm_chaos

@@ -1,0 +1,73 @@
+---
+alerts:
+  - group_id: accounting-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Accounting service experiencing database constraint violations due to duplicate Kafka messages caused by slow fraud-detection consumer
+        processing
+fault:
+  - category: Configuration
+    condition: Originating from Kafka
+    entity:
+      kind: Service
+      name: accounting
+    fault_mechanism: custom(flagd)
+  - category: Resource Saturation
+    condition: Slow Kafka consumer processing causing message redelivery
+    entity:
+      kind: Service
+      name: fraud-detection
+    fault_mechanism: custom(flagd)
+  - category: Configuration Setting
+    changed:
+      element: data.demo\.flagd\.json
+      from: "\"kafkaQueueProblems\": {\n      \"description\": \"Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike\"\
+        ,\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": 100,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\n    }"
+      to: "\"kafkaQueueProblems\": {\n      \"description\": \"Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike\"\
+        ,\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": 100,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"on\"\n    }"
+    condition: kafkaQueueProblems feature flag set
+    entity:
+      kind: ConfigMap
+      name: flagd-config
+    fault_mechanism: custom(flagd)
+groups:
+  - id: flagd-config
+    kind: ConfigMap
+    name: flagd-config
+    namespace: otel-demo
+    root_cause: true
+  - filter:
+      - fraud-detection\b
+    id: fraud-detection-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - kafka\b
+    id: kafka-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - accounting\b
+    id: accounting-service-1
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Feature flag causes fraud detection service to sleep 1 second when processing Kafka messages
+    effect: Fraud detection consumer processes messages slowly, creating Kafka consumer lag and message redelivery
+    source: flagd-config
+    target: fraud-detection-service-1
+  - condition: Slow consumer creates backlog and causes message redelivery in Kafka queue
+    effect: Kafka messages are reprocessed and delivered multiple times to downstream consumers
+    source: fraud-detection-service-1
+    target: kafka-service-1
+  - condition: Duplicate order messages delivered to accounting service via Kafka
+    effect: Accounting attempts to insert duplicate order IDs into PostgreSQL, violating primary key constraints and causing high error rates
+    source: kafka-service-1
+    target: accounting-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Disable kafkaQueueProblems flag in flagd configuration
+      id: Disable kafkaQueueProblems flag

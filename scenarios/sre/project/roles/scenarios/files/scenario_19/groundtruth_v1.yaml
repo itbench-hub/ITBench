@@ -1,0 +1,186 @@
+---
+alerts:
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Error Rate is Above Threshold
+  - group_id: shipping-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Error Rate is Above Threshold
+  - group_id: checkout-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Error Rate is Above Threshold
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Error Rate is Above Threshold
+  - group_id: checkout-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Latency is Above Threshold
+  - group_id: shipping-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Latency is Above Threshold
+  - group_id: email-service
+    id: NoRequestsReceived
+    metadata:
+      description: Email service receives no confirmation emails due to failed checkouts
+  - group_id: payment-service
+    id: NoRequestsReceived
+    metadata:
+      description: Payment service receives no payment requests due to failed checkouts
+  - group_id: accounting-service
+    id: NoRequestsReceived
+    metadata:
+      description: Accounting service receives no transaction records due to failed checkouts
+  - group_id: accounting-service
+    id: NoDatabaseOperations
+    metadata:
+      description: Accounting service has no database operations due to no completed transactions
+  - group_id: quote-service-1
+    id: NoRequestsReceived
+    metadata:
+      description: Quote service isolated by network partition
+  - group_id: fraud-detection-service
+    id: NoRequestsReceived
+    metadata:
+      description: Fraud detection service receives no checkout requests due to checkout failures
+  - group_id: shipping-service-1
+    id: NoRequestsReceived
+    metadata:
+      description: Shipping service receives no requests when unable to reach quote service, likely due to Kubernetes readiness probe failure or circuit breaker
+        activation in checkout service
+aliases:
+  - - frontend-service-1
+    - frontend-pod-1
+  - - checkout-service-1
+    - checkout-pod-1
+  - - shipping-service-1
+    - shipping-pod-1
+  - - quote-service-1
+    - quote-pod-1
+  - - otel-demo-email-checkout-network-partition-1
+    - otel-demo-email-checkout-network-partition
+fault:
+  - category: Resource Unavailable
+    condition: To Be Specified
+    entity:
+      group_id: partition-otel-demo-shippingservice-1
+      kind: Service
+      name: partition-otel-demo-shippingservice-1
+    fault_mechanism: chaos
+groups:
+  - filter:
+      - .*email-checkout-network-partition
+    id: otel-demo-email-checkout-network-partition-1
+    kind: NetworkChaos
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - .*email-checkout-network-partition
+    id: otel-demo-email-checkout-network-partition
+    kind: Schedule
+    namespace: chaos-mesh
+  - filter:
+      - shipping\b
+    id: shipping-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout\b
+    id: checkout-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-.*
+    id: frontend-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - checkout-.*
+    id: checkout-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - shipping-.*
+    id: shipping-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - quote-.*
+    id: quote-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - quote\b
+    id: quote-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - accounting\b
+    id: accounting-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - email\b
+    id: email-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - payment\b
+    id: payment-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - fraud-detection\b
+    id: fraud-detection-service
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: email-checkout-network-partition networkchaos partitioning network from shippingservice to quoteservice
+    effect: quote service Error Rate is Above Threshold
+    source: otel-demo-email-checkout-network-partition-1
+    target: quote-service-1
+  - condition: Latency is too high or quote service Error Rate is Above Threshold
+    effect: shipping service Error Rate is Above Threshold
+    source: quote-service-1
+    target: shipping-service-1
+  - condition: Latency is too high or shipping service Error Rate is Above Threshold
+    effect: checkout service Error Rate is Above Threshold
+    source: shipping-service-1
+    target: checkout-service-1
+  - condition: checkout service Error Rate is Above Threshold
+    effect: frontend service Error Rate is Above Threshold
+    source: checkout-service-1
+    target: frontend-service-1
+  - condition: Failed checkouts prevent order confirmation emails from being triggered
+    effect: Email service receives no checkout-related email requests
+    source: checkout-service-1
+    target: email-service
+  - condition: Failed checkouts prevent payment processing from occurring
+    effect: Payment service receives no payment requests
+    source: checkout-service-1
+    target: payment-service
+  - condition: Failed checkouts prevent transaction records from being created
+    effect: Accounting service receives no transactions and performs no database operations
+    source: checkout-service-1
+    target: accounting-service
+  - condition: Failed checkouts prevent fraud checks from being performed
+    effect: Fraud detection service receives no checkout validation requests
+    source: checkout-service-1
+    target: fraud-detection-service
+recommended_actions:
+  - solution:
+      actions:
+        - Delete the resource networkchaos shippingservice
+      id: Delete_the_resource_networkchaos_shippingservice

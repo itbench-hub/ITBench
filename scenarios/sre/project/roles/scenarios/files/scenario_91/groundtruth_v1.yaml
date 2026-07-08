@@ -1,0 +1,86 @@
+---
+alerts:
+  - group_id: otel-demo-fraud-detection-kafka-network-partition
+    id: KafkaConnectionClosureRate
+    metadata:
+      description: Fraud detection service experiencing high Kafka connection closure rate due to network partition
+  - group_id: fraud-detection-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Fraud detection service unable to publish or consume messages from Kafka
+  - id: HighKafkaConnectionClosureRate
+    metadata:
+      description: "Cascade effect: HighKafkaConnectionClosureRate due to fault propagation"
+  - group_id: fraud-detection-service
+    id: NoRequestsReceived
+    metadata:
+      description: "Cascade effect: NoRequestsReceived for fraud-detection service due to upstream failures"
+  - id: KafkaConsumerGroupInactive
+    metadata:
+      description: "Cascade effect: KafkaConsumerGroupInactive due to fault propagation"
+  - id: HighKafkaConsumerLag
+    metadata:
+      description: "Cascade effect: HighKafkaConsumerLag due to fault propagation"
+aliases:
+  - - fraud-detection-service-1
+    - fraud-detection-pod-1
+fault:
+  - category: Network
+    condition: Chaos Mesh network partition blocking fraud-detection pods from reaching Kafka
+    entity:
+      group_id: otel-demo-fraud-detection-kafka-network-partition
+      kind: NetworkChaos
+      name: otel-demo-fraud-detection-kafka-network-partition
+    fault_mechanism: network_partition
+groups:
+  - filter:
+      - otel-demo-fraud-detection-kafka-network-partition
+    id: otel-demo-fraud-detection-kafka-network-partition
+    kind: NetworkChaos
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - fraud-detection-.*
+    id: fraud-detection-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - kafka-.*
+    id: kafka-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - fraud-detection\b
+    id: fraud-detection-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - kafka\b
+    id: kafka-service-1
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Chaos Mesh NetworkChaos resource injects network partition affecting fraud-detection and kafka pods
+    effect: Fraud detection pods cannot establish or maintain connections to Kafka
+    source: otel-demo-fraud-detection-kafka-network-partition
+    target: fraud-detection-pod-1
+  - condition: Chaos Mesh NetworkChaos resource injects network partition affecting fraud-detection and kafka pods
+    effect: Kafka pods cannot establish or maintain connections
+    source: otel-demo-fraud-detection-kafka-network-partition
+    target: kafka-pod-1
+  - condition: Fraud detection pods cannot communicate with Kafka due to network partition
+    effect: Fraud detection service cannot consume order events from Kafka or publish fraud analysis results
+    source: fraud-detection-pod-1
+    target: fraud-detection-service-1
+  - condition: Network partition prevents fraud detection service from communicating with Kafka
+    effect: Order fraud analysis pipeline is blocked, fraud checks not performed on new orders
+    source: fraud-detection-service-1
+    target: kafka-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Identify and resolve network partition between fraud-detection and Kafka pods
+        - Verify network policies and connectivity between the services
+      id: resolve_network_partition

@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: medium
+description: This scenario simulates a network delay with OpenTelemetry Demo `valkey cart`, while undergoing high resource stress.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: valkey-cart-stress-chaos
+          namespace: {{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}
+      scheduleSpec:
+        type: StressChaos
+        stressChaos:
+          duration: 55s
+          mode: all
+          selector:
+            namespaces:
+            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+            labelSelectors:
+              "app.kubernetes.io/component": valkey-cart
+            podPhaseSelectors:
+            - Running
+          stressors:
+            cpu:
+              load: 50
+              workers: 2
+            memory:
+              options:
+              - --vm-hang
+              - "0"
+              size: 128MB
+              workers: 4
+    id: scheduled-chaos-mesh-experiment
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: valkey-cart-network-delay
+          namespace: {{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}
+      scheduleSpec:
+        type: NetworkChaos
+        networkChaos:
+          action: delay
+          delay:
+            latency: 750ms
+          direction: both
+          duration: 55s
+          mode: all
+          selector:
+            namespaces:
+            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+            labelSelectors:
+              "app.kubernetes.io/component": valkey-cart
+            podPhaseSelectors:
+            - Running
+    id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 62
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

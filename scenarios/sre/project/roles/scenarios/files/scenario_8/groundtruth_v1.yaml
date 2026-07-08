@@ -1,0 +1,129 @@
+---
+alerts:
+  - group_id: payment-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Payment service unavailable due to feature flag
+  - group_id: checkout-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Checkout service unable to reach payment service
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend service experiencing errors during checkout operations
+  - group_id: frontend-proxy-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend proxy experiencing errors from failed checkout attempts
+fault:
+  - category: Resource Unavailable
+    condition: High error rate
+    entity:
+      kind: Service
+      name: otel-demo-emailservice
+    fault_mechanism: custom(flagd)
+  - category: Resource Unavailable
+    condition: High error rate
+    entity:
+      kind: Service
+      name: checkout
+    fault_mechanism: custom(flagd)
+  - category: Configuration Setting
+    condition: paymentUnreachable feature flag set
+    entity:
+      changed:
+        element: data.demo\.flagd\.json
+        from: "{\n  \"$schema\": \"https://flagd.dev/schema/v0/flags.json\",\n  \"flags\": {\n    \"productCatalogFailure\": {\n      \"description\": \"Fail product
+          catalog service on a specific product\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n\
+          \      \"defaultVariant\": \"off\"\n    },\n    \"recommendationCacheFailure\": {\n      \"description\": \"Fail recommendation service cache\",\n     \
+          \ \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n \
+          \   \"adManualGc\": {\n      \"description\": \"Triggers full manual garbage collections in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\"\
+          : {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"adServiceHighCpu\": {\n      \"description\"\
+          : \"Triggers high cpu load in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n \
+          \     },\n      \"defaultVariant\": \"off\"\n    },\n    \"adFailure\": {\n      \"description\": \"Fail ad service\",\n      \"state\": \"ENABLED\",\n\
+          \      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"kafkaQueueProblems\":
+          {\n      \"description\": \"Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike\",\n      \"state\": \"\
+          ENABLED\",\n      \"variants\": {\n        \"on\": 100,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"cartFailure\": {\n\
+          \      \"description\": \"Fail cart service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n  \
+          \    },\n      \"defaultVariant\": \"off\"\n    },\n    \"paymentFailure\": {\n      \"description\": \"Fail payment service charge requests\",\n      \"\
+          state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"\
+          paymentUnreachable\": {\n      \"description\": \"Payment service is unavailable\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\"\
+          : true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"loadgeneratorFloodHomepage\": {\n      \"description\": \"Flood
+          the frontend with a large amount of requests.\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": 100,\n        \"off\": 0\n     \
+          \ },\n      \"defaultVariant\": \"off\"\n    },\n    \"imageSlowLoad\": {\n      \"description\": \"slow loading images in the frontend\",\n      \"state\"\
+          : \"ENABLED\",\n      \"variants\": {\n        \"10sec\": 10000,\n        \"5sec\": 5000,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\
+          \n    }\n  }\n}\n"
+        to: "{\n  \"$schema\": \"https://flagd.dev/schema/v0/flags.json\",\n  \"flags\": {\n    \"productCatalogFailure\": {\n      \"description\": \"Fail product
+          catalog service on a specific product\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n\
+          \      \"defaultVariant\": \"off\"\n    },\n    \"recommendationCacheFailure\": {\n      \"description\": \"Fail recommendation service cache\",\n     \
+          \ \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n \
+          \   \"adManualGc\": {\n      \"description\": \"Triggers full manual garbage collections in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\"\
+          : {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"adServiceHighCpu\": {\n      \"description\"\
+          : \"Triggers high cpu load in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n \
+          \     },\n      \"defaultVariant\": \"off\"\n    },\n    \"adFailure\": {\n      \"description\": \"Fail ad service\",\n      \"state\": \"ENABLED\",\n\
+          \      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"kafkaQueueProblems\":
+          {\n      \"description\": \"Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike\",\n      \"state\": \"\
+          ENABLED\",\n      \"variants\": {\n        \"on\": 100,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"cartFailure\": {\n\
+          \      \"description\": \"Fail cart service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n  \
+          \    },\n      \"defaultVariant\": \"off\"\n    },\n    \"paymentFailure\": {\n      \"description\": \"Fail payment service charge requests\",\n      \"\
+          state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    },\n    \"\
+          paymentUnreachable\": {\n      \"description\": \"Payment service is unavailable\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\"\
+          : true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"on\"\n    },\n    \"loadgeneratorFloodHomepage\": {\n      \"description\": \"Flood
+          the frontend with a large amount of requests.\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": 100,\n        \"off\": 0\n     \
+          \ },\n      \"defaultVariant\": \"off\"\n    },\n    \"imageSlowLoad\": {\n      \"description\": \"slow loading images in the frontend\",\n      \"state\"\
+          : \"ENABLED\",\n      \"variants\": {\n        \"10sec\": 10000,\n        \"5sec\": 5000,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\
+          \n    }\n  }\n}\n"
+      kind: ConfigMap
+      name: flagd-config
+    fault_mechanism: custom(flagd)
+groups:
+  - id: flagd-config
+    kind: ConfigMap
+    name: flagd-config
+    namespace: otel-demo
+    root_cause: true
+  - filter:
+      - payment\b
+    id: payment-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout\b
+    id: checkout-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Feature flag makes payment service completely unavailable
+    effect: Payment service cannot be reached by any callers
+    source: flagd-config
+    target: payment-service-1
+  - condition: Checkout service cannot connect to payment service at all
+    effect: Checkout operations fail when attempting to process payments due to service unavailability
+    source: payment-service-1
+    target: checkout-service-1
+  - condition: Frontend receives errors from checkout when payment service is unreachable
+    effect: Users cannot complete purchases, checkout flow fails
+    source: checkout-service-1
+    target: frontend-service-1
+  - condition: Frontend returns error responses to proxy for failed checkout attempts
+    effect: Users experience complete checkout failure through the proxy
+    source: frontend-service-1
+    target: frontend-proxy-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Disable paymentUnreachable flag
+      id: Disable paymentUnreachable flag

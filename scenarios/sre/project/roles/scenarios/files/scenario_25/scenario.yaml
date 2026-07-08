@@ -1,0 +1,36 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-25
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: recommendation-cpu-stress
+                namespace: chaos-mesh
+            scheduleSpec:
+              stressChaos:
+                duration: 55s
+                mode: all
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: recommendation
+                  namespaces:
+                    - otel-demo
+                stressors:
+                  cpu:
+                    load: 100
+                    workers: 30
+              type: StressChaos
+          id: scheduled-chaos-mesh-experiment
+  tools:
+    sre:
+      enabled: true

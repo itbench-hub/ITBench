@@ -1,0 +1,87 @@
+---
+alerts:
+  - group_id: ad-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Ad service experiencing errors due to JVM chaos forcing getInstance() to return null, causing null pointer exceptions
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend experiencing errors when calling ad service that returns null pointer errors
+  - group_id: frontend-proxy-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend proxy experiencing errors cascading from frontend
+  - group_id: ad-service-1
+    id: NoRequestsReceived
+    metadata:
+      description: Ad service shows no successful requests due to all requests failing with null pointer exceptions
+aliases:
+  - - frontend-service-1
+    - frontend-pod
+  - - ad-service-1
+    - ad-pod-1
+fault:
+  - category: Change
+    condition: To Be Specified
+    entity:
+      group_id: jvm-return-otel-demo-ad-1
+      kind: Service
+      name: jvm-return-otel-demo-ad-1
+    fault_mechanism: chaos
+groups:
+  - filter:
+      - .*adservice
+    id: jvm-return-otel-demo-ad-1
+    kind: JVMChaos
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - ad-.*
+    id: ad-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - ad\b
+    id: ad-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-.*
+    id: frontend-pod
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: JVM chaos forces AdService.getInstance() method to return null instead of service instance
+    effect: Ad service code throws null pointer exceptions when trying to use service instance
+    source: jvm-return-otel-demo-ad-1
+    target: ad-pod-1
+  - condition: Ad service throws null pointer exceptions on all requests
+    effect: Ad service experiences high error rate and shows NoRequestsReceived (no successful requests)
+    source: ad-pod-1
+    target: ad-service-1
+  - condition: Frontend calls ad service which returns null pointer errors
+    effect: Frontend experiences high error rate when attempting to fetch ads
+    source: ad-service-1
+    target: frontend-service-1
+  - condition: Frontend returns errors to proxy
+    effect: Frontend proxy propagates errors to users
+    source: frontend-service-1
+    target: frontend-proxy-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Delete the resource jvm-return on adservice
+      id: Delete_the_resource_jvm-return_on_adservice

@@ -1,0 +1,133 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [],
+    "category": "sre",
+    "complexity": "medium",
+    "description": "This scenario simulates a network delay with OpenTelemetry Demo `valkey cart`, while undergoing high resource stress.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "chaos-mesh.org/v1alpha1",
+                            "kind": "Schedule",
+                            "metadata": {
+                                "name": "valkey-cart-stress-chaos",
+                                "namespace": "chaos-mesh"
+                            }
+                        },
+                        "scheduleSpec": {
+                            "stressChaos": {
+                                "duration": "55s",
+                                "mode": "all",
+                                "selector": {
+                                    "labelSelectors": {
+                                        "app.kubernetes.io/component": "valkey-cart"
+                                    },
+                                    "namespaces": [
+                                        "otel-demo"
+                                    ],
+                                    "podPhaseSelectors": [
+                                        "Running"
+                                    ]
+                                },
+                                "stressors": {
+                                    "cpu": {
+                                        "load": 50,
+                                        "workers": 2
+                                    },
+                                    "memory": {
+                                        "options": [
+                                            "--vm-hang",
+                                            "0"
+                                        ],
+                                        "size": "128MB",
+                                        "workers": 4
+                                    }
+                                }
+                            },
+                            "type": "StressChaos"
+                        }
+                    },
+                    "id": "scheduled-chaos-mesh-experiment"
+                },
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "chaos-mesh.org/v1alpha1",
+                            "kind": "Schedule",
+                            "metadata": {
+                                "name": "valkey-cart-network-delay",
+                                "namespace": "chaos-mesh"
+                            }
+                        },
+                        "scheduleSpec": {
+                            "networkChaos": {
+                                "action": "delay",
+                                "delay": {
+                                    "latency": "750ms"
+                                },
+                                "direction": "both",
+                                "duration": "55s",
+                                "mode": "all",
+                                "selector": {
+                                    "labelSelectors": {
+                                        "app.kubernetes.io/component": "valkey-cart"
+                                    },
+                                    "namespaces": [
+                                        "otel-demo"
+                                    ],
+                                    "podPhaseSelectors": [
+                                        "Running"
+                                    ]
+                                }
+                            },
+                            "type": "NetworkChaos"
+                        }
+                    },
+                    "id": "scheduled-chaos-mesh-experiment"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 62,
+    "index": 62,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n chaos-mesh annotate schedule valkey-cart-stress-chaos experiment.chaos-mesh.org/pause='true'",
+                        "text": "Annotate the schedule to pause the active experiment."
+                    },
+                    {
+                        "command": "kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'",
+                        "text": "Retrieve the associated experiment managed by the schedule."
+                    },
+                    {
+                        "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                    },
+                    {
+                        "command": "kubectl -n chaos-mesh delete schedule valkey-cart-stress-chaos experiment.chaos-mesh.org/pause='true'",
+                        "text": "Delete the schedule."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Deployment",
+        "Performance"
+    ]
+}

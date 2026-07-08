@@ -1,0 +1,85 @@
+---
+alerts:
+  - group_id: checkout-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Checkout service experiencing increased latency due to email service connection timeouts
+  - group_id: frontend-proxy-service
+    id: HighRequestErrorRate
+    metadata:
+      description: "Cascade effect: HighRequestErrorRate for frontend-proxy service due to upstream failures"
+  - group_id: checkout-service
+    id: HighRequestErrorRate
+    metadata:
+      description: "Cascade effect: HighRequestErrorRate for checkout service due to upstream failures"
+  - group_id: email-service
+    id: NoRequestsReceived
+    metadata:
+      description: "Cascade effect: NoRequestsReceived for email service due to upstream failures"
+aliases:
+  - - email-service-1
+    - email-pod-1
+fault:
+  - category: Network
+    condition: Chaos Mesh network partition blocking email pods from reaching checkout service
+    entity:
+      group_id: otel-demo-email-checkout-network-partition
+      kind: NetworkChaos
+      name: otel-demo-email-checkout-network-partition
+    fault_mechanism: network_partition
+groups:
+  - filter:
+      - otel-demo-email-checkout-network-partition
+    id: otel-demo-email-checkout-network-partition
+    kind: NetworkChaos
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - checkout-.*
+    id: checkout-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - email-.*
+    id: email-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - email\b
+    id: email-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout\b
+    id: checkout-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Chaos Mesh NetworkChaos resource injects network partition affecting email and checkout pods
+    effect: Email pods cannot receive connections from checkout service
+    source: otel-demo-email-checkout-network-partition
+    target: email-pod-1
+  - condition: Chaos Mesh NetworkChaos resource injects network partition affecting email and checkout pods
+    effect: Checkout pods cannot receive connections
+    source: otel-demo-email-checkout-network-partition
+    target: checkout-pod-1
+  - condition: Email pods cannot receive or respond to checkout requests due to network partition
+    effect: Email service becomes unreachable from checkout service
+    source: email-pod-1
+    target: email-service-1
+  - condition: Checkout service cannot connect to email service to send order confirmation emails
+    effect: Checkout completes orders but experiences latency waiting for email service timeouts, no confirmation emails sent
+    source: email-service-1
+    target: checkout-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Identify and stop the network partition chaos experiment between email and checkout
+      id: resolve_network_partition

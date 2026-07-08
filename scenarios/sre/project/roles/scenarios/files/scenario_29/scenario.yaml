@@ -1,0 +1,33 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-29
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: ad-jvm-return
+                namespace: chaos-mesh
+            scheduleSpec:
+              jvmChaos:
+                action: ruleData
+                mode: all
+                ruleData: RULE modifyReturnValue\nCLASS AdService\nMETHOD getInstance\nAT ENTRY\nIF true\nDO return null\nENDRULE
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: ad
+                  namespaces:
+                    - otel-demo
+              type: JVMChaos
+          id: scheduled-chaos-mesh-experiment
+  tools:
+    sre:
+      enabled: true

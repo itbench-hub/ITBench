@@ -1,0 +1,168 @@
+---
+alerts:
+  - group_id: productcatalog-service-2
+    id: HighRequestErrorRate
+    metadata:
+      description: Product catalog experiencing errors due to productCatalogFailure feature flag
+  - group_id: checkout-service-2
+    id: HighRequestErrorRate
+    metadata:
+      description: Checkout experiencing errors when calling affected product-catalog service
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend experiencing errors when calling product-catalog and checkout services
+  - group_id: frontend-proxy-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend proxy experiencing errors cascading from frontend
+aliases:
+  - - flagd-pod-1
+    - flagd-service-1
+  - - frontend-service-1
+    - frontend-pod-1
+  - - recommendation-service-1
+    - recommendation-pod-1
+  - - productcatalog-service-2
+    - productcatalog-pod-2
+    - products-endpoint-2
+  - - checkout-service-2
+    - checkout-pod-2
+fault:
+  - category: Resource Saturation
+    condition: High HTTP error rate
+    entity:
+      kind: Service
+      name: frontend
+    fault_mechanism: custom(flagd)
+  - category: Resource Unavailable
+    condition: High HTTP error rate
+    entity:
+      kind: Service
+      name: product-catalog
+    fault_mechanism: custom(flagd)
+  - category: Configuration Setting
+    condition: adServiceHighCpu feature flag set
+    entity:
+      group_id: flagd-config-1
+      kind: ConfigMap
+      name: flagd-config
+    fault_mechanism: custom(flagd)
+groups:
+  - id: flagd-config-1
+    kind: ConfigMap
+    name: flagd-config
+    namespace: otel-demo
+    root_cause: true
+  - filter:
+      - flagd-.*
+    id: flagd-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - flagd
+    id: flagd-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - recommendation-.*
+    id: recommendation-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - recommendation\b
+    id: recommendation-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-.*
+    id: frontend-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - product-catalog-.*_ProductCatalogService_GetProduct
+    id: products-endpoint-2
+    kind: ServiceOperation
+    namespace: otel-demo
+  - filter:
+      - product-catalog\b
+    id: productcatalog-service-2
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout\b
+    id: checkout-service-2
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - product-catalog-.*
+    id: productcatalog-pod-2
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - checkout-.*
+    id: checkout-pod-2
+    kind: Pod
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: flagd enables injection
+    effect: recommendation pod crashLoopBack Failure
+    source: flagd-service-1
+    target: recommendation-pod-1
+  - condition: recommendation pod crashLoopBack Failure
+    effect: recommendation service Error Rate is Above Threshold
+    source: recommendation-pod-1
+    target: recommendation-service-1
+  - condition: recommendation service Error Rate is Above Threshold
+    effect: frontend service Error Rate is Above Threshold
+    source: recommendation-service-1
+    target: frontend-service-1
+  - condition: flagd-config ConfigMap ProductCatalog feature flag set and recommendationCacheFailure feature flag set
+    effect: flagd enables injection
+    source: flagd-config-1
+    target: flagd-service-1
+  - condition: flagd enables injection
+    effect: products endpoint GetProduct product id OLJCESPC7Z requests returning errors
+    source: flagd-service-1
+    target: products-endpoint-2
+  - condition: products endpoint GetProduct product id OLJCESPC7Z requests returning errors
+    effect: productcatalog service Error Rate is Above Threshold
+    source: products-endpoint-2
+    target: productcatalog-service-2
+  - condition: productcatalog service Error Rate is Above Threshold
+    effect: checkout service Error Rate is Above Threshold
+    source: productcatalog-service-2
+    target: checkout-service-2
+  - condition: checkout service Error Rate is Above Threshold
+    effect: frontend service Error Rate is Above Threshold
+    source: checkout-service-2
+    target: frontend-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Disable recommendationCacheFailure feature flag
+      id: Disable_recommendationCacheFailure_feature_flag
+  - solution:
+      actions:
+        - Increase Memory Allocation
+      id: Increase_Memory_Allocation
+  - solution:
+      actions:
+        - Disable ProductCatalogFailure feature flag
+      id: Disable_ProductCatalogFailure_feature_flag
+  - solution:
+      actions:
+        - Block traffic for product id OLJCESPC7Z
+      id: Block_traffic_for_product_id_OLJCESPC7Z

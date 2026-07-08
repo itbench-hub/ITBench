@@ -1,0 +1,95 @@
+---
+alerts:
+  - group_id: ad-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Ad service experiencing increased response times due to memory pressure
+  - group_id: ad-pod-1
+    id: FailedPodsDetected
+    metadata:
+      description: Ad pods being terminated or restarted due to OOM conditions
+  - group_id: frontend-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Frontend service experiencing increased latency waiting for ad service responses
+  - group_id: frontend-proxy-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Frontend proxy experiencing increased latency serving pages with slow or failed ad responses
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend service experiencing errors when calling ad service
+  - group_id: frontend-proxy-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend proxy experiencing increased error rate
+  - id: KubePodCrashLooping
+    metadata:
+      description: "Cascade effect: KubePodCrashLooping due to fault propagation"
+  - group_id: ad-service
+    id: NoRequestsReceived
+    metadata:
+      description: "Cascade effect: NoRequestsReceived for ad service due to upstream failures"
+aliases:
+  - - ad-service-1
+    - ad-pod-1
+fault:
+  - category: Resource
+    condition: Chaos Mesh stress injecting memory pressure on ad service pods
+    entity:
+      group_id: otel-demo-ad-memory-stress
+      kind: StressChaos
+      name: otel-demo-ad-memory-stress
+    fault_mechanism: memory_stress
+groups:
+  - filter:
+      - otel-demo-ad-memory-stress
+    id: otel-demo-ad-memory-stress
+    kind: StressChaos
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - ad-.*
+    id: ad-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - ad\b
+    id: ad-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Chaos Mesh StressChaos resource injects memory stress on ad service pods
+    effect: Ad pods experience high memory usage and potential OOM kills
+    source: otel-demo-ad-memory-stress
+    target: ad-pod-1
+  - condition: Ad pods under memory pressure respond slowly, fail requests, or get terminated
+    effect: Ad service experiences degraded performance with high latency, errors, or complete unavailability
+    source: ad-pod-1
+    target: ad-service-1
+  - condition: Frontend service calls to ad service fail or return slowly
+    effect: Frontend pages load slowly or without advertisements, degrading user experience
+    source: ad-service-1
+    target: frontend-service-1
+  - condition: Frontend service returns slow or error responses to proxy due to ad service issues
+    effect: Users experience slow page loads or pages without ads through the proxy
+    source: frontend-service-1
+    target: frontend-proxy-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Identify and stop the stress chaos experiment affecting ad service
+      id: resolve_memory_stress
