@@ -1,0 +1,59 @@
+---
+- name: Uninstall cert-manager on Kubernetes
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Uninstall cert-manager
+      kubernetes.core.helm:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_managers.cert_manager.helm.release.name }}"
+        release_namespace: "{{ tools_managers.cert_manager.kubernetes.namespace }}"
+        release_state: absent
+        wait: true
+
+    - name: Delete Namespace for cert-manager
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          api_version: v1
+          kind: Namespace
+          metadata:
+            name: "{{ tools_managers.cert_manager.kubernetes.namespace }}"
+        state: absent
+        wait: true
+
+- name: Uninstall RH cert-manager Operator on OpenShift
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Delete the subscription for RH cert-manager Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: openshift-cert-manager-operator
+            namespace: cert-manager-operator
+        state: absent
+
+    - name: Delete the operator group for RH cert-manager Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: openshift-cert-manager-operator
+            namespace: cert-manager-operator
+        state: absent
+
+    - name: Delete the project for RH cert-manager Operator
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: project.openshift.io/v1
+          kind: Project
+          metadata:
+            name: cert-manager-operator
+        state: absent

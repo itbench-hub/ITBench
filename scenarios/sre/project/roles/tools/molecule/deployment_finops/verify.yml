@@ -95,6 +95,21 @@
         fail_msg: Kubernetes Metrics Server namespace not found. Installation failed.
         success_msg: Kubernetes Metrics Server namespace found.
 
+    - name: Retrieve cert-manager namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        name: "{{ tools_managers.cert_manager.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+      register: tools_cert_manager_namespace
+
+    - name: Validate that cert-manager namespace exists
+      ansible.builtin.assert:
+        that:
+          - tools_cert_manager_namespace.resources | ansible.builtin.length == 1
+        fail_msg: cert-manager namespace not found. Installation failed.
+        success_msg: cert-manager namespace found.
+
     - name: Retrieve Istio System namespace
       kubernetes.core.k8s_info:
         api_version: v1

@@ -105,6 +105,25 @@
         label: customresourcedefinition/{{ custom_resource_definition.metadata.name }}
         loop_var: custom_resource_definition
 
+    - name: Delete cert-manager related CustomResourceDefinitions
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          api_version: "{{ custom_resource_definition.apiVersion }}"
+          kind: "{{ custom_resource_definition.kind }}"
+          metadata:
+            name: "{{ custom_resource_definition.metadata.name }}"
+        state: absent
+        wait: true
+      loop: |-
+        {{
+          tools_custom_resource_definitions.resources |
+          ansible.builtin.selectattr("spec.group", "search", "cert-manager\.io$")
+        }}
+      loop_control:
+        label: customresourcedefinition/{{ custom_resource_definition.metadata.name }}
+        loop_var: custom_resource_definition
+
     - name: Delete Prometheus Operator related CustomResourceDefinitions
       kubernetes.core.k8s:
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
