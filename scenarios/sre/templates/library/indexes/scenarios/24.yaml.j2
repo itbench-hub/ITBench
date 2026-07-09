@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: medium
+description: This scenario changes the environment variables of OpenTelemetry Demo's `checkout` service, causing it to be unable to reach the `kafka` service.
+disruptions:
+- injections:
+  - args:
+      container:
+        env:
+          name: KAFKA_ADDR
+          value: kafka:9999
+        name: checkout
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: checkout
+          namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+    id: modified-kubernetes-workload-container-environment-variable
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 24
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

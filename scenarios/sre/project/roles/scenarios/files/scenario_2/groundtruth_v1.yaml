@@ -1,0 +1,93 @@
+---
+alerts:
+  - group_id: cart-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Cart service EmptyCart operations failing due to feature flag
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend service experiencing errors when users attempt to empty cart
+  - group_id: frontend-proxy-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend proxy experiencing errors from failed cart operations
+  - group_id: checkout-service
+    id: HighRequestErrorRate
+    metadata:
+      description: "Cascade effect: HighRequestErrorRate for checkout service due to upstream failures"
+fault:
+  - category: Resource Unavailable
+    condition: High HTTP error rate
+    entity:
+      kind: Service
+      name: frontend
+    fault_mechanism: custom(flagd)
+  - category: Resource Unavailable
+    condition: High HTTP error rate
+    entity:
+      kind: Service
+      name: cart
+    fault_mechanism: custom(flagd)
+  - category: Configuration Setting
+    changed:
+      element: data.demo\.flagd\.json
+      from: "\"cartFailure\": {\n      \"description\": \"Fail cart service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n    \
+        \    \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    }"
+      to: "\"cartFailure\": {\n      \"description\": \"Fail cart service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"on\": true,\n      \
+        \  \"off\": false\n      },\n      \"defaultVariant\": \"on\"\n    }"
+    condition: cartFailure feature flag set
+    entity:
+      kind: ConfigMap
+      name: flagd-config
+    fault_mechanism: custom(flagd)
+groups:
+  - id: flagd-config
+    kind: ConfigMap
+    name: flagd-config
+    namespace: otel-demo
+    root_cause: true
+  - filter:
+      - cart\b
+    id: cart-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout\b
+    id: checkout-service
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Feature flag causes cart service EmptyCart method to fail
+    effect: Cart service returns errors when users attempt to empty their shopping cart
+    source: flagd-config
+    target: cart-service-1
+  - condition: Frontend receives errors from cart service when users try to empty cart
+    effect: Users cannot empty their shopping carts, affecting checkout flow
+    source: cart-service-1
+    target: frontend-service-1
+  - condition: Frontend returns error responses to proxy for failed cart operations
+    effect: Users experience cart functionality failures through the proxy
+    source: frontend-service-1
+    target: frontend-proxy-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Disable cartFailure flag
+      id: Disable cartFailure flag
+  - solution:
+      actions:
+        - Restart cart service
+      id: Restart cart service

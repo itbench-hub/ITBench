@@ -1,0 +1,106 @@
+---
+alerts:
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend service experiencing timeouts/errors when calling ad service due to GC pauses exceeding timeout thresholds
+  - group_id: frontend-proxy-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend proxy experiencing errors cascading from frontend due to ad service GC pauses
+  - group_id: frontend-proxy-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Frontend proxy experiencing increased latency serving pages with slow ad responses
+aliases:
+  - - ad-service-1
+    - ad-pod-1
+  - - frontend-service-1
+    - frontend-pod-1
+  - - frontend-proxy-service-1
+    - frontend-proxy-pod-1
+fault:
+  - category: Resource Unavailable
+    condition: High latency
+    entity:
+      kind: Service
+      name: ad
+    fault_mechanism: custom(flagd)
+  - category: Resource Unavailable
+    condition: High error rate and high latency
+    entity:
+      kind: Service
+      name: frontend
+    fault_mechanism: custom(flagd)
+  - category: Configuration Setting
+    changed:
+      element: data.demo\.flagd\.json
+      from: "\"adManualGc\": {\n      \"description\": \"Triggers full manual garbage collections in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\"\
+        : {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"off\"\n    }"
+      to: "\"adManualGc\": {\n      \"description\": \"Triggers full manual garbage collections in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\"\
+        : {\n        \"on\": true,\n        \"off\": false\n      },\n      \"defaultVariant\": \"on\"\n    }"
+    condition: adManualGc feature flag set
+    entity:
+      kind: ConfigMap
+      name: flagd-config
+    fault_mechanism: custom(flagd)
+groups:
+  - id: flagd-config
+    kind: ConfigMap
+    name: flagd-config
+    namespace: otel-demo
+    root_cause: true
+  - filter:
+      - ad\b
+    id: ad-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - ad-.*
+    id: ad-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-.*
+    id: frontend-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy-.*
+    id: frontend-proxy-pod-1
+    kind: Pod
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Feature flag triggers manual full garbage collection in ad service
+    effect: Ad service experiences GC pauses (280+ seconds) causing requests to timeout
+    source: flagd-config
+    target: ad-service-1
+  - condition: Frontend service calls to ad service timeout due to extreme GC pauses
+    effect: Frontend experiences errors when loading advertisements (timeouts exceed error threshold)
+    source: ad-service-1
+    target: frontend-service-1
+  - condition: Frontend returns errors to proxy due to ad service timeouts
+    effect: Frontend-proxy experiences error rate increase and latency degradation
+    source: frontend-service-1
+    target: frontend-proxy-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Disable adManualGc flag in flagd configuration
+      id: Disable adManualGc flag
+  - solution:
+      actions:
+        - Restart ad service to clear any degraded state
+      id: Restart ad service

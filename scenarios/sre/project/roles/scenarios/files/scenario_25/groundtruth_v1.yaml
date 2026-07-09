@@ -1,0 +1,102 @@
+---
+alerts:
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend experiencing errors when calling recommendation service that is CPU-saturated
+  - group_id: frontend-proxy-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend proxy experiencing errors cascading from frontend due to recommendation CPU saturation
+  - id: NodeCPUHighUsage
+    metadata:
+      description: Node experiencing high CPU usage due to CPU stress experiment on recommendation pod
+  - id: NodeSystemSaturation
+    metadata:
+      description: Node experiencing system saturation due to extreme CPU stress on recommendation pod
+  - group_id: recommendation-service
+    id: NoRequestsReceived
+    metadata:
+      description: "Cascade effect: NoRequestsReceived for recommendation service due to upstream failures"
+  - group_id: frontend-proxy-service
+    id: HighRequestLatency
+    metadata:
+      description: "Cascade effect: HighRequestLatency for frontend-proxy service due to upstream failures"
+aliases:
+  - - frontend-proxy-service-1
+    - frontend-proxy-pod-1
+  - - recommendation-pod-1
+    - recommendation-service-1
+fault:
+  - category: Other
+    condition: Resource Saturation
+    entity:
+      group_id: cpustress-recommendation-1
+      kind: Service
+      name: cpustress-recommendation-1
+    fault_mechanism: chaos
+groups:
+  - filter:
+      - .*recommendation
+    id: otel-demo-recommendation-cpu-stress
+    kind: Schedule
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - recommendation-.*
+    id: recommendation-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - recommendation\b
+    id: recommendation-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy-.*
+    id: frontend-proxy-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-.*
+    id: frontend-pod-1
+    kind: Pod
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Chaos mesh stresses CPU with 30 workers at 100% load on recommendation pod with only 50m CPU limit
+    effect: Recommendation pod experiences extreme CPU saturation and becomes unresponsive
+    source: otel-demo-recommendation-cpu-stress
+    target: recommendation-pod-1
+  - condition: Recommendation service is CPU-saturated and cannot process requests
+    effect: Frontend experiences errors when calling recommendation service (timeouts/failures rather than slow responses due to severity)
+    source: recommendation-pod-1
+    target: frontend-service-1
+  - condition: Frontend returns errors to proxy due to recommendation failures
+    effect: Frontend proxy experiences cascading errors
+    source: frontend-service-1
+    target: frontend-proxy-service-1
+  - condition: Recommendation pod consumes excessive CPU on the node
+    effect: Node-level CPU and system saturation metrics trigger NodeCPUHighUsage and NodeSystemSaturation alerts
+    source: recommendation-pod-1
+    target: node
+recommended_actions:
+  - solution:
+      actions:
+        - Delete the resource stresschaos recommendationservice
+      id: Delete_the_resource_stresschaos_recommendationservice
+  - solution:
+      actions:
+        - Increase CPU Allocation
+      id: Increase_CPU_Allocation

@@ -4,12 +4,11 @@ kind: GroundTruth
 metadata:
   name: scenario-52
 spec:
-  # Predicted alerts based on fault propagation
   alerts:
     - group_id: checkout-pod-1
       id: KubePodNotReady
       metadata:
-        description: "checkout deployment pods cannot be scheduled due to insufficient resource quota, preventing them from reaching Ready state"
+        description: checkout deployment pods cannot be scheduled due to insufficient resource quota, preventing them from reaching Ready state
     - group_id: frontend-service-1
       id: HighRequestErrorRate
       metadata:
@@ -54,112 +53,6 @@ spec:
       id: NoRequestsReceived
       metadata:
         description: Quote receives no requests - shipping blocked
-
-  # Resource groups representing affected Kubernetes resources
-  groups:
-    # Root cause: ResourceQuota preventing new pod scheduling
-    - id: resource-quota-1
-      kind: ResourceQuota
-      namespace: otel-demo
-      filter:
-        - strict-resource-quota\b
-      root_cause: true
-
-    # Secondary root cause: Feature flag causing load surge
-    - id: flagd-configmap-1
-      kind: ConfigMap
-      namespace: otel-demo
-      filter:
-        - flagd-config\b
-      root_cause: true
-
-    # Affected deployment that cannot scale
-    - id: checkout-deployment-1
-      kind: Deployment
-      namespace: otel-demo
-      filter:
-        - checkout\b
-
-    - id: checkout-pod-1
-      kind: Pod
-      namespace: otel-demo
-      filter:
-        - checkout-.*
-
-    # Load generator creating demand
-    - id: load-generator-deployment-1
-      kind: Deployment
-      namespace: otel-demo
-      filter:
-        - load-generator\b
-
-    - id: load-generator-pod-1
-      kind: Pod
-      namespace: otel-demo
-      filter:
-        - load-generator-.*
-
-    - id: checkout-service-1
-      kind: Service
-      namespace: otel-demo
-      filter:
-        - checkout\b
-
-    - id: frontend-service-1
-      kind: Service
-      namespace: otel-demo
-      filter:
-        - frontend\b
-
-    - id: frontend-proxy-service-1
-      kind: Service
-      namespace: otel-demo
-      filter:
-        - frontend-proxy\b
-
-    - id: payment-service-1
-      kind: Service
-      namespace: otel-demo
-      filter:
-        - payment\b
-
-    - id: shipping-service-1
-      kind: Service
-      namespace: otel-demo
-      filter:
-        - shipping\b
-
-    - id: email-service-1
-      kind: Service
-      namespace: otel-demo
-      filter:
-        - email\b
-
-    - id: currency-service-1
-      kind: Service
-      namespace: otel-demo
-      filter:
-        - currency\b
-
-    - id: accounting-service-1
-      kind: Service
-      namespace: otel-demo
-      filter:
-        - accounting\b
-
-    - id: fraud-detection-service-1
-      kind: Service
-      namespace: otel-demo
-      filter:
-        - fraud-detection\b
-
-    - id: quote-service-1
-      kind: Service
-      namespace: otel-demo
-      filter:
-        - quote\b
-
-  # Logical relationships between groups
   aliases:
     - - checkout-deployment-1
       - checkout-pod-1
@@ -175,119 +68,177 @@ spec:
     - - accounting-service-1
     - - fraud-detection-service-1
     - - quote-service-1
-
-  # Fault propagation chains showing how the resource constraint cascades
-  propagations:
-    # Feature flag enables load flooding
-    - source: flagd-configmap-1
-      target: load-generator-pod-1
-      condition: "loadGeneratorFloodHomepage feature flag is enabled in flagd-config ConfigMap"
-      effect: "load-generator pods generate significantly increased request volume to application services"
-
-    # Increased load triggers autoscaling attempt
-    - source: load-generator-pod-1
-      target: checkout-deployment-1
-      condition: "Surge in requests causes HPA or manual scaling to attempt increasing checkout deployment replicas"
-      effect: "checkout deployment attempts to scale up to handle increased load"
-
-    # Resource quota blocks scaling
-    - source: resource-quota-1
-      target: checkout-pod-1
-      condition: "strict-resource-quota in otel-demo namespace has insufficient memory/CPU limits available"
-      effect: "New checkout pods cannot be scheduled due to namespace resource quota exceeded, resulting in KubePodNotReady alert"
-
-    # Checkout service degradation cascades
-    - source: checkout-pod-1
-      target: checkout-service-1
-      condition: "Checkout pods not ready due to resource quota"
-      effect: "Checkout service unable to handle requests, experiences failures"
-
-    - source: checkout-service-1
-      target: frontend-service-1
-      condition: "Checkout service failing or overloaded"
-      effect: "Frontend experiences errors when calling checkout"
-
-    - source: frontend-service-1
-      target: frontend-proxy-service-1
-      condition: "Frontend experiencing errors from checkout failures"
-      effect: "Frontend-proxy experiences cascading errors"
-
-    - source: checkout-service-1
-      target: payment-service-1
-      condition: "Checkout failing - flow never reaches payment stage"
-      effect: "Payment service receives no requests"
-
-    - source: checkout-service-1
-      target: shipping-service-1
-      condition: "Checkout failing - flow never reaches shipping stage"
-      effect: "Shipping service receives no requests"
-
-    - source: checkout-service-1
-      target: currency-service-1
-      condition: "Checkout failing - flow never reaches currency conversion"
-      effect: "Currency service receives no requests"
-
-    - source: checkout-service-1
-      target: email-service-1
-      condition: "Checkout failing - no orders completed to send emails"
-      effect: "Email service receives no requests"
-
-    - source: checkout-service-1
-      target: accounting-service-1
-      condition: "No orders created due to checkout failure"
-      effect: "Accounting service receives no order events"
-
-    - source: checkout-service-1
-      target: fraud-detection-service-1
-      condition: "No orders created due to checkout failure"
-      effect: "Fraud detection receives no order events"
-
-    - source: shipping-service-1
-      target: quote-service-1
-      condition: "Shipping service receives no requests"
-      effect: "Quote service receives no shipping quote requests"
-
-    - source: checkout-service-1
-      target: accounting-service-1
-      condition: "Accounting receives no order events"
-      effect: "Accounting performs no database operations"
-
-  # Fault metadata describing the root causes
   fault:
     - category: Create
-      condition: "ResourceQuota 'strict-resource-quota' created with insufficient memory allocation for namespace scaling needs"
+      condition: ResourceQuota 'strict-resource-quota' created with insufficient memory allocation for namespace scaling needs
       entity:
         group_id: resource-quota-1
         kind: ResourceQuota
         name: strict-resource-quota
-      fault_mechanism: >-
-        Simulates resource exhaustion at namespace level where resource quotas prevent horizontal
-        scaling during load spikes, similar to production incidents where quota limits are set
-        too conservatively
+      fault_mechanism: Simulates resource exhaustion at namespace level where resource quotas prevent horizontal scaling during load spikes, similar to
+        production incidents where quota limits are set too conservatively
     - category: Change
-      condition: "Feature flag 'loadGeneratorFloodHomepage' enabled in flagd-config ConfigMap"
+      condition: Feature flag 'loadGeneratorFloodHomepage' enabled in flagd-config ConfigMap
       entity:
         group_id: flagd-configmap-1
         kind: ConfigMap
         name: flagd-config
-      fault_mechanism: "Enables load generation to trigger scaling pressure, exposing the resource quota constraint"
-
-  # Recommended remediation actions
+      fault_mechanism: Enables load generation to trigger scaling pressure, exposing the resource quota constraint
+  groups:
+    - filter:
+        - strict-resource-quota\b
+      id: resource-quota-1
+      kind: ResourceQuota
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - flagd-config\b
+      id: flagd-configmap-1
+      kind: ConfigMap
+      namespace: otel-demo
+      root_cause: true
+    - filter:
+        - checkout\b
+      id: checkout-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+    - filter:
+        - checkout-.*
+      id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - load-generator\b
+      id: load-generator-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+    - filter:
+        - load-generator-.*
+      id: load-generator-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - checkout\b
+      id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - payment\b
+      id: payment-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - shipping\b
+      id: shipping-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - email\b
+      id: email-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - currency\b
+      id: currency-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - accounting\b
+      id: accounting-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - fraud-detection\b
+      id: fraud-detection-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - quote\b
+      id: quote-service-1
+      kind: Service
+      namespace: otel-demo
+  propagations:
+    - condition: loadGeneratorFloodHomepage feature flag is enabled in flagd-config ConfigMap
+      effect: load-generator pods generate significantly increased request volume to application services
+      source: flagd-configmap-1
+      target: load-generator-pod-1
+    - condition: Surge in requests causes HPA or manual scaling to attempt increasing checkout deployment replicas
+      effect: checkout deployment attempts to scale up to handle increased load
+      source: load-generator-pod-1
+      target: checkout-deployment-1
+    - condition: strict-resource-quota in otel-demo namespace has insufficient memory/CPU limits available
+      effect: New checkout pods cannot be scheduled due to namespace resource quota exceeded, resulting in KubePodNotReady alert
+      source: resource-quota-1
+      target: checkout-pod-1
+    - condition: Checkout pods not ready due to resource quota
+      effect: Checkout service unable to handle requests, experiences failures
+      source: checkout-pod-1
+      target: checkout-service-1
+    - condition: Checkout service failing or overloaded
+      effect: Frontend experiences errors when calling checkout
+      source: checkout-service-1
+      target: frontend-service-1
+    - condition: Frontend experiencing errors from checkout failures
+      effect: Frontend-proxy experiences cascading errors
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+    - condition: Checkout failing - flow never reaches payment stage
+      effect: Payment service receives no requests
+      source: checkout-service-1
+      target: payment-service-1
+    - condition: Checkout failing - flow never reaches shipping stage
+      effect: Shipping service receives no requests
+      source: checkout-service-1
+      target: shipping-service-1
+    - condition: Checkout failing - flow never reaches currency conversion
+      effect: Currency service receives no requests
+      source: checkout-service-1
+      target: currency-service-1
+    - condition: Checkout failing - no orders completed to send emails
+      effect: Email service receives no requests
+      source: checkout-service-1
+      target: email-service-1
+    - condition: No orders created due to checkout failure
+      effect: Accounting service receives no order events
+      source: checkout-service-1
+      target: accounting-service-1
+    - condition: No orders created due to checkout failure
+      effect: Fraud detection receives no order events
+      source: checkout-service-1
+      target: fraud-detection-service-1
+    - condition: Shipping service receives no requests
+      effect: Quote service receives no shipping quote requests
+      source: shipping-service-1
+      target: quote-service-1
+    - condition: Accounting receives no order events
+      effect: Accounting performs no database operations
+      source: checkout-service-1
+      target: accounting-service-1
   recommendedActions:
     - solution:
         actions:
-          - "Review namespace resource quotas using kubectl get resourcequota"
-          - "Edit the resource quota to increase memory/CPU limits"
-          - "Verify pods can now be scheduled"
+          - Review namespace resource quotas using kubectl get resourcequota
+          - Edit the resource quota to increase memory/CPU limits
+          - Verify pods can now be scheduled
         id: increase-resource-quota
     - solution:
         actions:
-          - "Delete the restrictive resource quota if no longer needed"
-          - "Ensure namespace has adequate resources for workload scaling"
+          - Delete the restrictive resource quota if no longer needed
+          - Ensure namespace has adequate resources for workload scaling
         id: delete-resource-quota
     - solution:
         actions:
-          - "Disable the loadGeneratorFloodHomepage feature flag by editing flagd-config ConfigMap"
-          - "Restart flagd and load-generator deployments to apply changes"
-          - "Reduce load to prevent triggering quota limits"
+          - Disable the loadGeneratorFloodHomepage feature flag by editing flagd-config ConfigMap
+          - Restart flagd and load-generator deployments to apply changes
+          - Reduce load to prevent triggering quota limits
         id: disable-load-generation

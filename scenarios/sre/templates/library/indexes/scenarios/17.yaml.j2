@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: high
+description: This scenario simulates OpenTelemetry Demo's `product-catalog` service experiencing network delays.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: product-catalog-network-delay
+          namespace: {{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}
+      scheduleSpec:
+        networkChaos:
+          action: delay
+          delay:
+            latency: 20000ms
+          mode: all
+          selector:
+            labelSelectors:
+              app.kubernetes.io/component: product-catalog
+            namespaces:
+            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+        type: NetworkChaos
+    id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 17
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

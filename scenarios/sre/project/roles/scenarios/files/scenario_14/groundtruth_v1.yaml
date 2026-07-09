@@ -1,0 +1,241 @@
+---
+alerts:
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Error Rate is Above Threshold
+  - group_id: payment-service-2
+    id: HighRequestErrorRate
+    metadata:
+      description: Error Rate is Above Threshold
+  - group_id: checkout-service-2
+    id: HighRequestErrorRate
+    metadata:
+      description: Error Rate is Above Threshold
+  - group_id: frontend-proxy-service
+    id: HighRequestErrorRate
+    metadata:
+      description: "Cascade effect: HighRequestErrorRate for frontend-proxy service due to upstream failures"
+  - group_id: ad-service
+    id: HighRequestErrorRate
+    metadata:
+      description: "Cascade effect: HighRequestErrorRate for ad service due to upstream failures"
+  - group_id: accounting-service
+    id: NoRequestsReceived
+    metadata:
+      description: "Cascade effect: NoRequestsReceived for accounting service due to upstream failures"
+  - group_id: fraud-detection-service
+    id: NoRequestsReceived
+    metadata:
+      description: "Cascade effect: NoRequestsReceived for fraud-detection service due to upstream failures"
+  - group_id: email-service
+    id: NoRequestsReceived
+    metadata:
+      description: "Cascade effect: NoRequestsReceived for email service due to upstream failures"
+  - group_id: accounting-service
+    id: NoDatabaseOperations
+    metadata:
+      description: "Cascade effect: NoDatabaseOperations for accounting service due to upstream failures"
+aliases:
+  - - flagd-pod-1
+    - flagd-service-1
+  - - ad-service-1
+    - ad-pod-1
+    - getads-endpoint-1
+  - - frontend-service-1
+    - frontend-pod-1
+  - - checkout-service-2
+    - checkout-pod-2
+  - - payment-service-2
+    - payment-pod-2
+fault:
+  - category: Resource Unavailable
+    condition: High error rate
+    entity:
+      kind: Service
+      name: frontend
+    fault_mechanism: custom(flagd)
+  - category: Resource Unavailable
+    condition: High error rate
+    entity:
+      kind: Service
+      name: checkout
+    fault_mechanism: custom(flagd)
+  - category: Resource Unavailable
+    condition: High error rate
+    entity:
+      kind: Service
+      name: payment
+    fault_mechanism: custom(flagd)
+  - category: Configuration Setting
+    condition: paymentSeriveFailure and adFailure feature flag set
+    entity:
+      changed:
+        element: data.demo\\.flagd\\.json
+        from: "{\n  \"$schema\": \"https://flagd.dev/schema/v0/flags.json\",\n  \"flags\": {\n    \"productCatalogFailure\": {\n      \"description\": \"Fail product
+          catalog service on a specific product\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\":
+          \"off\"\n    },\n    \"recommendationCacheFailure\": {\n      \"description\": \"Fail recommendation service cache\",\n      \"state\": \"ENABLED\",\n \
+          \     \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\": \"off\"\n    },\n    \"adManualGc\": {\n      \"description\": \"Triggers
+          full manual garbage collections in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\"\
+          : \"off\"\n    },\n    \"adServiceHighCpu\": {\n      \"description\": \"Triggers high cpu load in the ad service\",\n      \"state\": \"ENABLED\",\n  \
+          \    \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\": \"off\"\n    },\n    \"adFailure\": {\n      \"description\": \"Fail ad service\"\
+          ,\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\": \"off\"\n    },\n    \"kafkaQueueProblems\"\
+          : {\n      \"description\": \"Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike\",\n      \"state\": \"\
+          ENABLED\",\n      \"variants\": {\"on\": 100, \"off\": 0},\n      \"defaultVariant\": \"off\"\n    },\n    \"cartFailure\": {\n      \"description\": \"\
+          Fail cart service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\": \"off\"\n    },\n  \
+          \  \"paymentFailure\": {\n      \"description\": \"Fail payment service charge requests\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\":
+          true, \"off\": false},\n      \"defaultVariant\": \"off\"\n    },\n    \"paymentUnreachable\": {\n      \"description\": \"Payment service is unavailable\"\
+          ,\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\": \"off\"\n    },\n    \"loadgeneratorFloodHomepage\"\
+          : {\n      \"description\": \"Flood the frontend with a large amount of requests.\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": 100, \"\
+          off\": 0},\n      \"defaultVariant\": \"off\"\n    },\n    \"imageSlowLoad\": {\n      \"description\": \"slow loading images in the frontend\",\n     \
+          \ \"state\": \"ENABLED\",\n      \"variants\": {\"10sec\": 10000, \"5sec\": 5000, \"off\": 0},\n      \"defaultVariant\": \"off\"\n    }\n  }\n}"
+        to: "{\n  \"$schema\": \"https://flagd.dev/schema/v0/flags.json\",\n  \"flags\": {\n    \"productCatalogFailure\": {\n      \"description\": \"Fail product
+          catalog service on a specific product\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\":
+          \"off\"\n    },\n    \"recommendationCacheFailure\": {\n      \"description\": \"Fail recommendation service cache\",\n      \"state\": \"ENABLED\",\n \
+          \     \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\": \"off\"\n    },\n    \"adManualGc\": {\n      \"description\": \"Triggers
+          full manual garbage collections in the ad service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\"\
+          : \"off\"\n    },\n    \"adServiceHighCpu\": {\n      \"description\": \"Triggers high cpu load in the ad service\",\n      \"state\": \"ENABLED\",\n  \
+          \    \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\": \"off\"\n    },\n    \"adFailure\": {\n      \"description\": \"Fail ad service\"\
+          ,\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\": \"on\"\n    },\n    \"kafkaQueueProblems\"\
+          : {\n      \"description\": \"Overloads Kafka queue while simultaneously introducing a consumer side delay leading to a lag spike\",\n      \"state\": \"\
+          ENABLED\",\n      \"variants\": {\"on\": 100, \"off\": 0},\n      \"defaultVariant\": \"off\"\n    },\n    \"cartFailure\": {\n      \"description\": \"\
+          Fail cart service\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\": \"off\"\n    },\n  \
+          \  \"paymentFailure\": {\n      \"description\": \"Fail payment service charge requests\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\":
+          true, \"off\": false},\n      \"defaultVariant\": \"on\"\n    },\n    \"paymentUnreachable\": {\n      \"description\": \"Payment service is unavailable\"\
+          ,\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": true, \"off\": false},\n      \"defaultVariant\": \"off\"\n    },\n    \"loadgeneratorFloodHomepage\"\
+          : {\n      \"description\": \"Flood the frontend with a large amount of requests.\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\"on\": 100, \"\
+          off\": 0},\n      \"defaultVariant\": \"off\"\n    },\n    \"imageSlowLoad\": {\n      \"description\": \"slow loading images in the frontend\",\n     \
+          \ \"state\": \"ENABLED\",\n      \"variants\": {\"10sec\": 10000, \"5sec\": 5000, \"off\": 0},\n      \"defaultVariant\": \"off\"\n    }\n  }\n}"
+      kind: ConfigMap
+      name: flagd-config
+    fault_mechanism: custom(flagd)
+groups:
+  - id: flagd-config-1
+    kind: ConfigMap
+    name: flagd-config
+    namespace: otel-demo
+    root_cause: true
+  - filter:
+      - flagd-.*
+    id: flagd-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - flagd
+    id: flagd-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - ad-.*_Ad_GetAds
+    id: getads-endpoint-1
+    kind: ServiceOperation
+    namespace: otel-demo
+  - filter:
+      - ad
+    id: ad-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - ad-.*
+    id: ad-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - frontend-.*
+    id: frontend-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - checkout-.*_PaymentService_Charge
+    id: charge-endpoint-2
+    kind: ServiceOperation
+    namespace: otel-demo
+  - filter:
+      - payment
+    id: payment-service-2
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout
+    id: checkout-service-2
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout-.*
+    id: checkout-pod-2
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - payment-.*
+    id: payment-pod-2
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - accounting\b
+    id: accounting-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - fraud-detection\b
+    id: fraud-detection-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - email\b
+    id: email-service
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: flagd-config ConfigMap adFailure feature flag set and paymentFailure feature flag set
+    effect: flagd enables injection
+    source: flagd-config-1
+    target: flagd-service-1
+  - condition: flagd enables injection
+    effect: getads endpoint Error Rate is Above Threshold
+    source: flagd-service-1
+    target: getads-endpoint-1
+  - condition: getads endpoint Error Rate is Above Threshold
+    effect: ad service Error Rate is Above Threshold
+    source: getads-endpoint-1
+    target: ad-service-1
+  - condition: ad service Error Rate is Above Threshold
+    effect: frontend service Error Rate is Above Threshold
+    source: ad-service-1
+    target: frontend-service-1
+  - condition: flagd enables injection
+    effect: charge endpoint Error Rate is Above Threshold
+    source: flagd-service-1
+    target: charge-endpoint-2
+  - condition: charge endpoint Error Rate is Above Threshold
+    effect: payment service Error Rate is Above Threshold
+    source: charge-endpoint-2
+    target: payment-service-2
+  - condition: payment service Error Rate is Above Threshold
+    effect: checkout service Error Rate is Above Threshold
+    source: payment-service-2
+    target: checkout-service-2
+  - condition: checkout service Error Rate is Above Threshold
+    effect: frontend service Error Rate is Above Threshold
+    source: checkout-service-2
+    target: frontend-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Disable adFailure feature flag
+      id: Disable_adFailure_feature_flag
+  - solution:
+      actions:
+        - Disable PaymentFailure feature flag
+      id: Disable_PaymentFailure_feature_flag

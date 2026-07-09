@@ -1,0 +1,20 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-24
+spec:
+  alerts: []
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: checkout
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/checkout
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment checkout
+            text: Manually edit the manifest and replace the environment variable(s) value with the correct value(s).

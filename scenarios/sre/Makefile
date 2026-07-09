@@ -42,7 +42,7 @@ generate-scenario-index: ## Generate a new scenario index based on user input
 .PHONY: generate-resource-files
 generate-resource-files: ## Generates task files, scenario manifests, and other related files
 	$(UV) run ansible-playbook -i inventory project/manage_resource_files.yaml --tags "generate_files"
-	$(UV) run ansible-lint project/roles/scenarios/files --fix
+	cd ../../ && $(UV) run ansible-lint $(abspath project/roles/scenarios/files) --fix
 
 .PHONY: validate-library
 validate-library: ## Validates library indexes

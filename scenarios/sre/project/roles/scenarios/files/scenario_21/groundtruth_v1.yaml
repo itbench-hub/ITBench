@@ -1,0 +1,122 @@
+---
+alerts:
+  - group_id: valkey-cart-pod-1
+    id: FailedPodsDetected
+    metadata:
+      description: Valkey cart pods being terminated or restarted due to OOM conditions
+  - group_id: cart-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Cart service experiencing errors when accessing valkey cache
+  - group_id: cart-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Cart service experiencing increased latency due to cache unavailability
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend service experiencing errors when accessing cart functionality
+  - group_id: frontend-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Frontend service experiencing increased latency for cart operations
+  - group_id: checkout-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Checkout service experiencing errors when retrieving cart data
+  - group_id: frontend-proxy-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Frontend proxy experiencing increased latency serving pages with cart operations
+  - group_id: checkout-service
+    id: HighRequestLatency
+    metadata:
+      description: "Cascade effect: HighRequestLatency for checkout service due to upstream failures"
+  - id: KubePodCrashLooping
+    metadata:
+      description: "Cascade effect: KubePodCrashLooping due to fault propagation"
+  - group_id: frontend-proxy-service
+    id: HighRequestErrorRate
+    metadata:
+      description: "Cascade effect: HighRequestErrorRate for frontend-proxy service due to upstream failures"
+aliases:
+  - - valkey-cart-service-1
+    - valkey-cart-pod-1
+fault:
+  - category: Resource
+    condition: Chaos Mesh stress injecting memory pressure on valkey-cart pods
+    entity:
+      group_id: otel-demo-valkey-memory-stress
+      kind: StressChaos
+      name: otel-demo-valkey-memory-stress
+    fault_mechanism: memory_stress
+groups:
+  - filter:
+      - otel-demo-valkey-memory-stress
+    id: otel-demo-valkey-memory-stress
+    kind: StressChaos
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - valkey-cart-.*
+    id: valkey-cart-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - valkey-cart\b
+    id: valkey-cart-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - cart\b
+    id: cart-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout\b
+    id: checkout-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Chaos Mesh StressChaos resource injects memory stress on valkey-cart pods
+    effect: Valkey cart pods experience high memory usage and potential OOM kills
+    source: otel-demo-valkey-memory-stress
+    target: valkey-cart-pod-1
+  - condition: Valkey pods under memory pressure respond slowly, fail requests, or get terminated
+    effect: Valkey cart cache becomes unavailable or severely degraded
+    source: valkey-cart-pod-1
+    target: valkey-cart-service-1
+  - condition: Cart service cannot access valkey cache for storing and retrieving cart data
+    effect: Cart operations fail, users cannot add items to cart or view cart contents
+    source: valkey-cart-service-1
+    target: cart-service-1
+  - condition: Frontend receives errors from cart service when users interact with cart
+    effect: Cart functionality fails for users browsing and shopping
+    source: cart-service-1
+    target: frontend-service-1
+  - condition: Checkout service cannot retrieve cart data from cart service
+    effect: Checkout operations fail as cart contents are unavailable
+    source: cart-service-1
+    target: checkout-service-1
+  - condition: Frontend returns error responses to proxy for failed cart and checkout operations
+    effect: Users cannot use cart functionality or complete purchases through the proxy
+    source: frontend-service-1
+    target: frontend-proxy-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Identify and stop the stress chaos experiment affecting valkey-cart service
+        - Monitor valkey memory usage and pod health
+      id: resolve_memory_stress

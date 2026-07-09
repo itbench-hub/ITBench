@@ -1,0 +1,166 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-116
+spec:
+  alerts:
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: frontend service experiences errors when calling cart service affected by valkey-cart resource stress
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: frontend proxy experiencing errors cascading from frontend
+  aliases:
+    - - stress-chaos-schedule-1
+      - stress-chaos-1
+    - - io-chaos-schedule-1
+      - io-chaos-1
+    - - valkey-cart-deployment-1
+      - valkey-cart-pod-1
+      - valkey-cart-service-1
+    - - cart-deployment-1
+      - cart-pod-1
+      - cart-service-1
+  fault:
+    - category: Create
+      condition: Chaos Mesh Schedule 'valkey-cart-stress-chaos' created to inject CPU (50% load, 2 workers) and memory stress (128MB, 4 workers) into
+        valkey-cart pods for 55 second intervals
+      entity:
+        group_id: stress-chaos-schedule-1
+        kind: Schedule
+        name: valkey-cart-stress-chaos
+      fault_mechanism: Simulates cache resource exhaustion scenarios where Redis/Valkey experiences CPU or memory pressure due to high request rates, large
+        dataset sizes, or resource contention with other workloads
+    - category: Create
+      condition: Chaos Mesh Schedule 'valkey-cart-io-chaos' created to inject 750ms I/O latency on 80% of operations to /data volume for 55 second intervals
+      entity:
+        group_id: io-chaos-schedule-1
+        kind: Schedule
+        name: valkey-cart-io-chaos
+      fault_mechanism: Simulates storage backend degradation affecting Redis/Valkey persistence operations (RDB snapshots, AOF writes), similar to production
+        incidents where slow disk I/O causes cache instability, write timeouts, and performance degradation
+  groups:
+    - filter:
+        - valkey-cart-stress-chaos\b
+      id: stress-chaos-schedule-1
+      kind: Schedule
+      namespace: chaos-mesh
+      root_cause: true
+    - filter:
+        - valkey-cart-io-chaos\b
+      id: io-chaos-schedule-1
+      kind: Schedule
+      namespace: chaos-mesh
+      root_cause: true
+    - filter:
+        - valkey-cart-stress-chaos-.*
+      id: stress-chaos-1
+      kind: StressChaos
+      namespace: chaos-mesh
+    - filter:
+        - valkey-cart-io-chaos-.*
+      id: io-chaos-1
+      kind: IOChaos
+      namespace: chaos-mesh
+    - filter:
+        - valkey-cart\b
+      id: valkey-cart-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+    - filter:
+        - valkey-cart-.*
+      id: valkey-cart-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - valkey-cart\b
+      id: valkey-cart-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - cart\b
+      id: cart-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+    - filter:
+        - cart-.*
+      id: cart-pod-1
+      kind: Pod
+      namespace: otel-demo
+    - filter:
+        - cart\b
+      id: cart-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - ^frontend$
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+  propagations:
+    - condition: Chaos Mesh Schedule 'valkey-cart-stress-chaos' periodically creates StressChaos experiments targeting valkey-cart pods
+      effect: StressChaos experiments inject CPU and memory stress into valkey-cart pods
+      source: stress-chaos-schedule-1
+      target: stress-chaos-1
+    - condition: Chaos Mesh Schedule 'valkey-cart-io-chaos' periodically creates IOChaos experiments targeting valkey-cart pods
+      effect: IOChaos experiments inject storage latency into valkey-cart pods
+      source: io-chaos-schedule-1
+      target: io-chaos-1
+    - condition: StressChaos allocates 2 CPU workers at 50% load and 4 memory workers consuming 128MB with --vm-hang=0 for 55 second duration
+      effect: valkey-cart pods experience CPU contention and memory pressure, causing slower cache operations, increased response times, and potential OOM
+        conditions
+      source: stress-chaos-1
+      target: valkey-cart-pod-1
+    - condition: IOChaos injects 750ms latency on 80% of I/O operations to /data volume for 55 second duration
+      effect: valkey-cart pods experience severe storage latency for RDB snapshots and AOF persistence, further degrading cache performance and potentially
+        causing write timeouts
+      source: io-chaos-1
+      target: valkey-cart-pod-1
+    - condition: valkey-cart pods under combined CPU, memory, and I/O stress become unresponsive or timeout on cache operations
+      effect: valkey-cart service experiences high latency and connection failures, making the cache effectively unavailable
+      source: valkey-cart-pod-1
+      target: valkey-cart-service-1
+    - condition: cart pods depend on valkey-cart for shopping cart persistence and session state
+      effect: cart pods experience cache timeouts, connection errors, and fallback to slower code paths, causing increased latency and error rates
+      source: valkey-cart-service-1
+      target: cart-pod-1
+    - condition: cart pods unable to perform cart operations efficiently due to cache failures
+      effect: cart service returns errors and timeouts for cart operations
+      source: cart-pod-1
+      target: cart-service-1
+    - condition: frontend calls cart service for shopping cart operations
+      effect: frontend experiences high error rates when processing cart requests
+      source: cart-service-1
+      target: frontend-service-1
+    - condition: frontend returns errors to proxy
+      effect: frontend proxy propagates errors to users
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+  recommendedActions:
+    - solution:
+        actions:
+          - Pause both Chaos Mesh Schedules to prevent new experiments
+          - Delete active StressChaos and IOChaos experiments
+          - Delete both Schedules to permanently stop chaos injection
+          - Verify valkey-cart performance returns to normal
+        id: pause-and-delete-all-chaos-schedules
+    - solution:
+        actions:
+          - Delete both Chaos Mesh Schedules in a single command
+          - Clean up any lingering chaos experiments with ITBench label
+          - Verify no residual chaos resources remain
+        id: delete-chaos-schedules-batch
+    - solution:
+        actions:
+          - Check valkey-cart pod status to verify they are running
+          - Force restart valkey-cart pods to ensure clean state after chaos removal
+          - Monitor cart service metrics to confirm latency and error rates return to normal
+        id: restart-valkey-cart-pods

@@ -1,0 +1,40 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-19
+spec:
+  applications:
+    opentelemetryDemo:
+      enabled: true
+  faults:
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: fraud-detection-kafka-network-partition
+                namespace: chaos-mesh
+            scheduleSpec:
+              networkChaos:
+                action: partition
+                direction: to
+                mode: all
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: shipping
+                  namespaces:
+                    - otel-demo
+                target:
+                  mode: all
+                  selector:
+                    labelSelectors:
+                      app.kubernetes.io/component: quote
+                    namespaces:
+                      - otel-demo
+              type: NetworkChaos
+          id: scheduled-chaos-mesh-experiment
+  tools:
+    sre:
+      enabled: true

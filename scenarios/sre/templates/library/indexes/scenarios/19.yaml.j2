@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: medium
+description: This scenario simulates a network disconnection or partion between OpenTelemetry Demo `shipping` and `quote` services.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: fraud-detection-kafka-network-partition
+          namespace: {{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}
+      scheduleSpec:
+        networkChaos:
+          action: partition
+          direction: to
+          mode: all
+          selector:
+            labelSelectors:
+              app.kubernetes.io/component: shipping
+            namespaces:
+            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+          target:
+            mode: all
+            selector:
+              labelSelectors:
+                app.kubernetes.io/component: quote
+              namespaces:
+              - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+        type: NetworkChaos
+    id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 19
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

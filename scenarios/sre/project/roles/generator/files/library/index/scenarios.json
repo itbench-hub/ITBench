@@ -96,6 +96,98 @@
         "alerts": [],
         "category": "sre",
         "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `cart` service failing.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "cartFailure",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "cart",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 2,
+        "index": 2,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (cartFailure) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
         "description": "This scenario simulates the OpenTelemetry Demo's `ad` service experiencing high CPU usage.",
         "disruptions": [
             {
@@ -188,6 +280,1130 @@
         "alerts": [],
         "category": "sre",
         "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `product catalog` service failing.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "productCatalogFailure",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "product-catalog",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 4,
+        "index": 4,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (productCatalogFailure) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `ad` service failing.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "adFailure",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "ad",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 5,
+        "index": 5,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (adFailure) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `ad` service undergoing manual garbage collection.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "adManualGc",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "ad",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 6,
+        "index": 6,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (adManualGc) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `payment` service failing.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "paymentFailure",
+                                "state": "100%"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "payment",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 7,
+        "index": 7,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (paymentFailure) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `payment` service becoming unreachable.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "paymentUnreachable",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "payment",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 8,
+        "index": 8,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (paymentUnreachable) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `frontend` service being slow to load images.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "imageSlowLoad",
+                                "state": "10sec"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "frontend",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "args": {
+                        "loadGeneration": {
+                            "browserTraffic": true
+                        }
+                    },
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 10,
+        "index": 10,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (imageSlowLoad) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `kafka` service experiencing queuing issues.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "kafkaQueueProblems",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "kafka",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 11,
+        "index": 11,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (kafkaQueueProblems) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `recommendation` and `product-catalog` services experiencing failures.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "productCatalogFailure",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    },
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "recommendationCacheFailure",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "product-catalog",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "recommendation",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 12,
+        "index": 12,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (productCatalogFailure) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `payment` service experiencing failures.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "paymentFailure",
+                                "state": "100%"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    },
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "paymentUnreachable",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "payment",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 13,
+        "index": 13,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (paymentFailure) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `ad` and `payment` services experiencing failures.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "paymentFailure",
+                                "state": "100%"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    },
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "adFailure",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "payment",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "ad",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 14,
+        "index": 14,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (paymentFailure) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates the OpenTelemetry Demo's `ad` and `payment` services experiencing failures.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "paymentUnreachable",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    },
+                    {
+                        "args": {
+                            "flag": {
+                                "name": "adFailure",
+                                "state": "on"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "v1",
+                                "kind": "ConfigMap",
+                                "metadata": {
+                                    "name": "flagd-config",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "opentelemetry-demo-feature-flag"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "flagd",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "payment",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        },
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "ad",
+                                        "namespace": "otel-demo"
+                                    }
+                                }
+                            },
+                            "id": "restart-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 15,
+        "index": 15,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit configmap flagd-config",
+                            "text": "Disable the feature flag (paymentUnreachable) by manually editing the contents of the ConfigMap"
+                        },
+                        {
+                            "command": "kubectl -n otel-demo rollout restart deployment",
+                            "text": "Restart all of the Deployment workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
         "description": "This scenario changes the environment variables of OpenTelemetry Demo's `shipping` service, causing it to be unable to reach the `quote` service.",
         "disruptions": [
             {
@@ -242,6 +1458,89 @@
                         {
                             "command": "kubectl -n otel-demo edit deployment shipping",
                             "text": "Manually edit the manifest and replace the environment variable(s) value with the correct value(s)."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "high",
+        "description": "This scenario simulates OpenTelemetry Demo's `product-catalog` service experiencing network delays.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "product-catalog-network-delay",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "networkChaos": {
+                                    "action": "delay",
+                                    "delay": {
+                                        "latency": "20000ms"
+                                    },
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "product-catalog"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    }
+                                },
+                                "type": "NetworkChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 17,
+        "index": 17,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule product-catalog-network-delay experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get networkchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule product-catalog-network-delay experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
                         }
                     ]
                 }
@@ -334,6 +1633,98 @@
     },
     {
         "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates a network disconnection or partion between OpenTelemetry Demo `shipping` and `quote` services.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "fraud-detection-kafka-network-partition",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "networkChaos": {
+                                    "action": "partition",
+                                    "direction": "to",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "shipping"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    },
+                                    "target": {
+                                        "mode": "all",
+                                        "selector": {
+                                            "labelSelectors": {
+                                                "app.kubernetes.io/component": "quote"
+                                            },
+                                            "namespaces": [
+                                                "otel-demo"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "type": "NetworkChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 19,
+        "index": 19,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule fraud-detection-kafka-network-partition experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get networkchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule fraud-detection-kafka-network-partition experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
         "alerts": [
             "KubePodNotReady"
         ],
@@ -389,6 +1780,178 @@
                         {
                             "command": "kubectl -n otel-demo edit deployment product-catalog",
                             "text": "Manually edit the manifest and replace the invalid image with the correct value."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates OpenTelemetry Demo's `valkey-cart` service experiencing memory stress.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "valkey-memory-stress",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "stressChaos": {
+                                    "duration": "55s",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "valkey-cart"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    },
+                                    "stressors": {
+                                        "memory": {
+                                            "size": "100%",
+                                            "workers": 4
+                                        }
+                                    }
+                                },
+                                "type": "StressChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 21,
+        "index": 21,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule valkey-memory-stress experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule valkey-memory-stress experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates OpenTelemetry Demo's `ad` service experiencing memory stress.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "ad-memory-stress",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "stressChaos": {
+                                    "duration": "55s",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "ad"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    },
+                                    "stressors": {
+                                        "memory": {
+                                            "size": "100%",
+                                            "workers": 4
+                                        }
+                                    }
+                                },
+                                "type": "StressChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 22,
+        "index": 22,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule ad-memory-stress experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule ad-memory-stress experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
                         }
                     ]
                 }
@@ -464,6 +2027,161 @@
                         {
                             "command": "kubectl -n otel-demo edit deployment checkout",
                             "text": "Manually edit the manifest and replace the node selector to allow Kubernetes to schedule the workload on a supported node (if exists)."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario changes the environment variables of OpenTelemetry Demo's `checkout` service, causing it to be unable to reach the `kafka` service.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "container": {
+                                "env": {
+                                    "name": "KAFKA_ADDR",
+                                    "value": "kafka:9999"
+                                },
+                                "name": "checkout"
+                            },
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "checkout",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "modified-kubernetes-workload-container-environment-variable"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 24,
+        "index": 24,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo rollout undo deployment/checkout",
+                            "text": "Revert the last change done to the manifest."
+                        }
+                    ]
+                },
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n otel-demo edit deployment checkout",
+                            "text": "Manually edit the manifest and replace the environment variable(s) value with the correct value(s)."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates OpenTelemetry Demo's `recommendation` service experiencing cpu stress.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "recommendation-cpu-stress",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "stressChaos": {
+                                    "duration": "55s",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "recommendation"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    },
+                                    "stressors": {
+                                        "cpu": {
+                                            "load": 100,
+                                            "workers": 30
+                                        }
+                                    }
+                                },
+                                "type": "StressChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 25,
+        "index": 25,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule recommendation-cpu-stress experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule recommendation-cpu-stress experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
                         }
                     ]
                 }
@@ -638,6 +2356,87 @@
                         },
                         {
                             "command": "kubectl -n chaos-mesh delete schedule quote-http-chaos-abort experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates OpenTelemetry Demo's `ad` service having a Java virtual machine return error.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "ad-jvm-return",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "jvmChaos": {
+                                    "action": "ruleData",
+                                    "mode": "all",
+                                    "ruleData": "RULE modifyReturnValue\nCLASS AdService\nMETHOD getInstance\nAT ENTRY\nIF true\nDO return null\nENDRULE",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "ad"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    }
+                                },
+                                "type": "JVMChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 29,
+        "index": 29,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule ad-jvm-return experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get jvmchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule ad-jvm-return experiment.chaos-mesh.org/pause='true'",
                             "text": "Delete the schedule."
                         }
                     ]
@@ -931,6 +2730,87 @@
         "tags": [
             "Authentication",
             "Deployment"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "high",
+        "description": "This scenario simulates OpenTelemetry Demo's `ad` service experiencing heap stress in a Java Virtual Machine.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "ad-jvm-chaos",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "jvmChaos": {
+                                    "action": "stress",
+                                    "memType": "heap",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "ad"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    }
+                                },
+                                "type": "JVMChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 35,
+        "index": 35,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule ad-jvm-chaos experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get jvmchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule ad-jvm-chaos experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
         ]
     },
     {
@@ -2900,6 +4780,676 @@
         ],
         "tags": [
             "Code",
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates network loss between OpenTelemetry Demo `checkout` and `payment` services.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "checkout-payment-network-loss",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "networkChaos": {
+                                    "action": "loss",
+                                    "direction": "to",
+                                    "duration": "55s",
+                                    "loss": {
+                                        "correlation": "0",
+                                        "loss": "100"
+                                    },
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "checkout"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    },
+                                    "target": {
+                                        "mode": "all",
+                                        "selector": {
+                                            "labelSelectors": {
+                                                "app.kubernetes.io/component": "payment"
+                                            },
+                                            "namespaces": [
+                                                "otel-demo"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "type": "NetworkChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 61,
+        "index": 61,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule checkout-payment-network-loss experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get networkchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule checkout-payment-network-loss experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates a network delay with OpenTelemetry Demo `valkey cart`, while undergoing high resource stress.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "valkey-cart-stress-chaos",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "stressChaos": {
+                                    "duration": "55s",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "valkey-cart"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ],
+                                        "podPhaseSelectors": [
+                                            "Running"
+                                        ]
+                                    },
+                                    "stressors": {
+                                        "cpu": {
+                                            "load": 50,
+                                            "workers": 2
+                                        },
+                                        "memory": {
+                                            "options": [
+                                                "--vm-hang",
+                                                "0"
+                                            ],
+                                            "size": "128MB",
+                                            "workers": 4
+                                        }
+                                    }
+                                },
+                                "type": "StressChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    },
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "valkey-cart-network-delay",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "networkChaos": {
+                                    "action": "delay",
+                                    "delay": {
+                                        "latency": "750ms"
+                                    },
+                                    "direction": "both",
+                                    "duration": "55s",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "valkey-cart"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ],
+                                        "podPhaseSelectors": [
+                                            "Running"
+                                        ]
+                                    }
+                                },
+                                "type": "NetworkChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 62,
+        "index": 62,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule valkey-cart-stress-chaos experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get stresschaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule valkey-cart-stress-chaos experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates a network disconnection or partion between OpenTelemetry Demo `checkout` and `kafka` services.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "fraud-detection-kafka-network-partition",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "networkChaos": {
+                                    "action": "partition",
+                                    "direction": "to",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "checkout"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    },
+                                    "target": {
+                                        "mode": "all",
+                                        "selector": {
+                                            "labelSelectors": {
+                                                "app.kubernetes.io/component": "kafka"
+                                            },
+                                            "namespaces": [
+                                                "otel-demo"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "type": "NetworkChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ],
+                "waitFor": {
+                    "preInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "kafka",
+                                        "namespace": "otel-demo"
+                                    }
+                                },
+                                "replicas": 2
+                            },
+                            "id": "scale-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 80,
+        "index": 80,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule fraud-detection-kafka-network-partition experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get networkchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule fraud-detection-kafka-network-partition experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates a network disconnection or partion between OpenTelemetry Demo `shipping` and `quote` services.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "shipping-quote-network-partition",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "networkChaos": {
+                                    "action": "partition",
+                                    "direction": "to",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "shipping"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    },
+                                    "target": {
+                                        "mode": "all",
+                                        "selector": {
+                                            "labelSelectors": {
+                                                "app.kubernetes.io/component": "quote"
+                                            },
+                                            "namespaces": [
+                                                "otel-demo"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "type": "NetworkChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ],
+                "waitFor": {
+                    "preInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "quote",
+                                        "namespace": "otel-demo"
+                                    }
+                                },
+                                "replicas": 2
+                            },
+                            "id": "scale-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 81,
+        "index": 81,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule shipping-quote-network-partition experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get networkchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule shipping-quote-network-partition experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates a network disconnection or partion between OpenTelemetry Demo `fraud detection` and `kafka` services.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "fraud-detection-kafka-network-partition",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "networkChaos": {
+                                    "action": "partition",
+                                    "direction": "to",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "fraud-detection"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    },
+                                    "target": {
+                                        "mode": "all",
+                                        "selector": {
+                                            "labelSelectors": {
+                                                "app.kubernetes.io/component": "kafka"
+                                            },
+                                            "namespaces": [
+                                                "otel-demo"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "type": "NetworkChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ],
+                "waitFor": {
+                    "preInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "fraud-detection",
+                                        "namespace": "otel-demo"
+                                    }
+                                },
+                                "replicas": 2
+                            },
+                            "id": "scale-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 83,
+        "index": 83,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule fraud-detection-kafka-network-partition experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get networkchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule fraud-detection-kafka-network-partition experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
+            "Deployment",
+            "Performance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "sre",
+        "complexity": "medium",
+        "description": "This scenario simulates a network disconnection or partion between OpenTelemetry Demo `email` and `checkout` services.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "chaos-mesh.org/v1alpha1",
+                                "kind": "Schedule",
+                                "metadata": {
+                                    "name": "fraud-detection-kafka-network-partition",
+                                    "namespace": "chaos-mesh"
+                                }
+                            },
+                            "scheduleSpec": {
+                                "networkChaos": {
+                                    "action": "partition",
+                                    "direction": "to",
+                                    "mode": "all",
+                                    "selector": {
+                                        "labelSelectors": {
+                                            "app.kubernetes.io/component": "email"
+                                        },
+                                        "namespaces": [
+                                            "otel-demo"
+                                        ]
+                                    },
+                                    "target": {
+                                        "mode": "all",
+                                        "selector": {
+                                            "labelSelectors": {
+                                                "app.kubernetes.io/component": "checkout"
+                                            },
+                                            "namespaces": [
+                                                "otel-demo"
+                                            ]
+                                        }
+                                    }
+                                },
+                                "type": "NetworkChaos"
+                            }
+                        },
+                        "id": "scheduled-chaos-mesh-experiment"
+                    }
+                ],
+                "waitFor": {
+                    "preInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "email",
+                                        "namespace": "otel-demo"
+                                    }
+                                },
+                                "replicas": 2
+                            },
+                            "id": "scale-kubernetes-workload"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": [
+                {
+                    "id": "opentelemetry-demo"
+                }
+            ]
+        },
+        "id": 91,
+        "index": 91,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n chaos-mesh annotate schedule fraud-detection-kafka-network-partition experiment.chaos-mesh.org/pause='true'",
+                            "text": "Annotate the schedule to pause the active experiment."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh get networkchaos --selector='experiment.chaos-mesh.org/pause=true'",
+                            "text": "Retrieve the associated experiment managed by the schedule."
+                        },
+                        {
+                            "text": "Delete the retrieved experiement after it has entered the `Paused` state."
+                        },
+                        {
+                            "command": "kubectl -n chaos-mesh delete schedule fraud-detection-kafka-network-partition experiment.chaos-mesh.org/pause='true'",
+                            "text": "Delete the schedule."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "tags": [
             "Deployment",
             "Performance"
         ]

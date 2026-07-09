@@ -1,0 +1,172 @@
+---
+alerts:
+  - group_id: shipping-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Shipping service cannot reach quote service due to network partition, returning 500 errors
+  - group_id: shipping-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Shipping service experiencing increased latency due to quote service timeouts
+  - group_id: checkout-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Checkout service receiving errors from shipping service
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend service experiencing errors during checkout flow
+  - group_id: frontend-proxy-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Frontend proxy experiencing errors from failed checkout attempts
+  - group_id: checkout-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Checkout service experiencing latency in addition to errors due to shipping/quote failures
+  - group_id: email-service
+    id: NoRequestsReceived
+    metadata:
+      description: Email service receives no confirmation emails due to failed checkouts
+  - group_id: payment-service
+    id: NoRequestsReceived
+    metadata:
+      description: Payment service receives no payment requests due to failed checkouts
+  - group_id: accounting-service
+    id: NoRequestsReceived
+    metadata:
+      description: Accounting service receives no transaction records due to failed checkouts
+  - group_id: accounting-service
+    id: NoDatabaseOperations
+    metadata:
+      description: Accounting service has no database operations due to no completed transactions
+  - group_id: quote-service-1
+    id: NoRequestsReceived
+    metadata:
+      description: Quote service appears isolated due to network partition from shipping
+  - group_id: fraud-detection-service
+    id: NoRequestsReceived
+    metadata:
+      description: Fraud detection service receives no checkout requests due to checkout failures
+  - group_id: shipping-service-1
+    id: NoRequestsReceived
+    metadata:
+      description: Shipping service receives no requests when unable to reach quote service, likely due to Kubernetes readiness probe failure or circuit breaker
+        activation in checkout service
+aliases:
+  - - shipping-service-1
+    - shipping-pod-1
+fault:
+  - category: Network
+    condition: Chaos Mesh network partition blocking shipping pods from reaching quote service
+    entity:
+      group_id: otel-demo-shipping-quote-network-partition
+      kind: NetworkChaos
+      name: otel-demo-shipping-quote-network-partition
+    fault_mechanism: network_partition
+groups:
+  - filter:
+      - otel-demo-shipping-quote-network-partition
+    id: otel-demo-shipping-quote-network-partition
+    kind: NetworkChaos
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - shipping-.*
+    id: shipping-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - shipping\b
+    id: shipping-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - quote\b
+    id: quote-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout\b
+    id: checkout-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - accounting\b
+    id: accounting-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - email\b
+    id: email-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - payment\b
+    id: payment-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - fraud-detection\b
+    id: fraud-detection-service
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Chaos Mesh NetworkChaos resource injects network partition affecting shipping pods
+    effect: Shipping pods cannot establish or maintain connections to quote service
+    source: otel-demo-shipping-quote-network-partition
+    target: shipping-pod-1
+  - condition: Shipping pods cannot communicate with quote service due to network partition
+    effect: Shipping service cannot retrieve shipping cost quotes and returns 500 errors
+    source: shipping-pod-1
+    target: shipping-service-1
+  - condition: Network partition prevents shipping service from communicating with quote service
+    effect: Quote service becomes unreachable from shipping, causing shipping requests to fail
+    source: shipping-service-1
+    target: quote-service-1
+  - condition: Checkout service calls shipping service which fails due to quote service unavailability
+    effect: Checkout operations fail when attempting to calculate shipping costs
+    source: quote-service-1
+    target: checkout-service-1
+  - condition: Frontend receives errors from checkout when shipping calculations fail
+    effect: Users cannot complete checkout due to shipping service failures
+    source: checkout-service-1
+    target: frontend-service-1
+  - condition: Frontend returns errors to proxy for failed checkout attempts
+    effect: User-facing checkout operations fail through the proxy
+    source: frontend-service-1
+    target: frontend-proxy-service-1
+  - condition: Failed checkouts prevent order confirmation emails from being triggered
+    effect: Email service receives no checkout-related email requests
+    source: checkout-service-1
+    target: email-service
+  - condition: Failed checkouts prevent payment processing from occurring
+    effect: Payment service receives no payment requests
+    source: checkout-service-1
+    target: payment-service
+  - condition: Failed checkouts prevent transaction records from being created
+    effect: Accounting service receives no transactions and performs no database operations
+    source: checkout-service-1
+    target: accounting-service
+  - condition: Failed checkouts prevent fraud checks from being performed
+    effect: Fraud detection service receives no checkout validation requests
+    source: checkout-service-1
+    target: fraud-detection-service
+recommended_actions:
+  - solution:
+      actions:
+        - Identify and resolve network partition between shipping and quote pods
+        - Verify network policies and connectivity between the services
+      id: resolve_network_partition

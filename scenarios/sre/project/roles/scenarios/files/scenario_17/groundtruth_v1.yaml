@@ -1,0 +1,135 @@
+---
+alerts:
+  - group_id: frontend-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Latency is Above Threshold
+  - group_id: recommendation-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Latency is Above Threshold
+  - group_id: checkout-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Latency is Above Threshold
+  - group_id: productcatalog-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Latency is Above Threshold
+  - group_id: frontendproxy-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Latency is Above Threshold
+  - group_id: frontend-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Error Rate is Above Threshold
+  - group_id: checkout-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Error Rate is Above Threshold
+  - group_id: recommendation-service-1
+    id: HighRequestErrorRate
+    metadata:
+      description: Error Rate is Above Threshold
+  - group_id: frontend-proxy-service
+    id: HighRequestErrorRate
+    metadata:
+      description: "Cascade effect: HighRequestErrorRate for frontend-proxy service due to upstream failures"
+  - group_id: product-catalog-service
+    id: HighRequestErrorRate
+    metadata:
+      description: "Cascade effect: HighRequestErrorRate for product-catalog service due to upstream failures"
+aliases:
+  - - frontend-service-1
+    - frontend-pod-1
+  - - productcatalog-service-1
+    - productcatalog-pod-1
+  - - checkout-service-1
+    - checkout-pod-1
+  - - recommendation-service-1
+    - recommendation-pod-1
+fault:
+  - category: Latency
+    condition: To Be Specified
+    entity:
+      group_id: delay-otel-demo-product-catalog-1
+      kind: Service
+      name: delay-otel-demo-product-catalog-1
+    fault_mechanism: chaos
+groups:
+  - filter:
+      - .*product-catalog
+    id: delay-otel-demo-product-catalog-1
+    kind: NetworkChaos
+    namespace: chaos-mesh
+    root_cause: true
+  - filter:
+      - product-catalog\b
+    id: productcatalog-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout\b
+    id: checkout-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - recommendation\b
+    id: recommendation-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontendproxy-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-.*
+    id: frontend-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - product-catalog-.*
+    id: productcatalog-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - checkout-.*
+    id: checkout-pod-1
+    kind: Pod
+    namespace: otel-demo
+  - filter:
+      - recommendation-.*
+    id: recommendation-pod-1
+    kind: Pod
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: delay-otel-demo-productcatalogservice networkchaos productcatalogservice network delay set to 20 seconds
+    effect: productcatalog service Error Rate is Above Threshold
+    source: delay-otel-demo-product-catalog-1
+    target: productcatalog-service-1
+  - condition: Latency is too high or Error Rate is Above Threshold
+    effect: checkout service Error Rate is Above Threshold
+    source: productcatalog-service-1
+    target: checkout-service-1
+  - condition: Latency is too high or Error Rate is Above Threshold
+    effect: recommendation service Error Rate is Above Threshold
+    source: productcatalog-service-1
+    target: recommendation-service-1
+  - condition: Latency is too high or Error Rate is Above Threshold
+    effect: frontend service Error Rate is Above Threshold
+    source: productcatalog-service-1
+    target: frontend-service-1
+recommended_actions:
+  - solution:
+      actions:
+        - Delete the resource networkchaos productcatalogservice
+      id: Delete_the_resource_networkchaos_productcatalogservice

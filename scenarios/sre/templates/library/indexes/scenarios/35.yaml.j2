@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: high
+description: This scenario simulates OpenTelemetry Demo's `ad` service experiencing heap stress in a Java Virtual Machine.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: chaos-mesh.org/v1alpha1
+        kind: Schedule
+        metadata:
+          name: ad-jvm-chaos
+          namespace: {{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}
+      scheduleSpec:
+        jvmChaos:
+          action: stress
+          memType: heap
+          mode: all
+          selector:
+            labelSelectors:
+              app.kubernetes.io/component: ad
+            namespaces:
+            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+        type: JVMChaos
+    id: scheduled-chaos-mesh-experiment
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 35
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

@@ -1,0 +1,159 @@
+---
+alerts:
+  - group_id: frontend-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Frontend service experiencing increased latency for image loading due to feature flag
+  - group_id: frontend-proxy-service-1
+    id: HighRequestLatency
+    metadata:
+      description: Frontend proxy experiencing increased latency serving pages with slow image loads
+  - group_id: quote-service
+    id: NoRequestsReceived
+    metadata:
+      description: Quote service receives no requests due to frontend instability from slow image loading
+  - group_id: fraud-detection-service
+    id: NoRequestsReceived
+    metadata:
+      description: Fraud detection service receives no requests due to frontend instability
+  - group_id: checkout-service
+    id: NoRequestsReceived
+    metadata:
+      description: Checkout service receives no requests due to frontend instability
+  - group_id: currency-service
+    id: NoRequestsReceived
+    metadata:
+      description: Currency service receives no requests due to frontend instability
+  - group_id: email-service
+    id: NoRequestsReceived
+    metadata:
+      description: Email service receives no requests due to frontend instability
+  - group_id: shipping-service
+    id: NoRequestsReceived
+    metadata:
+      description: Shipping service receives no requests due to frontend instability
+  - group_id: accounting-service
+    id: NoRequestsReceived
+    metadata:
+      description: Accounting service receives no requests due to frontend instability
+  - group_id: accounting-service
+    id: NoDatabaseOperations
+    metadata:
+      description: Accounting service has no database operations due to receiving no requests
+  - id: KubePodCrashLooping
+    metadata:
+      description: Frontend pods may crash-loop due to resource exhaustion from slow image loading
+fault:
+  - category: Resource Unavailable
+    condition: High response latency for image requests
+    entity:
+      kind: Service
+      name: frontend
+    fault_mechanism: custom(flagd)
+  - category: Configuration Setting
+    changed:
+      element: data.demo\.flagd\.json
+      from: "\"imageSlowLoad\": {\n      \"description\": \"slow loading images in the frontend\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n       \
+        \ \"10sec\": 10000,\n        \"5sec\": 5000,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"off\"\n    }"
+      to: "\"imageSlowLoad\": {\n      \"description\": \"slow loading images in the frontend\",\n      \"state\": \"ENABLED\",\n      \"variants\": {\n        \"\
+        10sec\": 10000,\n        \"5sec\": 5000,\n        \"off\": 0\n      },\n      \"defaultVariant\": \"5sec\"\n    }"
+    condition: imageSlowLoad feature flag set
+    entity:
+      kind: ConfigMap
+      name: flagd-config
+    fault_mechanism: custom(flagd)
+groups:
+  - id: flagd-config
+    kind: ConfigMap
+    name: flagd-config
+    namespace: otel-demo
+    root_cause: true
+  - filter:
+      - frontend\b
+    id: frontend-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - frontend-proxy\b
+    id: frontend-proxy-service-1
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - quote\b
+    id: quote-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - fraud-detection\b
+    id: fraud-detection-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - checkout\b
+    id: checkout-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - currency\b
+    id: currency-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - email\b
+    id: email-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - shipping\b
+    id: shipping-service
+    kind: Service
+    namespace: otel-demo
+  - filter:
+      - accounting\b
+    id: accounting-service
+    kind: Service
+    namespace: otel-demo
+metadata:
+  version: v1
+propagations:
+  - condition: Feature flag causes frontend to delay image responses by 5 seconds
+    effect: Frontend pages load slowly with delayed image rendering
+    source: flagd-config
+    target: frontend-service-1
+  - condition: Frontend returns slow responses to proxy due to delayed image loading
+    effect: Users experience slow page loads with images taking 5 seconds to appear
+    source: frontend-service-1
+    target: frontend-proxy-service-1
+  - condition: Frontend slowness/instability prevents requests from reaching quote service
+    effect: Quote service receives no traffic and reports no requests
+    source: frontend-service-1
+    target: quote-service
+  - condition: Frontend slowness/instability prevents requests from reaching fraud detection
+    effect: Fraud detection service receives no traffic and reports no requests
+    source: frontend-service-1
+    target: fraud-detection-service
+  - condition: Frontend slowness/instability prevents requests from reaching checkout
+    effect: Checkout service receives no traffic and reports no requests
+    source: frontend-service-1
+    target: checkout-service
+  - condition: Frontend slowness/instability prevents requests from reaching currency service
+    effect: Currency service receives no traffic and reports no requests
+    source: frontend-service-1
+    target: currency-service
+  - condition: Frontend slowness/instability prevents requests from reaching email service
+    effect: Email service receives no traffic and reports no requests
+    source: frontend-service-1
+    target: email-service
+  - condition: Frontend slowness/instability prevents requests from reaching shipping service
+    effect: Shipping service receives no traffic and reports no requests
+    source: frontend-service-1
+    target: shipping-service
+  - condition: Frontend slowness/instability prevents requests from reaching accounting service
+    effect: Accounting service receives no traffic, reports no requests and no database operations
+    source: frontend-service-1
+    target: accounting-service
+recommended_actions:
+  - solution:
+      actions:
+        - Disable imageSlowLoad flag in flagd configuration or set to "off" variant
+      id: Disable imageSlowLoad flag
