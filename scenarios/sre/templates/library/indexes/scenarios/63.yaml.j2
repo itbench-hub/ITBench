@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: medium
+description: This scenario simulates a credential failure by corrupting the Secret used by the OpenTelemetry Demo's `email` service.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: email-service-secret
+          namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+    id: corrupted-kubernetes-secret-credentials
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 63
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0
