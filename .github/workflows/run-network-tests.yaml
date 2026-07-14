@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - clusters/kind/go.*
-      - clusters/kind/playbooks/roles/containers/**
       - scenarios/sre/project/roles/tools/**
 
 concurrency:
@@ -14,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  environment-tools-gateway:
-    name: ITBench Environment Tools Gateway Network Tests
+  environment-tools-gateway-kind:
+    name: ITBench Environment Tools Gateway Network Tests on Kind
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.0
@@ -40,15 +39,9 @@ jobs:
         run: |
           make -C clusters/kind run-service-provider &
           sleep 10
-      - name: Install all tools connected to Kubernetes Gateway
-        run: |
-          make -C scenarios/sre deploy-tools
       - name: Run connection tests
         run: |
           make -C scenarios/sre test-network-gateway
-      - name: Uninstall tools
-        run: |
-          make -C scenarios/sre undeploy-tools
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster

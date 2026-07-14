@@ -22,6 +22,9 @@
 
 ### MacOS ([Homebrew](https://brew.sh/))
 
+>[!IMPORTANT]
+>Previous versions of ITBench used an older version of Cloud Provider Kind to provide IP addresses on MacOS. Since upgrading to v0.11+ of this tool, this functionality is no longer possible as ITBench can use multiple gateways that ask for the same port (ie, Book Info). Thus, [**Minikube**](../minikube/README.md) is the now recommended development environment for MacOS. However, scenarios involving applications which do not creating additional gateways (ie, OpenTelemetry Demo) can still function as is on MacOS with the following information.
+
 1. Download the following packages
 ```shell
 brew install go
@@ -33,7 +36,9 @@ brew install podman
 brew install --cask podman-desktop
 ```
 
-### RHEL
+### Linux
+
+#### RHEL
 
 1. Download the following packages
 ```shell
@@ -114,7 +119,7 @@ make create-awx-cluster
 
 2. Open a new terminal window and run the following command to start the Cloud Provider Kind
 ```shell
-sudo make run-service-provider
+make run-service-provider
 ```
 
 #### Deletion
@@ -137,7 +142,7 @@ make create-simple-cluster
 
 2. Open a new terminal window and run the following command to start the Cloud Provider Kind
 ```shell
-sudo make run-service-provider
+make run-service-provider
 ```
 
 #### Deletion
