@@ -1,7 +1,7 @@
 name: Update Benchmark Status
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: '*/10 * * * *'
   issue_comment:
     types: [created]
   workflow_dispatch:
@@ -44,6 +44,9 @@ jobs:
           elif [[ "$TRIGGER" == "issue_comment" ]]; then
             echo "Issue comment trigger: Store only the commented issue"
             gh issue view "$ISSUE_NUMBER" --json number,author,comments | jq '[.]' > issues.json
+          else
+            echo "Unknown trigger type: $TRIGGER"
+            echo "[]" > issues.json
           fi
           echo "Tracked issues"
           jq -c '[.[].number]' issues.json
