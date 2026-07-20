@@ -1,0 +1,66 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [
+        "HighRequestErrorRate"
+    ],
+    "category": "sre",
+    "complexity": "medium",
+    "description": "This scenario simulates a credential failure by corrupting the Secret used by the OpenTelemetry Demo's `email` service.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "v1",
+                            "kind": "Secret",
+                            "metadata": {
+                                "name": "email-service-secret",
+                                "namespace": "otel-demo"
+                            }
+                        }
+                    },
+                    "id": "corrupted-kubernetes-secret-credentials"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 63,
+    "index": 63,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get secret {{ args.kubernetesObject.metadata.name }} -o yaml",
+                        "text": "Inspect the corrupted secret to identify the invalid data."
+                    },
+                    {
+                        "text": "Restore the secret with correct credentials from the credential management system."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "text": "Rotate the credentials in the external system and update the Kubernetes Secret to match."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Authentication",
+        "Deployment"
+    ]
+}

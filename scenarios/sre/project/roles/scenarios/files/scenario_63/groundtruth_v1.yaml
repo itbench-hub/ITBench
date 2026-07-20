@@ -1,0 +1,78 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-63
+spec:
+  alerts:
+    - group_id: checkout-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in service checkout in namespace otel-demo is elevated due to email service authentication failures from corrupted secret
+  groups:
+    - id: email-secret-1
+      kind: Secret
+      namespace: otel-demo
+      filter:
+        - email-service-secret\b
+      root_cause: true
+    - id: email-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - email-.*
+    - id: email-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - email\b
+    - id: checkout-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - checkout\b
+    - id: checkout-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - checkout-.*
+  aliases:
+    - - email-service-1
+      - email-pod-1
+    - - checkout-service-1
+      - checkout-pod-1
+  propagations:
+    - source: email-secret-1
+      target: email-pod-1
+      condition: Secret email-service-secret credentials replaced with invalid values
+      effect: Email pod experiences authentication failures when connecting to email backend
+    - source: email-pod-1
+      target: email-service-1
+      condition: Email pod cannot authenticate and returns errors
+      effect: Email service is effectively unavailable, all requests fail with authentication errors
+    - source: email-service-1
+      target: checkout-service-1
+      condition: Checkout service depends on email service to send order confirmation emails
+      effect: Checkout service experiences errors when attempting to send order emails, increasing error rate
+  fault:
+    - category: Modify
+      condition: Secret credentials replaced with invalid values causing authentication failures
+      entity:
+        group_id: email-secret-1
+        kind: Secret
+        name: email-service-secret
+      fault_mechanism: Credential corruption via secret modification simulating accidental secret rotation with wrong values or vault sync failure
+  recommendedActions:
+    - solution:
+        actions:
+          - Inspect the email-service-secret using kubectl get secret email-service-secret -n otel-demo -o yaml
+          - Restore the correct credentials from backup or secret management system
+          - Restart email pods to pick up the corrected secret values
+          - Verify email service recovers and checkout errors resolve
+        id: restore-secret-credentials
+    - solution:
+        actions:
+          - Rotate the credentials by generating new valid values in both the secret and the email backend
+          - Apply the updated secret and restart email deployment
+          - Confirm end-to-end order email flow works correctly
+        id: rotate-credentials
