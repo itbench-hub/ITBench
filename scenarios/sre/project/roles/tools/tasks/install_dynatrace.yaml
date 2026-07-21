@@ -1,0 +1,216 @@
+---
+# Dynatrace agent deployment (Layer A).
+#
+# Consumes the user's dynakube.yaml (Secret with tokens + DynaKube CR). All
+# configuration is read from tools_configuration.vendors.dynatrace.* (the single
+# role input interface). The file is treated as secret throughout (no_log).
+#
+# The dynakube.yaml is downloaded, as-is, from the Dynatrace onboarding UI and
+# placed at observability_vendors.dynatrace.dynakube_path (default:
+# secrets/dynatrace/dynakube.yaml, gitignored) or injected via AWX. It is
+# authoritative: ITBench applies it without rewriting its spec. Environment-
+# specific adjustments are therefore made in that file, NOT here.
+#
+# Known environment caveat (edit your dynakube.yaml accordingly):
+#   * OpenShift / RHEL CoreOS nodes use SELinux, not AppArmor. If the DynaKube
+#     enables KSPM, its spec.kspm.mappedHostPaths often includes
+#     "/sys/kernel/security/apparmor". That path does not exist on RHCOS, so the
+#     operator-generated node-config-collector DaemonSet fails to mount it
+#     (hostPath type check failed: not a directory) and stays in
+#     ContainerCreating. Remove that single entry from mappedHostPaths on
+#     SELinux-based nodes; KSPM otherwise remains fully enabled. See
+#     docs/observability-vendors.md (Dynatrace on OpenShift) for details.
+- name: Set Dynatrace configuration facts
+  ansible.builtin.set_fact:
+    tools_dynatrace_config: "{{ tools_configuration.vendors.dynatrace }}"
+    tools_dynatrace_namespace: "{{ tools_vendors.dynatrace.kubernetes.namespace }}"
+    tools_dynatrace_api_version: "{{ tools_configuration.vendors.dynatrace.dynakube_api_version | ansible.builtin.default('dynatrace.com/v1beta3') }}"
+    # The dynatrace-operator Helm chart natively handles OpenShift: setting
+    # platform=openshift makes the operator create and manage the
+    # SecurityContextConstraints its agents (OneAgent/ActiveGate/CSI) require.
+    # On plain Kubernetes the platform value is left at the chart default ("").
+    tools_dynatrace_helm_platform: "{{ 'openshift' if tools_cluster.platform == 'openshift' else '' }}"
+
+- name: Resolve Dynatrace DynaKube manifest path
+  ansible.builtin.set_fact:
+    tools_dynatrace_dynakube_path: >-
+      {{
+        dynatrace_dynakube_path |
+        ansible.builtin.default(tools_dynatrace_config.dynakube_path, true)
+      }}
+
+# A relative dynakube_path is resolved against the SRE project root (the parent
+# of the playbook directory), so it works regardless of the process working
+# directory. Absolute paths (e.g. an AWX-injected file) are used as-is.
+- name: Anchor a relative Dynatrace manifest path to the project root
+  ansible.builtin.set_fact:
+    tools_dynatrace_dynakube_path: "{{ [playbook_dir, '..', tools_dynatrace_dynakube_path] | ansible.builtin.path_join | ansible.builtin.realpath }}"
+  when:
+    - not (tools_dynatrace_dynakube_path is ansible.builtin.abs)
+
+- name: Verify that the Dynatrace DynaKube manifest exists
+  ansible.builtin.stat:
+    path: "{{ tools_dynatrace_dynakube_path }}"
+  register: tools_dynatrace_dynakube_stat
+  no_log: true
+
+- name: Assert that the Dynatrace DynaKube manifest is present and not empty
+  ansible.builtin.assert:
+    that:
+      - tools_dynatrace_dynakube_stat.stat.exists
+      - tools_dynatrace_dynakube_stat.stat.size > 0
+    fail_msg: >-
+      The Dynatrace DynaKube manifest could not be found at
+      '{{ tools_dynatrace_dynakube_path }}'. Download dynakube.yaml from the
+      Dynatrace onboarding UI and place it there, or set dynatrace_dynakube_path.
+    success_msg: Dynatrace DynaKube manifest found.
+
+# --- Manifest validation (S1/M3). --------------------------------------------
+- name: Parse the Dynatrace DynaKube manifest documents
+  ansible.builtin.set_fact:
+    tools_dynatrace_documents: >-
+      {{
+        lookup('ansible.builtin.file', tools_dynatrace_dynakube_path)
+        | ansible.builtin.from_yaml_all | list
+      }}
+  no_log: true
+
+- name: Validate the Dynatrace DynaKube manifest
+  vars:
+    tools_dynatrace_non_null: "{{ tools_dynatrace_documents | ansible.builtin.reject('none') | list }}"
+  ansible.builtin.assert:
+    that:
+      - tools_dynatrace_non_null | ansible.builtin.length > 0
+      - tools_dynatrace_non_null | ansible.builtin.length <= 8
+      - tools_dynatrace_documents | ansible.builtin.length == tools_dynatrace_non_null | ansible.builtin.length
+      # Only DynaKube + Secret kinds are permitted.
+      - >-
+        tools_dynatrace_non_null | map(attribute='kind') | unique
+        | difference(['DynaKube', 'Secret']) | ansible.builtin.length == 0
+      # At least one DynaKube CR (the Dynatrace UI may emit several, e.g. a
+      # separate ActiveGate-only and a cloudNativeFullStack DynaKube).
+      - >-
+        tools_dynatrace_non_null | selectattr('kind', 'equalto', 'DynaKube') | list
+        | ansible.builtin.length >= 1
+      # Every DynaKube must use the explicit supported API version (M3).
+      - >-
+        tools_dynatrace_non_null | selectattr('kind', 'equalto', 'DynaKube')
+        | map(attribute='apiVersion') | unique
+        | difference([tools_dynatrace_api_version]) | ansible.builtin.length == 0
+      # No document may target another namespace.
+      - >-
+        tools_dynatrace_non_null
+        | map(attribute='metadata.namespace', default=tools_dynatrace_namespace)
+        | unique | difference([tools_dynatrace_namespace]) | ansible.builtin.length == 0
+    fail_msg: >-
+      The Dynatrace DynaKube manifest must contain 1-8 non-null documents, only
+      DynaKube and Secret kinds, at least one DynaKube (all using apiVersion
+      '{{ tools_dynatrace_api_version }}'), and no resources targeting a namespace
+      other than '{{ tools_dynatrace_namespace }}'.
+    success_msg: Dynatrace DynaKube manifest passed validation.
+  no_log: true
+
+- name: Collect all DynaKube resource names for later reconciliation checks
+  ansible.builtin.set_fact:
+    tools_dynatrace_dynakube_names: >-
+      {{
+        tools_dynatrace_documents | ansible.builtin.reject('none') | list
+        | selectattr('kind', 'equalto', 'DynaKube')
+        | map(attribute='metadata.name') | list
+      }}
+  no_log: true
+
+# --- H1: ensure/claim the namespace safely. -----------------------------------
+- name: Ensure the Dynatrace namespace exists and is ITBench-owned
+  ansible.builtin.include_tasks: ensure_vendor_namespace.yaml
+  vars:
+    vendor_namespace_name: "{{ tools_dynatrace_namespace }}"
+    vendor_namespace_vendor: dynatrace
+
+- name: Install Dynatrace Operator
+  kubernetes.core.helm:
+    chart_ref: "{{ tools_vendors.dynatrace.helm.chart.reference }}"
+    chart_version: "{{ tools_vendors.dynatrace.helm.chart.version }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_vendors.dynatrace.helm.release.name }}"
+    release_namespace: "{{ tools_dynatrace_namespace }}"
+    release_state: present
+    # Only set values that differ from chart defaults. On OpenShift, platform is
+    # set so the operator manages its own SCCs; on Kubernetes the block is empty.
+    values: >-
+      {{
+        {'platform': tools_dynatrace_helm_platform}
+        if tools_dynatrace_helm_platform | ansible.builtin.length > 0
+        else {}
+      }}
+    atomic: true
+    timeout: 10m0s
+    wait: true
+
+- name: Wait for the Dynatrace Operator webhook deployment to be rolled out (M4)
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: dynatrace-webhook
+    namespace: "{{ tools_dynatrace_namespace }}"
+  register: tools_dynatrace_webhook
+  until:
+    - tools_dynatrace_webhook.resources | ansible.builtin.length == 1
+    - tools_dynatrace_webhook.resources[0].status.unavailableReplicas | ansible.builtin.default(0) == 0
+    - tools_dynatrace_webhook.resources[0].status.readyReplicas | ansible.builtin.default(0) > 0
+  delay: 15
+  retries: 20
+
+# --- H3: reject collisions before applying the manifest. ----------------------
+- name: Build the ITBench-labeled Dynatrace documents
+  ansible.builtin.set_fact:
+    tools_dynatrace_labeled_documents: >-
+      {{
+        (tools_dynatrace_documents | ansible.builtin.reject('none') | list)
+        | map('combine', {'metadata': {'namespace': tools_dynatrace_namespace, 'labels': {'app.kubernetes.io/managed-by': 'ITBench', 'itbench.io/observability-vendor': 'dynatrace'}}}, recursive=True)
+        | list
+      }}
+  no_log: true
+
+- name: Assert no unowned Dynatrace resource collisions
+  ansible.builtin.include_tasks: assert_vendor_resource_ownership.yaml
+  vars:
+    vendor_ownership_vendor: dynatrace
+    vendor_ownership_namespace: "{{ tools_dynatrace_namespace }}"
+    vendor_ownership_documents: "{{ tools_dynatrace_labeled_documents }}"
+
+- name: Apply the Dynatrace DynaKube manifest (labelled ITBench-owned)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: "{{ tools_dynatrace_namespace }}"
+    definition: "{{ tools_dynatrace_labeled_documents }}"
+    apply: true
+    state: present
+    wait: true
+  no_log: true
+
+- name: Wait for each DynaKube resource to report a healthy status (M4)
+  kubernetes.core.k8s_info:
+    api_version: "{{ tools_dynatrace_api_version }}"
+    kind: DynaKube
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_dynatrace_dynakube_item }}"
+    namespace: "{{ tools_dynatrace_namespace }}"
+  register: tools_dynatrace_dynakube_status
+  loop: "{{ tools_dynatrace_dynakube_names }}"
+  loop_control:
+    loop_var: tools_dynatrace_dynakube_item
+    label: "dynakube/{{ tools_dynatrace_dynakube_item }}"
+  until:
+    - tools_dynatrace_dynakube_status.resources | ansible.builtin.length == 1
+    # DynaKube reports readiness via conditions; require at least one True
+    # condition and no False conditions (proves reconciliation succeeded).
+    - >-
+      tools_dynatrace_dynakube_status.resources[0].status.conditions | ansible.builtin.default([])
+      | selectattr('status', 'equalto', 'True') | list | ansible.builtin.length > 0
+    - >-
+      tools_dynatrace_dynakube_status.resources[0].status.conditions | ansible.builtin.default([])
+      | selectattr('status', 'equalto', 'False') | list | ansible.builtin.length == 0
+  delay: 20
+  retries: 30

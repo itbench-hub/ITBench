@@ -1,0 +1,140 @@
+---
+# Idempotent, credential-independent, CSI-aware Dynatrace cleanup. Does not
+# depend on the original dynakube.yaml. Safe to run when never installed.
+#
+# Staged order (important for the CSI driver / OneAgent full-stack):
+#   1. Delete DynaKube CRs while the operator is still running so it can run
+#      finalizers, unmount CSI volumes, and tear down injected workloads. Do NOT
+#      suppress failures here.
+#   2. Confirm the DynaKube API reports the resources are gone (a stuck finalizer
+#      must stop the play before we remove the operator).
+#   3. Uninstall the operator Helm release (this removes chart-owned CSI
+#      DaemonSets, webhook, etc.).
+#   4. Verify chart-owned workloads disappeared, then remove the namespace only
+#      if exclusively ITBench-owned and drained.
+- name: Set Dynatrace uninstall facts
+  ansible.builtin.set_fact:
+    tools_dynatrace_namespace: "{{ tools_vendors.dynatrace.kubernetes.namespace }}"
+
+# Discover the served DynaKube API version from the cluster CRD so uninstall is
+# independent of any config/manifest (the CRD is the source of truth). Falls back
+# to configured/default values only if the CRD is absent.
+- name: Look up the DynaKube custom resource definition
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: dynakubes.dynatrace.com
+  register: tools_dynatrace_crd
+
+- name: Determine the DynaKube API version to use for cleanup
+  ansible.builtin.set_fact:
+    tools_dynatrace_api_version: >-
+      {{
+        ('dynatrace.com/' + (
+          tools_dynatrace_crd.resources[0].spec.versions
+          | selectattr('served') | map(attribute='name') | list | last
+        ))
+        if (tools_dynatrace_crd.resources | ansible.builtin.length == 1)
+        else ((tools_configuration.vendors.dynatrace | ansible.builtin.default({})).dynakube_api_version | ansible.builtin.default('dynatrace.com/v1beta3'))
+      }}
+
+- name: Check whether the Dynatrace namespace exists
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_dynatrace_namespace }}"
+  register: tools_dynatrace_ns
+
+- name: Clean up Dynatrace resources
+  when:
+    - tools_dynatrace_ns.resources | ansible.builtin.length == 1
+  block:
+    # Stage 1: remove DynaKube CRs while the operator remains active. Failures
+    # here are NOT suppressed - a failed delete request must surface.
+    - name: Delete ITBench-owned DynaKube resources
+      kubernetes.core.k8s:
+        api_version: "{{ tools_dynatrace_api_version }}"
+        kind: DynaKube
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: "{{ tools_dynatrace_namespace }}"
+        label_selectors:
+          - itbench.io/observability-vendor=dynatrace
+        state: absent
+        wait: true
+        wait_timeout: 300
+
+    # Stage 2: confirm the DynaKube resources are actually gone. If a finalizer
+    # is stuck, this fails and the play stops BEFORE the operator is removed
+    # (removing the operator would strand the finalizer permanently).
+    - name: Confirm all ITBench-owned DynaKube resources are removed
+      kubernetes.core.k8s_info:
+        api_version: "{{ tools_dynatrace_api_version }}"
+        kind: DynaKube
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: "{{ tools_dynatrace_namespace }}"
+        label_selectors:
+          - itbench.io/observability-vendor=dynatrace
+      register: tools_dynatrace_remaining_dynakubes
+      until:
+        - tools_dynatrace_remaining_dynakubes.resources | ansible.builtin.length == 0
+      delay: 15
+      retries: 20
+
+    - name: Fail if DynaKube resources are still present (stuck finalizer)
+      ansible.builtin.assert:
+        that:
+          - tools_dynatrace_remaining_dynakubes.resources | ansible.builtin.length == 0
+        fail_msg: >-
+          DynaKube resources still present after deletion (likely a stuck
+          finalizer). Stopping before Helm uninstall to avoid stranding the
+          finalizer. Investigate the DynaKube status/finalizers and retry.
+        success_msg: All ITBench-owned DynaKube resources removed.
+
+    # Stage 3: now remove the operator itself (removes chart-owned workloads).
+    - name: Uninstall the Dynatrace Operator Helm release
+      kubernetes.core.helm:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_vendors.dynatrace.helm.release.name }}"
+        release_namespace: "{{ tools_dynatrace_namespace }}"
+        release_state: absent
+        wait: true
+
+    # Verify chart-owned workloads (webhook, CSI DaemonSet, etc.) are gone after
+    # the Helm uninstall.
+    - name: Wait for Dynatrace workloads to drain after Helm uninstall
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: "{{ tools_dynatrace_workload_kind }}"
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: "{{ tools_dynatrace_namespace }}"
+      loop:
+        - DaemonSet
+        - Deployment
+        - StatefulSet
+      loop_control:
+        loop_var: tools_dynatrace_workload_kind
+      register: tools_dynatrace_remaining_workloads
+      until:
+        - tools_dynatrace_remaining_workloads.resources | ansible.builtin.length == 0
+      delay: 15
+      retries: 20
+
+    - name: Delete any remaining ITBench-owned Dynatrace secrets
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Secret
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: "{{ tools_dynatrace_namespace }}"
+        label_selectors:
+          - itbench.io/observability-vendor=dynatrace
+        state: absent
+        wait: true
+
+    # Stage 4: remove the namespace only if exclusively ITBench-owned and drained.
+    - name: Delete the Dynatrace namespace only when exclusively owned and drained
+      ansible.builtin.include_tasks: delete_vendor_namespace_if_safe.yaml
+      vars:
+        vendor_delete_namespace: "{{ tools_dynatrace_namespace }}"
+        vendor_delete_vendor: dynatrace
