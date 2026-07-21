@@ -1,0 +1,30 @@
+---
+# Observability vendor configuration for the AWX runner entry point
+# (manage_awx.yaml). This drives both:
+#   - AWX credential creation (secret inputs: manifest/dynakube contents, keys)
+#   - Non-secret job extra_vars (enable flags + config), projected automatically
+#     with secrets stripped in roles/awx/tasks/configure_jobs.yaml
+#
+# SECURITY: this file contains secrets. DO NOT commit it in plaintext. Encrypt it
+# with Ansible Vault (ansible-vault encrypt vendors.yaml) or source the secret
+# fields from a secret manager. The provisioning tasks use no_log; AWX stores the
+# resulting credentials encrypted at rest.
+#
+# vendors:
+#   datadog:
+#     enabled: true
+#     # Non-secret config (also consumed by the tools role):
+#     manifest_path: "secrets/datadog/datadog-agent.yaml"
+#     secret_name: datadog-secret
+#     api_key_name: api-key
+#     app_key_name: app-key
+#     # Secret inputs (injected into AWX credentials, stripped from job vars):
+#     manifest: |
+#       # full contents of the datadog-agent.yaml downloaded from Datadog
+#     api_key: ""       # pragma: allowlist secret
+#     app_key: ""       # pragma: allowlist secret
+#   dynatrace:
+#     enabled: true
+#     dynakube_path: "secrets/dynatrace/dynakube.yaml"
+#     dynakube: |
+#       # full contents of the dynakube.yaml downloaded from Dynatrace

@@ -36,6 +36,13 @@
           when:
             - cluster_provider != "kind"
 
+        - name: Add observability vendors variable
+          ansible.builtin.set_fact:
+            awx_configuration: "{{ awx_configuration | ansible.builtin.combine({'vendors': vendors}) }}"
+          when:
+            - vendors is ansible.builtin.defined
+          no_log: true
+
         - name: Create experiments variable
           ansible.builtin.set_fact:
             awx_experiments:
