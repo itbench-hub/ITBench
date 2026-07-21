@@ -125,13 +125,16 @@
                         - matchExpressions:
                             - key: node-role.itbench.io/sandbox
                               operator: DoesNotExist
-                securityContext:
-                  fsGroup: 101
-                  runAsGroup: 101
-                  runAsNonRoot: true
-                  runAsUser: 101
-                  seccompProfile:
-                    type: RuntimeDefault
+                # On OpenShift the restricted-v2 SCC assigns a UID/fsGroup from
+                # the namespace's allowed range, and rejects the fixed value 101.
+                # Omit the hardcoded IDs there so admission injects valid ones;
+                # keep the explicit ClickHouse-image UID (101) on plain Kubernetes.
+                securityContext: >-
+                  {{
+                    {'runAsNonRoot': true, 'seccompProfile': {'type': 'RuntimeDefault'}}
+                    if tools_cluster.platform == 'openshift'
+                    else {'fsGroup': 101, 'runAsGroup': 101, 'runAsNonRoot': true, 'runAsUser': 101, 'seccompProfile': {'type': 'RuntimeDefault'}}
+                  }}
                 containers:
                   - name: clickhouse
                     securityContext:

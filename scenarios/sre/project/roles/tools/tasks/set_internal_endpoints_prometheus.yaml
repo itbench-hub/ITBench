@@ -43,29 +43,48 @@
   when:
     - tools_cluster.platform == "openshift"
   block:
-    - name: Retrieve Service for Prometheus
+    # On OpenShift, in-cluster metrics are served by the thanos-querier (which
+    # aggregates platform + user-workload Prometheus). It listens on HTTPS :9091
+    # and requires a bearer token; there is no plain-HTTP :9090 service.
+    - name: Retrieve Service for the OpenShift Thanos Querier
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Service
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        name: prometheus-k8s
+        name: thanos-querier
         namespace: openshift-monitoring
       register: tools_prometheus_service
 
-    - name: Validate that Prometheus service exists
+    - name: Validate that the Thanos Querier service exists
       ansible.builtin.assert:
         that:
           - tools_prometheus_service.api_found
           - tools_prometheus_service.resources | ansible.builtin.length == 1
-        fail_msg: Prometheus service not found. Please verify that Prometheus was successfully installed.
-        success_msg: Prometheus service found.
+        fail_msg: Thanos Querier service not found. Please verify that OpenShift monitoring is enabled.
+        success_msg: Thanos Querier service found.
+
+    - name: Create a bearer token for querying OpenShift monitoring
+      ansible.builtin.command:
+        argv:
+          - "{{ executables_oc_path | ansible.builtin.default('oc') }}"
+          - create
+          - token
+          - prometheus-k8s
+          - --namespace
+          - openshift-monitoring
+          - --duration
+          - 8760h
+      register: tools_prometheus_token
+      changed_when: false
+      no_log: true
 
     - name: Create Prometheus in-cluster endpoints
       ansible.builtin.set_fact:
+        tools_prometheus_bearer_token: "{{ tools_prometheus_token.stdout | ansible.builtin.trim }}"
         tools_prometheus_endpoint:
           http: |-
             {{
-              "http://" +
+              "https://" +
               (
                 [
                   tools_prometheus_service.resources[0].metadata.name,
@@ -76,5 +95,6 @@
                 ] |
                 ansible.builtin.join(".")
               ) +
-              ":9090"
+              ":9091"
             }}
+      no_log: true
