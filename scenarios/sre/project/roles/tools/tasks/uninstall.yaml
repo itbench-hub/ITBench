@@ -1,4 +1,15 @@
 ---
+# Vendor cleanup runs unconditionally and idempotently: the tasks no-op when the
+# vendor namespace is absent, so disabling a vendor still removes its resources
+# during Undeploy-Tools (rather than orphaning them).
+- name: Import Dynatrace uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_dynatrace.yaml
+
+- name: Import Datadog uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_datadog.yaml
+
 - name: Import Kubernetes Topology Monitor uninstallation tasks
   ansible.builtin.import_tasks:
     file: uninstall_kubernetes_topology_monitor.yaml
