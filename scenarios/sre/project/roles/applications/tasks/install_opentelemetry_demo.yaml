@@ -34,7 +34,7 @@
       kubeconfig: "{{ applications_cluster.kubeconfig }}"
       platform: "{{ applications_cluster.platform }}"
 
-- name: Create Service Account with `anyuid` access
+- name: Create Service Account with SCC access
   when:
     - applications_cluster.platform == "openshift"
   block:
@@ -49,23 +49,52 @@
             namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
         state: present
 
-    - name: Create RoleBinding for access to anyuid SecurityContextConstraint
+    # The demo services pin fixed UIDs (needs RunAsAny, like anyuid), but when
+    # Dynatrace OneAgent injection is enabled it also adds a seccomp annotation,
+    # which the built-in anyuid SCC forbids (bumping pods to restricted-v2 which
+    # then rejects the fixed UIDs). This custom SCC is anyuid-equivalent PLUS
+    # permits seccomp profiles, so the demo runs whether or not OneAgent injects.
+    - name: Create custom SecurityContextConstraint for OpenTelemetry Demo
       kubernetes.core.k8s:
         kubeconfig: "{{ applications_cluster.kubeconfig }}"
         resource_definition:
-          kind: RoleBinding
-          apiVersion: rbac.authorization.k8s.io/v1
+          apiVersion: security.openshift.io/v1
+          kind: SecurityContextConstraints
           metadata:
-            name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
-            namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
-          subjects:
-            - kind: ServiceAccount
-              name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
-              namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: ClusterRole
-            name: system:openshift:scc:anyuid
+            name: it-bench-otel-demo-anyuid-seccomp
+            labels:
+              "app.kubernetes.io/managed-by": ITBench
+          allowHostDirVolumePlugin: false
+          allowHostIPC: false
+          allowHostNetwork: false
+          allowHostPID: false
+          allowHostPorts: false
+          allowPrivilegeEscalation: true
+          allowPrivilegedContainer: false
+          fsGroup:
+            type: RunAsAny
+          readOnlyRootFilesystem: false
+          requiredDropCapabilities:
+            - MKNOD
+          runAsUser:
+            type: RunAsAny
+          seLinuxContext:
+            type: MustRunAs
+          seccompProfiles:
+            - "*"
+          supplementalGroups:
+            type: RunAsAny
+          users:
+            - "system:serviceaccount:{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}:{{ applications_managers.opentelemetry_demo.helm.release.name }}"
+          volumes:
+            - configMap
+            - csi
+            - downwardAPI
+            - emptyDir
+            - ephemeral
+            - persistentVolumeClaim
+            - projected
+            - secret
         state: present
 
 - name: Install OpenTelemetry Demo (Astronomy Shop)

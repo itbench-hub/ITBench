@@ -17,3 +17,15 @@
         name: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
     state: absent
     wait: true
+
+# The custom SCC is cluster-scoped, so namespace deletion does not remove it.
+- name: Delete custom SecurityContextConstraint for OpenTelemetry Demo
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    api_version: security.openshift.io/v1
+    kind: SecurityContextConstraints
+    name: it-bench-otel-demo-anyuid-seccomp
+    state: absent
+    wait: true
+  when:
+    - applications_cluster.platform == "openshift"
