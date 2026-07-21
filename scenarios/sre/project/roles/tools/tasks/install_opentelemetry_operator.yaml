@@ -97,7 +97,7 @@
         namespace: openshift-opentelemetry-operator
       register: tools_openshift_otel_operator_csv
       until:
-        - tools_openshift_otel_operator_csv.resources | ansible.builtin.selectattr("status.phase", "==", "Succeeded") | ansible.builtin.length == 0
+        - tools_openshift_otel_operator_csv.resources | ansible.builtin.selectattr("status.phase", "==", "Succeeded") | ansible.builtin.length > 0
       retries: 10
       delay: 30
 
@@ -112,3 +112,45 @@
         - tools_openshift_otel_collector_crd.resources | ansible.builtin.length == 1
       retries: 10
       delay: 30
+
+    # The CSV reporting "Succeeded" does not guarantee the controller-manager
+    # (which serves the mutating/validating webhooks) is Ready. Applying an
+    # OpenTelemetryCollector before the webhook has endpoints fails with
+    # "no endpoints available for service ...-controller-manager-service".
+    # Wait for the controller-manager Deployment to be fully available.
+    - name: Wait for the OpenTelemetry Operator controller-manager to be available
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: openshift-opentelemetry-operator
+        label_selectors:
+          - app.kubernetes.io/name=opentelemetry-operator
+      register: tools_openshift_otel_operator_deploy
+      until:
+        - tools_openshift_otel_operator_deploy.resources | ansible.builtin.length > 0
+        - >-
+          tools_openshift_otel_operator_deploy.resources
+          | map(attribute='status.unavailableReplicas', default=0)
+          | select('gt', 0) | list | ansible.builtin.length == 0
+        - >-
+          tools_openshift_otel_operator_deploy.resources
+          | map(attribute='status.readyReplicas', default=0)
+          | select('gt', 0) | list | ansible.builtin.length
+          == tools_openshift_otel_operator_deploy.resources | ansible.builtin.length
+      retries: 20
+      delay: 15
+
+    - name: Wait for the OpenTelemetry Operator webhook service to have endpoints
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Endpoints
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: openshift-opentelemetry-operator
+        name: opentelemetry-operator-controller-manager-service
+      register: tools_openshift_otel_webhook_endpoints
+      until:
+        - tools_openshift_otel_webhook_endpoints.resources | ansible.builtin.length == 1
+        - tools_openshift_otel_webhook_endpoints.resources[0].subsets | ansible.builtin.default([]) | ansible.builtin.length > 0
+      retries: 20
+      delay: 15
