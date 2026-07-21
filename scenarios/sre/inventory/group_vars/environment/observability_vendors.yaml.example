@@ -1,0 +1,43 @@
+---
+# Third-party SaaS observability vendor configuration (Layer A: agent deployment).
+#
+# NON-SECRET values only (site, region, tenant/environment URL, toggles) belong
+# in this file. SECRETS (API keys, license keys, tokens) MUST NOT be placed here.
+# They are read from environment variables at install time. Export the relevant
+# variables before running the tools playbook, for example:
+#
+#   # Datadog
+#   export DATADOG_API_KEY=...            # required  # pragma: allowlist secret
+#   export DATADOG_APP_KEY=...            # optional (needed for some features)
+#
+#   # Dynatrace: no env vars. Download dynakube.yaml from the Dynatrace
+#   # onboarding UI (contains tokens + DynaKube CR) and reference it via
+#   # observability_vendors.dynatrace.dynakube_path (see below).
+#
+# Each vendor is disabled by default. Enable a vendor and supply its non-secret
+# configuration below, then export the matching secret environment variable(s).
+
+observability_vendors:
+  datadog:
+    enabled: false
+    # Path to the datadog-agent.yaml (DatadogAgent CR) shown in the Datadog
+    # onboarding UI. This file is NON-SECRET (it references the api/app keys by
+    # Secret name) so it may be committed. It carries site, clusterName, and
+    # feature toggles.
+    manifest_path: "secrets/datadog/datadog-agent.yaml"
+    # Name and keys of the Kubernetes Secret created from DATADOG_API_KEY /
+    # DATADOG_APP_KEY. These MUST match the credentials.apiSecret/appSecret
+    # references inside the DatadogAgent CR above.
+    secret_name: datadog-secret
+    api_key_name: api-key
+    app_key_name: app-key
+  dynatrace:
+    enabled: false
+    # Path to the dynakube.yaml downloaded from the Dynatrace onboarding UI.
+    # This file is SENSITIVE: it contains a Secret (apiToken + dataIngestToken)
+    # AND the DynaKube CR (apiUrl, cluster name, config). Keep OUT of git.
+    dynakube_path: "secrets/dynatrace/dynakube.yaml"  # pragma: allowlist secret
+    # Supported DynaKube API version. The DynaKube document in dynakube.yaml must
+    # use this exact apiVersion; it is also used for readiness and cleanup so all
+    # three stay consistent.
+    dynakube_api_version: "dynatrace.com/v1beta3"
