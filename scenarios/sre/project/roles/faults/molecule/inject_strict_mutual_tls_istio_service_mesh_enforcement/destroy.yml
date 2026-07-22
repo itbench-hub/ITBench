@@ -3,23 +3,6 @@
   hosts:
     - localhost
   tasks:
-    - name: Include tools role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "tools",
-              "defaults",
-              "main",
-              "managers.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Delete test namespace
       kubernetes.core.k8s:
         kubeconfig: "{{ cluster.kubeconfig }}"
@@ -34,8 +17,8 @@
     - name: Uninstall Istio Base (CRDs)
       kubernetes.core.helm:
         kubeconfig: "{{ cluster.kubeconfig }}"
-        release_name: "{{ tools_managers.istio_base.helm.release.name }}"
-        release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+        release_name: istio-base
+        release_namespace: istio-system
         release_state: absent
         wait: true
 
@@ -46,9 +29,7 @@
           apiVersion: v1
           kind: Namespace
           metadata:
-            name: "{{ tools_managers.istio_base.kubernetes.namespace }}"
-        state: absent
-        wait: true
+            name: istio-system
 
     - name: Retrieve all CustomResourceDefinitions
       kubernetes.core.k8s_info:

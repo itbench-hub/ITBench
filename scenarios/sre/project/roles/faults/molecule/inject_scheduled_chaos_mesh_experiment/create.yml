@@ -3,32 +3,15 @@
   hosts:
     - localhost
   tasks:
-    - name: Include tools role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "tools",
-              "defaults",
-              "main",
-              "managers.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Install Chaos Mesh
       kubernetes.core.helm:
-        chart_ref: "{{ tools_managers.chaos_mesh.helm.chart.reference }}"
-        chart_repo_url: "{{ tools_managers.chaos_mesh.helm.chart.repository }}"
-        chart_version: "{{ tools_managers.chaos_mesh.helm.chart.version }}"
+        chart_ref: "{{ packages.helm_charts.chaos_mesh.name }}"
+        chart_repo_url: "{{ packages.helm_charts.chaos_mesh.repository }}"
+        chart_version: "{{ packages.helm_charts.chaos_mesh.version }}"
         create_namespace: true
         kubeconfig: "{{ cluster.kubeconfig }}"
-        release_name: "{{ tools_managers.chaos_mesh.helm.release.name }}"
-        release_namespace: "{{ tools_managers.chaos_mesh.kubernetes.namespace }}"
+        release_name: chaos-mesh
+        release_namespace: chaos-mesh
         release_state: present
         wait: true
 

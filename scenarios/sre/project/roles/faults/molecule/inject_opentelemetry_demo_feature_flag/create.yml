@@ -3,27 +3,10 @@
   hosts:
     - localhost
   tasks:
-    - name: Include applications role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "applications",
-              "defaults",
-              "main",
-              "managers.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Install OpenTelemetry Demo (Astronomy Shop)
       kubernetes.core.helm:
-        chart_ref: "{{ applications_managers.opentelemetry_demo.helm.chart.reference }}"
-        chart_version: "{{ applications_managers.opentelemetry_demo.helm.chart.version }}"
+        chart_ref: "{{ packages.helm_charts.opentelemetry_demo.registry }}"
+        chart_version: "{{ packages.helm_charts.opentelemetry_demo.version }}"
         create_namespace: true
         kubeconfig: "{{ cluster.kubeconfig }}"
         release_name: opentelemetry-demo-feature-flag-release

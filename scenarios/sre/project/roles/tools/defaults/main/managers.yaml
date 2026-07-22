@@ -3,9 +3,8 @@ tools_managers:
   cert_manager:
     helm:
       chart:
-        # renovate: datasource=docker depName=quay.io/jetstack/charts/cert-manager
-        reference: oci://quay.io/jetstack/charts/cert-manager
-        version: v1.21.0
+        reference: "{{ packages.helm_charts.cert_manager.registry }}"
+        version: "{{ packages.helm_charts.cert_manager.version }}"
       release:
         name: cert-manager
     kubernetes:
@@ -13,9 +12,9 @@ tools_managers:
   chaos_mesh:
     helm:
       chart:
-        reference: chaos-mesh
-        repository: https://charts.chaos-mesh.org
-        version: 2.8.0
+        reference: "{{ packages.helm_charts.chaos_mesh.name }}"
+        repository: "{{ packages.helm_charts.chaos_mesh.repository }}"
+        version: "{{ packages.helm_charts.chaos_mesh.version }}"
       release:
         name: chaos-mesh
     kubernetes:
@@ -23,9 +22,8 @@ tools_managers:
   clickhouse_operator:
     helm:
       chart:
-        # renovate: datasource=docker depName=ghcr.io/altinity/clickhouse-operator-helm-chart/altinity-clickhouse-operator
-        reference: oci://ghcr.io/altinity/clickhouse-operator-helm-chart/altinity-clickhouse-operator
-        version: 0.27.1
+        reference: "{{ packages.helm_charts.alinity_clickhouse_operator.registry }}"
+        version: "{{ packages.helm_charts.alinity_clickhouse_operator.version }}"
       release:
         name: clickhouse-operator
     instances:
@@ -38,9 +36,8 @@ tools_managers:
   istio_base:
     helm:
       chart:
-        # renovate: datasource=docker depName=registry.istio.io/release/charts/base
-        reference: oci://registry.istio.io/release/charts/base
-        version: 1.30.3
+        reference: "{{ packages.helm_charts.istio_base.registry }}"
+        version: "{{ packages.helm_charts.istio_base.version }}"
       release:
         name: istio-base
     kubernetes:
@@ -48,9 +45,8 @@ tools_managers:
   istio_cni:
     helm:
       chart:
-        # renovate: datasource=docker depName=registry.istio.io/release/charts/cni
-        reference: oci://registry.istio.io/release/charts/cni
-        version: 1.30.3
+        reference: "{{ packages.helm_charts.istio_cni.registry }}"
+        version: "{{ packages.helm_charts.istio_cni.version }}"
       release:
         name: istio-cni
     kubernetes:
@@ -60,9 +56,8 @@ tools_managers:
   istio_istiod:
     helm:
       chart:
-        # renovate: datasource=docker depName=registry.istio.io/release/charts/istiod
-        reference: oci://registry.istio.io/release/charts/istiod
-        version: 1.30.3
+        reference: "{{ packages.helm_charts.istio_istiod.registry }}"
+        version: "{{ packages.helm_charts.istio_istiod.version }}"
       release:
         name: istiod
     kubernetes:
@@ -70,9 +65,8 @@ tools_managers:
   istio_ztunnel:
     helm:
       chart:
-        # renovate: datasource=docker depName=registry.istio.io/release/charts/ztunnel
-        reference: oci://registry.istio.io/release/charts/ztunnel
-        version: 1.30.3
+        reference: "{{ packages.helm_charts.istio_ztunnel.registry }}"
+        version: "{{ packages.helm_charts.istio_ztunnel.version }}"
       release:
         name: ztunnel
     kubernetes:
@@ -81,9 +75,8 @@ tools_managers:
       namespace: kube-system
   kubernetes_gateway:
     git:
-      # renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
-      repository: https://github.com/kubernetes-sigs/gateway-api.git
-      tag: v1.6.1
+      repository: "{{ packages..git_repositories.kubernetes_gateway_api.repository }}"
+      tag: "{{ packages..git_repositories.kubernetes_gateway_api.tag }}"
     instances:
       kubernetes:
         namespace: kube-gateways
@@ -92,17 +85,17 @@ tools_managers:
   kubernetes_metrics_server:
     helm:
       chart:
-        reference: metrics-server
-        repository: https://kubernetes-sigs.github.io/metrics-server/
-        version: 3.13.0
+        reference: "{{ packages.helm_charts.kubernetes_metrics_server.name }}"
+        repository: "{{ packages.helm_charts.kubernetes_metrics_server.repository }}"
+        version: "{{ packages.helm_charts.kubernetes_metrics_server.version }}"
       release:
         name: kube-metrics-server
     kubernetes:
       namespace: kube-metrics-server
   kubernetes_topology_monitor:
     git:
-      branch: main
-      repository: https://github.com/itbench-hub/ITBench.git
+      branch: "{{ packages..git_repositories.kubernetes_topology_monitor.branch }}"
+      repository: "{{ packages..git_repositories.kubernetes_topology_monitor.repository }}"
     helm:
       release:
         name: kube-topology-monitor
@@ -111,9 +104,8 @@ tools_managers:
   opencost:
     helm:
       chart:
-        # renovate: datasource=docker depName=ghcr.io/opencost/charts/opencost
-        reference: oci://ghcr.io/opencost/charts/opencost
-        version: 2.5.27
+        reference: "{{ packages.helm_charts.opencost.registry }}"
+        version: "{{ packages.helm_charts.opencost.version }}"
       release:
         name: opencost
     kubernetes:
@@ -121,9 +113,9 @@ tools_managers:
   opensearch:
     helm:
       chart:
-        reference: opensearch
-        repository: https://opensearch-project.github.io/helm-charts
-        version: 3.3.2
+        reference: "{{ packages.helm_charts.opensearch.name }}"
+        repository: "{{ packages.helm_charts.opensearch.repository }}"
+        version: "{{ packages.helm_charts.opensearch.version }}"
       release:
         name: opensearch
     kubernetes:
@@ -131,9 +123,8 @@ tools_managers:
   opentelemetry_operator:
     helm:
       chart:
-        # renovate: datasource=docker depName=ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-operator
-        reference: oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-operator
-        version: 0.120.0
+        reference: "{{ packages.helm_charts.opentelemetry_operator.registry }}"
+        version: "{{ packages.helm_charts.opentelemetry_operator.version }}"
       release:
         name: opentelemetry-operator
     instances:
@@ -149,9 +140,8 @@ tools_managers:
   prometheus:
     helm:
       chart:
-        # renovate: datasource=docker depName=ghcr.io/prometheus-community/charts/kube-prometheus-stack
-        reference: oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack
-        version: 87.18.0
+        reference: "{{ packages.helm_charts.kube_prometheus_stack.registry }}"
+        version: "{{ packages.helm_charts.kube_prometheus_stack.version }}"
       release:
         name: prometheus
     kubernetes:

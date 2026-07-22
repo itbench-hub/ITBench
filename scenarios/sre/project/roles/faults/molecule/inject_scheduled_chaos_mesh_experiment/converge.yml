@@ -3,23 +3,6 @@
   hosts:
     - localhost
   tasks:
-    - name: Include tools role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "tools",
-              "defaults",
-              "main",
-              "managers.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Import faults role
       ansible.builtin.import_role:
         name: faults
@@ -34,7 +17,7 @@
                 kind: Schedule
                 metadata:
                   name: test-pod-kill-schedule
-                  namespace: "{{ tools_managers.chaos_mesh.kubernetes.namespace }}"
+                  namespace: chaos-mesh
               scheduleSpec:
                 type: PodChaos
                 podChaos:

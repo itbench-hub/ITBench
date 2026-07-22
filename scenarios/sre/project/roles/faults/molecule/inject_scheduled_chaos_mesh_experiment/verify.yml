@@ -3,30 +3,13 @@
   hosts:
     - localhost
   tasks:
-    - name: Include tools role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "tools",
-              "defaults",
-              "main",
-              "managers.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Retrieve Schedule
       kubernetes.core.k8s_info:
         kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: chaos-mesh.org/v1alpha1
         kind: Schedule
         name: test-pod-kill-schedule
-        namespace: "{{ tools_managers.chaos_mesh.kubernetes.namespace }}"
+        namespace: chaos-mesh
       register: faults_schedule
 
     - name: Validate that Schedule exists
