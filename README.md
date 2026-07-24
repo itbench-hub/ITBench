@@ -121,12 +121,15 @@ ITBench is part of IBM Research's **[Enterprise Agents and Benchmarks](https://h
 
 ## How to Cite
 
+If you use ITBench in your research, please cite the ICML 2025 paper:
+
 ```bibtex
-@misc{jha2025itbench,
-      title={ITBench: Evaluating AI Agents across Diverse Real-World IT Automation Tasks},
-      author={Jha, Saurabh and Arora, Rohan and Watanabe, Yuji and others},
-      year={2025},
-      url={https://github.com/itbench-hub/ITBench/blob/main/it_bench_arxiv.pdf}
+@inproceedings{jha2025itbench,
+  title     = {{ITB}ench: Evaluating {AI} Agents across Diverse Real-World {IT} Automation Tasks},
+  author    = {Saurabh Jha and Rohan R. Arora and Yuji Watanabe and Takumi Yanagawa and Yinfang Chen and Jackson Clark and Bhavya Bhavya and Mudit Verma and Harshit Kumar and Hirokuni Kitahara and Noah Zheutlin and Saki Takano and Divya Pathak and Felix George and Xinbo Wu and Bekir O Turkkan and Gerard Vanloo and Michael Nidd and Ting Dai and Oishik Chatterjee and Pranjal Gupta and Suranjana Samanta and Pooja Aggarwal and Rong Lee and Jae-wook Ahn and Debanjana Kar and Amit Paradkar and Yu Deng and Pratibha Moogi and Prateeti Mohapatra and Naoki Abe and Chandrasekhar Narayanaswami and Tianyin Xu and Lav R. Varshney and Ruchi Mahindru and Anca Sailer and Laura Shwartz and Daby Sow and Nicholas C. M. Fuller and Ruchir Puri},
+  booktitle = {Forty-second International Conference on Machine Learning},
+  year      = {2025},
+  url       = {https://openreview.net/forum?id=jP59rz1bZk}
 }
 ```
 
