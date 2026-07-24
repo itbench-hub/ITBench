@@ -1,27 +1,33 @@
 ---
-- name: Create OpenTelemetry Demo Application
+- name: Create OpenTelemetry Demo feature flag prerequisites
   hosts:
     - localhost
   tasks:
-    - name: Install OpenTelemetry Demo (Astronomy Shop)
-      kubernetes.core.helm:
-        chart_ref: "{{ packages.helm_charts.opentelemetry_demo.registry }}"
-        chart_version: "{{ packages.helm_charts.opentelemetry_demo.version }}"
-        create_namespace: true
+    - name: Create test namespace
+      kubernetes.core.k8s:
         kubeconfig: "{{ cluster.kubeconfig }}"
-        release_name: opentelemetry-demo-feature-flag-release
-        release_namespace: opentelemetry-demo-feature-flag-test
-        release_state: present
-        timeout: 10m0s
-        values:
-          opentelemetry-collector:
-            enabled: false
-          jaeger:
-            enabled: false
-          prometheus:
-            enabled: false
-          grafana:
-            enabled: false
-          opensearch:
-            enabled: false
-        wait: true
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: opentelemetry-demo-feature-flag-test
+        state: present
+
+    - name: Fetch flagd configuration from upstream chart at matching release tag
+      ansible.builtin.uri:
+        url: "https://raw.githubusercontent.com/open-telemetry/opentelemetry-helm-charts/opentelemetry-demo-0.40.10/charts/opentelemetry-demo/flagd/demo.flagd.json"
+        return_content: true
+      register: faults_flagd_upstream
+
+    - name: Create flagd ConfigMap
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: flagd-config
+            namespace: opentelemetry-demo-feature-flag-test
+          data:
+            "demo.flagd.json": "{{ faults_flagd_upstream.content }}"
+        state: present

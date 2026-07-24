@@ -62,10 +62,11 @@
   },
   "customManagers": [
     {
-      "description": "Matches alphabetized OCI Helm charts inside tasks/install_*.yaml files",
+      "description": "Matches OCI Helm charts inside tasks/install_*.yaml and molecule create.yml files",
       "customType": "regex",
       "fileMatch": [
-        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$"
+        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$",
+        "(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$"
       ],
       "matchStrings": [
         "chart_ref:\\s*[\"']oci:\\/\\/(?<depName>[^\"'\\s]+)[\"'](?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
@@ -96,13 +97,29 @@
       "datasourceTemplate": "github-releases"
     },
     {
-      "description": "Matches alphabetized local task variables for git repositories",
+      "description": "Matches Kubernetes Gateway API release tag in the kubectl apply URL",
       "customType": "regex",
-      "fileMatch": ["(^|\\/)tasks\\/install_kubernetes_gateway_api.yaml$"],
+      "fileMatch": [
+        "(^|\\/)tasks\\/install_kubernetes_gateway_api\\.yaml$",
+        "(^|\\/)molecule\\/inject_traffic_denying_istio_gateway_authorization_policy\\/create\\.ya?ml$"
+      ],
       "matchStrings": [
-        "repository:\\s*[\"']?https?:\\/\\/github\\.com\\/(?<depName>[^\\/]+\\/[^\\/\\s.]+)(?:\\.git)?[\"']?(?:\\s+.*)*\\s+tag:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+        "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>v\\d+\\.\\d+\\.\\d+)/"
       ],
       "datasourceTemplate": "github-releases"
+    },
+    {
+      "description": "Matches opentelemetry-demo release tag embedded in raw GitHub URLs inside molecule create.yml files",
+      "customType": "regex",
+      "fileMatch": [
+        "(^|\\/)molecule\\/inject_opentelemetry_demo_feature_flag\\/create\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "https://raw\\.githubusercontent\\.com/(?<depName>[^/]+/[^/]+)/opentelemetry-demo-(?<currentValue>\\d+\\.\\d+\\.\\d+)/"
+      ],
+      "datasourceTemplate": "github-releases",
+      "extractVersion": "^opentelemetry-demo-(?<version>.+)$",
+      "versioningTemplate": "semver"
     }
   ],
   "gomod": {

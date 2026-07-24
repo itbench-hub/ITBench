@@ -5,8 +5,8 @@
   tasks:
     - name: Install Istio Base (CRDs)
       kubernetes.core.helm:
-        chart_ref: "{{ packages.helm_charts.istio_base.registry }}"
-        chart_version: "{{ packages.helm_charts.istio_base.version }}"
+        chart_ref: "oci://registry.istio.io/release/charts/base"
+        chart_version: "1.30.3"
         create_namespace: true
         kubeconfig: "{{ cluster.kubeconfig }}"
         release_name: istio-base
@@ -16,8 +16,8 @@
 
     - name: Install Istio Istiod (Control Plane)
       kubernetes.core.helm:
-        chart_ref: "{{ packages.helm_charts.istio_istiod.registry }}"
-        chart_version: "{{ packages.helm_charts.istio_istiod.version }}"
+        chart_ref: "oci://registry.istio.io/release/charts/istiod"
+        chart_version: "1.30.3"
         kubeconfig: "{{ cluster.kubeconfig }}"
         release_name: istiod
         release_namespace: istio-system
@@ -31,17 +31,7 @@
           - apply
           - --server-side
           - -f
-          - |-
-            {{
-              [
-                packages.git_repositories.kubernetes_gateway_api.repository.removesuffix(".git"),
-                "releases",
-                "download",
-                packages.git_repositories.kubernetes_gateway_api.tag,
-                "standard-install.yaml"
-              ] |
-              ansible.builtin.join('/')
-            }}
+          - "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/standard-install.yaml"
           - --kubeconfig={{ cluster.kubeconfig | ansible.builtin.expanduser }}
       register: faults_kubernetes_gateway_crds_apply
       changed_when:
