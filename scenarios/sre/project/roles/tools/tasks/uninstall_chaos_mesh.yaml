@@ -37,31 +37,16 @@
     state: absent
     wait: true
 
-- name: Remove OpenShift related objects
+- name: Delete Chaos Mesh related SecurityContextConstraints
+  kubernetes.core.k8s:
+    api_version: security.openshift.io/v1
+    delete_all: true
+    kind: SecurityContextConstraints
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    label_selectors:
+      - "app.kubernetes.io/component = chaos-mesh"
+      - "app.kubernetes.io/managed-by = ITBench"
+    state: absent
+    wait: true
   when:
     - tools_cluster.platform == "openshift"
-  block:
-    - name: Retrieve Chaos Mesh related SecurityContextConstraints
-      kubernetes.core.k8s_info:
-        api_version: security.openshift.io/v1
-        kind: SecurityContextConstraints
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        label_selectors:
-          - app.kubernetes.io/component = chaos-mesh
-          - app.kubernetes.io/managed-by = ITBench
-      register: tools_security_context_constraints
-
-    - name: Delete SCC for Chaos Mesh
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: "{{ security_context_constraint.apiVersion }}"
-          kind: "{{ security_context_constraint.kind }}"
-          metadata:
-            name: "{{ security_context_constraint.metadata.name }}"
-        state: absent
-        wait: true
-      loop: "{{ tools_security_context_constraints.resources }}"
-      loop_control:
-        label: securitycontextconstrains/{{ security_context_constraint.metadata.name }}
-        loop_var: security_context_constraint

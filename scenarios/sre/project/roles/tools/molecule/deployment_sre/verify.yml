@@ -3,28 +3,11 @@
   hosts:
     - localhost
   tasks:
-    - name: Include tools role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "tools",
-              "vars",
-              "main",
-              "releases.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Retrieve Prometheus namespace
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
+        name: prometheus
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_prometheus_namespace
 
@@ -39,7 +22,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ tools_releases.alinity_clickhouse_operator.namespace }}"
+        name: clickhouse-operator
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_clickhouse_namespace
 
@@ -54,7 +37,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ tools_releases.opensearch.namespace }}"
+        name: opensearch
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_opensearch_namespace
 
@@ -69,7 +52,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ tools_releases.opentelemetry_operator.namespace }}"
+        name: opentelemetry-operator
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_opentelemetry_namespace
 
@@ -84,7 +67,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ tools_releases.kubernetes_metrics_server.namespace }}"
+        name: kube-metrics-server
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_metrics_server_namespace
 
@@ -99,7 +82,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ tools_releases.cert_manager.namespace }}"
+        name: cert-manager
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_cert_manager_namespace
 
@@ -114,7 +97,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ tools_releases.istio_base.namespace }}"
+        name: istio-system
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_istio_namespace
 
@@ -129,7 +112,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ tools_releases.chaos_mesh.namespace }}"
+        name: chaos-mesh
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_chaos_mesh_namespace
 
@@ -144,7 +127,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ tools_releases.kubernetes_topology_monitor.namespace }}"
+        name: topology-monitor
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_topology_monitor_namespace
 
@@ -159,7 +142,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ tools_releases.opencost.namespace }}"
+        name: opencost
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_opencost_namespace
 

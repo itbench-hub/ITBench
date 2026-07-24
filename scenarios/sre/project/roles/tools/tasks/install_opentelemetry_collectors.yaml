@@ -520,27 +520,14 @@
             debug: {}
     state: present
 
-- name: Fetch all OpenTelemetry Collector Deployments
+- name: Wait for all OpenTelemetry Collectors to stabilize
   kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
+    api_version: opentelemetry.io/v1beta1
+    kind: OpenTelemetryCollector
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    label_selectors:
-      - app.kubernetes.io/component = opentelemetry-collector
-      - app.kubernetes.io/managed-by = opentelemetry-operator
-      - app.kubernetes.io/part-of = opentelemetry
-    namespace: "{{ tools_operands.opentelemetry_collector.istio.namespace }}"
-  register: tools_otel_collector_deployments
-
-- name: Wait for all OpenTelemetry Collectors deployments to stabilize
-  kubernetes.core.k8s_info:
-    api_version: "{{ resource.apiVersion }}"
-    kind: "{{ resource.kind }}"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ resource.metadata.name }}"
-    namespace: "{{ resource.metadata.namespace }}"
+    namespace: "{{ tools_namespaces.opentelemetry_collector }}"
     wait: true
-  loop: "{{ tools_otel_collector_deployments.resources }}"
-  loop_control:
-    label: deployment/{{ resource.metadata.name }}
-    loop_var: resource
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready

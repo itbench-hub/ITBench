@@ -3,28 +3,11 @@
   hosts:
     - localhost
   tasks:
-    - name: Include applications role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "applications",
-              "defaults",
-              "main",
-              "managers.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Retrieve namespace
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ applications_releases.opentelemetry_demo.namespace }}"
+        name: otel-demo
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_namespace
 
@@ -37,8 +20,8 @@
 
     - name: Retrieve Helm release
       kubernetes.core.helm_info:
-        name: "{{ applications_releases.opentelemetry_demo.name }}"
-        namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+        name: otel-demo
+        namespace: otel-demo
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_helm_release
 
@@ -54,7 +37,7 @@
       kubernetes.core.k8s_info:
         api_version: apps/v1
         kind: Deployment
-        namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+        namespace: otel-demo
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_deployments
 
@@ -69,7 +52,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Service
-        namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+        namespace: otel-demo
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_services
 

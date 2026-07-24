@@ -3,28 +3,11 @@
   hosts:
     - localhost
   tasks:
-    - name: Include applications role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "applications",
-              "defaults",
-              "main",
-              "managers.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Retrieve namespace
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ applications_releases.book_info.namespace }}"
+        name: book-info
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_namespace
 
@@ -40,7 +23,7 @@
         api_version: gateway.networking.k8s.io/v1
         kind: Gateway
         name: bookinfo-gateway
-        namespace: "{{ applications_releases.book_info.namespace }}"
+        namespace: book-info
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_gateway
 
@@ -55,7 +38,7 @@
       kubernetes.core.k8s_info:
         api_version: apps/v1
         kind: Deployment
-        namespace: "{{ applications_releases.book_info.namespace }}"
+        namespace: book-info
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_deployments
 
@@ -70,7 +53,7 @@
       kubernetes.core.k8s_info:
         api_version: autoscaling/v2
         kind: HorizontalPodAutoscaler
-        namespace: "{{ applications_releases.book_info.namespace }}"
+        namespace: book-info
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_hpas
 
@@ -86,7 +69,7 @@
         api_version: apps/v1
         kind: Deployment
         name: load-generator-product-page
-        namespace: "{{ applications_releases.book_info.namespace }}"
+        namespace: book-info
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_load_generator
 
