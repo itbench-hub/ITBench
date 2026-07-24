@@ -24,7 +24,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+        name: "{{ recorders_namespaces.data_recorders.name }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: recorders_namespace
 
@@ -39,8 +39,8 @@
       kubernetes.core.k8s_info:
         api_version: batch/v1
         kind: Job
-        name: "{{ recorders_managers.data_recorders.instances.clickhouse }}"
-        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+        name: "{{ recorders_instances.clickhouse_data_recorder.name }}"
+        namespace: "{{ recorders_namespaces.data_recorders.name }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: recorders_clickhouse_job
 
@@ -55,8 +55,8 @@
       kubernetes.core.k8s_info:
         api_version: batch/v1
         kind: CronJob
-        name: "{{ recorders_managers.data_recorders.instances.jaeger }}"
-        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+        name: "{{ recorders_instances.jaeger_data_recorder.name }}"
+        namespace: "{{ recorders_namespaces.data_recorders.name }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: recorders_jaeger_cronjob
 
@@ -71,8 +71,8 @@
       kubernetes.core.k8s_info:
         api_version: batch/v1
         kind: CronJob
-        name: "{{ recorders_managers.data_recorders.instances.prometheus }}"
-        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+        name: "{{ recorders_instances.prometheus_data_recorder.name }}"
+        namespace: "{{ recorders_namespaces.data_recorders.name }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: recorders_prometheus_cronjob
 
@@ -87,8 +87,8 @@
       kubernetes.core.k8s_info:
         api_version: batch/v1
         kind: Job
-        name: "{{ recorders_managers.data_recorders.instances.kubernetes_topology_monitor }}"
-        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+        name: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}"
+        namespace: "{{ recorders_namespaces.data_recorders.name }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: recorders_topology_monitor_job
 

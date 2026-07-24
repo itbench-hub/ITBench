@@ -4,7 +4,7 @@
     api_version: v1
     kind: Namespace
     kubeconfig: "{{ agent_cluster.kubeconfig }}"
-  register: agent_namespaces
+  register: agent_k8s_namespaces
 
 - name: Validate that all requesting namespaces exist
   ansible.builtin.assert:
@@ -14,7 +14,7 @@
     fail_msg: Requested namespaces do not exist. Please ensure all namespaces exist before requesting access.
     success_msg: All requested namespaces found.
   vars:
-    existing_namespaces: "{{ agent_namespaces.resources | map(attribute='metadata.name') }}"
+    existing_namespaces: "{{ agent_k8s_namespaces.resources | map(attribute='metadata.name') }}"
 
 - name: Create Namespace
   kubernetes.core.k8s:
@@ -23,7 +23,7 @@
       apiVersion: v1
       kind: Namespace
       metadata:
-        name: "{{ agent_managers.access_provider.kubernetes.namespace }}"
+        name: "{{ agent_namespaces.access_provider.name }}"
     state: present
 
 - name: Create ServiceAccount
@@ -34,7 +34,7 @@
       kind: ServiceAccount
       metadata:
         name: agent
-        namespace: "{{ agent_managers.access_provider.kubernetes.namespace }}"
+        namespace: "{{ agent_namespaces.access_provider.name }}"
     state: present
 
 - name: Create Role in each requested namespace
@@ -133,7 +133,7 @@
       subjects:
         - kind: ServiceAccount
           name: agent
-          namespace: "{{ agent_managers.access_provider.kubernetes.namespace }}"
+          namespace: "{{ agent_namespaces.access_provider.name }}"
       roleRef:
         kind: Role
         name: agent-read-write-access
@@ -149,7 +149,7 @@
     argv:
       - kubectl
       - -n
-      - "{{ agent_managers.access_provider.kubernetes.namespace }}"
+      - "{{ agent_namespaces.access_provider.name }}"
       - create
       - token
       - agent

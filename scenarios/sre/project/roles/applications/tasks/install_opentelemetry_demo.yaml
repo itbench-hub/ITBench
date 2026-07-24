@@ -14,7 +14,7 @@
       metadata:
         labels:
           prometheus.itbench.io/monitor: "true"
-        name: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+        name: "{{ applications_releases.opentelemetry_demo.namespace }}"
     state: present
 
 - name: Import tools role for variable setting tasks
@@ -45,8 +45,8 @@
           apiVersion: v1
           kind: ServiceAccount
           metadata:
-            name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
-            namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+            name: "{{ applications_releases.opentelemetry_demo.name }}"
+            namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
         state: present
 
     - name: Create RoleBinding for access to anyuid SecurityContextConstraint
@@ -56,12 +56,12 @@
           kind: RoleBinding
           apiVersion: rbac.authorization.k8s.io/v1
           metadata:
-            name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
-            namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+            name: "{{ applications_releases.opentelemetry_demo.name }}"
+            namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
           subjects:
             - kind: ServiceAccount
-              name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
-              namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+              name: "{{ applications_releases.opentelemetry_demo.name }}"
+              namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
           roleRef:
             apiGroup: rbac.authorization.k8s.io
             kind: ClusterRole
@@ -70,11 +70,11 @@
 
 - name: Install OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
-    chart_ref: "{{ applications_managers.opentelemetry_demo.helm.chart.reference }}"
-    chart_version: "{{ applications_managers.opentelemetry_demo.helm.chart.version }}"
+    chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-demo"
+    chart_version: "0.40.10"
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    release_name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
-    release_namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+    release_name: "{{ applications_releases.opentelemetry_demo.name }}"
+    release_namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
     release_state: present
     timeout: 10m0s
     values: |-
@@ -89,7 +89,7 @@
     api_version: v1
     kind: Pod
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+    namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
   register: applications_otel_demo_pods
 
 - name: Wait for pods to reach ready state
@@ -114,7 +114,7 @@
     api_version: apps/v1
     kind: Deployment
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+    namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
   register: applications_otel_demo_deployments
 
 - name: Create HorizontalPodAutorscalers
@@ -178,7 +178,7 @@
       variable_start_string: "[["
     state: present
   vars:
-    application_namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+    application_namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
     group_name: opentelemetrydemo
 
 - name: Create OpenTelemetry Demo PrometheusRules

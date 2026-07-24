@@ -15,11 +15,11 @@
 - name: Uninstall Istio ZTunnel
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_managers.istio_ztunnel.helm.release.name }}"
+    release_name: "{{ tools_releases.istio_ztunnel.name }}"
     release_namespace: |-
       {{
         (tools_cluster.platform == 'openshift') |
-        ansible.builtin.ternary(tools_managers.istio_ztunnel.openshift.namespace, tools_managers.istio_ztunnel.kubernetes.namespace)
+        ansible.builtin.ternary(tools_releases.istio_ztunnel.namespace.openshift, tools_releases.istio_ztunnel.namespace.kubernetes)
       }}
     release_state: absent
     wait: true
@@ -27,11 +27,11 @@
 - name: Uninstall Istio CNI Node Agent
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_managers.istio_cni.helm.release.name }}"
+    release_name: "{{ tools_releases.istio_cni.name }}"
     release_namespace: |-
       {{
         (tools_cluster.platform == 'openshift') |
-        ansible.builtin.ternary(tools_managers.istio_cni.openshift.namespace, tools_managers.istio_cni.kubernetes.namespace)
+        ansible.builtin.ternary(tools_releases.istio_cni.namespace.openshift, tools_releases.istio_cni.namespace.kubernetes)
       }}
     release_state: absent
     wait: true
@@ -39,16 +39,16 @@
 - name: Uninstall Istiod Control Plane
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_managers.istio_istiod.helm.release.name }}"
-    release_namespace: "{{ tools_managers.istio_istiod.kubernetes.namespace }}"
+    release_name: "{{ tools_releases.istio_istiod.name }}"
+    release_namespace: "{{ tools_releases.istio_istiod.namespace }}"
     release_state: absent
     wait: true
 
 - name: Uninstall Istio Base (CRDs)
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_managers.istio_base.helm.release.name }}"
-    release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+    release_name: "{{ tools_releases.istio_base.name }}"
+    release_namespace: "{{ tools_releases.istio_base.namespace }}"
     release_state: absent
     wait: true
 
@@ -59,6 +59,6 @@
       api_version: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+        name: "{{ tools_releases.istio_base.namespace }}"
     state: absent
     wait: true

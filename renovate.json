@@ -62,23 +62,47 @@
   },
   "customManagers": [
     {
+      "description": "Matches alphabetized OCI Helm charts inside tasks/install_*.yaml files",
       "customType": "regex",
-      "managerFilePatterns": [
-        "clusters/kops/inventory/group_vars/all/packages.yaml",
-        "scenarios/sre/inventory/group_vars/all/packages.yaml"
+      "fileMatch": [
+        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$"
       ],
       "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\s+depName=(?<depName>.*?)\\n\\s+registry:\\s*oci://[^\\s]+\\s*\\n\\s*version:\\s*(?<currentValue>.*)"
-      ]
+        "chart_ref:\\s*[\"']oci:\\/\\/(?<depName>[^\"'\\s]+)[\"'](?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "semver"
     },
     {
+      "description": "Matches alphabetized Ansible HTTP Helm tasks (using helm datasource)",
       "customType": "regex",
-      "managerFilePatterns": [
-        "scenarios/sre/inventory/group_vars/all/packages.yaml"
+      "fileMatch": [
+        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$"
       ],
       "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\s+depName=(?<depName>.*?)\\n\\s+repository:.*?\\n\\s+tag:\\s*(?<currentValue>.*)"
-      ]
+        "chart_ref:\\s*[\"']?(?<depName>[^\"'\\s]+)[\"']?(?:\\s+.*)*\\s+chart_repo_url:\\s*[\"']?(?<registryUrl>https?:\\/\\/[^\"'\\s]+)[\"']?(?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "helm"
+    },
+    {
+      "description": "Matches alphabetized native Git clone tasks",
+      "customType": "regex",
+      "fileMatch": [
+        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$"
+      ],
+      "matchStrings": [
+        "repo:\\s*[\"']?https?:\\/\\/github\\.com\\/(?<depName>[^\\/]+\\/[^\\/\\s.]+)(?:\\.git)?[\"']?(?:\\s+.*)*\\s+version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "description": "Matches alphabetized local task variables for git repositories",
+      "customType": "regex",
+      "fileMatch": ["(^|\\/)tasks\\/install_kubernetes_gateway_api.yaml$"],
+      "matchStrings": [
+        "repository:\\s*[\"']?https?:\\/\\/github\\.com\\/(?<depName>[^\\/]+\\/[^\\/\\s.]+)(?:\\.git)?[\"']?(?:\\s+.*)*\\s+tag:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "github-releases"
     }
   ],
   "gomod": {

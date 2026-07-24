@@ -12,16 +12,16 @@
           metadata:
             labels:
               "prometheus.itbench.io/monitor": "true"
-            name: "{{ tools_managers.cert_manager.kubernetes.namespace }}"
+            name: "{{ tools_releases.cert_manager.namespace }}"
         state: present
 
     - name: Install cert-manager
       kubernetes.core.helm:
-        chart_ref: "{{ tools_managers.cert_manager.helm.chart.reference }}"
-        chart_version: "{{ tools_managers.cert_manager.helm.chart.version }}"
+        chart_ref: "oci://quay.io/jetstack/charts/cert-manager"
+        chart_version: "v1.21.0"
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_managers.cert_manager.helm.release.name }}"
-        release_namespace: "{{ tools_managers.cert_manager.kubernetes.namespace }}"
+        release_name: "{{ tools_releases.cert_manager.name }}"
+        release_namespace: "{{ tools_releases.cert_manager.namespace }}"
         release_state: present
         timeout: 10m0s
         values:

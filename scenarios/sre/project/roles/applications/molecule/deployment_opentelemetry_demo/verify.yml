@@ -24,7 +24,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Namespace
-        name: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+        name: "{{ applications_releases.opentelemetry_demo.namespace }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_namespace
 
@@ -37,8 +37,8 @@
 
     - name: Retrieve Helm release
       kubernetes.core.helm_info:
-        name: "{{ applications_managers.opentelemetry_demo.helm.release.name }}"
-        namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+        name: "{{ applications_releases.opentelemetry_demo.name }}"
+        namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_helm_release
 
@@ -54,7 +54,7 @@
       kubernetes.core.k8s_info:
         api_version: apps/v1
         kind: Deployment
-        namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+        namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_deployments
 
@@ -69,7 +69,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Service
-        namespace: "{{ applications_managers.opentelemetry_demo.kubernetes.namespace }}"
+        namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
         kubeconfig: "{{ cluster.kubeconfig }}"
       register: applications_services
 
