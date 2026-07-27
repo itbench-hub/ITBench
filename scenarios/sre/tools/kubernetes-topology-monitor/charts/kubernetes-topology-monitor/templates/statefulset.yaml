@@ -16,8 +16,14 @@ spec:
         app: topology-monitor
     spec:
       serviceAccountName: topology-monitor
+      # Pod-level security context compliant with the "restricted" Pod Security
+      # Standard / OpenShift restricted-v2 SCC. UID/GID/fsGroup are intentionally
+      # omitted so OpenShift assigns them from the namespace's allowed range; on
+      # plain Kubernetes the container runs as a non-root user from the image.
       securityContext:
-        fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: topology-monitor
         image: quay.io/it-bench/topology-monitor:0.0.4
@@ -29,8 +35,13 @@ spec:
         - "--interval=300"
         - "--max-snapshots=10"
         securityContext:
-          runAsUser: 1000
-          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
         ports:
         - containerPort: 8080
         volumeMounts:

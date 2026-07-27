@@ -45,9 +45,14 @@
       ansible.builtin.import_tasks:
         file: install_opentelemetry.yaml
 
+    # OpenShift ships metrics-server (the v1beta1.metrics.k8s.io APIService is
+    # owned by the cluster-monitoring-operator), so installing it here conflicts.
+    # Only install metrics-server on plain Kubernetes.
     - name: Import Kubernetes Metrics Server installation tasks
       ansible.builtin.import_tasks:
         file: install_kubernetes_metrics_server.yaml
+      when:
+        - tools_cluster.platform != "openshift"
 
     - name: Import cert-manager installation tasks
       ansible.builtin.import_tasks:

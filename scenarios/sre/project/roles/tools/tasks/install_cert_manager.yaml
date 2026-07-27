@@ -120,7 +120,11 @@
         namespace: cert-manager-operator
       register: tools_openshift_cert_manager_csv
       until:
-        - tools_openshift_cert_manager_csv.resources | ansible.builtin.selectattr("status.phase", "==", "Succeeded") | ansible.builtin.length == 0
+        - >-
+          tools_openshift_cert_manager_csv.resources
+          | ansible.builtin.selectattr("metadata.name", "match", "^cert-manager-operator")
+          | ansible.builtin.selectattr("status.phase", "==", "Succeeded")
+          | ansible.builtin.length > 0
       retries: 10
       delay: 30
 

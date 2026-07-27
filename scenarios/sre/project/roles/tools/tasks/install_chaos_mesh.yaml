@@ -20,7 +20,11 @@
           allowHostNetwork: false
           allowHostPID: true
           allowHostPorts: false
-          allowPrivilegeEscalation: false
+          # A privileged container implies privilege escalation; setting this to
+          # false while allowPrivilegedContainer is true produces an invalid pod
+          # spec that the API server rejects ("cannot set allowPrivilegeEscalation
+          # to false and privileged to true").
+          allowPrivilegeEscalation: true
           allowPrivilegedContainer: true
           allowedCapabilities:
             - IPC_LOCK

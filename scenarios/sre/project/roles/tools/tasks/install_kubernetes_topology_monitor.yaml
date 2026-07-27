@@ -1,16 +1,10 @@
 ---
-- name: Create temporary directory for Git checkout
-  ansible.builtin.tempfile:
-    prefix: topology_monitor
-    state: directory
-  register: tools_temporary_directory
-
-- name: Checkout Kubernetes Topology Monitor repository using Git
-  ansible.builtin.git:
-    depth: 1
-    dest: "{{ tools_temporary_directory.path }}"
-    repo: "{{ tools_managers.kubernetes_topology_monitor.git.repository }}"
-    version: "{{ tools_managers.kubernetes_topology_monitor.git.branch }}"
+# Resolve the in-tree Kubernetes Topology Monitor chart. Using the local copy
+# (rather than cloning upstream) keeps OpenShift/PodSecurity fixes to the chart
+# authoritative and reviewable in this repository.
+- name: Resolve the local Kubernetes Topology Monitor chart path
+  ansible.builtin.set_fact:
+    tools_topology_monitor_chart: "{{ [playbook_dir, '..', 'tools', 'kubernetes-topology-monitor', 'charts', 'kubernetes-topology-monitor'] | ansible.builtin.path_join | ansible.builtin.realpath }}"
 
 - name: Create Namespace for Kubernetes Topology Monitor
   kubernetes.core.k8s:
@@ -27,15 +21,10 @@
 
 - name: Install Kubernetes Topology Monitor
   kubernetes.core.helm:
-    chart_ref: "{{ tools_temporary_directory.path }}/scenarios/sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor"
+    chart_ref: "{{ tools_topology_monitor_chart }}"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
     release_namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
     release_state: present
     timeout: 10m0s
     wait: true
-
-- name: Delete the temporary directory
-  ansible.builtin.file:
-    path: "{{ tools_temporary_directory.path }}"
-    state: absent
