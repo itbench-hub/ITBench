@@ -18,7 +18,7 @@
     {
       "description": "Safety Override: Force ALL custom regex tracking to stay on standard text version tags",
       "matchManagers": [
-        "regex"
+        "custom.regex"
       ],
       "pinDigests": false
     },
@@ -58,9 +58,9 @@
     {
       "description": "Matches OCI Helm charts inside tasks/install_*.yaml and molecule create.yml files",
       "customType": "regex",
-      "fileMatch": [
-        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$",
-        "(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$"
+      "managerFilePatterns": [
+        "/(^|\\/)tasks\\/install_[^\\/]*\\.yaml$/",
+        "/(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$/"
       ],
       "matchStrings": [
         "chart_ref:\\s*[\"']oci:\\/\\/(?<depName>[^\"'\\s]+)[\"'](?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
@@ -71,9 +71,9 @@
     {
       "description": "Matches alphabetized Ansible HTTP Helm tasks (using helm datasource)",
       "customType": "regex",
-      "fileMatch": [
-        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$",
-        "(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$"
+      "managerFilePatterns": [
+        "/(^|\\/)tasks\\/install_[^\\/]*\\.yaml$/",
+        "/(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$/"
       ],
       "matchStrings": [
         "chart_ref:\\s*[\"']?(?<depName>[^\"'\\s]+)[\"']?(?:\\s+.*)*\\s+chart_repo_url:\\s*[\"']?(?<registryUrl>https?:\\/\\/[^\"'\\s]+)[\"']?(?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
@@ -83,8 +83,8 @@
     {
       "description": "Matches alphabetized native Git clone tasks",
       "customType": "regex",
-      "fileMatch": [
-        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$"
+      "managerFilePatterns": [
+        "/(^|\\/)tasks\\/install_[^\\/]*\\.yaml$/"
       ],
       "matchStrings": [
         "repo:\\s*[\"']?https?:\\/\\/github\\.com\\/(?<depName>[^\\/]+\\/[^\\/\\s.]+)(?:\\.git)?[\"']?(?:\\s+.*)*\\s+version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
@@ -94,9 +94,9 @@
     {
       "description": "Matches Kubernetes Gateway API release tag in the kubectl apply URL",
       "customType": "regex",
-      "fileMatch": [
-        "(^|\\/)tasks\\/install_kubernetes_gateway_api\\.yaml$",
-        "(^|\\/)molecule\\/inject_traffic_denying_istio_gateway_authorization_policy\\/create\\.ya?ml$"
+      "managerFilePatterns": [
+        "/(^|\\/)tasks\\/install_kubernetes_gateway_api\\.yaml$/",
+        "/(^|\\/)molecule\\/inject_traffic_denying_istio_gateway_authorization_policy\\/create\\.ya?ml$/"
       ],
       "matchStrings": [
         "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>v\\d+\\.\\d+\\.\\d+)/"
@@ -106,8 +106,8 @@
     {
       "description": "Matches opentelemetry-demo release tag embedded in raw GitHub URLs inside molecule create.yml files",
       "customType": "regex",
-      "fileMatch": [
-        "(^|\\/)molecule\\/inject_opentelemetry_demo_feature_flag\\/create\\.ya?ml$"
+      "managerFilePatterns": [
+        "/(^|\\/)molecule\\/inject_opentelemetry_demo_feature_flag\\/create\\.ya?ml$/"
       ],
       "matchStrings": [
         "https://raw\\.githubusercontent\\.com/(?<depName>[^/]+/[^/]+)/opentelemetry-demo-(?<currentValue>\\d+\\.\\d+\\.\\d+)/"
