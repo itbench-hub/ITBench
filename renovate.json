@@ -8,7 +8,6 @@
   },
   "packageRules": [
     {
-      "description": "Enable SHA pinning ONLY for native infrastructure configs",
       "matchManagers": [
         "github-actions",
         "dockerfile"
@@ -16,7 +15,6 @@
       "pinDigests": true
     },
     {
-      "description": "Safety Override: Force ALL custom regex tracking to stay on standard text version tags",
       "matchManagers": [
         "regex"
       ],
@@ -47,6 +45,15 @@
       "matchManagers": [
         "ansible"
       ]
+    },
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "registry.access.redhat.com/ubi10/go-toolset"
+      ],
+      "extractVersion": "^(?<version>1\\.\\d+\\.\\d+-\\d+)$"
     }
   ],
   "ansible": {
@@ -56,7 +63,6 @@
   },
   "customManagers": [
     {
-      "description": "Matches OCI Helm charts inside tasks/install_*.yaml and molecule create.yml files",
       "customType": "regex",
       "fileMatch": [
         "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$",
@@ -69,7 +75,6 @@
       "versioningTemplate": "semver"
     },
     {
-      "description": "Matches alphabetized Ansible HTTP Helm tasks (using helm datasource)",
       "customType": "regex",
       "fileMatch": [
         "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$",
@@ -81,7 +86,6 @@
       "datasourceTemplate": "helm"
     },
     {
-      "description": "Matches alphabetized native Git clone tasks",
       "customType": "regex",
       "fileMatch": [
         "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$"
@@ -92,7 +96,6 @@
       "datasourceTemplate": "github-releases"
     },
     {
-      "description": "Matches Kubernetes Gateway API release tag in the kubectl apply URL",
       "customType": "regex",
       "fileMatch": [
         "(^|\\/)tasks\\/install_kubernetes_gateway_api\\.yaml$",
@@ -104,7 +107,6 @@
       "datasourceTemplate": "github-releases"
     },
     {
-      "description": "Matches opentelemetry-demo release tag embedded in raw GitHub URLs inside molecule create.yml files",
       "customType": "regex",
       "fileMatch": [
         "(^|\\/)molecule\\/inject_opentelemetry_demo_feature_flag\\/create\\.ya?ml$"
