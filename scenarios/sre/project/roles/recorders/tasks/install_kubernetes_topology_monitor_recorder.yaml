@@ -4,8 +4,8 @@
     api_version: batch/v1
     kind: Job
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    name: "{{ recorders_managers.data_recorders.instances.kubernetes_topology_monitor }}"
-    namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+    name: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}"
+    namespace: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.namespace }}"
   register: recorders_job
   until:
     - recorders_job.resources | ansible.builtin.length == 0
@@ -20,10 +20,10 @@
       job:
         environment_variables:
           - name: FILENAME_ANNOTATION
-            value: "{{ recorders_file_name_prefixes.kubernetes_topology_monitor[recorders_configuration.phase] }}"
+            value: "{{ file_name_prefixes[recorders_configuration.phase] }}"
           - name: KUBERNETES_TOPOLOGY_MONITOR_ENDPOINT
             value: "{{ tools_kubernetes_topology_monitor_endpoint.http }}"
-      name: "{{ recorders_managers.data_recorders.instances.kubernetes_topology_monitor }}"
+      name: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}"
       scripts:
         requirements_file_path: "files/scripts/kubernetes_topology_monitor/requirements.txt"
         scripts_file_path: "files/scripts/kubernetes_topology_monitor/gather.py"

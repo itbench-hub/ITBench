@@ -9,7 +9,7 @@
         labels:
           "itbench.io/gateway-access": shared
           "prometheus.itbench.io/monitor": "true"
-        name: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.istio.namespace }}"
     state: present
 
 - name: Import variable setting task
@@ -32,8 +32,8 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.istio }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.istio.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.istio.namespace }}"
       spec:
         affinity:
           nodeAffinity:
@@ -79,8 +79,8 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.jaeger.namespace }}"
       spec:
         affinity:
           nodeAffinity:
@@ -119,7 +119,7 @@
                 traces_store:
                   opensearch:
                     server_urls:
-                      - http://opensearch-cluster-master.{{ tools_managers.opensearch.kubernetes.namespace }}.svc.cluster.local:9200
+                      - http://opensearch-cluster-master.{{ tools_releases.opensearch.namespace }}.svc.cluster.local:9200
           receivers:
             otlp:
               protocols:
@@ -140,8 +140,8 @@
       apiVersion: v1
       kind: ServiceAccount
       metadata:
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_events }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_events.namespace }}"
     state: present
 
 - name: Create ClusterRole for Kubernetes Events Collector
@@ -154,7 +154,7 @@
         labels:
           "app.kubernetes.io/component": opentelemetry-collector
           "app.kubernetes.io/managed-by": ITBench
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_events }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
       rules:
         - apiGroups:
             - events.k8s.io
@@ -182,15 +182,15 @@
         labels:
           "app.kubernetes.io/component": opentelemetry-collector
           "app.kubernetes.io/managed-by": ITBench
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_events }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_events }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
       subjects:
         - kind: ServiceAccount
-          name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_events }}"
-          namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+          name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
+          namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_events.namespace }}"
     state: present
 
 - name: Install OpenTelemetry Collector for Kubernetes Events
@@ -200,8 +200,8 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_events }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_events.namespace }}"
       spec:
         affinity:
           nodeAffinity:
@@ -215,7 +215,7 @@
         observability:
           metrics:
             enableMetrics: true
-        serviceAccount: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_events }}"
+        serviceAccount: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
         config:
           service:
             pipelines:
@@ -250,8 +250,8 @@
       apiVersion: v1
       kind: ServiceAccount
       metadata:
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_objects_snapshot }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.namespace }}"
     state: present
 
 - name: Create ClusterRole for Kubernetes Objects Snapshot Collector
@@ -264,7 +264,7 @@
         labels:
           "app.kubernetes.io/component": opentelemetry-collector
           "app.kubernetes.io/managed-by": ITBench
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_objects_snapshot }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
       rules:
         - apiGroups:
             - ""
@@ -361,15 +361,15 @@
         labels:
           "app.kubernetes.io/component": opentelemetry-collector
           "app.kubernetes.io/managed-by": ITBench
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_objects_snapshot }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_objects_snapshot }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
       subjects:
         - kind: ServiceAccount
-          name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_objects_snapshot }}"
-          namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+          name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
+          namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.namespace }}"
     state: present
 
 - name: Install OpenTelemetry Collector for Kubernetes Objects Snapshot
@@ -379,8 +379,8 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_objects_snapshot }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.namespace }}"
       spec:
         affinity:
           nodeAffinity:
@@ -394,7 +394,7 @@
         observability:
           metrics:
             enableMetrics: true
-        serviceAccount: "{{ tools_managers.opentelemetry_operator.instances.names.kubernetes_objects_snapshot }}"
+        serviceAccount: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
         config:
           service:
             pipelines:
@@ -520,27 +520,14 @@
             debug: {}
     state: present
 
-- name: Fetch all OpenTelemetry Collector Deployments
+- name: Wait for all OpenTelemetry Collectors to stabilize
   kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
+    api_version: opentelemetry.io/v1beta1
+    kind: OpenTelemetryCollector
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    label_selectors:
-      - app.kubernetes.io/component = opentelemetry-collector
-      - app.kubernetes.io/managed-by = opentelemetry-operator
-      - app.kubernetes.io/part-of = opentelemetry
-    namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
-  register: tools_otel_collector_deployments
-
-- name: Wait for all OpenTelemetry Collectors deployments to stabilize
-  kubernetes.core.k8s_info:
-    api_version: "{{ resource.apiVersion }}"
-    kind: "{{ resource.kind }}"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ resource.metadata.name }}"
-    namespace: "{{ resource.metadata.namespace }}"
+    namespace: "{{ tools_namespaces.opentelemetry_collector }}"
     wait: true
-  loop: "{{ tools_otel_collector_deployments.resources }}"
-  loop_control:
-    label: deployment/{{ resource.metadata.name }}
-    loop_var: resource
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready

@@ -8,34 +8,17 @@
   register: tools_custom_resource_definition
 
 - name: Delete Clickhouse Installations
+  kubernetes.core.k8s:
+    api_version: clickhouse.altinity.com/v1
+    delete_all: true
+    kind: ClickHouseInstallation
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: "{{ tools_namespaces.alinity_clickhouse }}"
+    state: absent
+    wait: true
   when:
     - tools_custom_resource_definition.api_found
     - tools_custom_resource_definition.resources | ansible.builtin.length == 1
-  block:
-    - name: Retrieve Clickhouse Installations
-      kubernetes.core.k8s_info:
-        api_version: clickhouse.altinity.com/v1
-        kind: ClickHouseInstallation
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-      register: tools_clickhouse_installations
-
-    - name: Delete Clickhouse Installations
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          api_version: "{{ resource.apiVersion }}"
-          kind: "{{ resource.kind }}"
-          metadata:
-            name: "{{ resource.metadata.name }}"
-            namespace: "{{ resource.metadata.namespace }}"
-        state: absent
-        wait: true
-      loop: "{{ tools_clickhouse_installations.resources }}"
-      loop_control:
-        label: clickhouseinstallation/{{ resource.metadata.name }}
-        loop_var: resource
-      when:
-        - tools_clickhouse_installations.api_found
 
 - name: Delete Namespace for Clickhouse instances
   kubernetes.core.k8s:
@@ -44,6 +27,6 @@
       api_version: v1
       kind: Namespace
       metadata:
-        name: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
     state: absent
     wait: true

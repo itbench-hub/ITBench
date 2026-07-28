@@ -4,24 +4,24 @@
     api_version: v1
     kind: Namespace
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-  register: tools_namespaces
+  register: tools_k8s_namespaces
 
 - name: Validate that namespaces exists
   ansible.builtin.assert:
     that:
-      - tools_namespaces.api_found
-      - tools_namespaces.resources | ansible.builtin.length > 0
+      - tools_k8s_namespaces.api_found
+      - tools_k8s_namespaces.resources | ansible.builtin.length > 0
     fail_msg: No namespaces were found. Please ensure that tool installation completed successfully.
     success_msg: Namespaces found.
 
 - name: Map resources to names list
   ansible.builtin.set_fact:
-    tools_namespaces_names: "{{ tools_namespaces.resources | map(attribute='metadata.name') }}"
+    tools_namespaces_names: "{{ tools_k8s_namespaces.resources | map(attribute='metadata.name') }}"
 
 - name: Validate that Kubernetes Gateway instance namespace exists
   ansible.builtin.assert:
     that:
-      - tools_managers.kubernetes_gateway.instances.kubernetes.namespace in tools_namespaces_names
+      - tools_kubernetes_gateways.istio.namespace in tools_namespaces_names
     fail_msg: Kubernetes Gateway namespace does not exist. Please ensure tool installation was successful.
     success_msg: Kubernetes Gateway namespace exists.
 
@@ -30,8 +30,8 @@
     api_version: gateway.networking.k8s.io/v1
     kind: Gateway
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}"
-    namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+    name: "{{ tools_kubernetes_gateways.istio.name }}"
+    namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
   register: tools_istio_gateway
   until:
     - tools_istio_gateway.resources | ansible.builtin.length == 1
@@ -62,25 +62,25 @@
   ansible.builtin.import_tasks:
     file: set_external_endpoints_clickhouse.yaml
   when:
-    - tools_managers.clickhouse_operator.instances.kubernetes.namespace in tools_namespaces_names
+    - tools_operands.alinity_clickhouse.main.namespace in tools_namespaces_names
 
 - name: Import Jaeger variable setting tasks
   ansible.builtin.import_tasks:
     file: set_external_endpoints_jaeger.yaml
   when:
-    - tools_managers.opentelemetry_operator.instances.kubernetes.namespace in tools_namespaces_names
+    - tools_operands.opentelemetry_collector.jaeger.namespace in tools_namespaces_names
 
 - name: Import Kubernetes Topology Monitor variable setting tasks
   ansible.builtin.import_tasks:
     file: set_external_endpoints_kubernetes_topology_monitor.yaml
   when:
-    - tools_managers.kubernetes_topology_monitor.kubernetes.namespace in tools_namespaces_names
+    - tools_releases.kubernetes_topology_monitor.namespace in tools_namespaces_names
 
 - name: Import OpenCost variable setting tasks
   ansible.builtin.import_tasks:
     file: set_external_endpoints_opencost.yaml
   when:
-    - tools_managers.opencost.kubernetes.namespace in tools_namespaces_names
+    - tools_releases.opencost.namespace in tools_namespaces_names
 
 - name: Import Prometheus variable setting tasks
   ansible.builtin.import_tasks:
@@ -88,5 +88,5 @@
   when:
     - (
         ("openshift-monitoring" in tools_namespaces_names) or
-        (tools_managers.prometheus.kubernetes.namespace in tools_namespaces_names)
+        (tools_releases.kube_prometheus_stack.namespace.kubernetes in tools_namespaces_names)
       )

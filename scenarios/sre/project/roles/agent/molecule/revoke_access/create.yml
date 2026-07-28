@@ -9,21 +9,19 @@
         path: "{{ working_directory }}"
         state: directory
 
-    - name: Create Namespace
+    - name: Create Namespaces
       kubernetes.core.k8s:
         kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: "{{ name }}"
+          - apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: application
+          - apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: observability
         state: present
-      loop:
-        - application
-        - observability
-      loop_control:
-        label: namespace/{{ name }}
-        loop_var: name
 
     - name: Create Deployment
       kubernetes.core.k8s:

@@ -15,7 +15,7 @@
           "pod-security.kubernetes.io/warn": restricted
           "pod-security.kubernetes.io/warn-version": v1.35
           "prometheus.itbench.io/monitor": "true"
-        name: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
     state: present
 
 # TODO: Add service account and give access to `nonroot-v2` for OpenShift
@@ -28,7 +28,7 @@
       kind: Secret
       metadata:
         name: user-default-credentials
-        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+        namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
       type: Opaque
       stringData:
         user: default
@@ -46,7 +46,7 @@
         labels:
           "app.kubernetes.io/name": clickhouse
         name: clickhouse-init-prometheus
-        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+        namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
       data:
         01_init_prometheus.sql: |
           -- Based on https://clickhouse.com/docs/engines/table-engines/special/time_series
@@ -69,8 +69,8 @@
         labels:
           "app.kubernetes.io/name": clickhouse
           app.kubernetes.io/version: 25.3.8.10041
-        name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
-        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.alinity_clickhouse.main.name }}"
+        namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
       spec:
         configuration:
           settings:
@@ -199,8 +199,8 @@
     api_version: clickhouse.altinity.com/v1
     kind: ClickHouseInstallation
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
-    namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+    name: "{{ tools_operands.alinity_clickhouse.main.name }}"
+    namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
   register: tools_chi
   until:
     - tools_chi.resources[0].status is ansible.builtin.defined
@@ -216,8 +216,8 @@
       apiVersion: monitoring.coreos.com/v1
       kind: ServiceMonitor
       metadata:
-        name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
-        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.alinity_clickhouse.main.name }}"
+        namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
       spec:
         selector:
           matchLabels:

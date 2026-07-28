@@ -8,32 +8,35 @@
   },
   "packageRules": [
     {
+      "description": "Enable SHA pinning ONLY for native infrastructure configs",
+      "matchManagers": [
+        "github-actions",
+        "dockerfile"
+      ],
+      "pinDigests": true
+    },
+    {
+      "description": "Safety Override: Force ALL custom regex tracking to stay on standard text version tags",
+      "matchManagers": [
+        "regex"
+      ],
+      "pinDigests": false
+    },
+    {
       "groupName": "All OpenTelemetry Collector Builder Dependencies",
       "groupSlug": "opentelemetry-collector-builder-group",
       "matchPackageNames": [
-        "/^github.com/open-telemetry/opentelemetry-collector-contrib/connector//",
-        "/^github.com/open-telemetry/opentelemetry-collector-contrib/exporter//",
-        "/^github.com/open-telemetry/opentelemetry-collector-contrib/extension//",
-        "/^github.com/open-telemetry/opentelemetry-collector-contrib/processor//",
-        "/^github.com/open-telemetry/opentelemetry-collector-contrib/receiver//",
-        "/^go.opentelemetry.io/collector/confmap/provider//",
-        "/^go.opentelemetry.io/collector/connector//",
-        "/^go.opentelemetry.io/collector/exporter//",
-        "/^go.opentelemetry.io/collector/extension//",
-        "/^go.opentelemetry.io/collector/processor//",
-        "/^go.opentelemetry.io/collector/receiver//"
-      ]
-    },
-    {
-      "enabled": false,
-      "matchDatasources": [
-        "docker"
-      ],
-      "matchPackageNames": [
-        "registry.access.redhat.com/ubi10/go-toolset"
-      ],
-      "matchUpdateTypes": [
-        "major"
+        "/^github\\.com/open-telemetry/opentelemetry-collector-contrib/connector/",
+        "/^github\\.com/open-telemetry/opentelemetry-collector-contrib/exporter/",
+        "/^github\\.com/open-telemetry/opentelemetry-collector-contrib/extension/",
+        "/^github\\.com/open-telemetry/opentelemetry-collector-contrib/processor/",
+        "/^github\\.com/open-telemetry/opentelemetry-collector-contrib/receiver/",
+        "/^go\\.opentelemetry\\.io/collector/confmap/provider/",
+        "/^go\\.opentelemetry\\.io/collector/connector/",
+        "/^go\\.opentelemetry\\.io/collector/exporter/",
+        "/^go\\.opentelemetry\\.io/collector/extension/",
+        "/^go\\.opentelemetry\\.io/collector/processor/",
+        "/^go\\.opentelemetry\\.io/collector/receiver/"
       ]
     },
     {
@@ -44,15 +47,6 @@
       "matchManagers": [
         "ansible"
       ]
-    },
-    {
-      "lockFileMaintenance": {
-        "enabled": true
-      },
-      "matchManagers": [
-        "gomod",
-        "pep621"
-      ]
     }
   ],
   "ansible": {
@@ -62,25 +56,65 @@
   },
   "customManagers": [
     {
+      "description": "Matches OCI Helm charts inside tasks/install_*.yaml and molecule create.yml files",
       "customType": "regex",
-      "managerFilePatterns": [
-        "clusters/kops/playbooks/roles/docker/defaults/main/managers.yaml",
-        "scenarios/sre/project/roles/applications/defaults/main/managers.yaml",
-        "scenarios/sre/project/roles/tools/defaults/main/managers.yaml"
+      "fileMatch": [
+        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$",
+        "(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$"
       ],
       "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\s+depName=(?<depName>.*?)\\n\\s+reference:\\s*oci://[^\\s]+\\s*\\n\\s*version:\\s*(?<currentValue>.*)"
-      ]
+        "chart_ref:\\s*[\"']oci:\\/\\/(?<depName>[^\"'\\s]+)[\"'](?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "semver"
     },
     {
+      "description": "Matches alphabetized Ansible HTTP Helm tasks (using helm datasource)",
       "customType": "regex",
-      "managerFilePatterns": [
-        "scenarios/sre/project/roles/applications/defaults/main/managers.yaml",
-        "scenarios/sre/project/roles/tools/defaults/main/managers.yaml"
+      "fileMatch": [
+        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$",
+        "(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$"
       ],
       "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\s+depName=(?<depName>.*?)\\n\\s+repository:.*?\\n\\s+tag:\\s*(?<currentValue>.*)"
-      ]
+        "chart_ref:\\s*[\"']?(?<depName>[^\"'\\s]+)[\"']?(?:\\s+.*)*\\s+chart_repo_url:\\s*[\"']?(?<registryUrl>https?:\\/\\/[^\"'\\s]+)[\"']?(?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "helm"
+    },
+    {
+      "description": "Matches alphabetized native Git clone tasks",
+      "customType": "regex",
+      "fileMatch": [
+        "(^|\\/)tasks\\/install_[^\\/]*\\.yaml$"
+      ],
+      "matchStrings": [
+        "repo:\\s*[\"']?https?:\\/\\/github\\.com\\/(?<depName>[^\\/]+\\/[^\\/\\s.]+)(?:\\.git)?[\"']?(?:\\s+.*)*\\s+version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "description": "Matches Kubernetes Gateway API release tag in the kubectl apply URL",
+      "customType": "regex",
+      "fileMatch": [
+        "(^|\\/)tasks\\/install_kubernetes_gateway_api\\.yaml$",
+        "(^|\\/)molecule\\/inject_traffic_denying_istio_gateway_authorization_policy\\/create\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>v\\d+\\.\\d+\\.\\d+)/"
+      ],
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "description": "Matches opentelemetry-demo release tag embedded in raw GitHub URLs inside molecule create.yml files",
+      "customType": "regex",
+      "fileMatch": [
+        "(^|\\/)molecule\\/inject_opentelemetry_demo_feature_flag\\/create\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "https://raw\\.githubusercontent\\.com/(?<depName>[^/]+/[^/]+)/opentelemetry-demo-(?<currentValue>\\d+\\.\\d+\\.\\d+)/"
+      ],
+      "datasourceTemplate": "github-releases",
+      "extractVersion": "^opentelemetry-demo-(?<version>.+)$",
+      "versioningTemplate": "semver"
     }
   ],
   "gomod": {

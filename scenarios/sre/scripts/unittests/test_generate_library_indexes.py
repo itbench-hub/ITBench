@@ -35,43 +35,43 @@ class TestHelperFunctions(unittest.TestCase):
         )
 
 
-class TestLoadManagers(unittest.TestCase):
-    """Test manager loading functionality."""
+class TestLoadReleases(unittest.TestCase):
+    """Test release loading functionality."""
 
-    def test_load_managers(self):
-        """Test loading managers from YAML files."""
-        applications_path = Path("/test/applications/managers.yaml")
-        tools_path = Path("/test/tools/managers.yaml")
+    def test_load_releases(self):
+        """Test loading releases from YAML files."""
+        applications_path = Path("/test/applications/releases.yaml")
+        tools_path = Path("/test/tools/releases.yaml")
 
         # Mock YAML content
         applications_data = {
-            "applications_managers": {
-                "book_info": {"version": "1.0"},
-                "otel_demo": {"version": "2.0"}
+            "applications_releases": {
+                "book_info": {"name": "book-info", "namespace": "book-info"},
+                "opentelemetry_demo": {"name": "otel-demo", "namespace": "otel-demo"}
             }
         }
         tools_data = {
-            "tools_managers": {
-                "prometheus": {"version": "3.0"},
-                "grafana": {"version": "4.0"}
+            "tools_releases": {
+                "kube_prometheus_stack": {"name": "prometheus", "namespace": "prometheus"},
+                "cert_manager": {"name": "cert-manager", "namespace": "cert-manager"}
             }
         }
 
         with patch.object(Path, "read_text") as mock_read:
             mock_read.side_effect = [
-                "applications_managers:\n  book_info:\n    version: '1.0'\n",
-                "tools_managers:\n  prometheus:\n    version: '3.0'\n"
+                "applications_releases:\n  book_info:\n    name: book-info\n",
+                "tools_releases:\n  kube_prometheus_stack:\n    name: prometheus\n"
             ]
 
             with patch("generate_library_indexes.yaml.safe_load") as mock_yaml:
                 mock_yaml.side_effect = [applications_data, tools_data]
 
-                result = generate_library_indexes.load_managers(applications_path, tools_path)
+                result = generate_library_indexes.load_releases(applications_path, tools_path)
 
         self.assertIn("applications", result)
         self.assertIn("tools", result)
-        self.assertEqual(result["applications"], applications_data["applications_managers"])
-        self.assertEqual(result["tools"], tools_data["tools_managers"])
+        self.assertEqual(result["applications"], applications_data["applications_releases"])
+        self.assertEqual(result["tools"], tools_data["tools_releases"])
 
 
 class TestWriteJsonFile(unittest.TestCase):
@@ -175,16 +175,16 @@ class TestCreateScenariosIndexes(unittest.TestCase):
     """Test scenario index creation with fault aggregation."""
 
     @patch("generate_library_indexes.write_json_file")
-    @patch("generate_library_indexes.load_managers")
+    @patch("generate_library_indexes.load_releases")
     @patch.object(Path, "glob")
-    def test_create_scenarios_indexes(self, mock_glob, mock_load_managers, mock_write):
+    def test_create_scenarios_indexes(self, mock_glob, mock_load_releases, mock_write):
         """Test creating scenario indexes with fault aggregation."""
         templates_dir = Path("/test/templates/scenarios")
         index_dir = Path("/test/indexes/scenarios")
         playbooks_dir = Path("/test/scenarios/sre")
         generator_dir = Path("/test/generator")
 
-        mock_load_managers.return_value = {
+        mock_load_releases.return_value = {
             "applications": {"book_info": {"version": "1.0"}},
             "tools": {"prometheus": {"version": "2.0"}}
         }
@@ -253,8 +253,8 @@ class TestCreateScenariosIndexes(unittest.TestCase):
                 faults
             )
 
-        # Verify managers were loaded
-        mock_load_managers.assert_called_once()
+        # Verify releases were loaded
+        mock_load_releases.assert_called_once()
 
         # Verify write was called (once for individual index, once for consolidated)
         self.assertGreaterEqual(mock_write.call_count, 2)

@@ -10,7 +10,7 @@
           "app.kubernetes.io/managed-by": ITBench
           "app.kubernetes.io/name": "{{ python_recorder.name }}-records"
         name: "{{ python_recorder.name }}-records"
-        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+        namespace: "{{ recorders_namespaces.data_recorders }}"
       spec:
         accessModes:
           - ReadWriteOnce
@@ -31,7 +31,7 @@
           "app.kubernetes.io/managed-by": ITBench
           "app.kubernetes.io/name": "{{ python_recorder.name }}-scripts"
         name: "{{ python_recorder.name }}-scripts"
-        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+        namespace: "{{ recorders_namespaces.data_recorders }}"
       data:
         deps: "{{ lookup('ansible.builtin.file', python_recorder.scripts.requirements_file_path) }}"
         script: "{{ lookup('ansible.builtin.file', python_recorder.scripts.scripts_file_path) }}"
@@ -124,7 +124,7 @@
               "app.kubernetes.io/managed-by": ITBench
               "app.kubernetes.io/name": "{{ python_recorder.name }}"
             name: "{{ python_recorder.name }}"
-            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+            namespace: "{{ recorders_namespaces.data_recorders }}"
           spec: |-
             {{
               recorders_job_spec.spec |
@@ -151,7 +151,7 @@
               "app.kubernetes.io/managed-by": ITBench
               "app.kubernetes.io/name": "{{ python_recorder.name }}-init"
             name: "{{ python_recorder.name }}-init"
-            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+            namespace: "{{ recorders_namespaces.data_recorders }}"
           spec: "{{ recorders_job_spec.spec }}"
         state: present
 
@@ -166,7 +166,7 @@
               "app.kubernetes.io/managed-by": ITBench
               "app.kubernetes.io/name": "{{ python_recorder.name }}"
             name: "{{ python_recorder.name }}"
-            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+            namespace: "{{ recorders_namespaces.data_recorders }}"
           spec:
             jobTemplate:
               spec: "{{ recorders_job_spec.spec }}"

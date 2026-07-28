@@ -12,16 +12,16 @@
           metadata:
             labels:
               "prometheus.itbench.io/monitor": "true"
-            name: "{{ tools_managers.opentelemetry_operator.kubernetes.namespace }}"
+            name: "{{ tools_releases.opentelemetry_operator.namespace }}"
         state: present
 
     - name: Install OpenTelemetry Operator
       kubernetes.core.helm:
-        chart_ref: "{{ tools_managers.opentelemetry_operator.helm.chart.reference }}"
-        chart_version: "{{ tools_managers.opentelemetry_operator.helm.chart.version }}"
+        chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-operator"
+        chart_version: "0.120.0"
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_managers.opentelemetry_operator.helm.release.name }}"
-        release_namespace: "{{ tools_managers.opentelemetry_operator.kubernetes.namespace }}"
+        release_name: "{{ tools_releases.opentelemetry_operator.name }}"
+        release_namespace: "{{ tools_releases.opentelemetry_operator.namespace }}"
         release_state: present
         timeout: 10m0s
         values:

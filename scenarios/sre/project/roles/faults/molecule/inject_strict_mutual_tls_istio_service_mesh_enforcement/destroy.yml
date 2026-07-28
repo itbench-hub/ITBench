@@ -3,23 +3,6 @@
   hosts:
     - localhost
   tasks:
-    - name: Include tools role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "tools",
-              "defaults",
-              "main",
-              "managers.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Delete test namespace
       kubernetes.core.k8s:
         kubeconfig: "{{ cluster.kubeconfig }}"
@@ -34,8 +17,8 @@
     - name: Uninstall Istio Base (CRDs)
       kubernetes.core.helm:
         kubeconfig: "{{ cluster.kubeconfig }}"
-        release_name: "{{ tools_managers.istio_base.helm.release.name }}"
-        release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+        release_name: istio-base
+        release_namespace: istio-system
         release_state: absent
         wait: true
 
@@ -46,32 +29,21 @@
           apiVersion: v1
           kind: Namespace
           metadata:
-            name: "{{ tools_managers.istio_base.kubernetes.namespace }}"
-        state: absent
-        wait: true
+            name: istio-system
 
-    - name: Retrieve all CustomResourceDefinitions
-      kubernetes.core.k8s_info:
-        api_version: apiextensions.k8s.io/v1
-        kind: CustomResourceDefinition
-        kubeconfig: "{{ cluster.kubeconfig }}"
-      register: faults_custom_resource_definitions
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
 
-    - name: Delete Istio related CustomResourceDefinitions
-      kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: "{{ custom_resource_definition.apiVersion }}"
-          kind: "{{ custom_resource_definition.kind }}"
-          metadata:
-            name: "{{ custom_resource_definition.metadata.name }}"
-        state: absent
-        wait: true
-      loop: |-
-        {{
-          faults_custom_resource_definitions.resources |
-          ansible.builtin.selectattr("spec.group", "search", "\.istio\.io$")
-        }}
-      loop_control:
-        label: customresourcedefinition/{{ custom_resource_definition.metadata.name }}
-        loop_var: custom_resource_definition
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: remove_custom_resource_definitions.yaml
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"

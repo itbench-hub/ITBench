@@ -9,8 +9,8 @@
   ansible.builtin.git:
     depth: 1
     dest: "{{ applications_temporary_directory.path }}"
-    repo: "{{ applications_managers.book_info.git.repository }}"
-    version: "{{ applications_managers.book_info.git.tag }}"
+    repo: "https://github.com/istio/istio.git"
+    version: "1.30.3"
 
 - name: Create Namespace
   kubernetes.core.k8s:
@@ -21,13 +21,13 @@
       metadata:
         labels:
           "prometheus.itbench.io/monitor": "true"
-        name: "{{ applications_managers.book_info.kubernetes.namespace }}"
+        name: "{{ applications_releases.book_info.namespace }}"
     state: present
 
 - name: Create BookInfo Kubernetes objects
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+    namespace: "{{ applications_releases.book_info.namespace }}"
     state: present
     src: "{{ applications_temporary_directory.path }}/{{ manifest_file_path }}"
   loop:
@@ -46,7 +46,7 @@
       kind: PodMonitor
       metadata:
         name: bookinfo-gateway
-        namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+        namespace: "{{ applications_releases.book_info.namespace }}"
       spec:
         selector:
           matchLabels:
@@ -64,7 +64,7 @@
       kind: PodMonitor
       metadata:
         name: productpage-v1
-        namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+        namespace: "{{ applications_releases.book_info.namespace }}"
       spec:
         selector:
           matchLabels:
@@ -82,7 +82,7 @@
     kind: Gateway
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
     name: bookinfo-gateway
-    namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+    namespace: "{{ applications_releases.book_info.namespace }}"
     wait: true
     wait_condition:
       reason: Programmed
@@ -94,7 +94,7 @@
     api_version: apps/v1
     kind: Deployment
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+    namespace: "{{ applications_releases.book_info.namespace }}"
   register: applications_book_info_deployments
 
 - name: Label all pods managed by deployments with Istio Ambient Plane label
@@ -175,7 +175,7 @@
     kind: Gateway
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
     name: bookinfo-gateway
-    namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+    namespace: "{{ applications_releases.book_info.namespace }}"
   register: applications_gateway
   until:
     - applications_gateway.resources | ansible.builtin.length == 1
@@ -210,7 +210,7 @@
           "app.kubernetes.io/managed-by": ITBench
           "app.kubernetes.io/part-of": bookinfo
         name: load-generator-product-page
-        namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+        namespace: "{{ applications_releases.book_info.namespace }}"
       spec:
         replicas: 3
         selector:
@@ -244,7 +244,7 @@
       variable_start_string: "[["
     state: present
   vars:
-    application_namespace: "{{ applications_managers.book_info.kubernetes.namespace }}"
+    application_namespace: "{{ applications_releases.book_info.namespace }}"
     group_name: bookinfo
 
 - name: Create Book Info PrometheusRules

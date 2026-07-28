@@ -9,15 +9,15 @@
       metadata:
         labels:
           "prometheus.itbench.io/monitor": "true"
-        name: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+        name: "{{ tools_releases.istio_base.namespace }}"
 
 - name: Install Istio Base (CRDs)
   kubernetes.core.helm:
-    chart_ref: "{{ tools_managers.istio_base.helm.chart.reference }}"
-    chart_version: "{{ tools_managers.istio_base.helm.chart.version }}"
+    chart_ref: "oci://registry.istio.io/release/charts/base"
+    chart_version: "1.30.3"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_managers.istio_base.helm.release.name }}"
-    release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+    release_name: "{{ tools_releases.istio_base.name }}"
+    release_namespace: "{{ tools_releases.istio_base.namespace }}"
     release_state: present
     values: |-
       {{
@@ -28,11 +28,11 @@
 
 - name: Install Istiod Control Plane
   kubernetes.core.helm:
-    chart_ref: "{{ tools_managers.istio_istiod.helm.chart.reference }}"
-    chart_version: "{{ tools_managers.istio_istiod.helm.chart.version }}"
+    chart_ref: "oci://registry.istio.io/release/charts/istiod"
+    chart_version: "1.30.3"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_managers.istio_istiod.helm.release.name }}"
-    release_namespace: "{{ tools_managers.istio_istiod.kubernetes.namespace }}"
+    release_name: "{{ tools_releases.istio_istiod.name }}"
+    release_namespace: "{{ tools_releases.istio_istiod.namespace }}"
     release_state: present
     values: |-
       {{
@@ -49,7 +49,7 @@
       kind: Telemetry
       metadata:
         name: istio-telemetry
-        namespace: "{{ tools_managers.istio_istiod.kubernetes.namespace }}"
+        namespace: "{{ tools_releases.istio_istiod.namespace }}"
       spec:
         accessLogging:
           - providers:
@@ -67,12 +67,12 @@
       apiVersion: monitoring.coreos.com/v1
       kind: ServiceMonitor
       metadata:
-        name: "{{ tools_managers.istio_istiod.helm.release.name }}"
-        namespace: "{{ tools_managers.istio_istiod.kubernetes.namespace }}"
+        name: "{{ tools_releases.istio_istiod.name }}"
+        namespace: "{{ tools_releases.istio_istiod.namespace }}"
       spec:
         selector:
           matchLabels:
-            "app.kubernetes.io/name": "{{ tools_managers.istio_istiod.helm.release.name }}"
+            "app.kubernetes.io/name": "{{ tools_releases.istio_istiod.name }}"
             "app.kubernetes.io/part-of": istio
         endpoints:
           - interval: 30s
@@ -81,14 +81,14 @@
 
 - name: Install Istio CNI Node Agent
   kubernetes.core.helm:
-    chart_ref: "{{ tools_managers.istio_cni.helm.chart.reference }}"
-    chart_version: "{{ tools_managers.istio_cni.helm.chart.version }}"
+    chart_ref: "oci://registry.istio.io/release/charts/cni"
+    chart_version: "1.30.3"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_managers.istio_cni.helm.release.name }}"
+    release_name: "{{ tools_releases.istio_cni.name }}"
     release_namespace: |-
       {{
         (tools_cluster.platform == 'openshift') |
-        ansible.builtin.ternary(tools_managers.istio_cni.openshift.namespace, tools_managers.istio_cni.kubernetes.namespace)
+        ansible.builtin.ternary(tools_releases.istio_cni.namespace.openshift, tools_releases.istio_cni.namespace.kubernetes)
       }}
     release_state: present
     values: |-
@@ -105,16 +105,16 @@
       apiVersion: monitoring.coreos.com/v1
       kind: PodMonitor
       metadata:
-        name: "{{ tools_managers.istio_cni.helm.release.name }}"
+        name: "{{ tools_releases.istio_cni.name }}"
         namespace: |-
           {{
             (tools_cluster.platform == 'openshift') |
-            ansible.builtin.ternary(tools_managers.istio_cni.openshift.namespace, tools_managers.istio_cni.kubernetes.namespace)
+            ansible.builtin.ternary(tools_releases.istio_cni.namespace.openshift, tools_releases.istio_cni.namespace.kubernetes)
           }}
       spec:
         selector:
           matchLabels:
-            "app.kubernetes.io/name": "{{ tools_managers.istio_cni.helm.release.name }}"
+            "app.kubernetes.io/name": "{{ tools_releases.istio_cni.name }}"
             "app.kubernetes.io/part-of": istio
         podMetricsEndpoints:
           - interval: 30s
@@ -123,14 +123,14 @@
 
 - name: Install Istio ZTunnel
   kubernetes.core.helm:
-    chart_ref: "{{ tools_managers.istio_ztunnel.helm.chart.reference }}"
-    chart_version: "{{ tools_managers.istio_ztunnel.helm.chart.version }}"
+    chart_ref: "oci://registry.istio.io/release/charts/ztunnel"
+    chart_version: "1.30.3"
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_managers.istio_ztunnel.helm.release.name }}"
+    release_name: "{{ tools_releases.istio_ztunnel.name }}"
     release_namespace: |-
       {{
         (tools_cluster.platform == 'openshift') |
-        ansible.builtin.ternary(tools_managers.istio_ztunnel.openshift.namespace, tools_managers.istio_ztunnel.kubernetes.namespace)
+        ansible.builtin.ternary(tools_releases.istio_ztunnel.namespace.openshift, tools_releases.istio_ztunnel.namespace.kubernetes)
       }}
     release_state: present
     values: |-
@@ -147,16 +147,16 @@
       apiVersion: monitoring.coreos.com/v1
       kind: PodMonitor
       metadata:
-        name: "{{ tools_managers.istio_ztunnel.helm.release.name }}"
+        name: "{{ tools_releases.istio_ztunnel.name }}"
         namespace: |-
           {{
             (tools_cluster.platform == 'openshift') |
-            ansible.builtin.ternary(tools_managers.istio_ztunnel.openshift.namespace, tools_managers.istio_ztunnel.kubernetes.namespace)
+            ansible.builtin.ternary(tools_releases.istio_ztunnel.namespace.openshift, tools_releases.istio_ztunnel.namespace.kubernetes)
           }}
       spec:
         selector:
           matchLabels:
-            "app.kubernetes.io/name": "{{ tools_managers.istio_ztunnel.helm.release.name }}"
+            "app.kubernetes.io/name": "{{ tools_releases.istio_ztunnel.name }}"
             "app.kubernetes.io/part-of": istio
         podMetricsEndpoints:
           - interval: 30s
