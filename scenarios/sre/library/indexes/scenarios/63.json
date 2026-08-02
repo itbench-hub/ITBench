@@ -22,7 +22,24 @@
                     },
                     "id": "corrupted-kubernetes-secret-credentials"
                 }
-            ]
+            ],
+            "waitFor": {
+                "postInjection": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "email",
+                                    "namespace": "otel-demo"
+                                }
+                            }
+                        },
+                        "id": "delete-workload-pods"
+                    }
+                ]
+            }
         }
     ],
     "environment": {

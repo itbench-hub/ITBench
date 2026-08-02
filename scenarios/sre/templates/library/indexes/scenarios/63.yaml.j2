@@ -11,8 +11,18 @@ disruptions:
         kind: Secret
         metadata:
           name: email-service-secret
-          namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+          namespace: {{ releases["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
     id: corrupted-kubernetes-secret-credentials
+  waitFor:
+    postInjection:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: email
+            namespace: {{ releases["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+      id: delete-workload-pods
 environment:
   applications:
   - id: opentelemetry-demo
