@@ -81,12 +81,32 @@ components:
       runAsNonRoot: true
       runAsUser: 999
 opentelemetry-collector:
+{% if applications_dynatrace_ingest_enabled | default(false) %}
+  # Dynatrace OTLP ingest is enabled: mount the projected credentials secret so
+  # the exporter can read DT_ENDPOINT / DT_API_TOKEN as environment variables.
+  extraEnvsFrom:
+    - secretRef:
+        name: dynatrace-otlp-ingest
+{% endif %}
   config:
     connectors:
       spanmetrics:
         dimensions:
           - name: namespace
             default: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+{% if applications_dynatrace_ingest_enabled | default(false) %}
+    processors:
+      # Dynatrace accepts DELTA temporality only; the demo emits cumulative
+      # sums/histograms, so convert them or they are rejected on ingest.
+      cumulativetodelta: {}
+      # Tag every signal with the cluster name so Dynatrace correlates the OTLP
+      # data to the Kubernetes cluster entity seen by the OneAgent/ActiveGate.
+      resource/dynatrace:
+        attributes:
+          - key: k8s.cluster.name
+            value: "{{ applications_dynatrace_cluster_name }}"
+            action: upsert
+{% endif %}
     exporters:
       clickhouse:
         username: {{ tools_clickhouse_username }}
@@ -98,22 +118,69 @@ opentelemetry-collector:
         endpoint: {{ tools_jaeger_endpoint.collector.grpc }}
       prometheus:
         endpoint: 0.0.0.0:8888
+{% if applications_dynatrace_ingest_enabled | default(false) %}
+      otlphttp/dynatrace:
+        endpoint: ${env:DT_ENDPOINT}
+        headers:
+          Authorization: Api-Token ${env:DT_API_TOKEN}
+{% endif %}
     service:
       pipelines:
         logs:
+{% if applications_dynatrace_ingest_enabled | default(false) %}
+          # Full processor list restated (Helm REPLACES lists) + resource/dynatrace.
+          processors:
+            - k8sattributes
+            - memory_limiter
+            - resourcedetection
+            - resource
+            - resource/dynatrace
+            - batch
+{% endif %}
           exporters:
             - clickhouse
             - debug
+{% if applications_dynatrace_ingest_enabled | default(false) %}
+            - otlphttp/dynatrace
+{% endif %}
         metrics:
+{% if applications_dynatrace_ingest_enabled | default(false) %}
+          # cumulativetodelta added before batch; resource/dynatrace for cluster tag.
+          processors:
+            - k8sattributes
+            - memory_limiter
+            - resourcedetection
+            - resource
+            - resource/dynatrace
+            - cumulativetodelta
+            - batch
+{% endif %}
           exporters:
             - debug
             - prometheus
+{% if applications_dynatrace_ingest_enabled | default(false) %}
+            - otlphttp/dynatrace
+{% endif %}
         traces:
+{% if applications_dynatrace_ingest_enabled | default(false) %}
+          # Restated defaults (incl. the chart's frontend-route transform) + resource/dynatrace.
+          processors:
+            - k8sattributes
+            - memory_limiter
+            - resourcedetection
+            - resource
+            - resource/dynatrace
+            - transform
+            - batch
+{% endif %}
           exporters:
             - clickhouse
             - debug
             - otlp/jaeger
             - spanmetrics
+{% if applications_dynatrace_ingest_enabled | default(false) %}
+            - otlphttp/dynatrace
+{% endif %}
       telemetry:
         metrics:
           level: detailed

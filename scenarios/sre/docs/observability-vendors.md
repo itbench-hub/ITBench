@@ -422,6 +422,38 @@ for SCC annotations is still needed.)
   runs; `molecule/deployment_vendors/` runs a live deploy when vendor secrets are
   provided and self-skips otherwise.
 
+### Application OTLP ingest (otel-demo → Dynatrace)
+
+The DynaKube deploy above is **Layer A** (OneAgent/ActiveGate infrastructure
+monitoring). It does **not** send the sample application's OpenTelemetry data.
+That path lives in the `applications` role and is enabled by the **same**
+`observability_vendors.dynatrace.enabled` flag:
+
+- `install_opentelemetry_demo.yaml` — when Dynatrace is enabled, parses the same
+  `dynakube.yaml` (reusing the `from_yaml_all` idiom from `install_dynatrace.yaml`),
+  extracts the **`dataIngestToken`** and **`apiUrl`**, and projects a
+  `dynatrace-otlp-ingest` Secret (`DT_ENDPOINT`, `DT_API_TOKEN`) into the
+  `otel-demo` namespace. No new token is required.
+- `templates/helm/otel_demo/values.j2` — gated on
+  `applications_dynatrace_ingest_enabled`, adds an `otlphttp/dynatrace` exporter to
+  the demo collector's **logs, metrics, and traces** pipelines.
+- **Metric temporality:** a `cumulativetodelta` processor is added to the metrics
+  pipeline — Dynatrace accepts delta temporality only, and the demo emits
+  cumulative sums/histograms (otherwise rejected as `UNSUPPORTED_METRIC_TYPE_*`).
+- **K8s attributes:** the chart's `kubernetesAttributes` preset already tags
+  pod/namespace/deployment/node. We additionally inject **`k8s.cluster.name`** via a
+  `resource/dynatrace` processor (default: the DynaKube `metadata.name`, overridable
+  via `applications_dynatrace_cluster_name`) so OTLP data correlates to the K8s
+  cluster entity the OneAgent sees.
+- **Helm list gotcha:** the opentelemetry-collector chart deep-merges maps but
+  **replaces lists**, so each touched pipeline's `processors` list is restated in
+  full (chart defaults + the added processors).
+- `uninstall_opentelemetry_demo.yaml` deletes the projected secret (gated on the
+  same flag) before removing the namespace.
+
+When Dynatrace is disabled the template renders byte-for-byte as before — the
+exporter, processors, and `extraEnvsFrom` are entirely absent.
+
 ---
 
 ## Datadog (implemented) — operator + user-supplied `datadog-agent.yaml`
