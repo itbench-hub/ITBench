@@ -53,7 +53,7 @@ destroy-awx-cluster: ## Deletes the local development AWX Kind cluster
 
 .PHONY: run-service-provider
 run-service-provider: ## Runs Cloud Provider Kind for Load Balancer services
-	sudo $(GO) tool cloud-provider-kind --gateway-channel disabled
+	$(GO) tool cloud-provider-kind --gateway-channel disabled
 
 .PHONY: test-molecule
 test-molecule: ## Run Molecule tests
