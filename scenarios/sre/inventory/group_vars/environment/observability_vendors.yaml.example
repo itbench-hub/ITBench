@@ -10,9 +10,15 @@
 #   export DATADOG_API_KEY=...            # required  # pragma: allowlist secret
 #   export DATADOG_APP_KEY=...            # optional (needed for some features)
 #
-#   # Dynatrace: no env vars. Download dynakube.yaml from the Dynatrace
-#   # onboarding UI (contains tokens + DynaKube CR) and reference it via
-#   # observability_vendors.dynatrace.dynakube_path (see below).
+#   # Dynatrace agent deploy (Layer A): no env vars. Download dynakube.yaml from
+#   # the Dynatrace onboarding UI (contains tokens + DynaKube CR) and reference
+#   # it via observability_vendors.dynatrace.dynakube_path (see below).
+#
+#   # Dynatrace Grail recorder (exports telemetry back out at teardown): its
+#   # PLATFORM token (prefix dt0s16., Grail read permissions) is read from a
+#   # gitignored file referenced by dynatrace.recorder.platform_token_path below
+#   # (same convention as dynakube_path) — no env export needed. This is a
+#   # DIFFERENT token from the agent ingest tokens in dynakube.yaml.
 #
 # Each vendor is disabled by default. Enable a vendor and supply its non-secret
 # configuration below, then export the matching secret environment variable(s).
@@ -41,3 +47,30 @@ observability_vendors:
     # use this exact apiVersion; it is also used for readiness and cleanup so all
     # three stay consistent.
     dynakube_api_version: "dynatrace.com/v1beta3"
+    # Dynatrace Grail RECORDER (Layer B-ish export). Runs once at teardown as a
+    # Kubernetes Job that back-queries Grail over [scenario start -> now] and
+    # writes JSON+CSV (metrics, spans, logs, events, k8s metrics) into the
+    # recorder export directory. Independent of the agent deploy above: it only
+    # reads telemetry, and requires a PLATFORM token exported as DT_PLATFORM_TOKEN.
+    recorder:
+      enabled: false
+      # Dynatrace platform (apps) URL — NOT the live/ingest URL. NON-SECRET.
+      # e.g. https://<env-id>.apps.dynatrace.com
+      platform_url: ""
+      # Path to a file containing the platform token (prefix dt0s16.) with Grail
+      # read permissions. SENSITIVE: keep under secrets/ (gitignored). The file
+      # should contain only the token.
+      platform_token_path: "secrets/dynatrace/platform_token"  # pragma: allowlist secret
+      # Kubernetes namespace whose telemetry is exported.
+      namespace: otel-demo
+      # Query end (Grail relative time or ISO-8601). The start is taken from the
+      # scenario start time stamped at install; fallback_from is used only if
+      # that marker is missing.
+      timeframe_to: now
+      fallback_from: now-1h
+      # Timeseries bucket size for metric/span datasets.
+      interval: 1m
+      # Row cap for the logs/events datasets.
+      limit: 1000
+      # Output format: json | csv | both.
+      format: both
