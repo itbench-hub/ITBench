@@ -8,11 +8,8 @@ on:
       - clusters/kind/**
       - clusters/minikube/**
       - scenarios/sre/project/roles/agent/**
-      - scenarios/sre/project/roles/applications/**
       - scenarios/sre/project/roles/awx/**
       - scenarios/sre/project/roles/faults/**
-      - scenarios/sre/project/roles/recorders/**
-      - scenarios/sre/project/roles/tools/**
       - scenarios/sre/project/roles/waiters/**
       - '!clusters/kind/README.md'
       - '!clusters/minikube/README.md'
@@ -88,96 +85,6 @@ jobs:
       - name: Destroy Minikube cluster
         run: |
           make -C clusters/minikube destroy-simple-cluster
-  environment-applications:
-    name: ITBench Environment Applications Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@v9.0.0
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-      - name: Create Kind cluster
-        run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C clusters/kind run-service-provider &
-          sleep 10
-      - name: Run Molecule tests
-        run: |
-          make -C scenarios/sre test-molecule-applications
-      - name: Destroy Kind cluster
-        run: |
-          make -C clusters/kind destroy-simple-cluster
-  environment-recorders:
-    name: ITBench Environment Recorders Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@v9.0.0
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-      - name: Create Kind cluster
-        run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C clusters/kind run-service-provider &
-          sleep 10
-      - name: Run Molecule tests
-        run: |
-          make -C scenarios/sre test-molecule-recorders
-      - name: Destroy Kind cluster
-        run: |
-          make -C clusters/kind destroy-simple-cluster
-  environment-tools:
-    name: ITBench Environment Tools Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@v9.0.0
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - uses: azure/setup-helm@v5.0.1
-        with:
-          version: v4.2.3
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-      - name: Create Kind cluster
-        run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C clusters/kind run-service-provider &
-          sleep 10
-      - name: Run Molecule tests
-        run: |
-          make -C scenarios/sre test-molecule-tools
-      - name: Destroy Kind cluster
-        run: |
-          make -C clusters/kind destroy-simple-cluster
   sre-agent:
     name: SRE Agent Access Tests
     runs-on: ubuntu-24.04
@@ -228,6 +135,7 @@ jobs:
       - name: Run Cloud Provider
         run: |
           make -C clusters/kind run-service-provider &
+          sleep 10
       - name: Run Molecule tests
         run: |
           make -C scenarios/sre test-molecule-awx

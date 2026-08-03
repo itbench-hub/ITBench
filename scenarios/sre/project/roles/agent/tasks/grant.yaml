@@ -162,11 +162,10 @@
       }}
 
 - name: Validate that there is only one context
-  ansible.builtin.assert:
-    that:
-      - agent_current_cluster | ansible.builtin.length == 1
-    fail_msg: More than one context discovered. Please ensure kubeconfig is properly formatted.
-    success_msg: Context discovered.
+  ansible.builtin.fail:
+    msg: More than one context discovered. Please ensure kubeconfig is properly formatted.
+  when:
+    - agent_current_cluster | ansible.builtin.length != 1
 
 - name: Create temporary file for restricted kubeconfig
   ansible.builtin.tempfile:
@@ -200,7 +199,7 @@
 
 - name: Copy restricted kubeconfig into local directory
   ansible.builtin.copy:
-    dest: "{{ agent_storage.local.directory }}/kubeconfig"
+    dest: "{{ [agent_storage.local.directory, 'kubeconfig'] | ansible.builtin.path_join }}"
     mode: "0644"
     src: "{{ agent_temporary_kubeconfig.path }}"
   when:
@@ -210,7 +209,7 @@
   amazon.aws.s3_object:
     endpoint_url: "{{ agent_storage.s3.endpoint }}"
     bucket: "{{ agent_storage.s3.bucket }}"
-    object: "{{ agent_storage.s3.directory }}/kubeconfig"
+    object: "{{ [agent_storage.s3.directory, 'kubeconfig'] | ansible.builtin.path_join }}"
     src: "{{ agent_temporary_kubeconfig.path }}"
     mode: put
   when:
