@@ -12,8 +12,8 @@
     api_version: batch/v1
     kind: Job
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    name: "{{ recorders_managers.data_recorders.instances.clickhouse }}"
-    namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+    name: "{{ recorders_instances.clickhouse_data_recorder.name }}"
+    namespace: "{{ recorders_instances.clickhouse_data_recorder.namespace }}"
   register: recorders_job
   until:
     - recorders_job.resources | ansible.builtin.length == 0
@@ -33,7 +33,7 @@
             value: "{{ tools_clickhouse_username }}"
           - name: CLICKHOUSE_PASSWORD
             value: "{{ tools_clickhouse_password }}"
-      name: "{{ recorders_managers.data_recorders.instances.clickhouse }}"
+      name: "{{ recorders_instances.clickhouse_data_recorder.name }}"
       scripts:
         requirements_file_path: "files/scripts/clickhouse/requirements.txt"
         scripts_file_path: "files/scripts/clickhouse/gather.py"

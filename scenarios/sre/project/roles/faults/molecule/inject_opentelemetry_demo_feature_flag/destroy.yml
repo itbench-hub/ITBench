@@ -1,17 +1,9 @@
 ---
-- name: Destroy OpenTelemetry Demo Application
+- name: Destroy OpenTelemetry Demo feature flag prerequisites
   hosts:
     - localhost
   tasks:
-    - name: Uninstall OpenTelemetry Demo (Astronomy Shop)
-      kubernetes.core.helm:
-        kubeconfig: "{{ cluster.kubeconfig }}"
-        release_name: opentelemetry-demo-feature-flag-release
-        release_namespace: opentelemetry-demo-feature-flag-test
-        release_state: absent
-        wait: true
-
-    - name: Delete Namespace
+    - name: Delete test namespace
       kubernetes.core.k8s:
         kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:

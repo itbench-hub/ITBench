@@ -11,7 +11,7 @@ disruptions:
         kind: Schedule
         metadata:
           name: fraud-detection-kafka-network-partition
-          namespace: {{ managers["tools"]["chaos_mesh"]["kubernetes"]["namespace"] }}
+          namespace: {{ releases["tools"]["chaos_mesh"]["namespace"] }}
       scheduleSpec:
         networkChaos:
           action: partition
@@ -21,14 +21,14 @@ disruptions:
             labelSelectors:
               app.kubernetes.io/component: fraud-detection
             namespaces:
-            - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+            - {{ releases["applications"]["opentelemetry_demo"]["namespace"] }}
           target:
             mode: all
             selector:
               labelSelectors:
                 app.kubernetes.io/component: kafka
               namespaces:
-              - {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+              - {{ releases["applications"]["opentelemetry_demo"]["namespace"] }}
         type: NetworkChaos
     id: scheduled-chaos-mesh-experiment
   waitFor:
@@ -39,7 +39,7 @@ disruptions:
           kind: Deployment
           metadata:
             name: fraud-detection
-            namespace: {{ managers["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+            namespace: {{ releases["applications"]["opentelemetry_demo"]["namespace"] }}
         replicas: 2
       id: scale-kubernetes-workload
 environment:

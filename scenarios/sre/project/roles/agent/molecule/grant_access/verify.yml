@@ -3,124 +3,193 @@
   hosts:
     - localhost
   tasks:
-    - name: Create path variable for restricted kubeconfig
-      ansible.builtin.set_fact:
-        agent_restricted_kubeconfig_path: "{{ working_directory }}/kubeconfig"
-
-    - name: Validate if restricted kubeconfig was created
+    - name: Validate restricted kubeconfig was created
       ansible.builtin.assert:
         that:
-          - agent_restricted_kubeconfig_path is ansible.builtin.file
+          - restricted_kubeconfig is ansible.builtin.file
         fail_msg: Restricted kubeconfig was not created.
         success_msg: Restricted kubeconfig exists.
+      vars:
+        restricted_kubeconfig: "{{ [working_directory, 'kubeconfig'] | ansible.builtin.path_join }}"
 
-    - name: Retrieve pods in application namespace
-      kubernetes.core.k8s_info:
-        kubeconfig: "{{ agent_restricted_kubeconfig_path }}"
-        api_version: v1
-        kind: Pod
-        namespace: application
-      register: agent_application_pods_list_result
+    - name: Check pod access in application namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: authorization.k8s.io/v1
+          kind: LocalSubjectAccessReview
+          metadata:
+            namespace: application
+          spec:
+            user: system:serviceaccount:default:agent
+            resourceAttributes:
+              namespace: application
+              verb: get
+              resource: pods
+              group: ""
+        state: present
+      register: agent_application_access_review
 
-    - name: Validate that pods were accessible
+    - name: Validate that pod access was granted
       ansible.builtin.assert:
         that:
-          - agent_application_pods_list_result is ansible.builtin.succeeded
-        fail_msg: Pods are not accesible to agent. Invalid kubeconfig generated.
+          - agent_application_access_review.result.status.allowed
+        fail_msg: Pods are not accessible to agent. Invalid kubeconfig generated.
         success_msg: Pods are accessible to agent.
 
-    - name: Retrieve pods in observability namespace
-      ansible.builtin.command:
-        cmd: kubectl -n observability get pods --kubeconfig={{ agent_restricted_kubeconfig_path }}
-      changed_when:
-        - false
-      failed_when:
-        - agent_observability_pods_list_result.rc == 0
-      register: agent_observability_pods_list_result
+    - name: Check pod access in observability namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: authorization.k8s.io/v1
+          kind: LocalSubjectAccessReview
+          metadata:
+            namespace: observability
+          spec:
+            user: system:serviceaccount:default:agent
+            resourceAttributes:
+              namespace: observability
+              verb: get
+              resource: pods
+              group: ""
+        state: present
+      register: agent_observability_access_review
 
-    - name: Validate that pods were not accessible
+    - name: Validate that pod access was not granted in observability namespace
       ansible.builtin.assert:
         that:
-          - agent_observability_pods_list_result.rc != 0
+          - not agent_observability_access_review.result.status.allowed
         fail_msg: Pods are accessible to agent. Invalid kubeconfig generated.
-        success_msg: Pods are not accesible to agent.
+        success_msg: Pods are not accessible to agent.
 
-    - name: Retrieve pods in observability namespace
-      ansible.builtin.command:
-        cmd: kubectl get namespaces --kubeconfig={{ agent_restricted_kubeconfig_path }}
-      changed_when:
-        - false
-      failed_when:
-        - agent_namespace_list_result.rc == 0
-      register: agent_namespace_list_result
+    - name: Check namespace list access
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: authorization.k8s.io/v1
+          kind: SubjectAccessReview
+          spec:
+            user: system:serviceaccount:default:agent
+            resourceAttributes:
+              verb: list
+              resource: namespaces
+              group: ""
+        state: present
+      register: agent_namespace_access_review
 
-    - name: Validate that namespaces were not accesible
+    - name: Validate that namespace list access was not granted
       ansible.builtin.assert:
         that:
-          - agent_namespace_list_result.rc != 0
-        fail_msg: Namespaces are accesible to agent. Invalid kubeconfig generated.
-        success_msg: Namespaces are not accesible to agent.
+          - not agent_namespace_access_review.result.status.allowed
+        fail_msg: Namespaces are accessible to agent. Invalid kubeconfig generated.
+        success_msg: Namespaces are not accessible to agent.
 
-    - name: Retrieve agent role in application namespace
+    - name: Retrieve agent Role in application namespace
       kubernetes.core.k8s_info:
         kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: rbac.authorization.k8s.io/v1
         kind: Role
-        name: agent-read-write-access
+        name: agent-namespace-access
         namespace: application
       register: agent_application_role
 
-    - name: Validate agent role was created
+    - name: Validate agent Role was created
       ansible.builtin.assert:
         that:
           - agent_application_role.resources | ansible.builtin.length == 1
         fail_msg: Role was not created. Test failed.
         success_msg: Role was created.
 
-    - name: Retrieve agent rolebinding in application namespace
+    - name: Retrieve agent RoleBinding in application namespace
       kubernetes.core.k8s_info:
         kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: rbac.authorization.k8s.io/v1
         kind: RoleBinding
-        name: agent-read-write-access
+        name: agent-namespace-access
         namespace: application
       register: agent_application_role_binding
 
-    - name: Validate agent rolebinding was created
+    - name: Validate agent RoleBinding was created
       ansible.builtin.assert:
         that:
           - agent_application_role_binding.resources | ansible.builtin.length == 1
         fail_msg: RoleBinding was not created. Test failed.
         success_msg: RoleBinding was created.
 
-    - name: Retrieve agent role in observability namespace
+    - name: Retrieve agent Role in observability namespace
       kubernetes.core.k8s_info:
         kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: rbac.authorization.k8s.io/v1
         kind: Role
-        name: agent-read-write-access
-        namespace: nonaccessible-namespace
-      register: agent_observabilty_role
+        name: agent-namespace-access
+        namespace: observability
+      register: agent_observability_role
 
-    - name: Validate agent role was not created
+    - name: Validate agent Role was not created in observability namespace
       ansible.builtin.assert:
         that:
-          - agent_observabilty_role.resources | ansible.builtin.length == 0
-        fail_msg: Role was created. Test failed.
-        success_msg: Role was not created.
+          - agent_observability_role.resources | ansible.builtin.length == 0
+        fail_msg: Role was created in observability namespace. Test failed.
+        success_msg: Role was not created in observability namespace.
 
-    - name: Retrieve agent rolebinding in observability namespace
+    - name: Retrieve agent RoleBinding in observability namespace
       kubernetes.core.k8s_info:
         kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: rbac.authorization.k8s.io/v1
         kind: RoleBinding
-        name: agent-read-write-access
-        namespace: nonaccessible-namespace
-      register: agent_observabilty_role_binding
+        name: agent-namespace-access
+        namespace: observability
+      register: agent_observability_role_binding
 
-    - name: Validate agent rolebinding was not created
+    - name: Validate agent RoleBinding was not created in observability namespace
       ansible.builtin.assert:
         that:
-          - agent_observabilty_role_binding.resources | ansible.builtin.length == 0
-        fail_msg: RoleBinding was created. Test failed.
-        success_msg: RoleBinding was not created.
+          - agent_observability_role_binding.resources | ansible.builtin.length == 0
+        fail_msg: RoleBinding was created in observability namespace. Test failed.
+        success_msg: RoleBinding was not created in observability namespace.
+
+    - name: Retrieve ClusterRole
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        name: agent-cluster-access
+      register: agent_cluster_role
+
+    - name: Validate ClusterRole was created
+      ansible.builtin.assert:
+        that:
+          - agent_cluster_role.resources | ansible.builtin.length == 1
+        fail_msg: ClusterRole was not created. Test failed.
+        success_msg: ClusterRole was created.
+
+    - name: Retrieve ClusterRoleBinding
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        name: agent-cluster-access
+      register: agent_cluster_role_binding
+
+    - name: Validate ClusterRoleBinding was created
+      ansible.builtin.assert:
+        that:
+          - agent_cluster_role_binding.resources | ansible.builtin.length == 1
+        fail_msg: ClusterRoleBinding was not created. Test failed.
+        success_msg: ClusterRoleBinding was created.
+
+    - name: Retrieve ServiceAccount
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: ServiceAccount
+        name: agent
+        namespace: default
+      register: agent_service_account
+
+    - name: Validate ServiceAccount was created
+      ansible.builtin.assert:
+        that:
+          - agent_service_account.resources | ansible.builtin.length == 1
+        fail_msg: ServiceAccount was not created. Test failed.
+        success_msg: ServiceAccount was created.

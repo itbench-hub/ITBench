@@ -28,13 +28,13 @@ def extract_index_from_filename(filename: str) -> int:
 def generate_id_from_name(name: str) -> str:
     return name.lower().replace(" ", "-")
 
-def load_managers(applications: Path, tools: Path) -> Dict[str, Any]:
-    applications_managers = yaml.safe_load(applications.read_text(encoding="utf-8"))
-    tools_managers = yaml.safe_load(tools.read_text(encoding="utf-8"))
+def load_releases(applications: Path, tools: Path) -> Dict[str, Any]:
+    applications_releases = yaml.safe_load(applications.read_text(encoding="utf-8"))
+    tools_releases = yaml.safe_load(tools.read_text(encoding="utf-8"))
 
     return {
-        "applications": applications_managers["applications_managers"],
-        "tools": tools_managers["tools_managers"]
+        "applications": applications_releases["applications_releases"],
+        "tools": tools_releases["tools_releases"]
     }
 
 def load_and_write_library_index(library_type: str, templates_directory: Path, index_directory: Path, generator_directory: Path) -> Dict[str, Any]:
@@ -75,9 +75,9 @@ def load_and_write_library_index(library_type: str, templates_directory: Path, i
 def create_scenarios_indexes(templates_directory: Path, index_directory: Path, playbooks_directory: Path, generator_directory: Path, faults: Dict[str, Any]) -> None:
     logger.info("writing scenarios library indexes")
 
-    managers = load_managers(
-        playbooks_directory / "roles" / "applications" / "defaults" / "main" / "managers.yaml",
-        playbooks_directory / "roles" / "tools" / "defaults" / "main" / "managers.yaml"
+    releases = load_releases(
+        playbooks_directory / "roles" / "applications" / "vars" / "main" / "releases.yaml",
+        playbooks_directory / "roles" / "tools" / "vars" / "main" / "releases.yaml"
     )
 
     indexes = []
@@ -87,7 +87,7 @@ def create_scenarios_indexes(templates_directory: Path, index_directory: Path, p
 
     for template_file in templates_directory.glob("*.yaml.j2"):
         template = env.get_template(template_file.name)
-        index = yaml.safe_load(template.render(managers=managers))
+        index = yaml.safe_load(template.render(releases=releases))
 
         alerts = set()
         tags = set(index.get("tags", []))

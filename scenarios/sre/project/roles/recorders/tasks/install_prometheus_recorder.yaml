@@ -21,8 +21,8 @@
           apiVersion: v1
           kind: Secret
           metadata:
-            name: "{{ recorders_managers.data_recorders.instances.prometheus }}-token"
-            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+            name: "{{ recorders_instances.prometheus_data_recorder.name }}-token"
+            namespace: "{{ recorders_instances.prometheus_data_recorder.namespace }}"
           data:
             token: "{{ prometheus_bearer_token }}"
         state: present
@@ -35,7 +35,7 @@
           - name: PROMETHEUS_TOKEN
             valueFrom:
               key: token
-              secretKeyRef: "{{ recorders_managers.data_recorders.instances.prometheus }}-token"
+              secretKeyRef: "{{ recorders_instances.prometheus_data_recorder.name }}-token"
 
 - name: Import recorder deployment tasks
   ansible.builtin.import_tasks:
@@ -45,7 +45,7 @@
       job:
         environment_variables: "{{ recorders_prometheus_env_vars }}"
         schedule: "* * * * *"
-      name: "{{ recorders_managers.data_recorders.instances.prometheus }}"
+      name: "{{ recorders_instances.prometheus_data_recorder.name }}"
       scripts:
         requirements_file_path: "files/scripts/prometheus/requirements.txt"
         scripts_file_path: "files/scripts/prometheus/gather.py"

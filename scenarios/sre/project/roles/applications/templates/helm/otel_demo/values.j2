@@ -2,7 +2,7 @@
 {% if applications_cluster.platform == "openshift" %}
 serviceAccount:
   create: false
-  name: {{ applications_managers.opentelemetry_demo.helm.release.name }}
+  name: {{ applications_releases.opentelemetry_demo.name }}
 {% endif %}
 components:
   accounting:
@@ -93,7 +93,7 @@ opentelemetry-collector:
       spanmetrics:
         dimensions:
           - name: namespace
-            default: {{ applications_managers.opentelemetry_demo.kubernetes.namespace }}
+            default: {{ applications_releases.opentelemetry_demo.namespace }}
 {% if applications_dynatrace_ingest_enabled | default(false) %}
     processors:
       # Dynatrace accepts DELTA temporality only; the demo emits cumulative

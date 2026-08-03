@@ -8,7 +8,7 @@
       metadata:
         labels:
           "prometheus.itbench.io/monitor": "true"
-        name: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+        name: "{{ tools_kubernetes_gateways.istio.namespace }}"
     state: present
 
 - name: Create ConfigMap for Istio Gateway
@@ -18,8 +18,8 @@
       apiVersion: v1
       kind: ConfigMap
       metadata:
-        name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}-options"
-        namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+        name: "{{ tools_kubernetes_gateways.istio.name }}-options"
+        namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
       data:
         deployment: |
           spec:
@@ -40,14 +40,14 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: Gateway
       metadata:
-        name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}"
-        namespace: "{{ tools_managers.kubernetes_gateway.instances.kubernetes.namespace }}"
+        name: "{{ tools_kubernetes_gateways.istio.name }}"
+        namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
       spec:
         infrastructure:
           parametersRef:
             group: ""
             kind: ConfigMap
-            name: "{{ tools_managers.kubernetes_gateway.instances.names.istio }}-options"
+            name: "{{ tools_kubernetes_gateways.istio.name }}-options"
         gatewayClassName: istio
         listeners:
           - name: http
@@ -92,20 +92,20 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
-        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.alinity_clickhouse.main.name }}"
+        namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
       spec:
         parentRefs:
           - name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
             namespace: "{{ tools_istio_kubernetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
-              - name: clickhouse-{{ tools_managers.clickhouse_operator.instances.names.main }}
+              - name: clickhouse-{{ tools_operands.alinity_clickhouse.main.name }}
                 port: 8123
             matches:
               - path:
                   type: PathPrefix
-                  value: /clickhouse/{{ tools_managers.clickhouse_operator.instances.names.main }}/
+                  value: /clickhouse/{{ tools_operands.alinity_clickhouse.main.name }}/
             filters:
               - type: ResponseHeaderModifier
                 responseHeaderModifier:
@@ -124,15 +124,15 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.jaeger.namespace }}"
       spec:
         parentRefs:
           - name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
             namespace: "{{ tools_istio_kubernetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
-              - name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}-collector"
+              - name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}-collector"
                 port: 16686
             matches:
               - path:
@@ -151,8 +151,8 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
-        namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
+        name: "{{ tools_releases.kubernetes_topology_monitor.name }}"
+        namespace: "{{ tools_releases.kubernetes_topology_monitor.namespace }}"
       spec:
         parentRefs:
           - name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
@@ -185,15 +185,15 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ tools_managers.opencost.helm.release.name }}"
-        namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
+        name: "{{ tools_releases.opencost.name }}"
+        namespace: "{{ tools_releases.opencost.namespace }}"
       spec:
         parentRefs:
           - name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
             namespace: "{{ tools_istio_kubernetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
-              - name: "{{ tools_managers.opencost.helm.release.name }}"
+              - name: "{{ tools_releases.opencost.name }}"
                 port: 9090
             filters:
               - type: ResponseHeaderModifier
@@ -210,15 +210,15 @@
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ tools_managers.prometheus.helm.release.name }}"
-        namespace: "{{ tools_managers.prometheus.kubernetes.namespace }}"
+        name: "{{ tools_releases.kube_prometheus_stack.name }}"
+        namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
       spec:
         parentRefs:
           - name: "{{ tools_istio_kubernetes_gateway.result.metadata.name }}"
             namespace: "{{ tools_istio_kubernetes_gateway.result.metadata.namespace }}"
         rules:
           - backendRefs:
-              - name: "{{ tools_managers.prometheus.helm.release.name }}-kube-prometheus-prometheus"
+              - name: "{{ tools_releases.kube_prometheus_stack.name }}-kube-prometheus-prometheus"
                 port: 9090
             matches:
               - path:

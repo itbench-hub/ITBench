@@ -11,17 +11,7 @@
       - apply
       - --server-side
       - -f
-      - |-
-        {{
-          [
-            tools_managers.kubernetes_gateway.git.repository.removesuffix(".git"),
-            "releases",
-            "download",
-            tools_managers.kubernetes_gateway.git.tag,
-            "standard-install.yaml"
-          ] |
-          ansible.builtin.join('/')
-        }}
+      - "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.1/standard-install.yaml"
       - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
   register: tools_kubernetes_gateway_crds_apply
   changed_when:

@@ -6,8 +6,8 @@
       apiVersion: route.openshift.io/v1
       kind: Route
       metadata:
-        name: "{{ tools_managers.clickhouse_operator.instances.names.main }}"
-        namespace: "{{ tools_managers.clickhouse_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.alinity_clickhouse.main.name }}"
+        namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
       spec:
         httpHeaders:
           actions:
@@ -16,7 +16,7 @@
           targetPort: 8123
         to:
           kind: Service
-          name: clickhouse-{{ tools_managers.clickhouse_operator.instances.names.main }}
+          name: clickhouse-{{ tools_operands.alinity_clickhouse.main.name }}
     state: present
 
 - name: Create Route for Jaeger
@@ -26,8 +26,8 @@
       apiVersion: route.openshift.io/v1
       kind: Route
       metadata:
-        name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}"
-        namespace: "{{ tools_managers.opentelemetry_operator.instances.kubernetes.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.jaeger.namespace }}"
       spec:
         httpHeaders:
           actions:
@@ -37,7 +37,7 @@
           targetPort: 16686
         to:
           kind: Service
-          name: "{{ tools_managers.opentelemetry_operator.instances.names.jaeger }}-collector"
+          name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}-collector"
     state: present
 
 - name: Create Route for Kubernetes Topology Monitor
@@ -47,8 +47,8 @@
       apiVersion: route.openshift.io/v1
       kind: Route
       metadata:
-        name: "{{ tools_managers.kubernetes_topology_monitor.helm.release.name }}"
-        namespace: "{{ tools_managers.kubernetes_topology_monitor.kubernetes.namespace }}"
+        name: "{{ tools_releases.kubernetes_topology_monitor.name }}"
+        namespace: "{{ tools_releases.kubernetes_topology_monitor.namespace }}"
       spec:
         httpHeaders:
           actions:
@@ -69,8 +69,8 @@
       apiVersion: route.openshift.io/v1
       kind: Route
       metadata:
-        name: "{{ tools_managers.opencost.chart.release.name }}"
-        namespace: "{{ tools_managers.opencost.kubernetes.namespace }}"
+        name: "{{ tools_releases.opencost.name }}"
+        namespace: "{{ tools_releases.opencost.namespace }}"
       spec:
         httpHeaders:
           actions:
@@ -79,7 +79,7 @@
           targetPort: 9090
         to:
           kind: Service
-          name: "{{ tools_managers.opencost.chart.release.name }}"
+          name: "{{ tools_releases.opencost.name }}"
     state: present
   when:
     - tools_configuration.finops.enabled | ansible.builtin.default(false)

@@ -3,23 +3,6 @@
   hosts:
     - localhost
   tasks:
-    - name: Include tools role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "tools",
-              "defaults",
-              "main",
-              "managers.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Approve pending certificate requests
       ansible.builtin.include_role:
         name: cluster
@@ -30,13 +13,13 @@
 
     - name: Install Kubernetes Metrics Server
       kubernetes.core.helm:
-        chart_ref: "{{ tools_managers.kubernetes_metrics_server.helm.chart.reference }}"
-        chart_repo_url: "{{ tools_managers.kubernetes_metrics_server.helm.chart.repository }}"
-        chart_version: "{{ tools_managers.kubernetes_metrics_server.helm.chart.version }}"
+        chart_ref: metrics-server
+        chart_repo_url: "https://kubernetes-sigs.github.io/metrics-server/"
+        chart_version: "3.13.1"
         create_namespace: true
         kubeconfig: "{{ cluster.kubeconfig }}"
-        release_name: misconfigured-hpa-release
-        release_namespace: misconfigured-hpa-test
+        release_name: metrics-server
+        release_namespace: metrics-server
         release_state: present
         timeout: 10m0s
         values:
@@ -45,6 +28,16 @@
           tls:
             type: helm
         wait: true
+
+    - name: Create test namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: misconfigured-hpa-test
+        state: present
 
     - name: Create test deployment
       kubernetes.core.k8s:
@@ -67,7 +60,7 @@
               spec:
                 containers:
                   - name: server
-                    image: registry.access.redhat.com/ubi10-minimal:10.2-1784581369
+                    image: registry.access.redhat.com/ubi10-minimal:10.2-1785332632@sha256:ceaad73890ea88685eeb1b40a502b7983f2cfac6f1aa10915d1176d51eb90124
                     command:
                       - /bin/sh
                     args:

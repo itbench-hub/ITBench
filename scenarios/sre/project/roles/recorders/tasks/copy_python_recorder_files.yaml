@@ -11,7 +11,7 @@
     kind: PersistentVolumeClaim
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     name: "{{ python_recorder.name }}-records"
-    namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+    namespace: "{{ recorders_namespaces.data_recorders }}"
   register: recorders_persistent_volume_claims
 
 - name: Copy files from volume
@@ -31,7 +31,7 @@
               "app.kubernetes.io/name": "{{ python_recorder.name }}-exporter"
               "app.kubernetes.io/part-of": "{{ python_recorder.name }}"
             name: "{{ python_recorder.name }}-exporter"
-            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+            namespace: "{{ recorders_namespaces.data_recorders }}"
           spec:
             selector:
               matchLabels:
@@ -47,7 +47,7 @@
               spec:
                 containers:
                   - name: exporter
-                    image: registry.access.redhat.com/ubi10:10.2-1784581466
+                    image: registry.access.redhat.com/ubi10:10.2-1785719360@sha256:9ae6ff53ac9fd3f06558278019d7eec370cbef59a413599b6e81bc39f65184c5
                     command:
                       - /bin/sh
                     args:
@@ -86,7 +86,7 @@
         api_version: v1
         kind: Pod
         kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+        namespace: "{{ recorders_namespaces.data_recorders }}"
         label_selectors:
           - app.kubernetes.io/managed-by = ITBench
           - app.kubernetes.io/name = {{ python_recorder.name }}-exporter
@@ -126,7 +126,7 @@
           kind: Deployment
           metadata:
             name: "{{ python_recorder.name }}-exporter"
-            namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+            namespace: "{{ recorders_namespaces.data_recorders }}"
         state: absent
         wait: true
 

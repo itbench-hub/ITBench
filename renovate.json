@@ -8,32 +8,24 @@
   },
   "packageRules": [
     {
-      "groupName": "All OpenTelemetry Collector Builder Dependencies",
-      "groupSlug": "opentelemetry-collector-builder-group",
-      "matchPackageNames": [
-        "/^github.com/open-telemetry/opentelemetry-collector-contrib/connector//",
-        "/^github.com/open-telemetry/opentelemetry-collector-contrib/exporter//",
-        "/^github.com/open-telemetry/opentelemetry-collector-contrib/extension//",
-        "/^github.com/open-telemetry/opentelemetry-collector-contrib/processor//",
-        "/^github.com/open-telemetry/opentelemetry-collector-contrib/receiver//",
-        "/^go.opentelemetry.io/collector/confmap/provider//",
-        "/^go.opentelemetry.io/collector/connector//",
-        "/^go.opentelemetry.io/collector/exporter//",
-        "/^go.opentelemetry.io/collector/extension//",
-        "/^go.opentelemetry.io/collector/processor//",
-        "/^go.opentelemetry.io/collector/receiver//"
-      ]
+      "matchManagers": [
+        "ansible",
+        "dockerfile",
+        "github-actions"
+      ],
+      "pinDigests": true
     },
     {
-      "enabled": false,
-      "matchDatasources": [
-        "docker"
+      "matchManagers": [
+        "custom.regex"
       ],
-      "matchPackageNames": [
-        "registry.access.redhat.com/ubi10/go-toolset"
-      ],
-      "matchUpdateTypes": [
-        "major"
+      "pinDigests": false
+    },
+    {
+      "groupName": "OpenTelemetry Collector Builder Dependencies",
+      "groupSlug": "opentelemetry-collector-builder-group",
+      "matchManagers": [
+        "ocb"
       ]
     },
     {
@@ -46,13 +38,13 @@
       ]
     },
     {
-      "lockFileMaintenance": {
-        "enabled": true
-      },
-      "matchManagers": [
-        "gomod",
-        "pep621"
-      ]
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "registry.access.redhat.com/ubi10/go-toolset"
+      ],
+      "extractVersion": "^(?<version>1\\.\\d+\\.\\d+-\\d+)$"
     }
   ],
   "ansible": {
@@ -64,23 +56,57 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "clusters/kops/playbooks/roles/docker/defaults/main/managers.yaml",
-        "scenarios/sre/project/roles/applications/defaults/main/managers.yaml",
-        "scenarios/sre/project/roles/tools/defaults/main/managers.yaml"
+        "/(^|\\/)tasks\\/install_[^\\/]*\\.yaml$/",
+        "/(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$/"
       ],
       "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\s+depName=(?<depName>.*?)\\n\\s+reference:\\s*oci://[^\\s]+\\s*\\n\\s*version:\\s*(?<currentValue>.*)"
-      ]
+        "chart_ref:\\s*[\"']oci:\\/\\/(?<depName>[^\"'\\s]+)[\"'](?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "semver"
     },
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "scenarios/sre/project/roles/applications/defaults/main/managers.yaml",
-        "scenarios/sre/project/roles/tools/defaults/main/managers.yaml"
+        "/(^|\\/)tasks\\/install_[^\\/]*\\.yaml$/",
+        "/(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$/"
       ],
       "matchStrings": [
-        "#\\s*renovate:\\s*datasource=(?<datasource>.*?)\\s+depName=(?<depName>.*?)\\n\\s+repository:.*?\\n\\s+tag:\\s*(?<currentValue>.*)"
-      ]
+        "chart_ref:\\s*[\"']?(?<depName>[^\"'\\s]+)[\"']?(?:\\s+.*)*\\s+chart_repo_url:\\s*[\"']?(?<registryUrl>https?:\\/\\/[^\"'\\s]+)[\"']?(?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "helm"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|\\/)tasks\\/install_[^\\/]*\\.yaml$/"
+      ],
+      "matchStrings": [
+        "repo:\\s*[\"']?https?:\\/\\/github\\.com\\/(?<depName>[^\\/]+\\/[^\\/\\s.]+)(?:\\.git)?[\"']?(?:\\s+.*)*\\s+version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+      ],
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|\\/)tasks\\/install_kubernetes_gateway_api\\.yaml$/",
+        "/(^|\\/)molecule\\/inject_traffic_denying_istio_gateway_authorization_policy\\/create\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>v\\d+\\.\\d+\\.\\d+)/"
+      ],
+      "datasourceTemplate": "github-releases"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/(^|\\/)molecule\\/inject_opentelemetry_demo_feature_flag\\/create\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "https://raw\\.githubusercontent\\.com/(?<depName>[^/]+/[^/]+)/opentelemetry-demo-(?<currentValue>\\d+\\.\\d+\\.\\d+)/"
+      ],
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver"
     }
   ],
   "gomod": {

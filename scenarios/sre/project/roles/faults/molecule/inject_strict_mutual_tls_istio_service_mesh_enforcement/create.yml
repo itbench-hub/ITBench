@@ -3,31 +3,14 @@
   hosts:
     - localhost
   tasks:
-    - name: Include tools role variables
-      ansible.builtin.include_vars:
-        file: |-
-          {{
-            [
-              playbook_dir,
-              "..",
-              "..",
-              "..",
-              "tools",
-              "defaults",
-              "main",
-              "managers.yaml"
-            ] |
-            ansible.builtin.path_join
-          }}
-
     - name: Install Istio Base (CRDs only)
       kubernetes.core.helm:
-        chart_ref: "{{ tools_managers.istio_base.helm.chart.reference }}"
-        chart_version: "{{ tools_managers.istio_base.helm.chart.version }}"
-        kubeconfig: "{{ cluster.kubeconfig }}"
+        chart_ref: "oci://registry.istio.io/release/charts/base"
+        chart_version: "1.30.3"
         create_namespace: true
-        release_name: "{{ tools_managers.istio_base.helm.release.name }}"
-        release_namespace: "{{ tools_managers.istio_base.kubernetes.namespace }}"
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        release_name: istio-base
+        release_namespace: istio-system
         release_state: present
         wait: true
 
@@ -62,7 +45,7 @@
               spec:
                 containers:
                   - name: server
-                    image: registry.access.redhat.com/ubi10-minimal:10.2-1784581369
+                    image: registry.access.redhat.com/ubi10-minimal:10.2-1785332632@sha256:ceaad73890ea88685eeb1b40a502b7983f2cfac6f1aa10915d1176d51eb90124
                     command:
                       - /bin/sh
                     args:

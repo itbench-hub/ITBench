@@ -19,11 +19,12 @@
       kind: PriorityClass
       metadata:
         labels:
+          "app.kubernetes.io/component": workload
           "app.kubernetes.io/managed-by": ITBench
         name: application-critical
       value: 10000
       globalDefault: false
-      description: High priorty class for application workloads
+      description: High priority class for application workloads
     state: present
 
 - name: Create PriorityClass (lower priority)
@@ -34,11 +35,12 @@
       kind: PriorityClass
       metadata:
         labels:
+          "app.kubernetes.io/component": workload
           "app.kubernetes.io/managed-by": ITBench
         name: application-non-critical
       value: 1
       globalDefault: false
-      description: Lower priorty class for application workloads
+      description: Lower priority class for application workloads
     state: present
 
 - name: Patch workload with priority class and assign to node
@@ -96,7 +98,7 @@
           spec:
             containers:
               - name: worker
-                image: registry.access.redhat.com/ubi10-minimal:10.2-1784581369
+                image: registry.access.redhat.com/ubi10-minimal:10.2-1785332632@sha256:ceaad73890ea88685eeb1b40a502b7983f2cfac6f1aa10915d1176d51eb90124
                 command:
                   - /bin/sh
                 args:
