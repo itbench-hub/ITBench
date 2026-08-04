@@ -3,7 +3,7 @@
   ansible.builtin.include_tasks:
     file: validate_fault_arguments.yaml
 
-- name: Create ConfigMaps to fill etcd storage
+- name: Create ConfigMaps to pressure etcd storage
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
@@ -15,13 +15,13 @@
         labels:
           app: etcd-storage-fill
       data:
-        payload: "{{ lookup('pipe', 'head -c 900000 /dev/urandom | base64 | head -c 900000') }}"
+        payload: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_lowercase,digits length=102400') }}"
     state: present
-  loop: "{{ range(1, 201) | list }}"
+  loop: "{{ range(1, 51) | list }}"
   loop_control:
     label: "etcd-fill-{{ item }}"
 
-- name: Verify etcd storage pressure
+- name: Verify ConfigMaps were created
   kubernetes.core.k8s_info:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     api_version: v1
@@ -31,6 +31,6 @@
       - app=etcd-storage-fill
   register: faults_etcd_fill_result
   until:
-    - faults_etcd_fill_result.resources | length >= 200
+    - faults_etcd_fill_result.resources | length >= 50
   retries: 5
   delay: 10
