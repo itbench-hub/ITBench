@@ -5,19 +5,19 @@
 
 | [Source](../../../../scenarios/sre/library/indexes/faults/exhausted-etcd-database-storage.json) | [Schema](../../../../schemas/json/faults/exhausted-etcd-database-storage.json) | [Implementation](../../../../scenarios/sre/project/roles/faults/tasks/inject_exhausted_etcd_database_storage.yaml) | Kubernetes | Performance |
 
-This fault fills the etcd database storage by creating a large number of ConfigMaps, pushing etcd usage past its quota threshold. This simulates real-world incidents where etcd storage exhaustion causes the API server to reject writes, leading to cluster-wide degradation or complete outage.
+This fault creates etcd storage pressure by writing a large number of ConfigMaps, causing increased API server latency and degraded cluster performance. This simulates real-world incidents where etcd storage growth causes progressive degradation of cluster operations.
 
 ## Expectation
 
-The etcd database will approach or exceed its storage quota. The Kubernetes API server will begin rejecting mutating requests.
+The etcd database will experience increased storage pressure. The Kubernetes API server will exhibit higher latency for read and write operations.
 
 ### Alerts
 
 The following alerts are expected to fire when this fault is injected.
 
-#### Application Alerts
+#### Golden Signal Alerts
 
-- KubePodNotReady
+- HighRequestLatency
 
 ## Resources
 

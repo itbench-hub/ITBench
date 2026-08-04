@@ -5,47 +5,58 @@ metadata:
   name: scenario-116
 spec:
   alerts:
-    - group_id: etcd-statefulset-1
-      id: KubePodNotReady
+    - group_id: frontend-service-1
+      id: HighRequestLatency
       metadata:
-        description: etcd pod in namespace otel-demo is experiencing storage pressure due to excessive ConfigMap creation
+        description: Increased API server latency in namespace otel-demo due to etcd storage pressure from excessive ConfigMap creation
   groups:
-    - id: etcd-statefulset-1
-      kind: StatefulSet
-      namespace: otel-demo
-      filter:
-        - etcd\b
-      root_cause: true
-    - id: etcd-pod-1
-      kind: Pod
-      namespace: otel-demo
-      filter:
-        - etcd-.*
     - id: configmap-fill-1
       kind: ConfigMap
       namespace: otel-demo
       filter:
         - etcd-fill-.*
+      root_cause: true
+    - id: frontend-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - frontend\b
+    - id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - frontend-.*
+    - id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - frontend\b
   aliases:
-    - - etcd-statefulset-1
-      - etcd-pod-1
+    - - frontend-deployment-1
+      - frontend-pod-1
+    - - frontend-deployment-1
+      - frontend-service-1
   propagations:
     - source: configmap-fill-1
-      target: etcd-statefulset-1
-      condition: Large number of ConfigMaps created consuming etcd storage beyond quota threshold
-      effect: etcd database approaches storage quota limit, API server begins rejecting mutating requests
-    - source: etcd-statefulset-1
-      target: etcd-pod-1
-      condition: etcd storage quota exceeded or nearly exceeded
-      effect: etcd pods report high storage usage, cluster operations degrade as writes are rejected
+      target: frontend-deployment-1
+      condition: Large number of ConfigMaps created consuming etcd storage
+      effect: etcd database experiences storage pressure, API server latency increases for all operations in the namespace
+    - source: frontend-deployment-1
+      target: frontend-pod-1
+      condition: API server latency increased due to etcd storage pressure
+      effect: Frontend pods experience slower responses from Kubernetes API, degrading application performance
+    - source: frontend-pod-1
+      target: frontend-service-1
+      condition: Frontend pods responding slowly due to cluster-wide API latency
+      effect: Frontend service exhibits higher request latency visible to end users
   fault:
     - category: Fill
-      condition: etcd database filled with large ConfigMaps pushing storage past quota threshold
+      condition: etcd database filled with ConfigMaps creating storage pressure
       entity:
         group_id: configmap-fill-1
         kind: ConfigMap
         name: etcd-fill
-      fault_mechanism: Storage exhaustion via bulk ConfigMap creation simulating real-world etcd quota incidents
+      fault_mechanism: Storage pressure via bulk ConfigMap creation simulating real-world etcd storage growth incidents
   recommendedActions:
     - solution:
         actions:
@@ -56,5 +67,5 @@ spec:
     - solution:
         actions:
           - Increase etcd storage quota if current limit is insufficient
-          - Review resource creation patterns to prevent future exhaustion
+          - Review resource creation patterns to prevent future growth
         id: increase-quota

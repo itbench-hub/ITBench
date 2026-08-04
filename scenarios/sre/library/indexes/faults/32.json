@@ -1,8 +1,8 @@
 {
     "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/fault.json",
     "alerts": {
-        "application": [
-            "KubePodNotReady"
+        "goldenSignal": [
+            "HighRequestLatency"
         ]
     },
     "arguments": {
@@ -18,6 +18,7 @@
                         },
                         "kind": {
                             "enum": [
+                                "Deployment",
                                 "StatefulSet"
                             ],
                             "type": "string"
@@ -52,8 +53,8 @@
             "type": "object"
         }
     },
-    "description": "This fault fills the etcd database storage by creating a large number of ConfigMaps, pushing etcd usage past its quota threshold. This simulates real-world incidents where etcd storage exhaustion causes the API server to reject writes, leading to cluster-wide degradation or complete outage.",
-    "expectation": "The etcd database will approach or exceed its storage quota. The Kubernetes API server will begin rejecting mutating requests.",
+    "description": "This fault creates etcd storage pressure by writing a large number of ConfigMaps, causing increased API server latency and degraded cluster performance. This simulates real-world incidents where etcd storage growth causes progressive degradation of cluster operations.",
+    "expectation": "The etcd database will experience increased storage pressure. The Kubernetes API server will exhibit higher latency for read and write operations.",
     "id": "exhausted-etcd-database-storage",
     "index": 32,
     "name": "Exhausted Etcd Database Storage",
@@ -69,15 +70,19 @@
             {
                 "steps": [
                     {
-                        "text": "Compact and defragment the etcd database to reclaim storage space."
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete configmap -l app=etcd-storage-fill",
+                        "text": "Remove the ConfigMaps that are consuming etcd storage."
                     },
                     {
-                        "text": "Remove unnecessary resources (completed jobs, orphaned ConfigMaps) to reduce etcd storage usage."
+                        "text": "Compact and defragment the etcd database to reclaim storage space."
                     }
                 ]
             },
             {
                 "steps": [
+                    {
+                        "text": "Identify and remove unnecessary resources (completed jobs, orphaned ConfigMaps) to reduce etcd storage usage."
+                    },
                     {
                         "text": "Increase the etcd storage quota if the current limit is too low for the cluster workload."
                     }
