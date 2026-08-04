@@ -183,10 +183,6 @@ launch-data-collection-workflow: ## Launches the data collection execution workf
 test-molecule-agent: ## Runs Molecule tests for the Agent role
 	cd project/roles/agent && $(UV) run molecule test --all --report --command-borders
 
-.PHONY: test-molecule-applications
-test-molecule-applications: ## Runs Molecule tests for the Applications role
-	cd project/roles/applications && $(UV) run molecule test --all --report --command-borders
-
 .PHONY: test-molecule-awx
 test-molecule-awx: ## Runs Molecule tests for the AWX role
 	cd project/roles/awx && $(UV) run molecule test --all --report --command-borders
@@ -194,14 +190,6 @@ test-molecule-awx: ## Runs Molecule tests for the AWX role
 .PHONY: test-molecule-faults
 test-molecule-faults: ## Runs Molecule tests for the Faults role
 	cd project/roles/faults && $(UV) run molecule test --all --report --command-borders
-
-.PHONY: test-molecule-recorders
-test-molecule-recorders: ## Runs Molecule tests for the Recorders role
-	cd project/roles/recorders && $(UV) run molecule test --all --report --command-borders
-
-.PHONY: test-molecule-tools
-test-molecule-tools: ## Runs Molecule tests for the Tools role
-	cd project/roles/tools && $(UV) run molecule test --all --exclude external_endpoints --report --command-borders
 
 .PHONY: test-molecule-waiters
 test-molecule-waiters: ## Runs Molecule tests for the Waiters role

@@ -20,6 +20,7 @@
       kind: Namespace
       metadata:
         labels:
+          "istio.io/dataplane-mode": ambient
           "prometheus.itbench.io/monitor": "true"
         name: "{{ applications_releases.book_info.namespace }}"
     state: present
@@ -38,44 +39,6 @@
     label: manifest/{{ manifest_file_path | ansible.builtin.basename }}
     loop_var: manifest_file_path
 
-- name: Create Prometheus Pod Monitor for Gateway
-  kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: PodMonitor
-      metadata:
-        name: bookinfo-gateway
-        namespace: "{{ applications_releases.book_info.namespace }}"
-      spec:
-        selector:
-          matchLabels:
-            gateway.networking.k8s.io/gateway-name: bookinfo-gateway
-        podMetricsEndpoints:
-          - interval: 30s
-            port: metrics
-    state: present
-
-- name: Create Prometheus Pod Monitor for Product Page
-  kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: PodMonitor
-      metadata:
-        name: productpage-v1
-        namespace: "{{ applications_releases.book_info.namespace }}"
-      spec:
-        selector:
-          matchLabels:
-            app: productpage
-            version: v1
-        podMetricsEndpoints:
-          - interval: 30s
-            portNumber: 9080
-        fallbackScrapeProtocol: PrometheusText1.0.0
-    state: present
-
 - name: Wait for Kubernetes Gateway to be programmed
   kubernetes.core.k8s_info:
     api_version: gateway.networking.k8s.io/v1
@@ -89,6 +52,43 @@
       status: "True"
       type: Programmed
 
+- name: Delete the temporary directory
+  ansible.builtin.file:
+    path: "{{ applications_temporary_directory.path }}"
+    state: absent
+
+- name: Create Prometheus Pod Monitors
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      - apiVersion: monitoring.coreos.com/v1
+        kind: PodMonitor
+        metadata:
+          name: bookinfo-gateway
+          namespace: "{{ applications_releases.book_info.namespace }}"
+        spec:
+          selector:
+            matchLabels:
+              gateway.networking.k8s.io/gateway-name: bookinfo-gateway
+          podMetricsEndpoints:
+            - interval: 30s
+              port: metrics
+      - apiVersion: monitoring.coreos.com/v1
+        kind: PodMonitor
+        metadata:
+          name: productpage-v1
+          namespace: "{{ applications_releases.book_info.namespace }}"
+        spec:
+          selector:
+            matchLabels:
+              app: productpage
+              version: v1
+          podMetricsEndpoints:
+            - interval: 30s
+              portNumber: 9080
+          fallbackScrapeProtocol: PrometheusText1.0.0
+    state: present
+
 - name: Retrieve all deployments
   kubernetes.core.k8s_info:
     api_version: apps/v1
@@ -96,26 +96,6 @@
     kubeconfig: "{{ applications_cluster.kubeconfig }}"
     namespace: "{{ applications_releases.book_info.namespace }}"
   register: applications_book_info_deployments
-
-- name: Label all pods managed by deployments with Istio Ambient Plane label
-  kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: "{{ deployment.apiVersion }}"
-      kind: "{{ deployment.kind }}"
-      metadata:
-        name: "{{ deployment.metadata.name }}"
-        namespace: "{{ deployment.metadata.namespace }}"
-      spec:
-        template:
-          metadata:
-            labels:
-              "istio.io/dataplane-mode": "ambient"
-    state: patched
-  loop: "{{ applications_book_info_deployments.resources }}"
-  loop_control:
-    label: deployment/{{ deployment.metadata.name }}
-    loop_var: deployment
 
 - name: Create HorizontalPodAutorscalers
   kubernetes.core.k8s:
@@ -164,11 +144,6 @@
   when:
     - applications_configuration.bookInfo.options.autoscaling.kubernetes.hpa | ansible.builtin.default(false)
 
-- name: Delete the temporary directory
-  ansible.builtin.file:
-    path: "{{ applications_temporary_directory.path }}"
-    state: absent
-
 - name: Retrieve Kubernetes Gateway address
   kubernetes.core.k8s_info:
     api_version: gateway.networking.k8s.io/v1
@@ -184,19 +159,14 @@
   delay: 15
   retries: 20
 
-- name: Extract ip address information
+- name: Extract gateway address information
   ansible.builtin.set_fact:
     applications_book_info_gateway_endpoints:
-      http: http://{{ applications_gateway.resources[0].status.addresses[0].value }}:80
+      http: http://{{ address.value }}{{ ":80" if address.type == "IPAddress" else "" }}
+  vars:
+    address: "{{ applications_gateway.resources[0].status.addresses[0] }}"
   when:
-    - applications_gateway.resources[0].status.addresses[0].type == "IPAddress"
-
-- name: Extract hostname address information
-  ansible.builtin.set_fact:
-    applications_book_info_gateway_endpoints:
-      http: http://{{ applications_gateway.resources[0].status.addresses[0].value }}
-  when:
-    - applications_gateway.resources[0].status.addresses[0].type == "Hostname"
+    - address.type in ["IPAddress", "Hostname"]
 
 - name: Create simple load generator
   kubernetes.core.k8s:
@@ -227,12 +197,12 @@
           spec:
             containers:
               - name: generator
-                image: registry.access.redhat.com/ubi10-minimal:10.2-1785332632@sha256:ceaad73890ea88685eeb1b40a502b7983f2cfac6f1aa10915d1176d51eb90124
+                image: registry.access.redhat.com/ubi10-minimal:10.2-1785778687@sha256:f0ed153f25c9a3df530ccf2c49ec04430efef206083cbbc16ca76a866ef096b5
                 command:
                   - /bin/sh
                 args:
                   - -c
-                  - "while true; do curl {{ [applications_book_info_gateway_endpoints.http, '/productpage'] | ansible.builtin.join }}; sleep 5; done"
+                  - "while true; do curl {{ applications_book_info_gateway_endpoints.http ~ '/productpage' }}; sleep 5; done"
     state: present
 
 - name: Create Common PrometheusRules

@@ -40,17 +40,14 @@
   delay: 15
   retries: 20
 
-- name: Extract hostname address information
+- name: Extract gateway address information
   ansible.builtin.set_fact:
-    tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}
+    tools_gateway_http_address:
+      http: http://{{ address.value }}{{ ":80" if address.type == "IPAddress" else "" }}
+  vars:
+    address: "{{ tools_istio_gateway.resources[0].status.addresses[0] }}"
   when:
-    - tools_istio_gateway.resources[0].status.addresses[0].type == "Hostname"
-
-- name: Extract ip address information
-  ansible.builtin.set_fact:
-    tools_gateway_http_address: http://{{ tools_istio_gateway.resources[0].status.addresses[0].value }}:80
-  when:
-    - tools_istio_gateway.resources[0].status.addresses[0].type == "IPAddress"
+    - address.type in ["IPAddress", "Hostname"]
 
 - name: Fail playbook due to `no gateway address found` error
   ansible.builtin.fail:
