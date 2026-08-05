@@ -6,18 +6,18 @@ on:
       - main
     paths:
       - clusters/kind/go.*
-      - scenarios/sre/project/roles/applications/tasks/install_*.yaml
-      - scenarios/sre/project/roles/cluster/vars/main/minimum_versions.yaml
-      - scenarios/sre/project/roles/executables/vars/main/minimum_versions.yaml
-      - scenarios/sre/project/roles/recorders/tasks/copy_python_recorder_files.yaml
-      - scenarios/sre/project/roles/recorders/tasks/deploy_python_recorder.yaml
-      - scenarios/sre/project/roles/tools/tasks/install_*.yaml
-      - scenarios/sre/project/manage_applications.yaml
-      - scenarios/sre/project/manage_faults.yaml
-      - scenarios/sre/project/manage_recorders.yaml
-      - scenarios/sre/project/manage_tools.yaml
-      - scenarios/sre/scripts/inject_scenario_faults.py
-      - scenarios/sre/Makefile
+      - scenarios/project/roles/applications/tasks/install_*.yaml
+      - scenarios/project/roles/cluster/vars/main/minimum_versions.yaml
+      - scenarios/project/roles/executables/vars/main/minimum_versions.yaml
+      - scenarios/project/roles/recorders/tasks/copy_python_recorder_files.yaml
+      - scenarios/project/roles/recorders/tasks/deploy_python_recorder.yaml
+      - scenarios/project/roles/tools/tasks/install_*.yaml
+      - scenarios/project/manage_applications.yaml
+      - scenarios/project/manage_faults.yaml
+      - scenarios/project/manage_recorders.yaml
+      - scenarios/project/manage_tools.yaml
+      - scenarios/scripts/inject_scenario_faults.py
+      - scenarios/Makefile
       - pyproject.toml
       - requirements.yaml
 
@@ -52,15 +52,15 @@ jobs:
           make deps
       - name: Create group vars
         run: |
-          make -C scenarios/sre group-vars
+          make -C scenarios group-vars
       - name: Start FinOps Scenario 37 # Due to resources, skip deploying recorders
         run: |
-          SCENARIO_NUMBER=37 make -C scenarios/sre create-environment
-          SCENARIO_NUMBER=37 make -C scenarios/sre inject-scenario-faults
+          SCENARIO_NUMBER=37 make -C scenarios create-environment
+          SCENARIO_NUMBER=37 make -C scenarios inject-scenario-faults
       - name: Stop FinOps Scenario 37
         run: |
-          SCENARIO_NUMBER=37 make -C scenarios/sre remove-fault-resources
-          SCENARIO_NUMBER=37 make -C scenarios/sre destroy-environment
+          SCENARIO_NUMBER=37 make -C scenarios remove-fault-resources
+          SCENARIO_NUMBER=37 make -C scenarios destroy-environment
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
@@ -90,13 +90,13 @@ jobs:
           make deps
       - name: Create group vars
         run: |
-          make -C scenarios/sre group-vars
+          make -C scenarios group-vars
       - name: Start SRE Scenario 60
         run: |
-          SCENARIO_NUMBER=60 make -C scenarios/sre start-scenario
+          SCENARIO_NUMBER=60 make -C scenarios start-scenario
       - name: Stop SRE Scenario 60
         run: |
-          SCENARIO_NUMBER=60 make -C scenarios/sre stop-scenario
+          SCENARIO_NUMBER=60 make -C scenarios stop-scenario
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster

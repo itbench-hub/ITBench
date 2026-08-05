@@ -7,15 +7,15 @@ on:
     paths:
       - clusters/kind/**
       - clusters/minikube/**
-      - scenarios/sre/project/roles/agent/**
-      - scenarios/sre/project/roles/awx/**
-      - scenarios/sre/project/roles/faults/**
-      - scenarios/sre/project/roles/waiters/**
+      - scenarios/project/roles/agent/**
+      - scenarios/project/roles/awx/**
+      - scenarios/project/roles/faults/**
+      - scenarios/project/roles/waiters/**
       - '!clusters/kind/README.md'
       - '!clusters/minikube/README.md'
-      - '!scenarios/sre/project/roles/awx/tasks/generate_files.yaml'
-      - '!scenarios/sre/project/roles/faults/tasks/generate_files.yaml'
-      - '!scenarios/sre/project/roles/waiters/tasks/generate_files.yaml'
+      - '!scenarios/project/roles/awx/tasks/generate_files.yaml'
+      - '!scenarios/project/roles/faults/tasks/generate_files.yaml'
+      - '!scenarios/project/roles/waiters/tasks/generate_files.yaml'
 
 concurrency:
   group: ci-molecule-${{ github.ref }}
@@ -106,13 +106,13 @@ jobs:
           make deps
       - name: Create group vars
         run: |
-          make -C scenarios/sre group-vars
+          make -C scenarios group-vars
       - name: Create Kind cluster
         run: |
           make -C clusters/kind create-simple-cluster
       - name: Run Molecule tests
         run: |
-          make -C scenarios/sre test-molecule-agent
+          make -C scenarios test-molecule-agent
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
@@ -136,7 +136,7 @@ jobs:
           make deps
       - name: Create group vars
         run: |
-          make -C scenarios/sre group-vars
+          make -C scenarios group-vars
       - name: Create Kind cluster
         run: |
           make -C clusters/kind create-simple-cluster
@@ -146,7 +146,7 @@ jobs:
           sleep 10
       - name: Run Molecule tests
         run: |
-          make -C scenarios/sre test-molecule-awx
+          make -C scenarios test-molecule-awx
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
@@ -167,7 +167,7 @@ jobs:
           make deps
       - name: Create group vars
         run: |
-          make -C scenarios/sre group-vars
+          make -C scenarios group-vars
       - name: Create Kind cluster
         run: |
           make -C clusters/kind create-simple-cluster
@@ -177,7 +177,7 @@ jobs:
           sleep 10
       - name: Run Molecule tests
         run: |
-          make -C scenarios/sre test-molecule-faults
+          make -C scenarios test-molecule-faults
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
@@ -198,13 +198,13 @@ jobs:
           make deps
       - name: Create group vars
         run: |
-          make -C scenarios/sre group-vars
+          make -C scenarios group-vars
       - name: Create Kind cluster
         run: |
           make -C clusters/kind create-simple-cluster
       - name: Run Molecule tests
         run: |
-          make -C scenarios/sre test-molecule-waiters
+          make -C scenarios test-molecule-waiters
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster

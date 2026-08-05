@@ -181,7 +181,7 @@ class TestCreateScenariosIndexes(unittest.TestCase):
         """Test creating scenario indexes with fault aggregation."""
         templates_dir = Path("/test/templates/scenarios")
         index_dir = Path("/test/indexes/scenarios")
-        playbooks_dir = Path("/test/scenarios/sre")
+        playbooks_dir = Path("/test/scenarios")
         generator_dir = Path("/test/generator")
 
         mock_load_releases.return_value = {

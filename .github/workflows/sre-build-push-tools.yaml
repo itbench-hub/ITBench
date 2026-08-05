@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - scenarios/sre/tools/**
-      - '!scenarios/sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/**'
+      - scenarios/tools/**
+      - '!scenarios/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/**'
 
 concurrency:
   group: ci-build-${{ github.ref }}
@@ -46,19 +46,19 @@ jobs:
       - name: Create AWX Execution Environment image context
         run: |
           uv run ansible-builder create --output-filename Dockerfile
-        working-directory: scenarios/sre/tools/awx-ee
+        working-directory: scenarios/tools/awx-ee
       - name: Copy requirements to expected location
         run: |
           cp _build/requirements.yml requirements.yml
           cp _build/requirements.txt requirements.txt
-        working-directory: scenarios/sre/tools/awx-ee/context
+        working-directory: scenarios/tools/awx-ee/context
       - name: Build AWX Execution Environment image
         id: build
         uses: docker/build-push-action@v7.3.0
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: scenarios/sre/tools/awx-ee/context
+          context: scenarios/tools/awx-ee/context
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=quay.io/it-bench/awx-ee,push-by-digest=true,push=true
       - name: Export digest
@@ -125,7 +125,7 @@ jobs:
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: scenarios/sre/tools/hello-bench
+          context: scenarios/tools/hello-bench
           platforms: |
             linux/amd64
           push: true
@@ -153,7 +153,7 @@ jobs:
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: scenarios/sre/tools/hello-bench
+          context: scenarios/tools/hello-bench
           platforms: |
             linux/arm64
           push: true
@@ -191,7 +191,7 @@ jobs:
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: scenarios/sre/tools/opentelemetry-collector-builder
+          context: scenarios/tools/opentelemetry-collector-builder
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=quay.io/it-bench/opentelemetry-collector,push-by-digest=true,push=true
       - name: Export digest
@@ -267,7 +267,7 @@ jobs:
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: scenarios/sre/tools/kubernetes-topology-monitor
+          context: scenarios/tools/kubernetes-topology-monitor
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=quay.io/it-bench/topology-monitor,push-by-digest=true,push=true
       - name: Export digest

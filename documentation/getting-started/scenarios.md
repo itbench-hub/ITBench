@@ -73,19 +73,19 @@ make deps
 
 3. Run the following command from the root directory, to go to the scenarios directory:
 ```shell
-cd scenarios/sre
+cd scenarios
 ```
 
 ## Running Scenarios
 
-ITBench uses [Ansible](https://docs.ansible.com/ansible/latest/getting_started/introduction.html) to manage the sandbox environment on a Kubernetes cluster. The playbooks feature a number of [group variables](../../scenarios/sre/inventory/group_vars/). Each one will be described here:
+ITBench uses [Ansible](https://docs.ansible.com/ansible/latest/getting_started/introduction.html) to manage the sandbox environment on a Kubernetes cluster. The playbooks feature a number of [group variables](../../scenarios/inventory/group_vars/). Each one will be described here:
 
 | File Name | Function |
 | --- | --- |
-| [applications.yaml](../../scenarios/sre/inventory/group_vars/environment/applications.yaml.example) | Configures applications |
-| [cluster.yaml](../../scenarios/sre/inventory/group_vars/environment/cluster.yaml.example) | Configures the cluster |
-| [tools.yaml](../../scenarios/sre/inventory/group_vars/environment/tools.yaml.example) | Configures the tool stack |
-| [storage.yaml](../../scenarios/sre/inventory/group_vars/all/storage.yaml.example) | Configures the storage options for data files |
+| [applications.yaml](../../scenarios/inventory/group_vars/environment/applications.yaml.example) | Configures applications |
+| [cluster.yaml](../../scenarios/inventory/group_vars/environment/cluster.yaml.example) | Configures the cluster |
+| [tools.yaml](../../scenarios/inventory/group_vars/environment/tools.yaml.example) | Configures the tool stack |
+| [storage.yaml](../../scenarios/inventory/group_vars/all/storage.yaml.example) | Configures the storage options for data files |
 
 >[!NOTE]
 >Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
@@ -101,7 +101,7 @@ make group-vars
 ```
 
 >[!TIP]
->If using [our kops setup](../../clusters/kops/README.md), use `make sync-cluster-group-vars` to export the kubeconfig files and configure the [`stack.yaml`](../../scenarios/sre/inventory/group_vars/runner/stack.yaml) group variables. If using [our kind setup](../../clusters/kind/README.md), the default group variables made at creation will suffice.
+>If using [our kops setup](../../clusters/kops/README.md), use `make sync-cluster-group-vars` to export the kubeconfig files and configure the [`stack.yaml`](../../scenarios/inventory/group_vars/runner/stack.yaml) group variables. If using [our kind setup](../../clusters/kind/README.md), the default group variables made at creation will suffice.
 
 >[!WARNING]
 >If the group variables were already created as a part of development or running the SRE and FinOps scenarios beforehand, skip this step. Running the command will override the existing files.
