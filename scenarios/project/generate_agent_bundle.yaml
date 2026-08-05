@@ -56,15 +56,18 @@
       when:
         - storage.local is ansible.builtin.defined
 
-    - name: Print agent bundle
-      ansible.builtin.debug:
-        msg: |
+    - name: Save agent bundle
+      ansible.builtin.copy:
+        content: |-
           {{
             {
               "prometheus_url": tools_prometheus_endpoint.host,
               "kubeconfig": lookup("ansible.builtin.file", "/tmp/kubeconfig")
-            }
+            } |
+            ansible.builtin.to_json
           }}
+        dest: "{{ [playbook_dir, '..', 'tmp', 'bundle.json'] | ansible.builtin.path_join }}"
+        mode: "0644"
       vars:
         restricted_kubeconfig_exists: "{{ '/tmp/kubeconfig' is exists }}"
       when:
