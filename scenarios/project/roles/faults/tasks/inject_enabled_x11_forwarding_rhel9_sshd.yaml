@@ -1,0 +1,20 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Enable X11 forwarding in SSH configuration
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^X11Forwarding'
+    line: 'X11Forwarding yes'
+    state: present
+  become: true
+  delegate_to: "{{ fault_args.virtualMachine.hostname }}"
+
+- name: Restart SSH service to apply changes
+  ansible.builtin.service:
+    name: sshd
+    state: restarted
+  become: true
+  delegate_to: "{{ fault_args.virtualMachine.hostname }}"

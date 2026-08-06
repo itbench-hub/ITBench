@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/fault.json
+---
+alerts:
+  application: []
+arguments:
+  jsonSchema:
+    properties:
+      virtualMachine:
+        properties:
+          hostname:
+            type: string
+        required:
+        - hostname
+        type: object
+    required:
+    - virtualMachine
+    type: object
+description: This fault enables X11 forwarding in /etc/ssh/sshd_config on a RHEL9 host, violating the requirement for it to be disabled.
+expectation: OPA evaluation of the collected SSH configuration data will return false, indicating the host is non-compliant with the applicable benchmark rule.
+name: Enabled X11 Forwarding RHEL9 SSHD
+platform: RHEL9
+resources:
+- https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/securing_networks/assembly_using-secure-communications-between-two-systems-with-openssh_securing-networks
+solutions:
+  templates:
+  - steps:
+    - text: Set X11Forwarding to no in /etc/ssh/sshd_config and restart the sshd service.
+tags:
+- Compliance

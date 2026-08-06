@@ -1,0 +1,35 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Deploy non-compliant Deployment
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ fault_args.kubernetesObject.metadata.name }}"
+        namespace: "{{ fault_args.kubernetesObject.metadata.namespace }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: "{{ fault_args.kubernetesObject.metadata.name }}"
+        template:
+          metadata:
+            labels:
+              app: "{{ fault_args.kubernetesObject.metadata.name }}"
+          spec:
+            containers:
+              - name: worker
+                image: registry.access.redhat.com/ubi10-minimal:10.2-1785332632@sha256:ceaad73890ea88685eeb1b40a502b7983f2cfac6f1aa10915d1176d51eb90124
+                command:
+                  - /bin/sh
+                args:
+                  - -c
+                  - "sleep infinity"
+                securityContext:
+                  allowPrivilegeEscalation: true
+    state: present

@@ -1,0 +1,81 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/fault.json",
+    "alerts": {
+        "application": []
+    },
+    "arguments": {
+        "jsonSchema": {
+            "properties": {
+                "kubernetesObject": {
+                    "properties": {
+                        "apiVersion": {
+                            "enum": [
+                                "apps/v1"
+                            ],
+                            "type": "string"
+                        },
+                        "kind": {
+                            "enum": [
+                                "Deployment"
+                            ],
+                            "type": "string"
+                        },
+                        "metadata": {
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "namespace": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "namespace"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "apiVersion",
+                        "kind",
+                        "metadata"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "kubernetesObject"
+            ],
+            "type": "object"
+        }
+    },
+    "description": "This fault deploys a Kubernetes workload with hostNetwork set to true, granting the container access to the host network namespace.",
+    "expectation": "Kyverno PolicyReport will record a policy failure against the Deployment for violating the disallow-host-namespaces rule.",
+    "id": "active-host-network-kubernetes-deployment",
+    "index": 31,
+    "name": "Active Host Network Kubernetes Deployment",
+    "platform": "Kubernetes",
+    "resources": [
+        "https://kubernetes.io/docs/concepts/security/pod-security-standards/"
+    ],
+    "solutions": {
+        "templates": [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                        "text": "Delete the non-compliant Deployment that uses hostNetwork."
+                    },
+                    {
+                        "text": "Author and apply a Kyverno ClusterPolicy that disallows hostNetwork on all workloads."
+                    }
+                ]
+            }
+        ]
+    },
+    "tags": [
+        "Compliance",
+        "Deployment"
+    ]
+}
