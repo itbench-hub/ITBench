@@ -1,0 +1,30 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-67
+spec:
+  alerts: []
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: backend
+        namespace: benchmarks
+  solutions:
+    - - steps:
+          - command: kubectl -n benchmarks delete deployment backend
+            text: Delete the non-compliant Pod.
+          - text: Author and apply a policy that enforces the required security controls for the workload.
+  states:
+    - backend: kyverno-policy-report
+      expectedResult: fail
+      policyName: container-security-controls
+      resource:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: backend
+        namespace: benchmarks
+    - backend: policy-unchanged
+      expectedResult: unchanged
+      policyName: service-account-requirements

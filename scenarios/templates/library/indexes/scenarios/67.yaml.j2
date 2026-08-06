@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: ciso
+complexity: high
+description: This scenario simulates a Kubernetes cluster with existing Kyverno policies that have gaps in their security controls. The agent must extend the policies to remediate the violations without modifying the existing policy rules.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: backend
+          namespace: benchmarks
+    id: non-compliant-kubernetes-pod-deployment
+environment:
+  applications: []
+id: 67
+states:
+- backend: kyverno-policy-report
+  expectedResult: fail
+  policyName: container-security-controls
+  resource:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+    namespace: benchmarks
+- backend: policy-unchanged
+  expectedResult: unchanged
+  policyName: service-account-requirements
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

@@ -5017,6 +5017,279 @@
     {
         "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
         "alerts": [],
+        "category": "ciso",
+        "complexity": "medium",
+        "description": "This scenario simulates a Kubernetes workload deployed with hostNetwork enabled, violating CIS Kubernetes Benchmark 5.2.4. The agent must detect the violation using Kyverno and generate a policy to prevent it.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "backend",
+                                    "namespace": "benchmarks"
+                                }
+                            }
+                        },
+                        "id": "active-host-network-kubernetes-deployment"
+                    }
+                ],
+                "waitFor": {
+                    "postInjection": [
+                        {
+                            "args": {
+                                "kubernetesObject": {
+                                    "apiVersion": "apps/v1",
+                                    "kind": "Deployment",
+                                    "metadata": {
+                                        "name": "backend",
+                                        "namespace": "benchmarks"
+                                    }
+                                }
+                            },
+                            "id": "verify-kyverno-policy-report-creation"
+                        }
+                    ]
+                }
+            }
+        ],
+        "environment": {
+            "applications": []
+        },
+        "id": 64,
+        "index": 64,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n benchmarks delete deployment backend",
+                            "text": "Delete the non-compliant Deployment that uses hostNetwork."
+                        },
+                        {
+                            "text": "Author and apply a Kyverno ClusterPolicy that disallows hostNetwork on all workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "states": [
+            {
+                "backend": "kyverno-policy-report",
+                "expectedResult": "fail",
+                "resource": {
+                    "apiVersion": "apps/v1",
+                    "kind": "Deployment",
+                    "name": "backend",
+                    "namespace": "benchmarks"
+                }
+            }
+        ],
+        "tags": [
+            "Compliance",
+            "Deployment"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "ciso",
+        "complexity": "medium",
+        "description": "This scenario simulates a Kubernetes workload deployed with hostNetwork enabled, violating CIS Kubernetes Benchmark 5.2.4. The agent must detect the violation using kubectl and OPA and generate a policy to prevent it.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "backend",
+                                    "namespace": "benchmarks"
+                                }
+                            }
+                        },
+                        "id": "active-host-network-kubernetes-deployment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": []
+        },
+        "id": 65,
+        "index": 65,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n benchmarks delete deployment backend",
+                            "text": "Delete the non-compliant Deployment that uses hostNetwork."
+                        },
+                        {
+                            "text": "Author and apply a Kyverno ClusterPolicy that disallows hostNetwork on all workloads."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "states": [
+            {
+                "backend": "opa-eval",
+                "expectedResult": "false",
+                "fetcherType": "bash",
+                "resource": {
+                    "apiVersion": "apps/v1",
+                    "kind": "Deployment",
+                    "name": "backend",
+                    "namespace": "benchmarks"
+                }
+            }
+        ],
+        "tags": [
+            "Compliance",
+            "Deployment"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "ciso",
+        "complexity": "medium",
+        "description": "This scenario simulates a RHEL9 host with X11 forwarding enabled in the SSH configuration, violating CIS RHEL9 Benchmark 5.2.6. The agent must detect the violation using Ansible and OPA and generate a policy to prevent it.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "virtualMachine": {
+                                "hostname": "rhel9-benchmark"
+                            }
+                        },
+                        "id": "enabled-x11-forwarding-rhel9-sshd"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": []
+        },
+        "id": 66,
+        "index": 66,
+        "platforms": [
+            "RHEL9"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "text": "Set X11Forwarding to no in /etc/ssh/sshd_config and restart the sshd service."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "states": [
+            {
+                "backend": "opa-eval",
+                "expectedResult": "false",
+                "fetcherType": "ansible-playbook",
+                "resource": {
+                    "kind": "Host",
+                    "name": "rhel9-benchmark"
+                }
+            }
+        ],
+        "tags": [
+            "Compliance"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
+        "category": "ciso",
+        "complexity": "high",
+        "description": "This scenario simulates a Kubernetes cluster with existing Kyverno policies that have gaps in their security controls. The agent must extend the policies to remediate the violations without modifying the existing policy rules.",
+        "disruptions": [
+            {
+                "injections": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "backend",
+                                    "namespace": "benchmarks"
+                                }
+                            }
+                        },
+                        "id": "non-compliant-kubernetes-pod-deployment"
+                    }
+                ]
+            }
+        ],
+        "environment": {
+            "applications": []
+        },
+        "id": 67,
+        "index": 67,
+        "platforms": [
+            "Kubernetes"
+        ],
+        "solutions": [
+            [
+                {
+                    "steps": [
+                        {
+                            "command": "kubectl -n benchmarks delete deployment backend",
+                            "text": "Delete the non-compliant Pod."
+                        },
+                        {
+                            "text": "Author and apply a policy that enforces the required security controls for the workload."
+                        }
+                    ]
+                }
+            ]
+        ],
+        "states": [
+            {
+                "backend": "kyverno-policy-report",
+                "expectedResult": "fail",
+                "policyName": "container-security-controls",
+                "resource": {
+                    "apiVersion": "apps/v1",
+                    "kind": "Deployment",
+                    "name": "backend",
+                    "namespace": "benchmarks"
+                }
+            },
+            {
+                "backend": "policy-unchanged",
+                "expectedResult": "unchanged",
+                "policyName": "service-account-requirements"
+            }
+        ],
+        "tags": [
+            "Compliance",
+            "Deployment"
+        ]
+    },
+    {
+        "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+        "alerts": [],
         "category": "sre",
         "complexity": "medium",
         "description": "This scenario simulates a network disconnection or partion between OpenTelemetry Demo `checkout` and `kafka` services.",

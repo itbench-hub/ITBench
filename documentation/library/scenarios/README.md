@@ -67,6 +67,10 @@ _For statistics on the distrubution spread of scenarios, please see [here](./sta
 | [61](./sre/61.md) | sre | medium |
 | [62](./sre/62.md) | sre | medium |
 | [63](./sre/63.md) | sre | medium |
+| [64](./ciso/64.md) | ciso | medium |
+| [65](./ciso/65.md) | ciso | medium |
+| [66](./ciso/66.md) | ciso | medium |
+| [67](./ciso/67.md) | ciso | high |
 | [80](./sre/80.md) | sre | medium |
 | [81](./sre/81.md) | sre | medium |
 | [83](./sre/83.md) | sre | medium |
