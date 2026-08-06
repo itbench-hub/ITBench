@@ -11,3 +11,4 @@ ITBench uses waiters before and after fault injection to ensure that certain act
 | [Pause Execution](./pause-execution.md) | Kubernetes |
 | [Restart Kubernetes Workload](./restart-kubernetes-workload.md) | Kubernetes |
 | [Scale Kubernetes Workload](./scale-kubernetes-workload.md) | Kubernetes |
+| [Verify Kyverno Policy Report Creation](./verify-kyverno-policy-report-creation.md) | Kubernetes |

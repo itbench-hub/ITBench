@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/waiter.json
+---
+arguments:
+  jsonSchema:
+    properties:
+      kubernetesObject:
+        properties:
+          apiVersion:
+            enum:
+            - apps/v1
+            type: string
+          kind:
+            enum:
+            - Deployment
+            type: string
+          metadata:
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+            required:
+            - name
+            - namespace
+            type: object
+        required:
+        - apiVersion
+        - kind
+        - metadata
+        type: object
+    required:
+    - kubernetesObject
+    type: object
+description: Verifies that Kyverno has created a PolicyReport scoped to the target Kubernetes workload.
+name: Verify Kyverno Policy Report Creation
+platform: Kubernetes
