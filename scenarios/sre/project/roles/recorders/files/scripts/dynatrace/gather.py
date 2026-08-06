@@ -22,7 +22,9 @@ logger = logging.getLogger(__name__)
 # NOTE: This recorder is the SaaS counterpart to the in-cluster scrapers
 #       (clickhouse/jaeger/prometheus). Dynatrace Grail retains history that is
 #       queryable by timeframe, so a single run at teardown back-queries the
-#       whole incident window [scenario start -> now] for every dataset. It is
+#       whole incident window [scenario start -> now] for every dataset. The
+#       topology dataset is the exception: it is captured as two point-in-time
+#       snapshots (init = scenario start, stop = teardown). It is
 #       adapted from dynatrace_scripts/pull_dql_json.py: the CLI, .env, and
 #       dotenv dependency are removed and all configuration comes from
 #       environment variables injected by the recorder Job.
@@ -37,6 +39,11 @@ TIME_TO = os.environ.get("DT_DQL_TO", "now")
 INTERVAL = os.environ.get("DT_DQL_INTERVAL", "1m")
 LIMIT = os.environ.get("DT_DQL_LIMIT", "1000").strip()
 OUTPUT_FORMAT = os.environ.get("DT_DQL_FORMAT", "both").strip()
+
+# Topology snapshots are point-in-time, but a Grail entity query needs a
+# non-empty timeframe: each snapshot queries a short window (this many minutes)
+# anchored at its timestamp — the scenario start for "init", teardown for "stop".
+TOPOLOGY_WINDOW_MIN = int(os.environ.get("DT_TOPOLOGY_WINDOW_MIN", "5"))
 
 # All records are written into the recorder PVC (~/records), matching the
 # convention used by the jaeger/prometheus recorders.
@@ -85,13 +92,20 @@ DATASETS = {
     "span-errorrate":    {"stem": "dynatrace_span_errorrate"},
     "logs":              {"stem": "dynatrace_logs"},
     "events":            {"stem": "dynatrace_events"},
+    "traces":            {"stem": "dynatrace_traces"},
+    "problems":          {"stem": "dynatrace_problems"},
     # Special: runs every K8S_METRICS key and merges them into one file.
     "k8s-metrics":       {"stem": "dynatrace_k8s_metrics", "multi": True},
+    # Special: Smartscape topology (service graph + infra edges) for the ns.
+    # Captured as two point-in-time snapshots (see export_topology): "init" at
+    # the scenario start time and "stop" at teardown.
+    "topology":          {"stem": "dynatrace_topology", "topology": True},
 }
-# The recorder always exports the full set (metrics, spans, logs, events, k8s).
+# The recorder always exports the full set (metrics, spans, traces, logs,
+# events, problems, k8s, topology).
 ALL_DATASETS = [
     "responsetime", "errorrate", "span-responsetime", "span-errorrate",
-    "logs", "events", "k8s-metrics",
+    "logs", "events", "traces", "problems", "k8s-metrics", "topology",
 ]
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -169,6 +183,22 @@ def build_dql(dataset, namespace, interval, limit):
         return (
             f'fetch events | filter k8s.namespace.name == "{namespace}"'
             f" | sort timestamp desc | limit {limit}"
+        )
+    if dataset == "traces":
+        # Raw spans (distributed traces); no projection so the output keeps every
+        # span attribute. Sorted newest-first by span start_time.
+        return (
+            f'fetch spans | filter k8s.namespace.name == "{namespace}"'
+            f" | sort start_time desc | limit {limit}"
+        )
+    if dataset == "problems":
+        # Davis problems; no projection so the output keeps every field. Scoped to
+        # the namespace via the record's k8s.namespace.name ARRAY field (resolved
+        # from affected entities): in(<ns>, k8s.namespace.name). Duplicates dropped.
+        return (
+            "fetch dt.davis.problems | filter not(dt.davis.is_duplicate)"
+            f' and in("{namespace}", k8s.namespace.name)'
+            f" | sort event.start desc | limit {limit}"
         )
     raise ValueError(f"Unknown dataset '{dataset}'")
 
@@ -340,6 +370,143 @@ def out_paths(dataset, timestamp):
     return base + ".json", base + ".csv"
 
 
+def _shift_iso(iso, minutes):
+    """Shift an ISO-8601 UTC timestamp by a number of minutes (may be negative)."""
+    shifted = _parse_iso(iso) + timedelta(minutes=minutes)
+    return shifted.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
+def _resolve_namespace_entity(session, namespace, time_from, time_to):
+    """Look up the CLOUD_APPLICATION_NAMESPACE entity id for a k8s namespace
+    name. Smartscape scopes services by their `belongs_to` relationship to this
+    entity — so we need its id to filter the topology to one namespace."""
+    dql = (
+        "fetch dt.entity.cloud_application_namespace"
+        f' | filter entity.name == "{namespace}"'
+        " | fields id, entity.name"
+    )
+    recs = run_query(session, dql, time_from, time_to).get("records", [])
+    return recs[0]["id"] if recs else None
+
+
+def _topology_snapshot(session, ns_id, time_from, time_to):
+    """One point-in-time Smartscape snapshot over [time_from, time_to].
+
+    Fetch every service that `belongs_to` the namespace along with its
+    relationship columns, then derive directed edges: service->service `calls`,
+    and service->host / service->process_group `runs_on`. Returns
+    (dql, services, nodes, edges)."""
+    dql = (
+        "fetch dt.entity.service"
+        " | fieldsAdd ns = belongs_to[dt.entity.cloud_application_namespace]"
+        f' | filter in("{ns_id}", ns)'
+        " | fields id, entity.name,"
+        " calls[dt.entity.service],"
+        " runs_on[dt.entity.host],"
+        " runs_on[dt.entity.process_group]"
+    )
+    result = run_query(session, dql, time_from, time_to)
+    for msg in grail_notifications(result):
+        logger.info("[topology] Grail notice: %s", msg)
+
+    services = result.get("records", [])
+    # Set of in-namespace service ids: we keep call edges to any service, but
+    # tag whether the callee is inside the namespace (target_in_namespace).
+    ns_service_ids = {s.get("id") for s in services}
+    # id -> service name, so the edge list is readable without a separate join.
+    names = {s.get("id"): s.get("entity.name") for s in services}
+
+    nodes, edges = [], []
+    for svc in services:
+        sid = svc.get("id")
+        sname = svc.get("entity.name")
+        nodes.append({"id": sid, "name": sname, "type": "SERVICE"})
+        # service -> service call edges
+        for tgt in (svc.get("calls[dt.entity.service]") or []):
+            edges.append({"source": sid, "source_name": sname,
+                          "target": tgt, "target_name": names.get(tgt, ""),
+                          "type": "CALLS",
+                          "target_in_namespace": tgt in ns_service_ids})
+        # service -> host / process_group placement edges (targets are infra
+        # entities outside the service set, so no name is resolved here)
+        for host in (svc.get("runs_on[dt.entity.host]") or []):
+            edges.append({"source": sid, "source_name": sname, "target": host,
+                          "target_name": "", "type": "RUNS_ON_HOST"})
+        for pg in (svc.get("runs_on[dt.entity.process_group]") or []):
+            edges.append({"source": sid, "source_name": sname, "target": pg,
+                          "target_name": "", "type": "RUNS_ON_PROCESS_GROUP"})
+    return dql, services, nodes, edges
+
+
+def export_topology(session, dataset, timestamp):
+    """Export the Smartscape topology as TWO point-in-time snapshots:
+
+      * init  — anchored at the scenario start time (DT_DQL_FROM)
+      * stop  — anchored at teardown (DT_DQL_TO)
+
+    Each snapshot queries a short window around its anchor (an entity query
+    needs a non-empty timeframe) and is written to its own files, e.g.
+    dynatrace_topology_init_<ts>.json / dynatrace_topology_stop_<ts>.json.
+    Mirrors dynatrace_scripts/pull_dql_json.py's export_topology graph shape."""
+    # Resolve each snapshot's [from, to] window around its anchor timestamp.
+    init_from = to_iso(TIME_FROM)
+    init_to = _shift_iso(init_from, TOPOLOGY_WINDOW_MIN)
+    stop_to = to_iso(TIME_TO)
+    stop_from = _shift_iso(stop_to, -TOPOLOGY_WINDOW_MIN)
+    snapshots = [
+        ("init", init_from, init_to),
+        ("stop", stop_from, stop_to),
+    ]
+
+    any_data = False
+    for phase, snap_from, snap_to in snapshots:
+        stem = "{0}_{1}_{2}".format(DATASETS[dataset]["stem"], phase, timestamp)
+        base = os.path.join(OUTDIR, stem)
+        json_path, csv_path = base + ".json", base + ".csv"
+
+        try:
+            ns_id = _resolve_namespace_entity(session, NAMESPACE,
+                                              snap_from, snap_to)
+            if not ns_id:
+                logger.warning("[topology/%s] no namespace entity for '%s'",
+                               phase, NAMESPACE)
+                continue
+            dql, services, nodes, edges = _topology_snapshot(
+                session, ns_id, snap_from, snap_to)
+        except Exception as exc:
+            logger.warning("[topology/%s] ERROR: %s", phase, exc)
+            continue
+
+        written = []
+        if OUTPUT_FORMAT in ("json", "both"):
+            payload = {
+                "dataset": dataset,
+                "phase": phase,
+                "namespace": NAMESPACE,
+                "namespace_entity_id": ns_id,
+                "timeframe": {"from": snap_from, "to": snap_to},
+                "query": dql,
+                "node_count": len(nodes),
+                "edge_count": len(edges),
+                "graph": {"nodes": nodes, "edges": edges},
+                "services": services,  # raw records, all relationship columns
+            }
+            with open(json_path, "w") as f:
+                json.dump(payload, f, indent=2)
+            written.append(json_path)
+
+        if OUTPUT_FORMAT in ("csv", "both"):
+            # Flatten to an edge list — the natural tabular view of a graph.
+            write_csv_rows(edges, csv_path)
+            written.append(csv_path)
+
+        logger.info("[topology/%s] %d services, %d edges -> %s",
+                    phase, len(nodes), len(edges), ", ".join(written))
+        any_data = any_data or bool(nodes)
+
+    return any_data
+
+
 def export_k8s_metrics(session, dataset, timestamp):
     """Query every K8S_METRICS key individually and merge them into ONE file —
     so a single run exports many metrics together. Each metric is a separate
@@ -404,6 +571,8 @@ def export_dataset(session, dataset, timestamp):
     Never raises — failures are captured so a multi-dataset run continues."""
     if DATASETS[dataset].get("multi"):
         return export_k8s_metrics(session, dataset, timestamp)
+    if DATASETS[dataset].get("topology"):
+        return export_topology(session, dataset, timestamp)
 
     json_path, csv_path = out_paths(dataset, timestamp)
     try:
