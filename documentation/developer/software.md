@@ -43,6 +43,7 @@ For issues and support directly related to the software, it is often best to rea
 | kubectl | https://github.com/kubernetes/kubectl |
 | Minikube | https://github.com/kubernetes/minikube |
 | Molecule | https://github.com/ansible/molecule |
+| OPA | https://github.com/open-policy-agent/opa |
 | Podman | https://github.com/containers/podman |
 | pre-commit | https://github.com/pre-commit/pre-commit |
 | uv | https://github.com/astral-sh/uv |

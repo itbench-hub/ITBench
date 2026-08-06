@@ -1,0 +1,39 @@
+---
+- name: Import binary path validation tasks
+  ansible.builtin.import_tasks:
+    file: check_binary_path.yaml
+  vars:
+    binary_name: opa
+
+- name: Check opa executable version
+  ansible.builtin.command:
+    argv:
+      - "{{ executables_opa_path }}"
+      - version
+  register: executables_opa_raw_version
+  changed_when:
+    - false
+
+- name: Parse opa executable version string
+  ansible.builtin.set_fact:
+    executables_opa_version: |-
+      {{
+        (
+          executables_opa_raw_version.stdout |
+          ansible.builtin.from_yaml
+        ).Version
+      }}
+
+- name: Fail playbook due to `wrong binary version` error
+  ansible.builtin.fail:
+    msg: "`opa` version: {{ executables_opa_version }}. please update `opa` to version {{ executables_minimum_versions.opa }} or higher."
+  when:
+    - executables_opa_version is ansible.builtin.version(executables_minimum_versions.opa, "<")
+
+- name: Display opa executable information
+  ansible.builtin.debug:
+    var: info
+  vars:
+    info:
+      path: "{{ executables_opa_path }}"
+      version: "{{ executables_opa_version }}"

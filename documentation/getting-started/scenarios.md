@@ -30,6 +30,7 @@ There is currently not a unifed running procedure that covers both CISO, FinOps,
 ```shell
 brew install helm
 brew install kubectl
+brew install opa
 brew install uv
 ```
 
@@ -50,7 +51,8 @@ brew install openshift-cli
 1. Download the following packages
     - **a.** Install Helm 4 by following the instructions [here](https://helm.sh/docs/intro/install#from-script)
     - **b.** Install kubectl by following the instructions [here](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
-    - **c.** Install UV by following the instructions [here](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
+    - **c.** Install opa by following the instructions [here](https://github.com/open-policy-agent/opa/blob/main/docs/docs/index.md)
+    - **d.** Install UV by following the instructions [here](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
 
 2. Download the following packages **(optional)**
     - **a.** Install Python by downloading the package [here](https://www.python.org/downloads/source/)
