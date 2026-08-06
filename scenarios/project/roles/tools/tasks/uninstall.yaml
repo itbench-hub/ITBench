@@ -45,6 +45,12 @@
   ansible.builtin.import_tasks:
     file: uninstall_kubernetes_gateway.yaml
 
+- name: Import Kyverno uninstallation tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_kyverno.yaml
+  when:
+    - tools_configuration.ciso.enabled | ansible.builtin.default(false)
+
 - name: Import Custom Resource Definition removal tasks
   ansible.builtin.import_tasks:
     file: remove_custom_resource_definitions.yaml

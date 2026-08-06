@@ -51,6 +51,21 @@
   when:
     - definitions | ansible.builtin.length > 0
 
+- name: Delete Kyverno related CustomResourceDefinitions
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition: "{{ definitions }}"
+    state: absent
+    wait: true
+  vars:
+    definitions: |-
+      {{
+        tools_custom_resource_definitions.resources |
+        ansible.builtin.selectattr("spec.group", "search", "(kyverno\.io|wgpolicyk8s\.io)$")
+      }}
+  when:
+    - definitions | ansible.builtin.length > 0
+
 - name: Remove CustomResourceDefinitions not managed by OpenShift
   when:
     - tools_cluster.platform == "kubernetes"

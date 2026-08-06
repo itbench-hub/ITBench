@@ -9,6 +9,14 @@
   when:
     - tools_cluster.provider == 'kind'
 
+- name: Install CISO Tools
+  when:
+    - tools_configuration.ciso.enabled | ansible.builtin.default(false)
+  block:
+    - name: Import Kyverno installation tasks
+      ansible.builtin.import_tasks:
+        file: install_kyverno.yaml
+
 - name: Install SRE and FinOps Tools
   when:
     - ((tools_configuration.finops.enabled | ansible.builtin.default(false)) or (tools_configuration.sre.enabled | ansible.builtin.default(false)))
