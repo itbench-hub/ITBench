@@ -1,0 +1,11 @@
+---
+- name: Include evaluation check tasks
+  ansible.builtin.include_tasks:
+    file: "evaluate_{{ evaluation_check.backend | ansible.builtin.replace('-', '_') }}.yaml"
+    apply:
+      vars:
+        evaluation_check_args: "{{ evaluation_check }}"
+  loop: "{{ evaluation_checks }}"
+  loop_control:
+    label: "check/{{ evaluation_check.backend }}"
+    loop_var: evaluation_check

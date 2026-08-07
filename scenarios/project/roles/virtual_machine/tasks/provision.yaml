@@ -1,0 +1,97 @@
+---
+- name: Create ansible user
+  ansible.builtin.user:
+    name: "{{ virtual_machine_user }}"
+    state: present
+    shell: /bin/bash
+    create_home: true
+  become: true
+  delegate_to: "{{ virtual_machine.host }}"
+
+- name: Set password for ansible user
+  ansible.builtin.command:
+    argv:
+      - /bin/sh
+      - -c
+      - "echo {{ virtual_machine_user }}:$(openssl passwd -6 {{ virtual_machine_password | quote }}) | chpasswd -e"
+  changed_when: true
+  no_log: true
+  become: true
+  delegate_to: "{{ virtual_machine.host }}"
+
+- name: Create .ssh directory
+  ansible.builtin.file:
+    path: "/home/{{ virtual_machine_user }}/.ssh"
+    state: directory
+    mode: "0700"
+    owner: "{{ virtual_machine_user }}"
+    group: "{{ virtual_machine_user }}"
+  become: true
+  delegate_to: "{{ virtual_machine.host }}"
+
+- name: Generate SSH keypair
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -t
+      - rsa
+      - -b
+      - "2048"
+      - -f
+      - "/home/{{ virtual_machine_user }}/.ssh/id_rsa"
+      - -N
+      - ""
+    creates: "/home/{{ virtual_machine_user }}/.ssh/id_rsa"
+  become: true
+  become_user: "{{ virtual_machine_user }}"
+  delegate_to: "{{ virtual_machine.host }}"
+
+- name: Set up public key for SSH access
+  ansible.builtin.shell:
+    cmd: cat /home/{{ virtual_machine_user }}/.ssh/id_rsa.pub > /home/{{ virtual_machine_user }}/.ssh/authorized_keys
+    creates: "/home/{{ virtual_machine_user }}/.ssh/authorized_keys"
+  become: true
+  become_user: "{{ virtual_machine_user }}"
+  delegate_to: "{{ virtual_machine.host }}"
+
+- name: Set permissions on authorized_keys
+  ansible.builtin.file:
+    path: "/home/{{ virtual_machine_user }}/.ssh/authorized_keys"
+    mode: "0600"
+    owner: "{{ virtual_machine_user }}"
+    group: "{{ virtual_machine_user }}"
+  become: true
+  delegate_to: "{{ virtual_machine.host }}"
+
+- name: Grant sudo privileges to ansible user
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ virtual_machine_user }}"
+    content: |
+      {{ virtual_machine_user }} ALL=(ALL) NOPASSWD: /usr/bin/ansible-playbook
+      # pragma: whitelist secret
+      {{ virtual_machine_user }} ALL=(ALL) NOPASSWD: /bin/sh
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+  become: true
+  delegate_to: "{{ virtual_machine.host }}"
+
+- name: Fetch private key from remote host to local storage
+  ansible.builtin.fetch:
+    src: "/home/{{ virtual_machine_user }}/.ssh/id_rsa"
+    dest: "{{ virtual_machine_storage.local.directory }}/id_rsa"
+    flat: true
+  become: true
+  delegate_to: "{{ virtual_machine.host }}"
+
+- name: Set permissions on fetched private key
+  ansible.builtin.file:
+    path: "{{ virtual_machine_storage.local.directory }}/id_rsa"
+    mode: "0600"
+
+- name: Write Ansible inventory file to local storage
+  ansible.builtin.copy:
+    content: |
+      [rhel9_servers]
+      rhel9 ansible_host="{{ virtual_machine.host }}" ansible_user="{{ virtual_machine_user }}" ansible_ssh_private_key_file="{{ virtual_machine_storage.local.directory }}/id_rsa" ansible_python_interpreter="{{ virtual_machine.python_interpreter | default('/usr/bin/python3') }}"
+    dest: "{{ virtual_machine_storage.local.directory }}/inventory.ini"
+    mode: "0644"

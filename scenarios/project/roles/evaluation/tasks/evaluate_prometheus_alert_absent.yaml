@@ -1,0 +1,37 @@
+---
+- name: Query Prometheus for active alert instances
+  ansible.builtin.uri:
+    url: "{{ evaluation_prometheus_url }}/api/v1/alerts"
+    method: GET
+    return_content: true
+  register: evaluation_prometheus_response
+
+- name: Parse active firing alerts from response
+  ansible.builtin.set_fact:
+    evaluation_active_alerts: >-
+      {{
+        (evaluation_prometheus_response.content | ansible.builtin.from_json).data.alerts |
+        ansible.builtin.selectattr('state', '==', 'firing') |
+        ansible.builtin.selectattr('labels.alertname', '==', evaluation_check_args.alertName) |
+        list
+      }}
+
+- name: Record alert-absent check result
+  ansible.builtin.set_fact:
+    evaluation_check_passed: "{{ evaluation_active_alerts | length == 0 }}"
+
+- name: Append alert-absent result to evaluation results
+  ansible.builtin.set_fact:
+    evaluation_results: >-
+      {{
+        evaluation_results + [{
+          'backend': evaluation_check_args.backend,
+          'alertName': evaluation_check_args.alertName,
+          'pass': evaluation_check_passed,
+          'message':
+            'pass: alert ' + evaluation_check_args.alertName + ' is not firing'
+            if evaluation_check_passed | bool else
+            'fail: alert ' + evaluation_check_args.alertName + ' is still firing (' +
+            (evaluation_active_alerts | length | string) + ' active instance(s))'
+        }]
+      }}

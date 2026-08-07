@@ -1,0 +1,82 @@
+---
+- name: Gather PolicyReports
+  kubernetes.core.k8s_info:
+    api_version: wgpolicyk8s.io/v1alpha2
+    kind: PolicyReport
+    kubeconfig: "{{ evaluation_cluster.kubeconfig }}"
+    namespace: "{{ evaluation_check_args.resource.namespace | ansible.builtin.default(omit) }}"
+  register: evaluation_polr_result
+
+- name: Gather ClusterPolicyReports
+  kubernetes.core.k8s_info:
+    api_version: wgpolicyk8s.io/v1alpha2
+    kind: ClusterPolicyReport
+    kubeconfig: "{{ evaluation_cluster.kubeconfig }}"
+  register: evaluation_cpolr_result
+
+- name: Combine all reports into one list
+  ansible.builtin.set_fact:
+    evaluation_all_reports: >-
+      {{
+        evaluation_polr_result.resources +
+        evaluation_cpolr_result.resources
+      }}
+
+- name: Filter reports scoped to target resource
+  ansible.builtin.set_fact:
+    evaluation_scoped_reports: >-
+      {{
+        evaluation_all_reports |
+        ansible.builtin.selectattr('scope', 'defined') |
+        ansible.builtin.selectattr('scope.name', '==', evaluation_check_args.resource.name) |
+        ansible.builtin.selectattr('scope.kind', '==', evaluation_check_args.resource.kind) |
+        list
+      }}
+
+- name: Flatten all results from scoped reports
+  ansible.builtin.set_fact:
+    evaluation_all_results: >-
+      {{
+        evaluation_scoped_reports |
+        ansible.builtin.map(attribute='results') |
+        ansible.builtin.flatten
+      }}
+
+- name: Filter results by policyName (or use all results when policyName not set)
+  ansible.builtin.set_fact:
+    evaluation_policy_results: >-
+      {{
+        evaluation_all_results |
+        ansible.builtin.selectattr('policy', '==', evaluation_check_args.policyName) |
+        list
+        if evaluation_check_args.policyName is ansible.builtin.defined
+        else evaluation_all_results
+      }}
+
+- name: Find results matching passingResult
+  ansible.builtin.set_fact:
+    evaluation_matching_results: >-
+      {{
+        evaluation_policy_results |
+        ansible.builtin.selectattr('result', '==', evaluation_check_args.passingResult) |
+        list
+      }}
+
+- name: Record check pass result
+  ansible.builtin.set_fact:
+    evaluation_check_passed: "{{ evaluation_matching_results | length > 0 }}"
+
+- name: Append check result to evaluation results
+  ansible.builtin.set_fact:
+    evaluation_results: >-
+      {{
+        evaluation_results + [{
+          'backend': evaluation_check_args.backend,
+          'pass': evaluation_check_passed,
+          'message':
+            'pass: ' + (evaluation_matching_results | length | string) + ' result(s) matching ' + evaluation_check_args.passingResult
+            if evaluation_check_passed | bool else
+            'fail: no results matching ' + evaluation_check_args.passingResult + ' for ' +
+            evaluation_check_args.resource.kind + '/' + evaluation_check_args.resource.name
+        }]
+      }}

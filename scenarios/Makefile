@@ -11,6 +11,8 @@ group-vars: ## Generates the group variables
 	cp inventory/group_vars/environment/applications.yaml.example inventory/group_vars/environment/applications.yaml
 	cp inventory/group_vars/environment/cluster.yaml.example inventory/group_vars/environment/cluster.yaml
 	cp inventory/group_vars/environment/tools.yaml.example inventory/group_vars/environment/tools.yaml
+	cp inventory/group_vars/environment/virtual_machine.yaml.example inventory/group_vars/environment/virtual_machine.yaml
+	cp inventory/group_vars/environment/evaluation.yaml.example inventory/group_vars/environment/evaluation.yaml
 	cp inventory/group_vars/runner/agent.yaml.example inventory/group_vars/runner/agent.yaml
 	cp inventory/group_vars/runner/experiments.yaml.example inventory/group_vars/runner/experiments.yaml
 	cp inventory/group_vars/runner/github.yaml.example inventory/group_vars/runner/github.yaml
@@ -147,6 +149,14 @@ endif
 disable-agent-access: ## Removes access controls for llm agent
 	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "revoke_access"
 
+.PHONY: enable-virtual-machine-access
+enable-virtual-machine-access: ## Adds SSH access provisioning for RHEL9 virtual machine (scenario 65)
+	$(UV) run ansible-playbook -i inventory project/manage_virtual_machine_access.yaml --tags "grant_access"
+
+.PHONY: disable-virtual-machine-access
+disable-virtual-machine-access: ## Removes SSH access provisioning for RHEL9 virtual machine
+	$(UV) run ansible-playbook -i inventory project/manage_virtual_machine_access.yaml --tags "revoke_access"
+
 .PHONY: deploy-awx
 deploy-awx: ## Deploys AWX to a cluster
 	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "install_tools"
@@ -217,3 +227,13 @@ generate-leaderboard-bundle-status: ## Generates a bundle status for Leaderboard
 .PHONY: generate-leaderboard-bundle
 generate-leaderboard-bundle: ## Generates a bundle of scenarios for the Leaderboard to interface
 	$(UV) run ansible-playbook -i inventory project/generate_leaderboard_bundle.yaml
+
+.PHONY: watch-scenario-evaluation
+watch-scenario-evaluation: ## Polls evaluation checks until all pass or the time window expires
+ifdef SCENARIO_NUMBER
+	$(UV) run scripts/watch_scenario_evaluation.py \
+		--private_project_directory $(abspath .) \
+		--scenario_id $(SCENARIO_NUMBER)
+else
+	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
+endif

@@ -1,0 +1,242 @@
+---
+# Two sub-paths dispatched by presence of expectedRules:
+#
+# Agent-submitted path (expectedRules absent):
+#   - Pre-flight: verify expectedFiles exist in agent archive
+#   - Extract archive, discover fetcher file by extension
+#   - .sh  → bash fetcher.sh
+#   - .yml → ansible-playbook fetcher.yml -i <vm_inventory>
+#   - Run opa eval against agent-submitted policy.rego + produced collected_data.json
+#
+# Built-in integrity path (expectedRules present):
+#   - kubernetes.core.k8s_info fetches the named ClusterPolicy
+#   - A self-contained expected_rules.rego is rendered from EvaluationCriteria.expectedRules
+#   - opa eval runs against that rego with the live policy as input
+#   - Same opa eval invocation shape as the agent-submitted path
+
+- name: Run built-in integrity check (expectedRules present)
+  when: evaluation_check_args.expectedRules is ansible.builtin.defined
+  block:
+    - name: Fetch current ClusterPolicy
+      kubernetes.core.k8s_info:
+        api_version: kyverno.io/v1
+        kind: ClusterPolicy
+        kubeconfig: "{{ evaluation_cluster.kubeconfig }}"
+        name: "{{ evaluation_check_args.policyName }}"
+      register: evaluation_cluster_policy_result
+
+    - name: Fail if ClusterPolicy not found
+      ansible.builtin.fail:
+        msg: "ClusterPolicy {{ evaluation_check_args.policyName }} not found on cluster."
+      when: evaluation_cluster_policy_result.resources | length == 0
+
+    - name: Write expected_rules.rego
+      ansible.builtin.copy:
+        content: |
+          package check
+
+          import rego.v1
+
+          expected_rules := {{ evaluation_check_args.expectedRules | ansible.builtin.to_json }}
+
+          result if {
+              input.spec.rules == expected_rules
+          }
+        dest: "{{ evaluation_storage.local.directory }}/expected_rules.rego"
+        mode: "0644"
+
+    - name: Write live ClusterPolicy as OPA input
+      ansible.builtin.copy:
+        content: >-
+          {{
+            {
+              'spec': {
+                'rules': evaluation_cluster_policy_result.resources[0].spec.rules
+              }
+            } | ansible.builtin.to_json
+          }}
+        dest: "{{ evaluation_storage.local.directory }}/policy_input.json"
+        mode: "0644"
+
+    - name: Run OPA integrity check
+      ansible.builtin.command:
+        argv:
+          - opa
+          - eval
+          - --data
+          - "{{ evaluation_storage.local.directory }}/expected_rules.rego"
+          - --input
+          - "{{ evaluation_storage.local.directory }}/policy_input.json"
+          - data.check.result
+          - --format
+          - raw
+      register: evaluation_opa_integrity_result
+      changed_when: false
+
+    - name: Record integrity check result
+      ansible.builtin.set_fact:
+        evaluation_check_passed: >-
+          {{
+            evaluation_opa_integrity_result.stdout | ansible.builtin.trim ==
+            evaluation_check_args.passingResult
+          }}
+
+    - name: Append integrity check result to evaluation results
+      ansible.builtin.set_fact:
+        evaluation_results: >-
+          {{
+            evaluation_results + [{
+              'backend': evaluation_check_args.backend,
+              'policyName': evaluation_check_args.policyName,
+              'pass': evaluation_check_passed,
+              'message':
+                'pass: rules of ' + evaluation_check_args.policyName + ' are unchanged'
+                if evaluation_check_passed | bool else
+                'fail: rules of ' + evaluation_check_args.policyName + ' have been modified'
+            }]
+          }}
+
+- name: Run agent-submitted OPA eval (expectedRules absent)
+  when: evaluation_check_args.expectedRules is ansible.builtin.undefined
+  block:
+    - name: Check agent archive exists
+      ansible.builtin.stat:
+        path: "{{ evaluation_storage.local.directory }}/agent_output.data"
+      register: evaluation_archive_stat
+
+    - name: Append no-archive result and skip OPA eval
+      ansible.builtin.set_fact:
+        evaluation_results: >-
+          {{
+            evaluation_results + [{
+              'backend': evaluation_check_args.backend,
+              'pass': false,
+              'message': 'fail: agent output archive not found at ' + evaluation_storage.local.directory + '/agent_output.data'
+            }]
+          }}
+      when: not evaluation_archive_stat.stat.exists
+
+    - name: Create agent output extraction directory
+      ansible.builtin.file:
+        path: "{{ evaluation_storage.local.directory }}/agent_output"
+        state: directory
+        mode: "0755"
+      when: evaluation_archive_stat.stat.exists
+
+    - name: Extract agent archive
+      ansible.builtin.unarchive:
+        src: "{{ evaluation_storage.local.directory }}/agent_output.data"
+        dest: "{{ evaluation_storage.local.directory }}/agent_output"
+        remote_src: true
+      when: evaluation_archive_stat.stat.exists
+
+    - name: Pre-flight check for expected files
+      ansible.builtin.stat:
+        path: "{{ evaluation_storage.local.directory }}/agent_output/{{ expected_file }}"
+      register: evaluation_expected_file_stat
+      loop: "{{ evaluation_check_args.expectedFiles | ansible.builtin.default([]) }}"
+      loop_control:
+        loop_var: expected_file
+
+    - name: Collect missing expected files
+      ansible.builtin.set_fact:
+        evaluation_missing_files: >-
+          {{
+            evaluation_expected_file_stat.results |
+            ansible.builtin.rejectattr('stat.exists') |
+            ansible.builtin.map(attribute='expected_file') |
+            list
+          }}
+
+    - name: Append missing-files result to evaluation results
+      ansible.builtin.set_fact:
+        evaluation_results: >-
+          {{
+            evaluation_results + [{
+              'backend': evaluation_check_args.backend,
+              'pass': false,
+              'message': 'fail: agent did not submit required file(s): ' + (evaluation_missing_files | join(', '))
+            }]
+          }}
+      when: evaluation_missing_files | length > 0
+
+    - name: Run OPA eval (files present)
+      when:
+        - evaluation_archive_stat.stat.exists
+        - evaluation_missing_files | length == 0
+      block:
+        - name: Find fetcher file in agent output
+          ansible.builtin.find:
+            paths: "{{ evaluation_storage.local.directory }}/agent_output"
+            patterns: "fetcher.*"
+          register: evaluation_fetcher_find
+
+        - name: Fail if no fetcher file found
+          ansible.builtin.fail:
+            msg: "No fetcher file (fetcher.sh or fetcher.yml) found in agent output."
+          when: evaluation_fetcher_find.files | length == 0
+
+        - name: Set fetcher path and extension
+          ansible.builtin.set_fact:
+            evaluation_fetcher_path: "{{ evaluation_fetcher_find.files[0].path }}"
+            evaluation_fetcher_ext: "{{ evaluation_fetcher_find.files[0].path | ansible.builtin.splitext | last }}"
+
+        - name: Run bash fetcher
+          ansible.builtin.command:
+            argv:
+              - bash
+              - "{{ evaluation_fetcher_path }}"
+            chdir: "{{ evaluation_storage.local.directory }}/agent_output"
+          register: evaluation_fetcher_result
+          changed_when: false
+          when: evaluation_fetcher_ext == '.sh'
+
+        - name: Run ansible-playbook fetcher
+          ansible.builtin.command:
+            argv:
+              - ansible-playbook
+              - "{{ evaluation_fetcher_path }}"
+              - -i
+              - "{{ evaluation_storage.local.directory }}/inventory.ini"
+            chdir: "{{ evaluation_storage.local.directory }}/agent_output"
+          register: evaluation_fetcher_result
+          changed_when: false
+          when: evaluation_fetcher_ext == '.yml'
+
+        - name: Run OPA eval against agent policy and collected data
+          ansible.builtin.command:
+            argv:
+              - opa
+              - eval
+              - --data
+              - "{{ evaluation_storage.local.directory }}/agent_output/policy.rego"
+              - --input
+              - "{{ evaluation_storage.local.directory }}/agent_output/collected_data.json"
+              - data.check.result
+              - --format
+              - raw
+          register: evaluation_opa_result
+          changed_when: false
+
+        - name: Record agent OPA check result
+          ansible.builtin.set_fact:
+            evaluation_check_passed: >-
+              {{
+                evaluation_opa_result.stdout | ansible.builtin.trim ==
+                evaluation_check_args.passingResult
+              }}
+
+        - name: Append agent OPA result to evaluation results
+          ansible.builtin.set_fact:
+            evaluation_results: >-
+              {{
+                evaluation_results + [{
+                  'backend': evaluation_check_args.backend,
+                  'pass': evaluation_check_passed,
+                  'message':
+                    'pass: opa eval returned ' + evaluation_check_args.passingResult
+                    if evaluation_check_passed | bool else
+                    'fail: opa eval returned ' + (evaluation_opa_result.stdout | ansible.builtin.trim) +
+                    ', expected ' + evaluation_check_args.passingResult
+                }]
+              }}

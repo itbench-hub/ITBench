@@ -84,3 +84,26 @@
   loop_control:
     label: scenario-{{ scenario.id }}
     loop_var: scenario
+
+- name: Generate scenario evaluation criteria
+  ansible.builtin.copy:
+    content: |
+      {{
+        lookup('ansible.builtin.template', 'templates/manifests/evaluation_criteria.j2') |
+        ansible.builtin.from_yaml |
+        ansible.builtin.to_nice_yaml(indent=2, width=160)
+      }}
+    dest: |-
+      {{
+        [
+          scenarios_directory_paths[scenario.id],
+          "evaluation_criteria.yaml"
+        ] |
+        ansible.builtin.path_join
+      }}
+    force: false
+    mode: "0644"
+  loop: "{{ generator_library_index.scenarios }}"
+  loop_control:
+    label: scenario-{{ scenario.id }}
+    loop_var: scenario
