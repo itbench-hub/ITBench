@@ -1,0 +1,102 @@
+---
+- name: Verify observability vendor agents were installed
+  hosts:
+    - localhost
+  tasks:
+    - name: Resolve vendor manifest paths from environment
+      ansible.builtin.set_fact:
+        molecule_datadog_manifest: "{{ lookup('ansible.builtin.env', 'DATADOG_MANIFEST_PATH') }}"
+        molecule_dynatrace_dynakube: "{{ lookup('ansible.builtin.env', 'DYNATRACE_DYNAKUBE_PATH') }}"
+
+    - name: Skip verification when no vendor credentials were provided
+      ansible.builtin.meta: end_play
+      when:
+        - molecule_datadog_manifest | ansible.builtin.length == 0
+        - molecule_dynatrace_dynakube | ansible.builtin.length == 0
+
+    - name: Include vendor registry variables
+      ansible.builtin.include_vars:
+        file: |-
+          {{
+            [
+              playbook_dir, "..", "..", "..", "tools", "defaults", "main", "vendors.yaml"
+            ] | ansible.builtin.path_join
+          }}
+
+    - name: Verify Datadog
+      when:
+        - molecule_datadog_manifest | ansible.builtin.length > 0
+      block:
+        - name: Retrieve Datadog namespace
+          kubernetes.core.k8s_info:
+            api_version: v1
+            kind: Namespace
+            name: "{{ tools_vendors.datadog.kubernetes.namespace }}"
+            kubeconfig: "{{ cluster.kubeconfig }}"
+          register: molecule_datadog_ns
+
+        - name: Validate Datadog namespace exists and is ITBench-owned
+          ansible.builtin.assert:
+            that:
+              - molecule_datadog_ns.resources | ansible.builtin.length == 1
+              - >-
+                molecule_datadog_ns.resources[0].metadata.labels['app.kubernetes.io/managed-by'] | ansible.builtin.default('')
+                == 'ITBench'
+            fail_msg: Datadog namespace missing or not ITBench-owned.
+            success_msg: Datadog namespace present and ITBench-owned.
+
+        - name: Retrieve ITBench-owned DatadogAgent resources
+          kubernetes.core.k8s_info:
+            api_version: datadoghq.com/v2alpha1
+            kind: DatadogAgent
+            namespace: "{{ tools_vendors.datadog.kubernetes.namespace }}"
+            label_selectors:
+              - itbench.io/observability-vendor=datadog
+            kubeconfig: "{{ cluster.kubeconfig }}"
+          register: molecule_datadog_agents
+
+        - name: Validate a DatadogAgent resource is present
+          ansible.builtin.assert:
+            that:
+              - molecule_datadog_agents.resources | ansible.builtin.length == 1
+            fail_msg: DatadogAgent resource not found. Installation failed.
+            success_msg: DatadogAgent resource found.
+
+    - name: Verify Dynatrace
+      when:
+        - molecule_dynatrace_dynakube | ansible.builtin.length > 0
+      block:
+        - name: Retrieve Dynatrace namespace
+          kubernetes.core.k8s_info:
+            api_version: v1
+            kind: Namespace
+            name: "{{ tools_vendors.dynatrace.kubernetes.namespace }}"
+            kubeconfig: "{{ cluster.kubeconfig }}"
+          register: molecule_dynatrace_ns
+
+        - name: Validate Dynatrace namespace exists and is ITBench-owned
+          ansible.builtin.assert:
+            that:
+              - molecule_dynatrace_ns.resources | ansible.builtin.length == 1
+              - >-
+                molecule_dynatrace_ns.resources[0].metadata.labels['app.kubernetes.io/managed-by'] | ansible.builtin.default('')
+                == 'ITBench'
+            fail_msg: Dynatrace namespace missing or not ITBench-owned.
+            success_msg: Dynatrace namespace present and ITBench-owned.
+
+        - name: Retrieve ITBench-owned DynaKube resources
+          kubernetes.core.k8s_info:
+            api_version: dynatrace.com/v1beta3
+            kind: DynaKube
+            namespace: "{{ tools_vendors.dynatrace.kubernetes.namespace }}"
+            label_selectors:
+              - itbench.io/observability-vendor=dynatrace
+            kubeconfig: "{{ cluster.kubeconfig }}"
+          register: molecule_dynatrace_dynakubes
+
+        - name: Validate a DynaKube resource is present
+          ansible.builtin.assert:
+            that:
+              - molecule_dynatrace_dynakubes.resources | ansible.builtin.length == 1
+            fail_msg: DynaKube resource not found. Installation failed.
+            success_msg: DynaKube resource found.

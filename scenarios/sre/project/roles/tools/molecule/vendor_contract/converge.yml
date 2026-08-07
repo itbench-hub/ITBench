@@ -1,0 +1,120 @@
+---
+# Credential-free, cluster-free contract tests for vendor manifest validation.
+# Exercises the extracted validation task against fixture manifests and asserts
+# that valid input passes and invalid input is rejected.
+- name: Vendor manifest validation contract tests
+  hosts:
+    - localhost
+  gather_facts: false
+  vars:
+    tools_datadog_namespace: datadog
+    tools_datadog_secret_name: datadog-secret
+    tools_datadog_api_key_name: api-key
+    tools_datadog_app_key_name: app-key
+    validate_task: >-
+      {{
+        [playbook_dir, "..", "..", "tasks", "validate_datadog_manifest.yaml"]
+        | ansible.builtin.path_join
+      }}
+  tasks:
+    - name: Valid manifest passes validation
+      block:
+        - name: Parse valid fixture
+          ansible.builtin.set_fact:
+            tools_datadog_documents: "{{ lookup('ansible.builtin.file', 'files/datadog_valid.yaml') | ansible.builtin.from_yaml_all | list }}"
+
+        - name: Validate valid fixture
+          ansible.builtin.include_tasks: "{{ validate_task }}"
+
+        - name: Assert app-key requirement detected
+          ansible.builtin.assert:
+            that:
+              - tools_datadog_requires_app_key
+            fail_msg: Valid fixture references appSecret but requirement not detected.
+            success_msg: Valid manifest accepted and app-key requirement detected.
+
+    - name: Manifest containing a Secret document is rejected
+      block:
+        - name: Parse secret-bearing fixture
+          ansible.builtin.set_fact:
+            tools_datadog_documents: "{{ lookup('ansible.builtin.file', 'files/datadog_with_secret.yaml') | ansible.builtin.from_yaml_all | list }}"
+
+        - name: Validate secret-bearing fixture (should fail)
+          ansible.builtin.include_tasks: "{{ validate_task }}"
+          register: contract_secret_result
+
+        - name: Fail because validation did not reject the Secret document
+          ansible.builtin.fail:
+            msg: Manifest containing a Secret document was NOT rejected.
+      rescue:
+        - name: Confirm secret-bearing manifest was rejected
+          ansible.builtin.debug:
+            msg: Manifest containing a Secret document was correctly rejected.
+
+    - name: Manifest with mismatched Secret references is rejected
+      block:
+        - name: Parse mismatched fixture
+          ansible.builtin.set_fact:
+            tools_datadog_documents: "{{ lookup('ansible.builtin.file', 'files/datadog_mismatched_secret.yaml') | ansible.builtin.from_yaml_all | list }}"
+
+        - name: Validate mismatched fixture (should fail)
+          ansible.builtin.include_tasks: "{{ validate_task }}"
+
+        - name: Fail because validation did not reject the mismatch
+          ansible.builtin.fail:
+            msg: Manifest with mismatched Secret references was NOT rejected.
+      rescue:
+        - name: Confirm mismatched manifest was rejected
+          ansible.builtin.debug:
+            msg: Manifest with mismatched Secret references was correctly rejected.
+
+    - name: Non-secret vendor projection excludes secret keys (allowlist)
+      vars:
+        awx_configuration:
+          vendors:
+            datadog:
+              enabled: true
+              manifest_path: p
+              secret_name: s
+              api_key_name: a
+              app_key_name: b
+              manifest: SECRET
+              api_key: SECRET
+              app_key: SECRET
+              token: FUTURE_SECRET
+        awx_vendor_nonsecret_allowlist:
+          - enabled
+          - manifest_path
+          - secret_name
+          - api_key_name
+          - app_key_name
+          - dynakube_path
+          - dynakube_api_version
+      block:
+        - name: Build projection
+          ansible.builtin.set_fact:
+            projected: >-
+              {{
+                dict(
+                  awx_configuration.vendors.keys()
+                  | zip(
+                      awx_configuration.vendors.keys()
+                      | map('extract', awx_configuration.vendors)
+                      | map('dict2items')
+                      | map('selectattr', 'key', 'in', awx_vendor_nonsecret_allowlist)
+                      | map('list') | map('items2dict')
+                    )
+                )
+              }}
+
+        - name: Assert secrets are excluded from projection
+          ansible.builtin.assert:
+            that:
+              - "'manifest' not in projected.datadog"
+              - "'api_key' not in projected.datadog"
+              - "'app_key' not in projected.datadog"
+              - "'token' not in projected.datadog"
+              - projected.datadog.enabled
+              - projected.datadog.manifest_path == 'p'
+            fail_msg: Projection leaked a secret field or dropped a non-secret field.
+            success_msg: Non-secret projection correctly excludes all secret fields.
