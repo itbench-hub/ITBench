@@ -1,0 +1,68 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [
+        "HighRequestLatency"
+    ],
+    "category": "sre",
+    "complexity": "high",
+    "description": "This scenario simulates etcd storage pressure by filling the cluster's etcd database with ConfigMaps, causing increased API server latency and degrading cluster-wide operations including the OpenTelemetry Demo application.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "frontend",
+                                "namespace": "otel-demo"
+                            }
+                        }
+                    },
+                    "id": "exhausted-etcd-database-storage"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": [
+            {
+                "id": "opentelemetry-demo"
+            }
+        ]
+    },
+    "id": 116,
+    "index": 116,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n otel-demo delete configmap -l app=etcd-storage-fill",
+                        "text": "Remove the ConfigMaps that are consuming etcd storage."
+                    },
+                    {
+                        "text": "Compact and defragment the etcd database to reclaim storage space."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "text": "Identify and remove unnecessary resources (completed jobs, orphaned ConfigMaps) to reduce etcd storage usage."
+                    },
+                    {
+                        "text": "Increase the etcd storage quota if the current limit is too low for the cluster workload."
+                    }
+                ]
+            }
+        ]
+    ],
+    "tags": [
+        "Performance"
+    ]
+}
