@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-404
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: recommendation
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo rollout undo deployment/recommendation
+            text: Revert the last change done to the manifest.
+      - steps:
+          - command: kubectl -n otel-demo edit deployment recommendation
+            text: Manually edit the manifest and replace the invalid image with the correct value.
