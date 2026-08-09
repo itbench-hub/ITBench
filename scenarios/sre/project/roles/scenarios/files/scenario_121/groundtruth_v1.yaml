@@ -1,0 +1,84 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-121
+spec:
+  alerts:
+    - group_id: product-catalog-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Pod product-catalog in namespace otel-demo has been in a non-ready state due to excessive resource requests preventing scheduling
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in service frontend in namespace otel-demo is elevated due to product-catalog service unavailability
+  groups:
+    - id: product-catalog-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - product-catalog\b
+      root_cause: true
+    - id: product-catalog-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - product-catalog-.*
+    - id: product-catalog-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - product-catalog\b
+    - id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - frontend\b
+    - id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - frontend-.*
+  aliases:
+    - - product-catalog-deployment-1
+      - product-catalog-pod-1
+    - - product-catalog-service-1
+      - product-catalog-pod-1
+    - - frontend-service-1
+      - frontend-pod-1
+  propagations:
+    - source: product-catalog-deployment-1
+      target: product-catalog-pod-1
+      condition: Deployment resource requests set to 64Gi memory and 32 CPU exceeding all node capacities
+      effect: Product-catalog pod stuck in Pending state as no node has sufficient resources to schedule it
+    - source: product-catalog-pod-1
+      target: product-catalog-service-1
+      condition: Product-catalog pod is in Pending state with no healthy containers
+      effect: Product-catalog service has no ready endpoints and cannot serve requests
+    - source: product-catalog-service-1
+      target: frontend-service-1
+      condition: Frontend service depends on product-catalog service for product listings and details
+      effect: Frontend experiences errors when calling product-catalog service, increasing error rate
+  fault:
+    - category: Modify
+      condition: Resource requests set to excessive values (64Gi memory, 32 CPU) preventing pod scheduling
+      entity:
+        group_id: product-catalog-deployment-1
+        kind: Deployment
+        name: product-catalog
+      fault_mechanism: Node resource exhaustion via excessive resource requests simulating misconfigured resource limits or capacity planning failure
+  recommendedActions:
+    - solution:
+        actions:
+          - Check pod events using kubectl describe pod -l app=product-catalog -n otel-demo for scheduling failures
+          - Identify the excessive resource requests in the deployment spec
+          - Reduce resource requests to reasonable values (e.g., 256Mi memory, 250m CPU)
+          - Verify product-catalog pod transitions to Running and service endpoints become available
+        id: fix-resource-requests
+    - solution:
+        actions:
+          - Rollback the deployment using kubectl rollout undo deployment/product-catalog -n otel-demo
+          - Verify pod is scheduled and running with previous resource configuration
+          - Confirm frontend error rate returns to normal
+        id: rollback-deployment
