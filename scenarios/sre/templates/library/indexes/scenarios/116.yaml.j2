@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: sre
+complexity: high
+description: This scenario simulates etcd storage pressure by filling the cluster's etcd database with ConfigMaps, causing increased API server latency and degrading cluster-wide operations including the OpenTelemetry Demo application.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: frontend
+          namespace: {{ releases["applications"]["opentelemetry_demo"]["kubernetes"]["namespace"] }}
+    id: exhausted-etcd-database-storage
+environment:
+  applications:
+  - id: opentelemetry-demo
+id: 116
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

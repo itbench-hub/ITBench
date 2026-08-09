@@ -1,0 +1,96 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/fault.json",
+    "alerts": {
+        "goldenSignal": [
+            "HighRequestLatency"
+        ]
+    },
+    "arguments": {
+        "jsonSchema": {
+            "properties": {
+                "kubernetesObject": {
+                    "properties": {
+                        "apiVersion": {
+                            "enum": [
+                                "apps/v1"
+                            ],
+                            "type": "string"
+                        },
+                        "kind": {
+                            "enum": [
+                                "Deployment",
+                                "StatefulSet"
+                            ],
+                            "type": "string"
+                        },
+                        "metadata": {
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "namespace": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "namespace"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "apiVersion",
+                        "kind",
+                        "metadata"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "kubernetesObject"
+            ],
+            "type": "object"
+        }
+    },
+    "description": "This fault creates etcd storage pressure by writing a large number of ConfigMaps, causing increased API server latency and degraded cluster performance. This simulates real-world incidents where etcd storage growth causes progressive degradation of cluster operations.",
+    "expectation": "The etcd database will experience increased storage pressure. The Kubernetes API server will exhibit higher latency for read and write operations.",
+    "id": "exhausted-etcd-database-storage",
+    "index": 32,
+    "name": "Exhausted Etcd Database Storage",
+    "platform": "Kubernetes",
+    "resources": [
+        "https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/",
+        "https://etcd.io/docs/v3.5/op-guide/maintenance/",
+        "https://kubernetes.io/docs/concepts/overview/components/#etcd",
+        "https://kubernetes.io/docs/tasks/debug/debug-cluster/"
+    ],
+    "solutions": {
+        "templates": [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete configmap -l app=etcd-storage-fill",
+                        "text": "Remove the ConfigMaps that are consuming etcd storage."
+                    },
+                    {
+                        "text": "Compact and defragment the etcd database to reclaim storage space."
+                    }
+                ]
+            },
+            {
+                "steps": [
+                    {
+                        "text": "Identify and remove unnecessary resources (completed jobs, orphaned ConfigMaps) to reduce etcd storage usage."
+                    },
+                    {
+                        "text": "Increase the etcd storage quota if the current limit is too low for the cluster workload."
+                    }
+                ]
+            }
+        ]
+    },
+    "tags": [
+        "Performance"
+    ]
+}
