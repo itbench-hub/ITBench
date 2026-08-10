@@ -6,76 +6,45 @@
     "arguments": {
         "jsonSchema": {
             "properties": {
-                "kubernetesObject": {
+                "virtualMachine": {
                     "properties": {
-                        "apiVersion": {
-                            "enum": [
-                                "apps/v1"
-                            ],
+                        "hostname": {
                             "type": "string"
-                        },
-                        "kind": {
-                            "enum": [
-                                "Deployment"
-                            ],
-                            "type": "string"
-                        },
-                        "metadata": {
-                            "properties": {
-                                "name": {
-                                    "type": "string"
-                                },
-                                "namespace": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "name",
-                                "namespace"
-                            ],
-                            "type": "object"
                         }
                     },
                     "required": [
-                        "apiVersion",
-                        "kind",
-                        "metadata"
+                        "hostname"
                     ],
                     "type": "object"
                 }
             },
             "required": [
-                "kubernetesObject"
+                "virtualMachine"
             ],
             "type": "object"
         }
     },
-    "description": "This fault deploys a Pod that violates active security policies, such as pulling from an untrusted image registry or permitting privilege escalation.",
-    "expectation": "Policy evaluation will flag the Pod as non-compliant, producing a policy failure result for the target resource.",
-    "id": "non-compliant-kubernetes-pod-deployment",
+    "description": "This fault enables X11 forwarding in /etc/ssh/sshd_config on a RHEL9 host, violating the requirement for it to be disabled.",
+    "expectation": "OPA evaluation of the collected SSH configuration data will return false, indicating the host is non-compliant with the applicable benchmark rule.",
+    "id": "enabled-x11-forwarding-rhel9-sshd",
     "index": 33,
-    "name": "Non Compliant Kubernetes Pod Deployment",
-    "platform": "Kubernetes",
+    "name": "Enabled X11 Forwarding RHEL9 SSHD",
+    "platform": "RHEL9",
     "resources": [
-        "https://kubernetes.io/docs/concepts/security/pod-security-standards/"
+        "https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/securing_networks/assembly_using-secure-communications-between-two-systems-with-openssh_securing-networks"
     ],
     "solutions": {
         "templates": [
             {
                 "steps": [
                     {
-                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
-                        "text": "Delete the non-compliant Pod."
-                    },
-                    {
-                        "text": "Author and apply a policy that enforces the required security controls for the workload."
+                        "text": "Set X11Forwarding to no in /etc/ssh/sshd_config and restart the sshd service."
                     }
                 ]
             }
         ]
     },
     "tags": [
-        "Compliance",
-        "Deployment"
+        "Compliance"
     ]
 }

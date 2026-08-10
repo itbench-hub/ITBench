@@ -1,9 +1,7 @@
 {
     "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/fault.json",
     "alerts": {
-        "goldenSignal": [
-            "HighRequestErrorRate"
-        ]
+        "application": []
     },
     "arguments": {
         "jsonSchema": {
@@ -12,13 +10,13 @@
                     "properties": {
                         "apiVersion": {
                             "enum": [
-                                "v1"
+                                "apps/v1"
                             ],
                             "type": "string"
                         },
                         "kind": {
                             "enum": [
-                                "Secret"
+                                "Deployment"
                             ],
                             "type": "string"
                         },
@@ -52,42 +50,32 @@
             "type": "object"
         }
     },
-    "description": "This fault corrupts a Kubernetes Secret by replacing its data with invalid credentials, simulating real-world incidents where secret rotation failures, registry authentication issues, or Vault access problems cause service outages.",
-    "expectation": "Workloads that depend on the corrupted Secret will fail to authenticate with external services.",
-    "id": "corrupted-kubernetes-secret-credentials",
-    "index": 36,
-    "name": "Corrupted Kubernetes Secret Credentials",
+    "description": "This fault deploys a Pod that violates active security policies, such as pulling from an untrusted image registry or permitting privilege escalation.",
+    "expectation": "Policy evaluation will flag the Pod as non-compliant, producing a policy failure result for the target resource.",
+    "id": "non-compliant-kubernetes-pod-deployment",
+    "index": 34,
+    "name": "Non Compliant Kubernetes Pod Deployment",
     "platform": "Kubernetes",
     "resources": [
-        "https://kubernetes.io/docs/concepts/configuration/secret/",
-        "https://kubernetes.io/docs/tasks/configmap-secret/managing-secret-using-kubectl/",
-        "https://kubernetes.io/docs/reference/kubernetes-api/config-and-storage-resources/secret-v1/",
-        "https://kubernetes.io/docs/tasks/debug/debug-application/"
+        "https://kubernetes.io/docs/concepts/security/pod-security-standards/"
     ],
     "solutions": {
         "templates": [
             {
                 "steps": [
                     {
-                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get secret {{ args.kubernetesObject.metadata.name }} -o yaml",
-                        "text": "Inspect the corrupted secret to identify the invalid data."
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                        "text": "Delete the non-compliant Pod."
                     },
                     {
-                        "text": "Restore the secret with correct credentials from the credential management system."
-                    }
-                ]
-            },
-            {
-                "steps": [
-                    {
-                        "text": "Rotate the credentials in the external system and update the Kubernetes Secret to match."
+                        "text": "Author and apply a policy that enforces the required security controls for the workload."
                     }
                 ]
             }
         ]
     },
     "tags": [
-        "Authentication",
+        "Compliance",
         "Deployment"
     ]
 }

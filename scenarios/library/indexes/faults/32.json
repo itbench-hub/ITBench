@@ -6,45 +6,76 @@
     "arguments": {
         "jsonSchema": {
             "properties": {
-                "virtualMachine": {
+                "kubernetesObject": {
                     "properties": {
-                        "hostname": {
+                        "apiVersion": {
+                            "enum": [
+                                "apps/v1"
+                            ],
                             "type": "string"
+                        },
+                        "kind": {
+                            "enum": [
+                                "Deployment"
+                            ],
+                            "type": "string"
+                        },
+                        "metadata": {
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "namespace": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "namespace"
+                            ],
+                            "type": "object"
                         }
                     },
                     "required": [
-                        "hostname"
+                        "apiVersion",
+                        "kind",
+                        "metadata"
                     ],
                     "type": "object"
                 }
             },
             "required": [
-                "virtualMachine"
+                "kubernetesObject"
             ],
             "type": "object"
         }
     },
-    "description": "This fault enables X11 forwarding in /etc/ssh/sshd_config on a RHEL9 host, violating the requirement for it to be disabled.",
-    "expectation": "OPA evaluation of the collected SSH configuration data will return false, indicating the host is non-compliant with the applicable benchmark rule.",
-    "id": "enabled-x11-forwarding-rhel9-sshd",
+    "description": "This fault deploys a Kubernetes workload with hostNetwork set to true, granting the container access to the host network namespace.",
+    "expectation": "Kyverno PolicyReport will record a policy failure against the Deployment for violating the disallow-host-namespaces rule.",
+    "id": "active-host-network-kubernetes-deployment",
     "index": 32,
-    "name": "Enabled X11 Forwarding RHEL9 SSHD",
-    "platform": "RHEL9",
+    "name": "Active Host Network Kubernetes Deployment",
+    "platform": "Kubernetes",
     "resources": [
-        "https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/securing_networks/assembly_using-secure-communications-between-two-systems-with-openssh_securing-networks"
+        "https://kubernetes.io/docs/concepts/security/pod-security-standards/"
     ],
     "solutions": {
         "templates": [
             {
                 "steps": [
                     {
-                        "text": "Set X11Forwarding to no in /etc/ssh/sshd_config and restart the sshd service."
+                        "command": "kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+                        "text": "Delete the non-compliant Deployment that uses hostNetwork."
+                    },
+                    {
+                        "text": "Author and apply a Kyverno ClusterPolicy that disallows hostNetwork on all workloads."
                     }
                 ]
             }
         ]
     },
     "tags": [
-        "Compliance"
+        "Compliance",
+        "Deployment"
     ]
 }
