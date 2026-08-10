@@ -1,0 +1,32 @@
+---
+- name: Verify revoke access succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Verify ansible-test user was removed from container
+      community.docker.docker_container_exec:
+        container: virtual-machine-test
+        command: id ansible-test
+      register: _user_check
+      failed_when: false
+
+    - name: Assert user no longer exists
+      ansible.builtin.assert:
+        that:
+          - _user_check.rc != 0
+        fail_msg: ansible-test user still exists. Revoke access failed.
+        success_msg: ansible-test user was successfully removed.
+
+    - name: Verify sudoers file was removed from container
+      community.docker.docker_container_exec:
+        container: virtual-machine-test
+        command: test -f /etc/sudoers.d/ansible-test
+      register: _sudoers_check
+      failed_when: false
+
+    - name: Assert sudoers file no longer exists
+      ansible.builtin.assert:
+        that:
+          - _sudoers_check.rc != 0
+        fail_msg: sudoers file still exists. Revoke access failed.
+        success_msg: sudoers file was successfully removed.

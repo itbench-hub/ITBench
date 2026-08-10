@@ -1,0 +1,56 @@
+---
+- name: Destroy test environment
+  hosts:
+    - localhost
+  tasks:
+    - name: Import cluster role to set platform and provider variables
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Delete namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Namespace
+        name: non-compliant-k8s-pod-deployment-test
+        state: absent
+        wait: true
+
+    - name: Delete ClusterPolicy service-account-requirements
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: kyverno.io/v1
+        kind: ClusterPolicy
+        name: service-account-requirements
+        state: absent
+
+    - name: Delete ClusterPolicy container-security-controls
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: kyverno.io/v1
+        kind: ClusterPolicy
+        name: container-security-controls
+        state: absent
+
+    - name: Uninstall Kyverno
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: uninstall_kyverno.yaml
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+
+    - name: Remove Kyverno CRDs
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: remove_custom_resource_definitions.yaml
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"

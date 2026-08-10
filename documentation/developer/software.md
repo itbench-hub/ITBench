@@ -13,6 +13,7 @@ For issues and support directly related to the software, it is often best to rea
 | awx.awx | https://github.com/ansible/awx |
 | azure.azcollection | https://github.com/ansible-collections/azure |
 | community.aws | https://github.com/ansible-collections/community.aws |
+| community.docker | https://github.com/ansible-collections/community.docker |
 | community.vmware | https://github.com/ansible-collections/community.vmware |
 | google.cloud | https://github.com/ansible-collections/google.cloud |
 | kubernetes.core | https://github.com/ansible-collections/kubernetes.core |

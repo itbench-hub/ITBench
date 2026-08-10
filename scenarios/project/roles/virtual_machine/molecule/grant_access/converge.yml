@@ -1,0 +1,24 @@
+---
+- name: Run virtual_machine grant access tasks
+  hosts:
+    - localhost
+  tasks:
+    - name: Add container to inventory
+      ansible.builtin.add_host:
+        name: virtual-machine-test
+        ansible_connection: community.docker.docker
+
+    - name: Import virtual_machine role
+      ansible.builtin.import_role:
+        name: virtual_machine
+      vars:
+        virtual_machine:
+          host: virtual-machine-test
+          python_interpreter: /usr/bin/python3
+          username: root
+          ssh_key: ""
+        virtual_machine_user: ansible-test
+        virtual_machine_password: test-password # pragma: allowlist secret
+        virtual_machine_storage:
+          local:
+            directory: "{{ working_directory }}"

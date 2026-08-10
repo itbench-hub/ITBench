@@ -1,0 +1,15 @@
+---
+- name: Destroy test container and working directory
+  hosts:
+    - localhost
+  tasks:
+    - name: Remove container
+      community.docker.docker_container:
+        name: virtual-machine-test
+        state: absent
+        force_kill: true
+
+    - name: Delete working directory
+      ansible.builtin.file:
+        path: "{{ working_directory }}"
+        state: absent

@@ -1,0 +1,57 @@
+---
+- name: Verify fault injection
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve ClusterPolicy service-account-requirements
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: kyverno.io/v1
+        kind: ClusterPolicy
+        name: service-account-requirements
+      register: faults_policy_sar
+
+    - name: Validate service-account-requirements exists
+      ansible.builtin.assert:
+        that:
+          - faults_policy_sar.resources | ansible.builtin.length == 1
+        fail_msg: ClusterPolicy service-account-requirements was not created. Fault injection failed.
+        success_msg: ClusterPolicy service-account-requirements exists.
+
+    - name: Retrieve ClusterPolicy container-security-controls
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: kyverno.io/v1
+        kind: ClusterPolicy
+        name: container-security-controls
+      register: faults_policy_csc
+
+    - name: Validate container-security-controls exists
+      ansible.builtin.assert:
+        that:
+          - faults_policy_csc.resources | ansible.builtin.length == 1
+        fail_msg: ClusterPolicy container-security-controls was not created. Fault injection failed.
+        success_msg: ClusterPolicy container-security-controls exists.
+
+    - name: Retrieve deployment
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: apps/v1
+        kind: Deployment
+        name: non-compliant-workload
+        namespace: non-compliant-k8s-pod-deployment-test
+      register: faults_deployment
+
+    - name: Validate deployment exists
+      ansible.builtin.assert:
+        that:
+          - faults_deployment.resources | ansible.builtin.length == 1
+        fail_msg: Deployment was not created. Fault injection failed.
+        success_msg: Deployment was created.
+
+    - name: Validate deployment has allowPrivilegeEscalation true
+      ansible.builtin.assert:
+        that:
+          - faults_deployment.resources[0].spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation == true
+        fail_msg: Deployment does not have allowPrivilegeEscalation true. Fault injection failed.
+        success_msg: Deployment has allowPrivilegeEscalation true.

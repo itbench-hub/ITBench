@@ -1,4 +1,5 @@
 UV = $(shell which uv)
+DOCKER := $(shell command -v docker 2>/dev/null)
 
 .PHONY: help
 help: ## Display this help.
@@ -198,8 +199,18 @@ test-molecule-awx: ## Runs Molecule tests for the AWX role
 	cd project/roles/awx && $(UV) run molecule test --all --report --command-borders
 
 .PHONY: test-molecule-faults
-test-molecule-faults: ## Runs Molecule tests for the Faults role
-	cd project/roles/faults && $(UV) run molecule test --all --report --command-borders
+test-molecule-faults: ## Runs Molecule tests for the Faults role (excludes Docker-dependent scenarios)
+	cd project/roles/faults && $(UV) run molecule test --all --report --command-borders \
+		--exclude inject_enabled_x11_forwarding_rhel9_sshd
+ifneq ($(DOCKER),)
+	cd project/roles/faults && $(UV) run molecule test --scenario-name inject_enabled_x11_forwarding_rhel9_sshd --report --command-borders
+endif
+
+.PHONY: test-molecule-virtual-machine
+test-molecule-virtual-machine: ## Runs Molecule tests for the Virtual Machine role
+ifneq ($(DOCKER),)
+	cd project/roles/virtual_machine && $(UV) run molecule test --all --report --command-borders
+endif
 
 .PHONY: test-molecule-waiters
 test-molecule-waiters: ## Runs Molecule tests for the Waiters role

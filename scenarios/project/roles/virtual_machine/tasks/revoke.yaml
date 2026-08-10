@@ -1,0 +1,15 @@
+---
+- name: Modify virtual machine settings
+  become: true
+  delegate_to: "{{ virtual_machine.host }}"
+  block:
+    - name: Remove ansible user
+      ansible.builtin.user:
+        name: "{{ virtual_machine_user }}"
+        remove: true
+        state: absent
+
+    - name: Remove sudoers file
+      ansible.builtin.file:
+        path: "{{ ['/etc', 'sudoers.d', virtual_machine_user] | ansible.builtin.path_join }}"
+        state: absent

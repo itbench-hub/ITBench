@@ -10,6 +10,7 @@ on:
       - scenarios/project/roles/agent/**
       - scenarios/project/roles/awx/**
       - scenarios/project/roles/faults/**
+      - scenarios/project/roles/virtual_machine/**
       - scenarios/project/roles/waiters/**
       - '!clusters/kind/README.md'
       - '!clusters/minikube/README.md'
@@ -50,7 +51,7 @@ jobs:
       - name: Run Molecule tests
         run: |
           make -C clusters/kind test-molecule
-      - name: Destroy Minikube cluster
+      - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
   clusters-minikube:
@@ -89,8 +90,8 @@ jobs:
       - name: Destroy Minikube cluster
         run: |
           make -C clusters/minikube destroy-simple-cluster
-  sre-agent:
-    name: SRE Agent Access Tests
+  agent:
+    name: Agent Access Tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -116,8 +117,8 @@ jobs:
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
-  sre-awx:
-    name: SRE AWX Tests
+  awx:
+    name: AWX Tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -150,8 +151,8 @@ jobs:
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
-  sre-faults:
-    name: SRE Fault Injection Tests
+  faults:
+    name: Fault Injection Tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -181,8 +182,8 @@ jobs:
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
-  sre-waiters:
-    name: SRE Waiters Tests
+  waiters:
+    name: Waiters Tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
@@ -208,3 +209,18 @@ jobs:
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
+  virtual-machine:
+    name: Virtual Machine Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v9.0.0
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Create group vars
+        run: |
+          make -C scenarios group-vars
+      - name: Run Molecule tests
+        run: |
+          make -C scenarios test-molecule-virtual-machine

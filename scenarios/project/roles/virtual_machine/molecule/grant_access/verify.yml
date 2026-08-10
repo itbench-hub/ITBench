@@ -1,0 +1,70 @@
+---
+- name: Verify grant access succeeded
+  hosts:
+    - localhost
+  tasks:
+    - name: Validate private key was fetched to local storage
+      ansible.builtin.assert:
+        that:
+          - "[working_directory, 'id_rsa'] | ansible.builtin.path_join is ansible.builtin.file"
+        fail_msg: Private key was not fetched to local storage.
+        success_msg: Private key exists in local storage.
+
+    - name: Validate private key has correct permissions
+      ansible.builtin.stat:
+        path: "{{ [working_directory, 'id_rsa'] | ansible.builtin.path_join }}"
+      register: _key_stat
+
+    - name: Assert private key permissions are 0600
+      ansible.builtin.assert:
+        that:
+          - _key_stat.stat.mode == "0600"
+        fail_msg: Private key does not have mode 0600.
+        success_msg: Private key has correct permissions.
+
+    - name: Validate inventory file was written to local storage
+      ansible.builtin.assert:
+        that:
+          - "[working_directory, 'inventory.yaml'] | ansible.builtin.path_join is ansible.builtin.file"
+        fail_msg: Inventory file was not written to local storage.
+        success_msg: Inventory file exists in local storage.
+
+    - name: Read inventory file
+      ansible.builtin.slurp:
+        src: "{{ [working_directory, 'inventory.yaml'] | ansible.builtin.path_join }}"
+      register: _inventory_file
+
+    - name: Validate inventory file contains expected host entry
+      ansible.builtin.assert:
+        that:
+          - "'ansible-test' in (_inventory_file.content | ansible.builtin.b64decode)"
+          - "'virtual-machine-test' in (_inventory_file.content | ansible.builtin.b64decode)"
+        fail_msg: Inventory file does not contain expected host entry.
+        success_msg: Inventory file contains expected host entry.
+
+    - name: Verify ansible-test user exists in container
+      community.docker.docker_container_exec:
+        container: virtual-machine-test
+        command: id ansible-test
+      register: _user_check
+
+    - name: Assert user exists
+      ansible.builtin.assert:
+        that:
+          - _user_check.rc == 0
+        fail_msg: ansible-test user was not created in the container.
+        success_msg: ansible-test user exists in the container.
+
+    - name: Verify sudoers file was created in container
+      community.docker.docker_container_exec:
+        container: virtual-machine-test
+        command: cat /etc/sudoers.d/ansible-test
+      register: _sudoers_check
+
+    - name: Assert sudoers entry exists
+      ansible.builtin.assert:
+        that:
+          - _sudoers_check.rc == 0
+          - "'ansible-test' in _sudoers_check.stdout"
+        fail_msg: sudoers file was not created for ansible-test user.
+        success_msg: sudoers file exists for ansible-test user.
