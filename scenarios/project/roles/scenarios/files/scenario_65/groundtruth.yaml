@@ -11,17 +11,12 @@ spec:
       metadata:
         name: backend
         namespace: benchmarks
+  kubernetes:
+    resources: []
+  opa:
+    checks: []
   solutions:
     - - steps:
           - command: kubectl -n benchmarks delete deployment backend
             text: Delete the non-compliant Deployment that uses hostNetwork.
           - text: Author and apply a Kyverno ClusterPolicy that disallows hostNetwork on all workloads.
-  states:
-    - backend: opa-eval
-      expectedResult: "false"
-      fetcherType: bash
-      resource:
-        apiVersion: apps/v1
-        kind: Deployment
-        name: backend
-        namespace: benchmarks

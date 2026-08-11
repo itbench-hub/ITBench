@@ -13,6 +13,20 @@ spec:
       labels: {}
 {% endfor %}
 {% endif %}
+{% if scenario.kubernetes_resources is ansible.builtin.defined and scenario.kubernetes_resources | length > 0 %}
+  kubernetes:
+    resources: {{ scenario.kubernetes_resources }}
+{% else %}
+  kubernetes:
+    resources: []
+{% endif %}
+{% if scenario.opa_checks is ansible.builtin.defined and scenario.opa_checks | length > 0 %}
+  opa:
+    checks: {{ scenario.opa_checks }}
+{% else %}
+  opa:
+    checks: []
+{% endif %}
 {% if scenario.disruptions | ansible.builtin.length == 0 %}
   entities: []
 {% else %}
@@ -63,6 +77,3 @@ spec:
 {% endfor %}
 {% endif %}
   solutions: {{ scenario.solutions }}
-{% if scenario.states is ansible.builtin.defined %}
-  states: {{ scenario.states }}
-{% endif %}

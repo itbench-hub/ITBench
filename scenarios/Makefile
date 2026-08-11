@@ -121,6 +121,18 @@ else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif
 
+.PHONY: evaluate-scenario
+evaluate-scenario: ## Evaluate scenario compliance (requires SCENARIO_NUMBER)
+ifndef SCENARIO_NUMBER
+	@echo "Usage: make evaluate-scenario SCENARIO_NUMBER=64"
+	@exit 1
+endif
+	$(UV) run scripts/evaluate_scenario.py \
+		--groundtruth project/roles/scenarios/files/scenario_$(SCENARIO_NUMBER)/groundtruth.yaml \
+		--output /tmp/evaluation_result_$(SCENARIO_NUMBER).json
+	@cat /tmp/evaluation_result_$(SCENARIO_NUMBER).json
+
+
 .PHONY: remove-fault-resources
 remove-fault-resources: ## Removes resources used during fault injection
 	$(UV) run ansible-playbook -i inventory project/manage_faults.yaml --tags "remove_faults"
