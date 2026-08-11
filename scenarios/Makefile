@@ -131,6 +131,19 @@ endif
 		--groundtruth project/roles/scenarios/files/scenario_$(SCENARIO_NUMBER)/groundtruth.yaml \
 		--output /tmp/evaluation_result_$(SCENARIO_NUMBER).json
 	@cat /tmp/evaluation_result_$(SCENARIO_NUMBER).json
+.PHONY: watch-scenario-evaluation
+watch-scenario-evaluation: ## Watch scenario evaluation until pass (requires SCENARIO_NUMBER)
+ifndef SCENARIO_NUMBER
+	@echo "Usage: make watch-scenario-evaluation SCENARIO_NUMBER=64"
+	@exit 1
+endif
+	@echo "Note: Prometheus is accessed at http://prometheus:9090 (set up by tools role)"
+	@echo "      Run 'make display-endpoints' to see all tool URLs"
+	$(UV) run scripts/watch_scenario_evaluation.py \
+		--private_project_directory . \
+		--scenario_id $(SCENARIO_NUMBER)
+
+
 
 
 .PHONY: remove-fault-resources

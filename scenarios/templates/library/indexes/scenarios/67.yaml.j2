@@ -16,18 +16,19 @@ disruptions:
 environment:
   applications: []
 id: 67
-states:
-- backend: kyverno-policy-report
-  expectedResult: fail
-  policyName: container-security-controls
-  resource:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: backend
+kubernetes_resources:
+- apiVersion: wgpolicyk8s.io/v1alpha2
+  kind: PolicyReport
+  metadata:
     namespace: benchmarks
-- backend: policy-unchanged
-  expectedResult: unchanged
+  results:
+  - policy: container-security-controls
+    result: pass
+opa_checks:
+- name: policy-integrity
   policyName: service-account-requirements
+  expectedRules: []
+  expectedOutput: true
 solutionTemplates:
 - disruptionIndex: 0
   injectionIndex: 0

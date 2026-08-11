@@ -26,14 +26,23 @@ disruptions:
 environment:
   applications: []
 id: 64
-states:
-- backend: kyverno-policy-report
-  expectedResult: fail
-  resource:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: backend
+kubernetes_resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  name: backend
+  namespace: benchmarks
+  spec:
+    template:
+      spec:
+        hostNetwork: false
+- apiVersion: wgpolicyk8s.io/v1alpha2
+  kind: PolicyReport
+  metadata:
     namespace: benchmarks
+  results:
+  - policy: disallow-host-namespaces
+    result: pass
+opa_checks: []
 solutionTemplates:
 - disruptionIndex: 0
   injectionIndex: 0
