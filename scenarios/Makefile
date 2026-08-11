@@ -163,7 +163,7 @@ disable-agent-access: ## Removes access controls for llm agent
 	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "revoke_access"
 
 .PHONY: enable-virtual-machine-access
-enable-virtual-machine-access: ## Adds SSH access provisioning for RHEL9 virtual machine (scenario 65)
+enable-virtual-machine-access: ## Adds SSH access provisioning for RHEL9 virtual machine (scenario 66)
 	$(UV) run ansible-playbook -i inventory project/manage_virtual_machine_access.yaml --tags "grant_access"
 
 .PHONY: disable-virtual-machine-access
