@@ -7,16 +7,16 @@
 
 | BookInfo | OpenTelemetry Demo |
 | --- | --- |
-| 5 | 36 |
+| 5 | 62 |
 
 ## Category Distribution
 
 | FinOps | SRE |
 | --- | --- |
-| 2 | 39 |
+| 2 | 65 |
 
 ## Complexity Distribution
 
 | Low | Medium | High |
 | --- | --- | --- |
-| 17 | 23 | 1 |
+| 17 | 50 | 4 |

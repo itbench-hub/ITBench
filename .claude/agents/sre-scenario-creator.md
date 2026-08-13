@@ -35,13 +35,13 @@ Before creating new content, search existing implementations:
 
 ```bash
 # Find similar faults
-grep -r "similar-keyword" scenarios/sre/roles/faults/tasks/
+grep -r "similar-keyword" scenarios/roles/faults/tasks/
 
 # Review fault index
-cat scenarios/sre/roles/documentation/files/library/faults/index.json | jq '.[] | select(.tags | contains(["keyword"]))'
+cat scenarios/roles/documentation/files/library/faults/index.json | jq '.[] | select(.tags | contains(["keyword"]))'
 
 # Check scenario patterns
-cat scenarios/sre/roles/documentation/files/library/scenarios/index.json | jq '.[] | select(.category == "sre")'
+cat scenarios/roles/documentation/files/library/scenarios/index.json | jq '.[] | select(.category == "sre")'
 ```
 
 Identify the closest existing fault as a reference template.
@@ -51,7 +51,7 @@ Identify the closest existing fault as a reference template.
 If a new fault is needed:
 
 ```bash
-cd scenarios/sre
+cd scenarios
 make scaffold_fault
 ```
 
@@ -117,7 +117,7 @@ Reference similar injection tasks for patterns.
 ## Step 5: Scaffold the Scenario
 
 ```bash
-cd scenarios/sre
+cd scenarios
 make scaffold_scenario
 ```
 
@@ -178,7 +178,7 @@ Remove the scaffolding hint:
 
 1. **Syntax check**:
 ```bash
-cd scenarios/sre
+cd scenarios
 make lint
 ```
 
@@ -243,7 +243,7 @@ Present results in stages:
 ## Fault Created: [Fault Name]
 
 **ID**: `fault-id`
-**Location**: `scenarios/sre/roles/faults/tasks/inject_fault-id.yaml`
+**Location**: `scenarios/roles/faults/tasks/inject_fault-id.yaml`
 
 **Summary**:
 - Arguments schema: ✅ Complete

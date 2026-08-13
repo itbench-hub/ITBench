@@ -9,11 +9,11 @@ For issues and support directly related to the software, it is often best to rea
 | Name | Repository |
 | --- | --- |
 | amazon.aws | https://github.com/ansible-collections/amazon.aws |
-| ansible.posix | https://github.com/ansible-collections/ansible.posix |
 | ansible.windows | https://github.com/ansible-collections/ansible.windows |
 | awx.awx | https://github.com/ansible/awx |
 | azure.azcollection | https://github.com/ansible-collections/azure |
 | community.aws | https://github.com/ansible-collections/community.aws |
+| community.docker | https://github.com/ansible-collections/community.docker |
 | community.vmware | https://github.com/ansible-collections/community.vmware |
 | google.cloud | https://github.com/ansible-collections/google.cloud |
 | kubernetes.core | https://github.com/ansible-collections/kubernetes.core |
@@ -44,6 +44,7 @@ For issues and support directly related to the software, it is often best to rea
 | kubectl | https://github.com/kubernetes/kubectl |
 | Minikube | https://github.com/kubernetes/minikube |
 | Molecule | https://github.com/ansible/molecule |
+| OPA | https://github.com/open-policy-agent/opa |
 | Podman | https://github.com/containers/podman |
 | pre-commit | https://github.com/pre-commit/pre-commit |
 | uv | https://github.com/astral-sh/uv |

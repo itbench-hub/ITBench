@@ -1,0 +1,17 @@
+---
+- name: Verify fault injection
+  hosts:
+    - localhost
+  tasks:
+    - name: Read X11Forwarding value from sshd_config
+      community.docker.docker_container_exec:
+        container: x11-forwarding-test
+        command: grep -E "^X11Forwarding" /etc/ssh/sshd_config
+      register: faults_sshd_config
+
+    - name: Validate X11Forwarding is enabled
+      ansible.builtin.assert:
+        that:
+          - "'X11Forwarding yes' in faults_sshd_config.stdout"
+        fail_msg: X11Forwarding is not set to yes. Fault injection failed.
+        success_msg: X11Forwarding is set to yes.

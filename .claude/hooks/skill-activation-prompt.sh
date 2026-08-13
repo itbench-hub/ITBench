@@ -28,7 +28,7 @@ check_file_pattern() {
 }
 
 # Check for fault-scaffolding activation
-FAULT_INDEX="$CWD/scenarios/sre/roles/documentation/files/library/faults/index.json"
+FAULT_INDEX="$CWD/scenarios/roles/documentation/files/library/faults/index.json"
 if [ -f "$FAULT_INDEX" ]; then
     # Check for TODO patterns in fault index
     if check_file_pattern "$FAULT_INDEX" '"alerts":\s*"TODO"' || \
@@ -40,7 +40,7 @@ if [ -f "$FAULT_INDEX" ]; then
 fi
 
 # Check for injection task TODOs
-INJECTION_TASKS_DIR="$CWD/scenarios/sre/roles/faults/tasks"
+INJECTION_TASKS_DIR="$CWD/scenarios/roles/faults/tasks"
 if [ -d "$INJECTION_TASKS_DIR" ]; then
     if find "$INJECTION_TASKS_DIR" -name "inject_*.yaml" -exec grep -q "# TODO: LLM-generated injection task" {} \; 2>/dev/null; then
         if [[ ! " ${ACTIVATED_SKILLS[@]} " =~ " fault-scaffolding " ]]; then
@@ -50,7 +50,7 @@ if [ -d "$INJECTION_TASKS_DIR" ]; then
 fi
 
 # Check for scenario-scaffolding activation
-SCENARIO_INDEX="$CWD/scenarios/sre/roles/documentation/files/library/scenarios/index.json"
+SCENARIO_INDEX="$CWD/scenarios/roles/documentation/files/library/scenarios/index.json"
 if [ -f "$SCENARIO_INDEX" ]; then
     # Check for empty arrays or faultId hint
     if check_file_pattern "$SCENARIO_INDEX" '"faultId":' || \

@@ -13,6 +13,42 @@ These scenarios simulate compliance-related misconfigurations. Each scenario pro
 
 CISO scenarios are located [here](./ciso).
 
+### Agent Access for CISO Scenarios
+
+CISO scenarios grant the LLM agent restricted, scoped access to the environment rather than full admin credentials. The method depends on whether the scenario targets a Kubernetes cluster or a RHEL9 virtual machine.
+
+#### Kubernetes-based scenarios (64, 65, 67)
+
+These scenarios inject faults into the `benchmarks` namespace. Run the command below to create a scoped ServiceAccount, namespace-level RBAC, and a short-lived token, then publish a restricted kubeconfig to the configured storage location:
+
+```bash
+make enable-agent-access SCENARIO_NUMBER=<64|65|67>
+```
+
+The agent receives the restricted kubeconfig via `make generate-agent-bundle`. The bundle reads the kubeconfig from storage — never from the admin kubeconfig.
+
+To revoke access after the scenario:
+
+```bash
+make disable-agent-access
+```
+
+#### Virtual machine scenario (66)
+
+Scenario 66 has no Kubernetes fault injection. The agent instead needs SSH access to the RHEL9 machine. Run:
+
+```bash
+make enable-virtual-machine-access
+```
+
+This provisions a dedicated user on the VM, generates an SSH keypair, and writes an Ansible inventory file to local storage for the agent to consume.
+
+To revoke access after the scenario:
+
+```bash
+make disable-virtual-machine-access
+```
+
 ## [SRE Scenarios](./sre)
 These scenarios focus on observability and incident response. Each scenario includes:
 - A comprehensive observability stack deployment featuring:

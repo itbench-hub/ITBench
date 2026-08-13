@@ -44,17 +44,17 @@ If NO TODOs exist → Create new fault scaffolding (Steps 1-3).
 1. **Search fault index by keywords:**
    ```bash
    jq '.[] | select(.name | test("(?i)configmap|image|network|memory"))' \
-     scenarios/sre/roles/documentation/files/library/faults/index.json
+     scenarios/roles/documentation/files/library/faults/index.json
    ```
 
 2. **List all fault injection tasks:**
    ```bash
-   ls scenarios/sre/roles/faults/tasks/inject_*.yaml
+   ls scenarios/roles/faults/tasks/inject_*.yaml
    ```
 
 3. **Search fault tasks by pattern:**
    ```bash
-   grep -r "ConfigMap\|Image\|NetworkPolicy" scenarios/sre/roles/faults/tasks/
+   grep -r "ConfigMap\|Image\|NetworkPolicy" scenarios/roles/faults/tasks/
    ```
 
 **If similar fault exists:**
@@ -98,7 +98,7 @@ Gather required information (similar to `scaffolding/tasks/collect_fault_inputs.
 4. **Tags** - Read available tags from schema file:
    ```bash
    jq '.properties.tags.items.enum' \
-     scenarios/sre/roles/documentation/files/library/faults/schema.json
+     scenarios/roles/documentation/files/library/faults/schema.json
    ```
    Choose the most appropriate tag(s) for the fault mechanism.
 
@@ -113,18 +113,18 @@ Gather required information (similar to `scaffolding/tasks/collect_fault_inputs.
 
 **First, read the fault schema to understand required fields:**
 ```bash
-cat scenarios/sre/roles/documentation/files/library/faults/schema.json
+cat scenarios/roles/documentation/files/library/faults/schema.json
 ```
 
-**File 1**: `scenarios/sre/roles/documentation/files/library/faults/index.json`
+**File 1**: `scenarios/roles/documentation/files/library/faults/index.json`
 
 Add new fault entry with fields from schema:
 ```bash
 # Check required fields
-jq '.required' scenarios/sre/roles/documentation/files/library/faults/schema.json
+jq '.required' scenarios/roles/documentation/files/library/faults/schema.json
 
 # Check properties structure
-jq '.properties | keys' scenarios/sre/roles/documentation/files/library/faults/schema.json
+jq '.properties | keys' scenarios/roles/documentation/files/library/faults/schema.json
 ```
 
 Create entry matching the schema (required fields: arguments, description, expectation, name, platform, resources, solutions, tags):
@@ -143,7 +143,7 @@ Create entry matching the schema (required fields: arguments, description, expec
 }
 ```
 
-**File 2**: `scenarios/sre/roles/faults/tasks/inject_<fault-id>.yaml`
+**File 2**: `scenarios/roles/faults/tasks/inject_<fault-id>.yaml`
 
 **IMPORTANT**: File naming convention uses **underscores only** (e.g., `inject_my_fault_name.yaml`), not hyphens.
 
@@ -178,20 +178,20 @@ Next steps:
 
 **Read available applications dynamically from:**
 ```bash
-cat scenarios/sre/roles/applications/defaults/main/managers.yaml
+cat scenarios/roles/applications/defaults/main/managers.yaml
 ```
 
 **Extract application details:**
 ```bash
 # List all application keys
-grep -E "^  [a-z_]+:" scenarios/sre/roles/applications/defaults/main/managers.yaml | sed 's/://g' | awk '{print $1}'
+grep -E "^  [a-z_]+:" scenarios/roles/applications/defaults/main/managers.yaml | sed 's/://g' | awk '{print $1}'
 
 # For each application key, get full configuration
 # Replace <app-key> with the actual application key from the list above
-grep -A 15 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml
+grep -A 15 "^  <app-key>:" scenarios/roles/applications/defaults/main/managers.yaml
 
 # Extract specific fields for an application
-grep -A 15 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml | grep -E "namespace:|url:|documentation:"
+grep -A 15 "^  <app-key>:" scenarios/roles/applications/defaults/main/managers.yaml | grep -E "namespace:|url:|documentation:"
 ```
 
 **For each application found, dynamically extract:**
@@ -217,22 +217,22 @@ grep -A 15 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/manage
 ### 3.1 List all available applications
 ```bash
 # Extract application keys from managers.yaml
-grep -E "^  [a-z_]+:" scenarios/sre/roles/applications/defaults/main/managers.yaml | sed 's/://g' | awk '{print $1}'
+grep -E "^  [a-z_]+:" scenarios/roles/applications/defaults/main/managers.yaml | sed 's/://g' | awk '{print $1}'
 ```
 
 ### 3.2 Get application configuration
 ```bash
 # Replace <app-key> with the chosen application key from step 3.1
-grep -A 20 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml
+grep -A 20 "^  <app-key>:" scenarios/roles/applications/defaults/main/managers.yaml
 ```
 
 ### 3.3 Extract metadata
 ```bash
 # Get documentation URL
-grep -A 20 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml | grep -E "url:|documentation:" | head -1
+grep -A 20 "^  <app-key>:" scenarios/roles/applications/defaults/main/managers.yaml | grep -E "url:|documentation:" | head -1
 
 # Get namespace
-grep -A 20 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml | grep "namespace:" | head -1
+grep -A 20 "^  <app-key>:" scenarios/roles/applications/defaults/main/managers.yaml | grep "namespace:" | head -1
 ```
 
 ### 3.4 Fetch service architecture from documentation (REQUIRED)
@@ -267,7 +267,7 @@ Using the documentation URL from step 3.3:
    export KUBECONFIG=<path-from-user>
 
    # Navigate to scenarios directory
-   cd scenarios/sre
+   cd scenarios
 
    # Deploy tools - outputs will be displayed
    make deploy-tools
@@ -317,7 +317,7 @@ Using the documentation URL from step 3.3:
 Create the injection task file following patterns from existing faults.
 
 ### File Location
-`scenarios/sre/roles/faults/tasks/inject_<fault-id>.yaml`
+`scenarios/roles/faults/tasks/inject_<fault-id>.yaml`
 
 ### Important Guidelines
 
@@ -380,58 +380,58 @@ Create the injection task file following patterns from existing faults.
 
 #### Step 1: List All Existing Fault Injection Tasks
 ```bash
-ls scenarios/sre/roles/faults/tasks/inject_*.yaml | sort
+ls scenarios/roles/faults/tasks/inject_*.yaml | sort
 ```
 
 #### Step 2: Search by Fault Category/Pattern
 
 **Find Image-Related Faults:**
 ```bash
-ls scenarios/sre/roles/faults/tasks/inject_*image*.yaml
-grep -l "image:" scenarios/sre/roles/faults/tasks/inject_*.yaml
+ls scenarios/roles/faults/tasks/inject_*image*.yaml
+grep -l "image:" scenarios/roles/faults/tasks/inject_*.yaml
 ```
 
 **Find Configuration/ConfigMap Faults:**
 ```bash
-ls scenarios/sre/roles/faults/tasks/inject_*config*.yaml
-grep -l "ConfigMap\|environment" scenarios/sre/roles/faults/tasks/inject_*.yaml
+ls scenarios/roles/faults/tasks/inject_*config*.yaml
+grep -l "ConfigMap\|environment" scenarios/roles/faults/tasks/inject_*.yaml
 ```
 
 **Find Resource Faults:**
 ```bash
-ls scenarios/sre/roles/faults/tasks/inject_*resource*.yaml
-grep -l "ResourceQuota\|limits\|requests" scenarios/sre/roles/faults/tasks/inject_*.yaml
+ls scenarios/roles/faults/tasks/inject_*resource*.yaml
+grep -l "ResourceQuota\|limits\|requests" scenarios/roles/faults/tasks/inject_*.yaml
 ```
 
 **Find Network Faults:**
 ```bash
-ls scenarios/sre/roles/faults/tasks/inject_*network*.yaml
-grep -l "NetworkPolicy" scenarios/sre/roles/faults/tasks/inject_*.yaml
+ls scenarios/roles/faults/tasks/inject_*network*.yaml
+grep -l "NetworkPolicy" scenarios/roles/faults/tasks/inject_*.yaml
 ```
 
 **Find Chaos Mesh Faults:**
 ```bash
-ls scenarios/sre/roles/faults/tasks/inject_*chaos*.yaml
-grep -l "chaos-mesh.org" scenarios/sre/roles/faults/tasks/inject_*.yaml
+ls scenarios/roles/faults/tasks/inject_*chaos*.yaml
+grep -l "chaos-mesh.org" scenarios/roles/faults/tasks/inject_*.yaml
 ```
 
 #### Step 3: Read and Study Relevant Fault Files
 ```bash
 # Read a specific fault to understand its pattern
-cat scenarios/sre/roles/faults/tasks/inject_<fault-name>.yaml
+cat scenarios/roles/faults/tasks/inject_<fault-name>.yaml
 
 # Search for specific Kubernetes resources in faults
-grep -r "kind: Deployment" scenarios/sre/roles/faults/tasks/
-grep -r "kind: ConfigMap" scenarios/sre/roles/faults/tasks/
-grep -r "kind: NetworkPolicy" scenarios/sre/roles/faults/tasks/
+grep -r "kind: Deployment" scenarios/roles/faults/tasks/
+grep -r "kind: ConfigMap" scenarios/roles/faults/tasks/
+grep -r "kind: NetworkPolicy" scenarios/roles/faults/tasks/
 ```
 
 #### Step 4: Find Faults by Tag
 ```bash
 # Search faults index by tag
-jq '.[] | select(.tags[] | contains("Networking"))' scenarios/sre/roles/documentation/files/library/faults/index.json
-jq '.[] | select(.tags[] | contains("Performance"))' scenarios/sre/roles/documentation/files/library/faults/index.json
-jq '.[] | select(.tags[] | contains("Deployment"))' scenarios/sre/roles/documentation/files/library/faults/index.json
+jq '.[] | select(.tags[] | contains("Networking"))' scenarios/roles/documentation/files/library/faults/index.json
+jq '.[] | select(.tags[] | contains("Performance"))' scenarios/roles/documentation/files/library/faults/index.json
+jq '.[] | select(.tags[] | contains("Deployment"))' scenarios/roles/documentation/files/library/faults/index.json
 ```
 
 #### Step 5: Match Fault Mechanism to Incident
@@ -453,17 +453,17 @@ Based on your incident analysis (Step 1), identify which existing faults have si
 ## Completing the Fault Index - Dynamic Discovery
 
 After implementing the Ansible task, complete the fault entry in:
-**File**: `scenarios/sre/roles/documentation/files/library/faults/index.json`
+**File**: `scenarios/roles/documentation/files/library/faults/index.json`
 
 ### Step 1: Verify Required Fields from Schema
 
 ```bash
 # Check required fields
-jq '.required' scenarios/sre/roles/documentation/files/library/faults/schema.json
+jq '.required' scenarios/roles/documentation/files/library/faults/schema.json
 
 # Check all property names and types
 jq '.properties | to_entries[] | {key: .key, type: .value.type, required: .value.required}' \
-  scenarios/sre/roles/documentation/files/library/faults/schema.json
+  scenarios/roles/documentation/files/library/faults/schema.json
 ```
 
 ### Step 2: Discover Argument Schema Patterns from Existing Faults
@@ -472,30 +472,30 @@ jq '.properties | to_entries[] | {key: .key, type: .value.type, required: .value
 ```bash
 # Find faults with similar argument structures
 jq '.[] | select(.arguments.jsonSchema.required[]? | contains("kubernetesObject")) | {id, required: .arguments.jsonSchema.required}' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 
 # View specific fault's argument schema
 jq '.[] | select(.id == "<similar-fault-id>") | .arguments' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 
 # Find all unique argument patterns
 jq '[.[] | .arguments.jsonSchema.required] | unique' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 ```
 
 **Common patterns discovered:**
 ```bash
 # Workload-only pattern
 jq '.[] | select(.arguments.jsonSchema.required == ["kubernetesObject"]) | .id' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 
 # Workload + container pattern
 jq '.[] | select(.arguments.jsonSchema.required | contains(["kubernetesObject", "container"])) | .id' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 
 # Custom patterns
 jq '.[] | select(.arguments.jsonSchema.required | length > 2) | {id, required: .arguments.jsonSchema.required}' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 ```
 
 ### Step 3: Discover Alert Types Dynamically
@@ -504,22 +504,22 @@ jq '.[] | select(.arguments.jsonSchema.required | length > 2) | {id, required: .
 ```bash
 # Application alerts enum
 jq '.properties.alerts.properties.application.items.enum' \
-  scenarios/sre/roles/documentation/files/library/faults/schema.json
+  scenarios/roles/documentation/files/library/faults/schema.json
 
 # Golden signal alerts enum
 jq '.properties.alerts.properties.goldenSignal.items.enum' \
-  scenarios/sre/roles/documentation/files/library/faults/schema.json
+  scenarios/roles/documentation/files/library/faults/schema.json
 ```
 
 **Find which faults use which alerts:**
 ```bash
 # Find faults with specific alert
 jq '.[] | select(.alerts.application[]? == "KubePodCrashLooping") | .id' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 
 # See all alert combinations
 jq '[.[] | .alerts] | unique' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 ```
 
 ### Step 3.1: Registering New Alerts
@@ -528,22 +528,22 @@ jq '[.[] | .alerts] | unique' \
 
 1. **Fault Schema** - Add to alert enum:
    ```bash
-   # Edit: scenarios/sre/roles/documentation/files/library/faults/schema.json
+   # Edit: scenarios/roles/documentation/files/library/faults/schema.json
    # Add to: .properties.alerts.properties.application.items.enum
    ```
 
 2. **Alerts Monitoring Playbook** - Add to alert detection (3 locations):
    ```bash
-   # Edit: scenarios/sre/playbooks/check_for_specific_alerts_in_firing_state.yaml
+   # Edit: scenarios/playbooks/check_for_specific_alerts_in_firing_state.yaml
    # Add to ALL THREE alert lists (lines ~58-70, ~79-89, ~101-110)
    ```
 
 3. **PrometheusRules Template** - Define the actual alert rule:
    ```bash
    # For OpenTelemetry Demo:
-   # scenarios/sre/roles/applications/templates/kubernetes/otel_demo/prometheusrules.j2
+   # scenarios/roles/applications/templates/kubernetes/otel_demo/prometheusrules.j2
    # For BookInfo:
-   # scenarios/sre/roles/applications/templates/kubernetes/book_info/prometheusrules.j2
+   # scenarios/roles/applications/templates/kubernetes/book_info/prometheusrules.j2
    ```
 
 **Example**: For `KafkaConsumerGroupInactive` alert, you would:
@@ -559,15 +559,15 @@ jq '[.[] | .alerts] | unique' \
 ```bash
 # Find faults with rollback solutions
 jq '.[] | select(.solutions.templates[].steps[].command? | contains("rollout undo")) | .id' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 
 # View specific fault's solutions
 jq '.[] | select(.id == "<similar-fault-id>") | .solutions' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 
 # Find all unique solution patterns
 jq '[.[] | .solutions.templates[].steps[].command] | unique' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 ```
 
 ### Step 5: Use Similar Fault as Template
@@ -576,11 +576,11 @@ jq '[.[] | .solutions.templates[].steps[].command] | unique' \
 ```bash
 # 1. Find the most similar fault by searching for keywords
 jq '.[] | select(.name | contains("ConfigMap") or contains("Image")) | {id, name}' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  scenarios/roles/documentation/files/library/faults/index.json
 
 # 2. Extract full entry as template
 jq '.[] | select(.id == "<similar-fault-id>")' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json > /tmp/template.json
+  scenarios/roles/documentation/files/library/faults/index.json > /tmp/template.json
 
 # 3. Modify the template for your new fault
 # 4. Validate against schema before adding
@@ -593,33 +593,33 @@ jq '.[] | select(.id == "<similar-fault-id>")' \
 **Discover simple faults** (good starting points):
 ```bash
 # Find short/simple fault files (likely easier to understand)
-find scenarios/sre/roles/faults/tasks -name "inject_*.yaml" -exec wc -l {} \; | sort -n | head -10
+find scenarios/roles/faults/tasks -name "inject_*.yaml" -exec wc -l {} \; | sort -n | head -10
 
 # Search for specific patterns
-ls scenarios/sre/roles/faults/tasks/inject_*image*.yaml
-ls scenarios/sre/roles/faults/tasks/inject_*environment*.yaml
-ls scenarios/sre/roles/faults/tasks/inject_*node*.yaml
+ls scenarios/roles/faults/tasks/inject_*image*.yaml
+ls scenarios/roles/faults/tasks/inject_*environment*.yaml
+ls scenarios/roles/faults/tasks/inject_*node*.yaml
 ```
 
 **Discover complex faults** (advanced patterns):
 ```bash
 # Find longer fault files (likely more complex)
-find scenarios/sre/roles/faults/tasks -name "inject_*.yaml" -exec wc -l {} \; | sort -n | tail -10
+find scenarios/roles/faults/tasks -name "inject_*.yaml" -exec wc -l {} \; | sort -n | tail -10
 
 # Search for multi-resource faults
-grep -l "kubernetes.core.k8s:" scenarios/sre/roles/faults/tasks/inject_*.yaml | xargs grep -c "kubernetes.core.k8s:" | grep -v ":1$"
+grep -l "kubernetes.core.k8s:" scenarios/roles/faults/tasks/inject_*.yaml | xargs grep -c "kubernetes.core.k8s:" | grep -v ":1$"
 
 # Find Chaos Mesh integration
-grep -l "chaos-mesh.org" scenarios/sre/roles/faults/tasks/inject_*.yaml
+grep -l "chaos-mesh.org" scenarios/roles/faults/tasks/inject_*.yaml
 
 # Find node-level operations
-grep -l "node\|cordon\|drain" scenarios/sre/roles/faults/tasks/inject_*.yaml
+grep -l "node\|cordon\|drain" scenarios/roles/faults/tasks/inject_*.yaml
 ```
 
 **Study faults by complexity:**
 ```bash
 # Count steps in each fault to gauge complexity
-for file in scenarios/sre/roles/faults/tasks/inject_*.yaml; do
+for file in scenarios/roles/faults/tasks/inject_*.yaml; do
   echo "$(grep -c "^- name:" "$file") steps: $(basename "$file")"
 done | sort -n
 ```

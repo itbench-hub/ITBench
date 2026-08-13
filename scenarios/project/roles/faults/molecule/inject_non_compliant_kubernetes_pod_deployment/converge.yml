@@ -1,0 +1,18 @@
+---
+- name: Run fault injection test
+  hosts:
+    - localhost
+  tasks:
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        faults_injection_tasks:
+          - id: non-compliant-kubernetes-pod-deployment
+            args:
+              kubernetesObject:
+                metadata:
+                  name: non-compliant-workload
+                  namespace: non-compliant-k8s-pod-deployment-test

@@ -1,0 +1,32 @@
+---
+- name: Create test container and working directory
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Import docker validation tasks
+      ansible.builtin.import_role:
+        name: executables
+        tasks_from: validate_docker.yaml
+
+  tasks:
+    - name: Create working directory
+      ansible.builtin.file:
+        mode: "0755"
+        path: "{{ working_directory }}"
+        state: directory
+
+    - name: Start UBI9 container with systemd
+      community.docker.docker_container:
+        name: virtual-machine-test
+        image: registry.access.redhat.com/ubi9/ubi@sha256:9d99826a5299a54fa92e9b47d74e6cd72efb04cb57eb8fe748ed93e08ebb6184
+        command: /sbin/init
+        privileged: true
+        state: started
+        cgroupns_mode: host
+        volumes:
+          - /sys/fs/cgroup:/sys/fs/cgroup:rw
+
+    - name: Add container to inventory
+      ansible.builtin.add_host:
+        name: virtual-machine-test
+        ansible_connection: community.docker.docker

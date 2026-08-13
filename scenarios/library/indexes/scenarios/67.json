@@ -1,0 +1,71 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [],
+    "category": "ciso",
+    "complexity": "high",
+    "description": "This scenario simulates a Kubernetes cluster with existing Kyverno policies that have gaps in their security controls. The agent must extend the policies to remediate the violations without modifying the existing policy rules.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "backend",
+                                "namespace": "benchmarks"
+                            }
+                        }
+                    },
+                    "id": "non-compliant-kubernetes-pod-deployment"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": []
+    },
+    "id": 67,
+    "index": 67,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n benchmarks delete deployment backend",
+                        "text": "Delete the non-compliant Pod."
+                    },
+                    {
+                        "text": "Author and apply a policy that enforces the required security controls for the workload."
+                    }
+                ]
+            }
+        ]
+    ],
+    "states": [
+        {
+            "backend": "kyverno-policy-report",
+            "expectedResult": "fail",
+            "policyName": "container-security-controls",
+            "resource": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "name": "backend",
+                "namespace": "benchmarks"
+            }
+        },
+        {
+            "backend": "policy-unchanged",
+            "expectedResult": "unchanged",
+            "policyName": "service-account-requirements"
+        }
+    ],
+    "tags": [
+        "Compliance",
+        "Deployment"
+    ]
+}

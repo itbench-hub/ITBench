@@ -21,20 +21,20 @@ ITBench defines an AWX setup as a stack. This AWX stack has two components: one 
 
 ### AWX with SRE and FinOps Scenarios
 
-The playbooks feature a number of [group variables](../../scenarios/sre/inventory/group_vars/). Each one will be described here:
+The playbooks feature a number of [group variables](../../scenarios/inventory/group_vars/). Each one will be described here:
 
 | File Name | Function |
 | --- | --- |
-| [agent.yaml](../../scenarios/sre/inventory/group_vars/runner/agent.yaml.example) | Configures the agent configuration and version |
-| [experiments.yaml](../../scenarios/sre/inventory/group_vars/runner/experiments.yaml.example) | Configures scenarios and number of trials to run |
-| [github.yaml](../../scenarios/sre/inventory/group_vars/runner/github.yaml.example) | Configures the ITBench and Agent repositories |
-| [stack.yaml](../../scenarios/sre/inventory/group_vars/runner/stack.yaml.example) | Configures the head and runner clusters |
-| [storage.yaml](../../scenarios/sre/inventory/group_vars/all/storage.yaml.example) | Configures the storage options for data files |
+| [agent.yaml](../../scenarios/inventory/group_vars/runner/agent.yaml.example) | Configures the agent configuration and version |
+| [experiments.yaml](../../scenarios/inventory/group_vars/runner/experiments.yaml.example) | Configures scenarios and number of trials to run |
+| [github.yaml](../../scenarios/inventory/group_vars/runner/github.yaml.example) | Configures the ITBench and Agent repositories |
+| [stack.yaml](../../scenarios/inventory/group_vars/runner/stack.yaml.example) | Configures the head and runner clusters |
+| [storage.yaml](../../scenarios/inventory/group_vars/all/storage.yaml.example) | Configures the storage options for data files |
 
 >[!NOTE]
 >Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
 
-After creating an AWX stack, go to the `scenarios/sre` directory.
+After creating an AWX stack, go to the `scenarios` directory.
 
 #### Creation
 
@@ -44,7 +44,7 @@ make group-vars
 ```
 
 >[!TIP]
->If using [our kops setup](../../clusters/kops/README.md), use `make sync-stack-group-vars` to export the kubeconfig files and configure the [`stack.yaml`](../../scenarios/sre/inventory/group_vars/runner/stack.yaml) group variables. If using [our kind setup](../../clusters/kind/README.md), the default group variables made at creation will suffice.
+>If using [our kops setup](../../clusters/kops/README.md), use `make sync-stack-group-vars` to export the kubeconfig files and configure the [`stack.yaml`](../../scenarios/inventory/group_vars/runner/stack.yaml) group variables. If using [our kind setup](../../clusters/kind/README.md), the default group variables made at creation will suffice.
 
 >[!WARNING]
 >If the group variables were already created as a part of development or running the SRE and FinOps scenarios beforehand, skip this step. Running the command will override the existing files.
@@ -108,4 +108,4 @@ Once debugged, one can launch the failed workload from the dashboard in order to
 ![scenario-launch](../images/awx-scenario-launch.png)
 
 >[!WARNING]
->If an `undeploy` node did not run successfully, the `runner` has been left in an improper state. This is intentional so that the cluster itself can be properly explored for debugging. Additional runs should not be scheduled on it until it has been cleaned. Getting the path in the `stack.yaml` of the offending `runner's` kubeconfig and putting it in [`cluster.yaml`](../../scenarios/sre/inventory/group_vars/environment/cluster.yaml.example) group variable. Then, run `make destroy-environment` in order to clean the cluster. Once the cluster has been successfully cleaned, it is ready for scheduling once again.
+>If an `undeploy` node did not run successfully, the `runner` has been left in an improper state. This is intentional so that the cluster itself can be properly explored for debugging. Additional runs should not be scheduled on it until it has been cleaned. Getting the path in the `stack.yaml` of the offending `runner's` kubeconfig and putting it in [`cluster.yaml`](../../scenarios/inventory/group_vars/environment/cluster.yaml.example) group variable. Then, run `make destroy-environment` in order to clean the cluster. Once the cluster has been successfully cleaned, it is ready for scheduling once again.

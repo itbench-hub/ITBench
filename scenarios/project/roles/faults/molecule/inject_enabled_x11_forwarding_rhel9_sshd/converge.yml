@@ -1,0 +1,21 @@
+---
+- name: Run fault injection test
+  hosts:
+    - localhost
+  tasks:
+    - name: Add container to inventory
+      ansible.builtin.add_host:
+        name: x11-forwarding-test
+        ansible_connection: community.docker.docker
+
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: ""
+        faults_injection_tasks:
+          - id: enabled-x11-forwarding-rhel9-sshd
+            args:
+              virtualMachine:
+                hostname: x11-forwarding-test

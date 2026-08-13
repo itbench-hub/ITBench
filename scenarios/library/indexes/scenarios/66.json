@@ -1,0 +1,54 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [],
+    "category": "ciso",
+    "complexity": "medium",
+    "description": "This scenario simulates a RHEL9 host with X11 forwarding enabled in the SSH configuration, violating CIS RHEL9 Benchmark 5.2.6. The agent must detect the violation using Ansible and OPA and generate a policy to prevent it.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "virtualMachine": {
+                            "hostname": "rhel9-benchmark"
+                        }
+                    },
+                    "id": "enabled-x11-forwarding-rhel9-sshd"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": []
+    },
+    "id": 66,
+    "index": 66,
+    "platforms": [
+        "RHEL9"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "text": "Set X11Forwarding to no in /etc/ssh/sshd_config and restart the sshd service."
+                    }
+                ]
+            }
+        ]
+    ],
+    "states": [
+        {
+            "backend": "opa-eval",
+            "expectedResult": "false",
+            "fetcherType": "ansible-playbook",
+            "resource": {
+                "kind": "Host",
+                "name": "rhel9-benchmark"
+            }
+        }
+    ],
+    "tags": [
+        "Compliance"
+    ]
+}

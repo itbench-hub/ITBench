@@ -1,0 +1,17 @@
+---
+- name: Include waiter argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_waiter_arguments.yaml
+
+- name: Wait for Kyverno PolicyReport scoped to target workload
+  kubernetes.core.k8s_info:
+    api_version: wgpolicyk8s.io/v1alpha2
+    kind: PolicyReport
+    kubeconfig: "{{ waiters_cluster.kubeconfig }}"
+    name: "{{ waiters_kubernetes_object.metadata.name }}"
+    namespace: "{{ waiters_kubernetes_object.metadata.namespace }}"
+  register: waiters_policy_report_result
+  until:
+    - waiters_policy_report_result.resources | ansible.builtin.length == 1
+  retries: 20
+  delay: 15

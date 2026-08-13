@@ -35,7 +35,7 @@ make generate-resource-files
 ```
 
 >[!NOTE]
->These commands generate the basics needed to begin developing. One may need to make additional changes or create new files to add scripts (ie: [`crashing-kubernetes-workload-init-container`](../../scenarios/sre/project/roles/faults/tasks/inject_crashing_kubernetes_workload_init_container.yaml)).
+>These commands generate the basics needed to begin developing. One may need to make additional changes or create new files to add scripts (ie: [`crashing-kubernetes-workload-init-container`](../../scenarios/project/roles/faults/tasks/inject_crashing_kubernetes_workload_init_container.yaml)).
 
 >[!TIP]
 >To see a list of all the added and changed files, use `git status`.
@@ -44,12 +44,12 @@ make generate-resource-files
 
 **This process is meant to be iterative.** Once the fault is confirmed to work and the index is fully filled out, move to the next phase: [validation](#validating-new-fault).
 
-1. Edit the new fault index. This will be located in the [fault library index directory](../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/). Ensure that all the fields listed have value. Resource links should be provided in the `resources` field and a JSON schema for the fault's arguments should be provided in the `arguments.jsonSchema` field.
+1. Edit the new fault index. This will be located in the [fault library index directory](../../scenarios/project/roles/documentation/files/library/faults/indexes/). Ensure that all the fields listed have value. Resource links should be provided in the `resources` field and a JSON schema for the fault's arguments should be provided in the `arguments.jsonSchema` field.
 
 >[!IMPORTANT]
 >The JSON schema should be valid with the `2020-12` ruleset.
 
-2. Edit the new fault implementation file. This will be located in the [faults role task directory](../../scenarios/sre/project/roles/faults/tasks/). **Please use Ansible modules whenever possible and only use CLI tools when necessary.**
+2. Edit the new fault implementation file. This will be located in the [faults role task directory](../../scenarios/project/roles/faults/tasks/). **Please use Ansible modules whenever possible and only use CLI tools when necessary.**
 
 >[!IMPORTANT]
 >For Kubernetes or OpenShift related faults, only the namespace of the application should be affected. This allows for easy cleanup of the fault when the application is undeployed (and thus the namespace is deleted). However, if the fault needs to change or add something cluster wide, then the fault will need to do clean up those changes. In such a case, either add a new `remove_x` task file to the directory or modify one of the existing removal tasks files where appropriate to add in the clean up step.
@@ -57,7 +57,7 @@ make generate-resource-files
 >[!IMPORTANT]
 >When adding new files or test cases, please create a new directory with the same name as the fault's task file **without the `inject_` prefix**. This allows for easier correlation between what additional resources a fault requires.
 
-3. Create a [Molecule test](../../scenarios/sre/project/roles/faults/molecule/) to test the fault. The name of directory should be the exact same name as the task file. Use the following command to run the fault test suite:
+3. Create a [Molecule test](../../scenarios/project/roles/faults/molecule/) to test the fault. The name of directory should be the exact same name as the task file. Use the following command to run the fault test suite:
 ```shell
 make test-molecule-faults
 ```

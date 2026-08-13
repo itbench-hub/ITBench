@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: ciso
+complexity: medium
+description: This scenario simulates a Kubernetes workload deployed with hostNetwork enabled, violating CIS Kubernetes Benchmark 5.2.4. The agent must detect the violation using kubectl and OPA and generate a policy to prevent it.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: backend
+          namespace: benchmarks
+    id: active-host-network-kubernetes-deployment
+environment:
+  applications: []
+id: 65
+kubernetes_resources: []
+opa_checks:
+- name: host-network-check
+  expectedOutput: true
+  expectedFiles: [policy.rego, fetcher.sh]
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

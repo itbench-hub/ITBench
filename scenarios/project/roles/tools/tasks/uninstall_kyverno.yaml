@@ -1,0 +1,19 @@
+---
+- name: Uninstall Kyverno
+  kubernetes.core.helm:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_releases.kyverno.name }}"
+    release_namespace: "{{ tools_releases.kyverno.namespace }}"
+    release_state: absent
+    wait: true
+
+- name: Delete Kyverno namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: v1
+      kind: Namespace
+      metadata:
+        name: "{{ tools_releases.kyverno.namespace }}"
+    state: absent
+    wait: true

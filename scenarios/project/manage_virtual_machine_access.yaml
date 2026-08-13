@@ -1,0 +1,42 @@
+---
+- name: Manage Virtual Machine Access
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Import executables role
+      ansible.builtin.import_role:
+        name: executables
+      tags:
+        - always
+
+    - name: Configure storage
+      tags:
+        - always
+      block:
+        - name: Override storage configuration
+          ansible.builtin.set_fact:
+            storage: |-
+              {{
+                lookup("ansible.builtin.template", template_path) |
+                ansible.builtin.from_yaml
+              }}
+          vars:
+            template_path: "{{ playbook_dir }}/templates/group_variables/storage.j2"
+          when:
+            - scenario_id is ansible.builtin.defined
+            - storage is ansible.builtin.defined
+            - storage_overrides is ansible.builtin.defined
+
+        - name: Create directory for local storage export
+          ansible.builtin.file:
+            mode: "0755"
+            path: "{{ storage.local.directory | ansible.builtin.default('/tmp') }}"
+            state: directory
+          when:
+            - storage.local is ansible.builtin.defined
+  tasks:
+    - name: Import virtual_machine role
+      ansible.builtin.import_role:
+        name: virtual_machine
+      vars:
+        virtual_machine_storage: "{{ storage }}"

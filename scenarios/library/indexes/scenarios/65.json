@@ -1,0 +1,66 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [],
+    "category": "ciso",
+    "complexity": "medium",
+    "description": "This scenario simulates a Kubernetes workload deployed with hostNetwork enabled, violating CIS Kubernetes Benchmark 5.2.4. The agent must detect the violation using kubectl and OPA and generate a policy to prevent it.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "backend",
+                                "namespace": "benchmarks"
+                            }
+                        }
+                    },
+                    "id": "active-host-network-kubernetes-deployment"
+                }
+            ]
+        }
+    ],
+    "environment": {
+        "applications": []
+    },
+    "id": 65,
+    "index": 65,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n benchmarks delete deployment backend",
+                        "text": "Delete the non-compliant Deployment that uses hostNetwork."
+                    },
+                    {
+                        "text": "Author and apply a Kyverno ClusterPolicy that disallows hostNetwork on all workloads."
+                    }
+                ]
+            }
+        ]
+    ],
+    "states": [
+        {
+            "backend": "opa-eval",
+            "expectedResult": "false",
+            "fetcherType": "bash",
+            "resource": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "name": "backend",
+                "namespace": "benchmarks"
+            }
+        }
+    ],
+    "tags": [
+        "Compliance",
+        "Deployment"
+    ]
+}

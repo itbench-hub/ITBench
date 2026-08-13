@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - clusters/kind/go.*
-      - scenarios/sre/project/roles/tools/install_*.yaml
+      - scenarios/project/roles/tools/install_*.yaml
 
 concurrency:
   group: ci-network-${{ github.ref }}
@@ -33,7 +33,7 @@ jobs:
           make deps
       - name: Create group vars
         run: |
-          make -C scenarios/sre group-vars
+          make -C scenarios group-vars
       - name: Create Kind cluster
         run: |
           make -C clusters/kind create-simple-cluster
@@ -43,7 +43,7 @@ jobs:
           sleep 10
       - name: Run connection tests
         run: |
-          make -C scenarios/sre test-network-gateway
+          make -C scenarios test-network-gateway
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster

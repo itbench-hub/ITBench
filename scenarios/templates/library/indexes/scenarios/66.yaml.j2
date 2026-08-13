@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: ciso
+complexity: medium
+description: This scenario simulates a RHEL9 host with X11 forwarding enabled in the SSH configuration, violating CIS RHEL9 Benchmark 5.2.6. The agent must detect the violation using Ansible and OPA and generate a policy to prevent it.
+disruptions:
+- injections:
+  - args:
+      virtualMachine:
+        hostname: rhel9-benchmark
+    id: enabled-x11-forwarding-rhel9-sshd
+environment:
+  applications: []
+id: 66
+kubernetes_resources: []
+opa_checks:
+- name: x11-forwarding-check
+  expectedOutput: true
+  expectedFiles: [policy.rego, fetcher.yml]
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

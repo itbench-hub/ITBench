@@ -1,0 +1,18 @@
+---
+- name: Run fault injection test
+  hosts:
+    - localhost
+  tasks:
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        faults_injection_tasks:
+          - id: active-host-network-kubernetes-deployment
+            args:
+              kubernetesObject:
+                metadata:
+                  name: host-network-workload
+                  namespace: active-host-network-k8s-deployment-test

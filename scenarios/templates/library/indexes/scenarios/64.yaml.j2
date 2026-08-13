@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=../../../../../../schemas/json/library/index/scenario.json
+---
+category: ciso
+complexity: medium
+description: This scenario simulates a Kubernetes workload deployed with hostNetwork enabled, violating CIS Kubernetes Benchmark 5.2.4. The agent must detect the violation using Kyverno and generate a policy to prevent it.
+disruptions:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: backend
+          namespace: benchmarks
+    id: active-host-network-kubernetes-deployment
+  waitFor:
+    postInjection:
+    - args:
+        kubernetesObject:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: backend
+            namespace: benchmarks
+      id: verify-kyverno-policy-report-creation
+environment:
+  applications: []
+id: 64
+kubernetes_resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  name: backend
+  namespace: benchmarks
+  spec:
+    template:
+      spec:
+        hostNetwork: false
+- apiVersion: wgpolicyk8s.io/v1alpha2
+  kind: PolicyReport
+  metadata:
+    namespace: benchmarks
+  results:
+  - policy: disallow-host-namespaces
+    result: pass
+opa_checks: []
+solutionTemplates:
+- disruptionIndex: 0
+  injectionIndex: 0

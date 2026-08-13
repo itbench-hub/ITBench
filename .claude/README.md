@@ -90,7 +90,7 @@ Then describe what you want to create:
 
 ```bash
 # 1. Start in the SRE scenarios directory
-cd scenarios/sre
+cd scenarios
 
 # 2. Scaffold a new fault
 make scaffold_fault
@@ -210,16 +210,16 @@ The `settings.json` allows:
 
 - [Langfuse .claude structure](https://github.com/langfuse/langfuse/tree/main/.claude) - Original inspiration
 - [OpenCode.ai Skills Docs](https://opencode.ai/docs/skills/) - Official documentation
-- [ITBench Developer Guide](../../scenarios/sre/DEVELOPER_GUIDE.md) - Project context
-- [Faults Documentation](../../scenarios/sre/docs/faults.md) - Fault reference
-- [Scenarios Documentation](../../scenarios/sre/docs/scenarios.md) - Scenario reference
+- [ITBench Developer Guide](../../scenarios/DEVELOPER_GUIDE.md) - Project context
+- [Faults Documentation](../../scenarios/docs/faults.md) - Fault reference
+- [Scenarios Documentation](../../scenarios/docs/scenarios.md) - Scenario reference
 
 ## 🐛 Troubleshooting
 
 ### Skills Not Activating
 
 1. Check `skill-rules.json` syntax: `jq . .claude/skills/skill-rules.json`
-2. Verify file patterns match: `ls -la scenarios/sre/roles/documentation/files/library/faults/index.json`
+2. Verify file patterns match: `ls -la scenarios/roles/documentation/files/library/faults/index.json`
 3. Check hook is executable: `ls -la .claude/hooks/`
 4. Review hook output: Check for skill suggestions in responses
 
@@ -231,9 +231,9 @@ The `settings.json` allows:
 
 ### JSON Validation Errors
 
-1. Validate faults index: `jq . scenarios/sre/roles/documentation/files/library/faults/index.json`
-2. Validate scenarios index: `jq . scenarios/sre/roles/documentation/files/library/scenarios/index.json`
-3. Run linter: `cd scenarios/sre && make lint`
+1. Validate faults index: `jq . scenarios/roles/documentation/files/library/faults/index.json`
+2. Validate scenarios index: `jq . scenarios/roles/documentation/files/library/scenarios/index.json`
+3. Run linter: `cd scenarios && make lint`
 
 ## 💡 Tips
 

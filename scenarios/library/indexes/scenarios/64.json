@@ -1,0 +1,82 @@
+{
+    "$schema": "https://raw.githubusercontent.com/itbench-hub/ITBench/refs/heads/main/schemas/library/index/scenario.json",
+    "alerts": [],
+    "category": "ciso",
+    "complexity": "medium",
+    "description": "This scenario simulates a Kubernetes workload deployed with hostNetwork enabled, violating CIS Kubernetes Benchmark 5.2.4. The agent must detect the violation using Kyverno and generate a policy to prevent it.",
+    "disruptions": [
+        {
+            "injections": [
+                {
+                    "args": {
+                        "kubernetesObject": {
+                            "apiVersion": "apps/v1",
+                            "kind": "Deployment",
+                            "metadata": {
+                                "name": "backend",
+                                "namespace": "benchmarks"
+                            }
+                        }
+                    },
+                    "id": "active-host-network-kubernetes-deployment"
+                }
+            ],
+            "waitFor": {
+                "postInjection": [
+                    {
+                        "args": {
+                            "kubernetesObject": {
+                                "apiVersion": "apps/v1",
+                                "kind": "Deployment",
+                                "metadata": {
+                                    "name": "backend",
+                                    "namespace": "benchmarks"
+                                }
+                            }
+                        },
+                        "id": "verify-kyverno-policy-report-creation"
+                    }
+                ]
+            }
+        }
+    ],
+    "environment": {
+        "applications": []
+    },
+    "id": 64,
+    "index": 64,
+    "platforms": [
+        "Kubernetes"
+    ],
+    "solutions": [
+        [
+            {
+                "steps": [
+                    {
+                        "command": "kubectl -n benchmarks delete deployment backend",
+                        "text": "Delete the non-compliant Deployment that uses hostNetwork."
+                    },
+                    {
+                        "text": "Author and apply a Kyverno ClusterPolicy that disallows hostNetwork on all workloads."
+                    }
+                ]
+            }
+        ]
+    ],
+    "states": [
+        {
+            "backend": "kyverno-policy-report",
+            "expectedResult": "fail",
+            "resource": {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "name": "backend",
+                "namespace": "benchmarks"
+            }
+        }
+    ],
+    "tags": [
+        "Compliance",
+        "Deployment"
+    ]
+}

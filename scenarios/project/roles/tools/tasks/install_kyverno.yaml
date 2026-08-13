@@ -1,0 +1,86 @@
+---
+- name: Create Namespace for Kyverno
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        labels:
+          "prometheus.itbench.io/monitor": "true"
+        name: "{{ tools_releases.kyverno.namespace }}"
+    state: present
+
+- name: Install Kyverno
+  kubernetes.core.helm:
+    chart_ref: "oci://ghcr.io/kyverno/charts/kyverno"
+    chart_version: "3.8.2"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_releases.kyverno.name }}"
+    release_namespace: "{{ tools_releases.kyverno.namespace }}"
+    timeout: 10m0s
+    values:
+      admissionController:
+        rbac:
+          clusterRole:
+            extraResources:
+              - apiGroups:
+                  - ""
+                resources:
+                  - secrets
+                verbs:
+                  - get
+                  - list
+                  - watch
+                  - create
+                  - update
+                  - delete
+      backgroundController:
+        rbac:
+          clusterRole:
+            extraResources:
+              - apiGroups:
+                  - ""
+                resources:
+                  - secrets
+                verbs:
+                  - get
+                  - list
+                  - watch
+                  - create
+                  - update
+                  - delete
+      config:
+        webhooks:
+          namespaceSelector:
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: NotIn
+                values:
+                  - kube-public
+                  - kyverno
+        resourceFilters:
+          - "[*/*,kyverno,*]"
+          - "[Event,*,*]"
+          - "[*/*,kube-public,*]"
+          - "[*/*,kube-node-lease,*]"
+          - "[Node,*,*]"
+          - "[Node/?*,*,*]"
+          - "[APIService,*,*]"
+          - "[APIService/?*,*,*]"
+          - "[TokenReview,*,*]"
+          - "[SubjectAccessReview,*,*]"
+          - "[SelfSubjectAccessReview,*,*]"
+          - "[Binding,*,*]"
+          - "[Pod/binding,*,*]"
+          - "[ReplicaSet,*,*]"
+          - "[ReplicaSet/?*,*,*]"
+      excludeKyvernoNamespace: true
+      webhooks:
+        namespaceSelector:
+          matchExpressions:
+            - key: kubernetes.io/metadata.name
+              operator: NotIn
+              values:
+                - kube-public
+    wait: true
