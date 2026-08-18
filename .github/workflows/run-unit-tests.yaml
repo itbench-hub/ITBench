@@ -6,6 +6,10 @@ on:
       - main
     paths:
       - scenarios/sre/scripts/**
+      - scenarios/sre/tools/clickhouse-recorder/**
+      - scenarios/sre/tools/jaeger-recorder/**
+      - scenarios/sre/tools/kubernetes-topology-monitor-recorder/**
+      - scenarios/sre/tools/prometheus-recorder/**
 
 concurrency:
   group: ci-unit-${{ github.ref }}
@@ -26,3 +30,36 @@ jobs:
       - name: Run unit tests
         run: |
           make -C scenarios/sre test-scripts
+
+  go-recorders:
+    name: Go Recorders Unit Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v5.5.0
+        with:
+          go-version-file: scenarios/sre/tools/clickhouse-recorder/go.mod
+          cache-dependency-path: |
+            scenarios/sre/tools/clickhouse-recorder/go.sum
+            scenarios/sre/tools/prometheus-recorder/go.sum
+      - name: Test clickhouse-recorder
+        run: go test -count=1 ./...
+        working-directory: scenarios/sre/tools/clickhouse-recorder
+      - name: Test prometheus-recorder
+        run: go test -count=1 ./...
+        working-directory: scenarios/sre/tools/prometheus-recorder
+
+  python-recorders:
+    name: Python Recorders Unit Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
+        with:
+          version-file: pyproject.toml
+      - name: Test jaeger-recorder
+        run: uv run --with-requirements requirements.txt python -m unittest discover -s . -p 'test_*.py'
+        working-directory: scenarios/sre/tools/jaeger-recorder
+      - name: Test kubernetes-topology-monitor-recorder
+        run: uv run --with-requirements requirements.txt python -m unittest discover -s . -p 'test_*.py'
+        working-directory: scenarios/sre/tools/kubernetes-topology-monitor-recorder
