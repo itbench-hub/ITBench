@@ -1,8 +1,4 @@
 ---
-- name: Import storage validation tasks
-  ansible.builtin.import_tasks:
-    file: validate_storage.yaml
-
 - name: Retrieve CronJobs
   kubernetes.core.k8s_info:
     api_version: batch/v1
@@ -60,41 +56,37 @@
   retries: 12
   delay: 30
 
-- name: Import recorder export tasks
+- name: Import recorder export tasks for ClickHouse
   ansible.builtin.import_tasks:
-    file: copy_python_recorder_files.yaml
+    file: copy_recorder_files.yaml
   vars:
-    python_recorder:
-      export:
-        path: observability_information_from_clickhouse
-      name: "{{ recorders_instances.clickhouse_data_recorder.name }}"
+    export:
+      directory: observability_information_from_clickhouse
+    recorder: "{{ recorders_instances.clickhouse_data_recorder }}"
 
-- name: Import recorder export tasks
+- name: Import recorder export tasks for Jaeger
   ansible.builtin.import_tasks:
-    file: copy_python_recorder_files.yaml
+    file: copy_recorder_files.yaml
   vars:
-    python_recorder:
-      export:
-        path: trace_information
-      name: "{{ recorders_instances.jaeger_data_recorder.name }}"
+    export:
+      directory: trace_information
+    recorder: "{{ recorders_instances.jaeger_data_recorder }}"
 
-- name: Import recorder export tasks
+- name: Import recorder export tasks for Kubernetes Topology Monitor
   ansible.builtin.import_tasks:
-    file: copy_python_recorder_files.yaml
+    file: copy_recorder_files.yaml
   vars:
-    python_recorder:
-      export:
-        path: topology_information
-      name: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}"
+    export:
+      directory: topology_information
+    recorder: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder }}"
 
-- name: Import recorder export tasks
+- name: Import recorder export tasks for Prometheus
   ansible.builtin.import_tasks:
-    file: copy_python_recorder_files.yaml
+    file: copy_recorder_files.yaml
   vars:
-    python_recorder:
-      export:
-        path: alerts
-      name: "{{ recorders_instances.prometheus_data_recorder.name }}"
+    export:
+      directory: alerts
+    recorder: "{{ recorders_instances.prometheus_data_recorder }}"
 
 - name: Delete the namespace
   kubernetes.core.k8s:
