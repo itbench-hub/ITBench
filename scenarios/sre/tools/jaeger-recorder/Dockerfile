@@ -2,9 +2,9 @@ FROM registry.access.redhat.com/ubi10/python-314-minimal:10.2-1787002610@sha256:
 
 WORKDIR /app
 
-COPY requirements.txt requirements.txt
+COPY pyproject.toml pyproject.toml
 
-RUN python3.14 -m pip install --no-cache-dir -r requirements.txt
+RUN python3.14 -m pip install --no-cache-dir .
 
 COPY gather.py gather.py
 COPY test_gather.py test_gather.py

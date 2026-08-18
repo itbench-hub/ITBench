@@ -67,8 +67,8 @@ func TestRun_FiringAlertWritten(t *testing.T) {
 	if len(alerts) != 1 {
 		t.Errorf("expected 1 firing alert, got %d", len(alerts))
 	}
-	if alerts[0]["state"] != "firing" {
-		t.Errorf("expected state=firing, got %v", alerts[0]["state"])
+	if alerts[0]["State"] != "firing" {
+		t.Errorf("expected State=firing, got %v", alerts[0]["State"])
 	}
 }
 
