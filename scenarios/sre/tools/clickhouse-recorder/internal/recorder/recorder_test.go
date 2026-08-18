@@ -15,10 +15,14 @@ import (
 	"github.com/itbench-hub/ITBench/scenarios/sre/tools/clickhouse-recorder/internal/recorder"
 )
 
+const testPassword = "testpassword" // pragma: allowlist secret
+
 func TestRun(t *testing.T) {
 	ctx := context.Background()
 
-	ctr, err := clickhouse.Run(ctx, "clickhouse/clickhouse-server:25.3")
+	ctr, err := clickhouse.Run(ctx, "clickhouse/clickhouse-server:25.3",
+		clickhouse.WithPassword(testPassword),
+	)
 	if err != nil {
 		t.Fatalf("start clickhouse container: %v", err)
 	}
@@ -30,7 +34,7 @@ func TestRun(t *testing.T) {
 		t.Fatalf("get connection host: %v", err)
 	}
 
-	if err := seed(ctx, addr); err != nil {
+	if err := seed(ctx, addr, testPassword); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
@@ -38,7 +42,7 @@ func TestRun(t *testing.T) {
 	// host argument by stripping the port — testcontainers maps 9000 to a
 	// random port, so we need to override the addr in Run via a test-only helper.
 	outDir := t.TempDir()
-	if err := recorder.RunWithAddr(ctx, addr, "default", "", outDir); err != nil {
+	if err := recorder.RunWithAddr(ctx, addr, "default", testPassword, outDir); err != nil {
 		t.Fatalf("recorder.Run: %v", err)
 	}
 
@@ -68,14 +72,14 @@ func TestRun(t *testing.T) {
 
 // seedDB opens a *sql.DB for DDL/DML seeding — same TCP options as the recorder.
 // addr is host:port.
-func seedDB(addr string) *sql.DB {
+func seedDB(addr, password string) *sql.DB {
 	return ch.OpenDB(&ch.Options{
 		Protocol: ch.Native,
 		Addr:     []string{addr},
 		Auth: ch.Auth{
 			Database: "default",
 			Username: "default",
-			Password: "",
+			Password: password,
 		},
 		DialTimeout: 10 * time.Second,
 		ReadTimeout: 30 * time.Second,
@@ -84,8 +88,8 @@ func seedDB(addr string) *sql.DB {
 
 // seed creates the required tables and inserts representative rows.
 // addr is host:port.
-func seed(ctx context.Context, addr string) error {
-	db := seedDB(addr)
+func seed(ctx context.Context, addr, password string) error {
+	db := seedDB(addr, password)
 	defer db.Close()
 
 	ddl := []string{
