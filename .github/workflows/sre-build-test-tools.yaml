@@ -25,8 +25,6 @@ jobs:
     steps:
       - name: Checkout codebase
         uses: actions/checkout@v7.0.1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4.2.0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4.2.0
       - uses: astral-sh/setup-uv@ae62891fec2bb8e7d6c99fc78c9fec3a63790f8d # v10.0.0
@@ -62,8 +60,6 @@ jobs:
     steps:
       - name: Checkout codebase
         uses: actions/checkout@v7.0.1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4.2.0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4.2.0
       - name: Build Hello Bench image
@@ -84,8 +80,6 @@ jobs:
     steps:
       - name: Checkout codebase
         uses: actions/checkout@v7.0.1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4.2.0
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4.2.0
       - name: Build Hello Bench image
@@ -102,151 +96,61 @@ jobs:
             quay.io/it-bench/hello-bench-arm64:latest
 
   opentelemetry-collector:
-    strategy:
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-24.04
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - name: Checkout codebase
-        uses: actions/checkout@v7.0.1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4.2.0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
-      - name: Build OpenTelemetry Collector image
-        uses: docker/build-push-action@v7.3.0
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: scenarios/sre/tools/opentelemetry-collector-builder
-          platforms: |
-            ${{ matrix.platform }}
-          push: false
-          tags: |
-            quay.io/it-bench/opentelemetry-collector:2.0.0
-            quay.io/it-bench/opentelemetry-collector:latest
+    uses: ./.github/workflows/_build-image.yaml
+    with:
+      context: scenarios/sre/tools/opentelemetry-collector-builder
+      image: quay.io/it-bench/opentelemetry-collector
+      tags: |
+        quay.io/it-bench/opentelemetry-collector:2.0.0
+        quay.io/it-bench/opentelemetry-collector:latest
+      push: false
 
   clickhouse-recorder:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout codebase
-        uses: actions/checkout@v7.0.1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4.2.0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
-      - name: Build ClickHouse Recorder image
-        uses: docker/build-push-action@v7.3.0
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: scenarios/sre/tools/clickhouse-recorder
-          platforms: |
-            linux/amd64
-            linux/arm64
-          push: false
-          tags: |
-            quay.io/it-bench/clickhouse-recorder:1.0.0
-            quay.io/it-bench/clickhouse-recorder:latest
+    uses: ./.github/workflows/_build-image.yaml
+    with:
+      context: scenarios/sre/tools/clickhouse-recorder
+      image: quay.io/it-bench/clickhouse-recorder
+      tags: |
+        quay.io/it-bench/clickhouse-recorder:1.0.0
+        quay.io/it-bench/clickhouse-recorder:latest
+      push: false
 
   jaeger-recorder:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout codebase
-        uses: actions/checkout@v7.0.1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4.2.0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
-      - name: Build Jaeger Recorder image
-        uses: docker/build-push-action@v7.3.0
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: scenarios/sre/tools/jaeger-recorder
-          platforms: |
-            linux/amd64
-            linux/arm64
-          push: false
-          tags: |
-            quay.io/it-bench/jaeger-recorder:1.0.0
-            quay.io/it-bench/jaeger-recorder:latest
+    uses: ./.github/workflows/_build-image.yaml
+    with:
+      context: scenarios/sre/tools/jaeger-recorder
+      image: quay.io/it-bench/jaeger-recorder
+      tags: |
+        quay.io/it-bench/jaeger-recorder:1.0.0
+        quay.io/it-bench/jaeger-recorder:latest
+      push: false
 
   kubernetes-topology-monitor-recorder:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout codebase
-        uses: actions/checkout@v7.0.1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4.2.0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
-      - name: Build Kubernetes Topology Monitor Recorder image
-        uses: docker/build-push-action@v7.3.0
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: scenarios/sre/tools/kubernetes-topology-monitor-recorder
-          platforms: |
-            linux/amd64
-            linux/arm64
-          push: false
-          tags: |
-            quay.io/it-bench/kubernetes-topology-monitor-recorder:1.0.0
-            quay.io/it-bench/kubernetes-topology-monitor-recorder:latest
+    uses: ./.github/workflows/_build-image.yaml
+    with:
+      context: scenarios/sre/tools/kubernetes-topology-monitor-recorder
+      image: quay.io/it-bench/kubernetes-topology-monitor-recorder
+      tags: |
+        quay.io/it-bench/kubernetes-topology-monitor-recorder:1.0.0
+        quay.io/it-bench/kubernetes-topology-monitor-recorder:latest
+      push: false
 
   prometheus-recorder:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout codebase
-        uses: actions/checkout@v7.0.1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4.2.0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
-      - name: Build Prometheus Recorder image
-        uses: docker/build-push-action@v7.3.0
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: scenarios/sre/tools/prometheus-recorder
-          platforms: |
-            linux/amd64
-            linux/arm64
-          push: false
-          tags: |
-            quay.io/it-bench/prometheus-recorder:1.0.0
-            quay.io/it-bench/prometheus-recorder:latest
+    uses: ./.github/workflows/_build-image.yaml
+    with:
+      context: scenarios/sre/tools/prometheus-recorder
+      image: quay.io/it-bench/prometheus-recorder
+      tags: |
+        quay.io/it-bench/prometheus-recorder:1.0.0
+        quay.io/it-bench/prometheus-recorder:latest
+      push: false
 
   topology-monitor:
-    strategy:
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-24.04
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - name: Checkout codebase
-        uses: actions/checkout@v7.0.1
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4.2.0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.2.0
-      - name: Build Topology Monitor image
-        uses: docker/build-push-action@v7.3.0
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: scenarios/sre/tools/kubernetes-topology-monitor
-          platforms: |
-            ${{ matrix.platform }}
-          push: false
-          tags: |
-            quay.io/it-bench/topology-monitor:0.0.4
-            quay.io/it-bench/topology-monitor:latest
+    uses: ./.github/workflows/_build-image.yaml
+    with:
+      context: scenarios/sre/tools/kubernetes-topology-monitor
+      image: quay.io/it-bench/topology-monitor
+      tags: |
+        quay.io/it-bench/topology-monitor:0.0.4
+        quay.io/it-bench/topology-monitor:latest
+      push: false
