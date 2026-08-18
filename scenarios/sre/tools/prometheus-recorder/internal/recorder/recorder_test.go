@@ -39,8 +39,6 @@ const (
 	}`
 
 	noAlerts = `{"status":"success","data":{"alerts":[]}}`
-
-	serverError = "" // signals the server to return 500
 )
 
 func TestRun_FiringAlertWritten(t *testing.T) {

@@ -22,7 +22,7 @@ func openDB(addr, username, password, database string) *sql.DB {
 	return clickhouse.OpenDB(&clickhouse.Options{
 		Protocol: clickhouse.Native,
 		Addr:     []string{addr},
-		Auth: clickhouse.Auth{
+		Auth: clickhouse.Auth{ // pragma: allowlist secret
 			Database: database,
 			Username: username,
 			Password: password,
@@ -258,6 +258,9 @@ func exportPodMetrics(ctx context.Context, db *sql.DB, baseDir string, ids metri
 	if err != nil {
 		return err
 	}
+	if len(rows) == 0 {
+		return nil
+	}
 
 	// Group by pod and write one file per pod.
 	podCol := indexOf(colNames, "pod_name")
@@ -265,25 +268,26 @@ func exportPodMetrics(ctx context.Context, db *sql.DB, baseDir string, ids metri
 		return fmt.Errorf("pod_name column not found")
 	}
 
+	tagsCol := indexOf(colNames, "tags")
+
+	// Build headers — copy to avoid mutating colNames.
+	headers := make([]string, len(colNames))
+	copy(headers, colNames)
+	if lite && tagsCol >= 0 {
+		headers = append(headers[:tagsCol], headers[tagsCol+1:]...)
+	}
+
 	byPod := map[string][][]string{}
 	for _, row := range rows {
 		pod := row[podCol]
-		if lite {
-			// drop the tags column for lite export
-			tagsCol := indexOf(colNames, "tags")
-			if tagsCol >= 0 {
-				row = append(row[:tagsCol], row[tagsCol+1:]...)
-			}
+		if lite && tagsCol >= 0 {
+			// Copy row before mutating to avoid corrupting the backing array.
+			r := make([]string, len(row))
+			copy(r, row)
+			r = append(r[:tagsCol], r[tagsCol+1:]...)
+			row = r
 		}
 		byPod[pod] = append(byPod[pod], row)
-	}
-
-	headers := colNames
-	if lite {
-		tagsCol := indexOf(colNames, "tags")
-		if tagsCol >= 0 {
-			headers = append(colNames[:tagsCol], colNames[tagsCol+1:]...)
-		}
 	}
 
 	subdir := filepath.Join(baseDir, "metrics_pod")
@@ -377,17 +381,20 @@ func exportServiceMetrics(ctx context.Context, db *sql.DB, baseDir string, ids m
 		if svcCol < 0 {
 			continue
 		}
+		tagsCol := indexOf(colNames, "tags")
 		for _, row := range rows {
 			svc := row[svcCol]
 			if _, ok := bySvc[svc]; !ok {
+				// Note: cols is taken from the first query that produces rows for
+				// this service. Rows from subsequent queries may have different
+				// columns — this matches the Python pd.concat behaviour where
+				// missing columns are filled with NaN.
 				bySvc[svc] = &serviceRow{cols: colNames}
 			}
-			r := row
-			if lite {
-				tagsCol := indexOf(colNames, "tags")
-				if tagsCol >= 0 {
-					r = append(r[:tagsCol], r[tagsCol+1:]...)
-				}
+			r := make([]string, len(row))
+			copy(r, row)
+			if lite && tagsCol >= 0 {
+				r = append(r[:tagsCol], r[tagsCol+1:]...)
 			}
 			bySvc[svc].rows = append(bySvc[svc].rows, r)
 		}
@@ -395,11 +402,13 @@ func exportServiceMetrics(ctx context.Context, db *sql.DB, baseDir string, ids m
 
 	subdir := filepath.Join(baseDir, "metrics_service")
 	for svc, sr := range bySvc {
-		headers := sr.cols
+		// Build headers — copy to avoid mutating sr.cols.
+		headers := make([]string, len(sr.cols))
+		copy(headers, sr.cols)
 		if lite {
 			tagsCol := indexOf(sr.cols, "tags")
 			if tagsCol >= 0 {
-				headers = append(sr.cols[:tagsCol], sr.cols[tagsCol+1:]...)
+				headers = append(headers[:tagsCol], headers[tagsCol+1:]...)
 			}
 		}
 		suffix := ""
