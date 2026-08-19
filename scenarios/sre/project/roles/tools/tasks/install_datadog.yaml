@@ -1,0 +1,190 @@
+---
+# Datadog agent deployment (Layer A).
+#
+# Consumes the user's datadog-agent.yaml (a single DatadogAgent CR) and creates
+# the api/app-key Secret separately via set_credentials_datadog.yaml. All
+# configuration is read from tools_configuration.vendors.datadog.* (the single
+# role input interface).
+- name: Set Datadog configuration facts
+  ansible.builtin.set_fact:
+    tools_datadog_config: "{{ tools_configuration.vendors.datadog }}"
+    tools_datadog_namespace: "{{ tools_vendors.datadog.kubernetes.namespace }}"
+    tools_datadog_secret_name: "{{ tools_configuration.vendors.datadog.secret_name | ansible.builtin.default('datadog-secret') }}"
+    tools_datadog_api_key_name: "{{ tools_configuration.vendors.datadog.api_key_name | ansible.builtin.default('api-key') }}"
+    tools_datadog_app_key_name: "{{ tools_configuration.vendors.datadog.app_key_name | ansible.builtin.default('app-key') }}"
+
+# OpenShift requires dedicated SecurityContextConstraints bound to the agent
+# service accounts, which is not yet implemented. Blocked (no override) until the
+# prerequisites exist.
+- name: Assert Datadog is supported on this platform
+  ansible.builtin.assert:
+    that:
+      - tools_cluster.platform != 'openshift'
+    fail_msg: >-
+      Datadog vendor deployment on OpenShift is not supported yet: it requires
+      SecurityContextConstraints bound to the agent service accounts, which is
+      not implemented. Deploy on a Kubernetes cluster.
+    success_msg: Platform supported for Datadog deployment.
+
+- name: Resolve Datadog agent manifest path
+  ansible.builtin.set_fact:
+    tools_datadog_manifest_path: >-
+      {{
+        datadog_manifest_path |
+        ansible.builtin.default(tools_datadog_config.manifest_path, true)
+      }}
+
+# A relative manifest_path is resolved against the SRE project root (parent of
+# the playbook directory) so it works regardless of the working directory.
+- name: Anchor a relative Datadog manifest path to the project root
+  ansible.builtin.set_fact:
+    tools_datadog_manifest_path: "{{ [playbook_dir, '..', tools_datadog_manifest_path] | ansible.builtin.path_join | ansible.builtin.realpath }}"
+  when:
+    - not (tools_datadog_manifest_path is ansible.builtin.abs)
+
+- name: Verify that the Datadog agent manifest exists
+  ansible.builtin.stat:
+    path: "{{ tools_datadog_manifest_path }}"
+  register: tools_datadog_manifest_stat
+
+- name: Assert that the Datadog agent manifest is present and not empty
+  ansible.builtin.assert:
+    that:
+      - tools_datadog_manifest_stat.stat.exists
+      - tools_datadog_manifest_stat.stat.size > 0
+    fail_msg: >-
+      The Datadog agent manifest could not be found at
+      '{{ tools_datadog_manifest_path }}'. Download datadog-agent.yaml from the
+      Datadog onboarding UI and place it there, or set datadog_manifest_path.
+    success_msg: Datadog agent manifest found.
+
+# --- Manifest validation (S1/M1). Treat the file as untrusted/secret. ---------
+# The manifest must contain EXACTLY one DatadogAgent and NOTHING else. Secrets
+# are provisioned only by ITBench (set_credentials_datadog.yaml), never accepted
+# from the user's file.
+- name: Parse the Datadog agent manifest documents
+  ansible.builtin.set_fact:
+    tools_datadog_documents: >-
+      {{
+        lookup('ansible.builtin.file', tools_datadog_manifest_path)
+        | ansible.builtin.from_yaml_all | list
+      }}
+  no_log: true
+
+- name: Validate the Datadog agent manifest (M1/M2)
+  ansible.builtin.include_tasks: validate_datadog_manifest.yaml
+
+# --- H1: ensure/claim the namespace safely. -----------------------------------
+- name: Ensure the Datadog namespace exists and is ITBench-owned
+  ansible.builtin.include_tasks: ensure_vendor_namespace.yaml
+  vars:
+    vendor_namespace_name: "{{ tools_datadog_namespace }}"
+    vendor_namespace_vendor: datadog
+
+- name: Install Datadog Operator
+  kubernetes.core.helm:
+    chart_ref: "{{ tools_vendors.datadog.helm.chart.reference }}"
+    chart_repo_url: "{{ tools_vendors.datadog.helm.chart.repository }}"
+    chart_version: "{{ tools_vendors.datadog.helm.chart.version }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_vendors.datadog.helm.release.name }}"
+    release_namespace: "{{ tools_datadog_namespace }}"
+    release_state: present
+    atomic: true
+    timeout: 10m0s
+    wait: true
+
+- name: Wait for the DatadogAgent custom resource definition to be established
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: datadogagents.datadoghq.com
+  register: tools_datadog_crd
+  until:
+    - tools_datadog_crd.resources | ansible.builtin.length == 1
+    - >-
+      tools_datadog_crd.resources[0].status.conditions | ansible.builtin.default([])
+      | selectattr('type', 'equalto', 'Established')
+      | selectattr('status', 'equalto', 'True')
+      | list | ansible.builtin.length > 0
+  delay: 15
+  retries: 20
+
+- name: Wait for the Datadog Operator deployment to be fully rolled out (M4)
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    label_selectors:
+      - app.kubernetes.io/name=datadog-operator
+    namespace: "{{ tools_datadog_namespace }}"
+  register: tools_datadog_operator
+  until:
+    - tools_datadog_operator.resources | ansible.builtin.length > 0
+    # A healthy rollout for every operator deployment: at least one ready
+    # replica, and no unavailable replicas.
+    - >-
+      tools_datadog_operator.resources
+      | map(attribute='status.unavailableReplicas', default=0)
+      | select('gt', 0) | list | ansible.builtin.length == 0
+    - >-
+      tools_datadog_operator.resources
+      | map(attribute='status.readyReplicas', default=0)
+      | select('gt', 0) | list | ansible.builtin.length
+      == tools_datadog_operator.resources | ansible.builtin.length
+  delay: 15
+  retries: 20
+
+- name: Import Datadog credential variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_credentials_datadog.yaml
+
+# --- H3: reject collisions before applying the CR. ----------------------------
+- name: Build the ITBench-labeled DatadogAgent document
+  ansible.builtin.set_fact:
+    tools_datadog_labeled_documents: >-
+      {{
+        (tools_datadog_documents | ansible.builtin.reject('none') | list)
+        | map('combine', {'metadata': {'namespace': tools_datadog_namespace, 'labels': {'app.kubernetes.io/managed-by': 'ITBench', 'itbench.io/observability-vendor': 'datadog'}}}, recursive=True)
+        | list
+      }}
+  no_log: true
+
+- name: Assert no unowned Datadog resource collisions
+  ansible.builtin.include_tasks: assert_vendor_resource_ownership.yaml
+  vars:
+    vendor_ownership_vendor: datadog
+    vendor_ownership_namespace: "{{ tools_datadog_namespace }}"
+    vendor_ownership_documents: "{{ tools_datadog_labeled_documents }}"
+
+- name: Apply the Datadog agent manifest (labelled ITBench-owned)
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: "{{ tools_datadog_namespace }}"
+    definition: "{{ tools_datadog_labeled_documents }}"
+    apply: true
+    state: present
+    wait: true
+  no_log: true
+
+- name: Wait for the DatadogAgent to report a healthy status (M4)
+  kubernetes.core.k8s_info:
+    api_version: datadoghq.com/v2alpha1
+    kind: DatadogAgent
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: "{{ tools_datadog_namespace }}"
+    label_selectors:
+      - itbench.io/observability-vendor=datadog
+  register: tools_datadog_agent_status
+  until:
+    - tools_datadog_agent_status.resources | ansible.builtin.length == 1
+    # The Agent (node) component must report a Running/ready state via its
+    # documented status.conditions rather than merely having a status object.
+    - >-
+      tools_datadog_agent_status.resources[0].status.conditions | ansible.builtin.default([])
+      | selectattr('type', 'in', ['Reconcile', 'Ready', 'AgentReconcileConditionType'])
+      | selectattr('status', 'equalto', 'True')
+      | list | ansible.builtin.length > 0
+  delay: 20
+  retries: 30

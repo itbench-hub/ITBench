@@ -1,4 +1,35 @@
 ---
+# Build a NON-SECRET projection of the vendor configuration for job extra_vars
+# using an ALLOWLIST per vendor. Only explicitly-listed non-secret keys are
+# forwarded; anything else (including future secret fields like token/license_key)
+# is dropped by default. Secret inputs are delivered separately through vendor
+# credentials attached to the tools nodes.
+- name: Build non-secret observability vendor configuration for job extra vars
+  ansible.builtin.set_fact:
+    awx_observability_vendors_config: >-
+      {{
+        dict(
+          (awx_configuration.vendors | ansible.builtin.default({})).keys()
+          | zip(
+              (awx_configuration.vendors | ansible.builtin.default({})).keys()
+              | map('extract', awx_configuration.vendors | ansible.builtin.default({}))
+              | map('dict2items')
+              | map('selectattr', 'key', 'in', awx_vendor_nonsecret_allowlist)
+              | map('list') | map('items2dict')
+            )
+        )
+      }}
+  vars:
+    # Allowlist of non-secret config keys that may be forwarded as job extra_vars.
+    awx_vendor_nonsecret_allowlist:
+      - enabled
+      - manifest_path
+      - secret_name
+      - api_key_name
+      - app_key_name
+      - dynakube_path
+      - dynakube_api_version
+
 - name: Add ITBench job templates
   awx.awx.job_template:
     allow_simultaneous: true
@@ -16,13 +47,20 @@
     playbook: "{{ job_template.playbook }}"
     project: GitHub-ITBench
     state: present
+    extra_vars: "{{ job_template.extra_vars | ansible.builtin.default(omit) }}"
   loop:
     - name: Deploy-Tools
       playbook: scenarios/sre/project/manage_tools.yaml
       job_tags: install_tools
+      # Non-secret observability vendor configuration (enable flags, sites,
+      # manifest paths). Secrets are injected separately via vendor credentials.
+      extra_vars:
+        observability_vendors: "{{ awx_observability_vendors_config }}"
     - name: Undeploy-Tools
       playbook: scenarios/sre/project/manage_tools.yaml
       job_tags: uninstall_tools
+      extra_vars:
+        observability_vendors: "{{ awx_observability_vendors_config }}"
     - name: Deploy-Applications
       playbook: scenarios/sre/project/manage_applications.yaml
       job_tags: install_applications

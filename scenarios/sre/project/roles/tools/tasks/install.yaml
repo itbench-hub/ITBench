@@ -120,3 +120,20 @@
                 value: "0"
       when:
         - tools_cluster.platform == "openshift"
+
+- name: Install third-party observability vendor agents
+  tags:
+    - install_tools
+    - install_vendors
+  block:
+    - name: Import Datadog installation tasks
+      ansible.builtin.import_tasks:
+        file: install_datadog.yaml
+      when:
+        - tools_configuration.vendors.datadog.enabled | ansible.builtin.default(false)
+
+    - name: Import Dynatrace installation tasks
+      ansible.builtin.import_tasks:
+        file: install_dynatrace.yaml
+      when:
+        - tools_configuration.vendors.dynatrace.enabled | ansible.builtin.default(false)

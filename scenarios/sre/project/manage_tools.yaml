@@ -32,7 +32,11 @@
 
         - name: Create tool installation variable
           ansible.builtin.set_fact:
-            tools_configuration: "{{ scenarios_scenario.spec.tools }}"
+            tools_configuration: >-
+              {{
+                scenarios_scenario.spec.tools |
+                ansible.builtin.combine({'vendors': observability_vendors | ansible.builtin.default({})})
+              }}
 
     - name: Create role variables
       tags:
@@ -47,6 +51,7 @@
                 enabled: "{{ tools.sre | ansible.builtin.default(false) }}"
               finops:
                 enabled: "{{ tools.finops | ansible.builtin.default(false) }}"
+              vendors: "{{ observability_vendors | ansible.builtin.default({}) }}"
 
     - name: Import tools role
       ansible.builtin.import_role:

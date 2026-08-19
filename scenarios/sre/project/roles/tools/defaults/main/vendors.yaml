@@ -1,0 +1,31 @@
+---
+# Registry of third-party SaaS observability vendors (Layer A: agent deployment).
+#
+# Unlike `tools_managers` (in-cluster backends whose endpoints/credentials are
+# discovered at runtime), these vendors are SaaS: their agents run in-cluster via
+# a Helm chart but ship telemetry to the vendor's cloud tenant. Non-secret tenant
+# configuration (site, region, environment URL) is supplied via the
+# `observability_vendors` group_vars; secrets are injected via environment
+# variables at install time (see set_credentials_<vendor>.yaml).
+tools_vendors:
+  datadog:
+    helm:
+      chart:
+        # renovate: datasource=helm depName=datadog-operator registryUrl=https://helm.datadoghq.com
+        reference: datadog-operator
+        repository: https://helm.datadoghq.com
+        version: 2.24.0
+      release:
+        name: datadog-operator
+    kubernetes:
+      namespace: datadog
+  dynatrace:
+    helm:
+      chart:
+        # renovate: datasource=docker depName=public.ecr.aws/dynatrace/dynatrace-operator
+        reference: oci://public.ecr.aws/dynatrace/dynatrace-operator
+        version: 1.9.0
+      release:
+        name: dynatrace-operator
+    kubernetes:
+      namespace: dynatrace

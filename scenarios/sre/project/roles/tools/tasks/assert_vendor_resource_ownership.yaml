@@ -1,0 +1,63 @@
+---
+# Reject name-collisions before a server-side apply claims foreign resources.
+#
+# Inputs:
+#   vendor_ownership_vendor    - expected itbench.io/observability-vendor label
+#   vendor_ownership_namespace - namespace the documents target
+#   vendor_ownership_documents - list of resource documents to be applied
+#
+# For each document, query the live object by apiVersion/kind/name/namespace. If
+# it already exists, it must already carry the matching ITBench ownership label;
+# otherwise fail rather than relabel a foreign object.
+- name: Reset the collision-check summary for {{ vendor_ownership_vendor }}
+  ansible.builtin.set_fact:
+    vendor_ownership_summary: []
+
+- name: Query live objects for collision detection ({{ vendor_ownership_vendor }})
+  kubernetes.core.k8s_info:
+    api_version: "{{ vendor_ownership_document.apiVersion }}"
+    kind: "{{ vendor_ownership_document.kind }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ vendor_ownership_document.metadata.name }}"
+    namespace: "{{ vendor_ownership_document.metadata.namespace | ansible.builtin.default(vendor_ownership_namespace) }}"
+  loop: "{{ vendor_ownership_documents }}"
+  loop_control:
+    loop_var: vendor_ownership_document
+    label: "{{ vendor_ownership_document.kind }}/{{ vendor_ownership_document.metadata.name }}"
+  register: vendor_ownership_live
+  no_log: true
+
+# Build a plain list of {kind, name, owned} triples so the assertion does not
+# depend on the (no_log-censored) registered loop `.item` field.
+- name: Summarize collision-check results for {{ vendor_ownership_vendor }}
+  ansible.builtin.set_fact:
+    vendor_ownership_summary: >-
+      {{
+        vendor_ownership_summary | ansible.builtin.default([]) + [{
+          'kind': vendor_ownership_pair.0.kind,
+          'name': vendor_ownership_pair.0.metadata.name,
+          'exists': (vendor_ownership_pair.1.resources | ansible.builtin.length > 0),
+          'owned': (
+            vendor_ownership_pair.1.resources | ansible.builtin.length > 0
+            and (vendor_ownership_pair.1.resources[0].metadata.labels['itbench.io/observability-vendor'] | ansible.builtin.default('')) == vendor_ownership_vendor
+          )
+        }]
+      }}
+  loop: "{{ vendor_ownership_documents | zip(vendor_ownership_live.results) | list }}"
+  loop_control:
+    loop_var: vendor_ownership_pair
+    label: "{{ vendor_ownership_pair.0.kind }}/{{ vendor_ownership_pair.0.metadata.name }}"
+
+- name: Assert no unowned {{ vendor_ownership_vendor }} resource collisions
+  ansible.builtin.assert:
+    that:
+      - vendor_ownership_conflicts | ansible.builtin.length == 0
+    fail_msg: >-
+      These resources already exist and are not owned by ITBench for the
+      {{ vendor_ownership_vendor }} vendor:
+      {{ vendor_ownership_conflicts | map(attribute='kind') | zip(vendor_ownership_conflicts | map(attribute='name')) | map('join', '/') | join(', ') }}.
+      Refusing to claim them. Remove the conflicting resources or use different names.
+    success_msg: No unowned {{ vendor_ownership_vendor }} resource collisions detected.
+  vars:
+    vendor_ownership_conflicts: >-
+      {{ vendor_ownership_summary | ansible.builtin.default([]) | selectattr('exists') | rejectattr('owned') | list }}

@@ -1,0 +1,34 @@
+---
+# Persist the scenario start time so the Dynatrace recorder (which runs once at
+# teardown) can back-query Grail over exactly [scenario start -> now]. Install
+# and uninstall are separate playbook runs, so in-memory facts do not survive;
+# the timestamp is written into a ConfigMap in the recorders namespace, which
+# lives until teardown deletes the namespace.
+- name: Check for an existing Dynatrace recorder metadata ConfigMap
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    name: "{{ recorders_managers.data_recorders.instances.dynatrace }}-metadata"
+    namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+  register: recorders_dynatrace_metadata
+
+- name: Stamp scenario start time for Dynatrace recorder
+  # Only stamp once so a re-run of the install phase does not reset the start
+  # time; the first recorded value is the authoritative scenario start.
+  when:
+    - recorders_dynatrace_metadata.resources | ansible.builtin.length == 0
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/name": "{{ recorders_managers.data_recorders.instances.dynatrace }}"
+        name: "{{ recorders_managers.data_recorders.instances.dynatrace }}-metadata"
+        namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+      data:
+        scenario_start_time: "{{ now(utc=True, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+    state: present

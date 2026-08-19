@@ -1,0 +1,39 @@
+---
+# Manual, standalone deploy of the Dynatrace Grail recorder Job.
+#
+# This runs ONLY the recorder task (install_dynatrace_recorder.yaml) against an
+# already-running scenario. It does NOT export records, suspend cronjobs, or
+# delete the data-recorders namespace — unlike the full uninstall_recorders flow.
+#
+# Prereqs:
+#   * The scenario is running and the `data-recorders` namespace exists (it is
+#     created when recorders are installed at scenario start).
+#   * observability_vendors.dynatrace.recorder is configured (enabled, platform_url,
+#     platform_token_path) and the token file exists.
+#
+# Run from the scenarios/sre directory so the relative platform_token_path
+# resolves the same way it does in the normal playbooks:
+#
+#   uv run ansible-playbook -i inventory project/run_dynatrace_recorder.yaml \
+#     -e cluster_kubeconfig=$HOME/.kube/config -e cluster_platform=kubernetes
+#
+- name: Manually deploy the Dynatrace Grail recorder
+  hosts: localhost
+  gather_facts: false
+  vars:
+    cluster_kubeconfig: "{{ lookup('ansible.builtin.env', 'KUBECONFIG') | default('~/.kube/config', true) }}"
+    cluster_platform: kubernetes
+  tasks:
+    - name: Load observability vendor configuration
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../inventory/group_vars/environment/observability_vendors.yaml"
+
+    - name: Deploy the Dynatrace recorder Job
+      ansible.builtin.import_role:
+        name: recorders
+        tasks_from: install_dynatrace_recorder
+      vars:
+        recorders_cluster:
+          kubeconfig: "{{ cluster_kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+        recorders_vendors: "{{ observability_vendors }}"
