@@ -1,0 +1,33 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-115
+spec:
+  alerts:
+    - labels: {}
+      name: KubePodNotReady
+    - labels: {}
+      name: HighRequestErrorRate
+    - labels: {}
+      name: HighRequestLatency
+  entities:
+    - apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: frontend
+        namespace: otel-demo
+    - apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: frontend
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo edit horizontalpodautoscaler frontend
+            text: Manually edit the manifest and remove the aggressive scale-down behavior block, restoring the metrics thresholds to appropriate values.
+    - - steps:
+          - command: kubectl -n otel-demo edit configmap flagd-config
+            text: Disable the feature flag (loadGeneratorFloodHomepage) by manually editing the contents of the ConfigMap.
+          - command: kubectl -n otel-demo rollout restart deployment
+            text: Restart all of the Deployment workloads.

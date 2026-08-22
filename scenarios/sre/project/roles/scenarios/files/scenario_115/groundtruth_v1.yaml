@@ -1,0 +1,109 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-115
+spec:
+  alerts:
+    - group_id: frontend-pod-1
+      id: KubePodNotReady
+      metadata:
+        description: Frontend pods are not ready due to the HPA aggressively scaling down replicas under high load
+    - group_id: frontend-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in service frontend in namespace otel-demo is above threshold due to insufficient replicas
+    - group_id: frontend-service-1
+      id: HighRequestLatency
+      metadata:
+        description: Request latency in service frontend in namespace otel-demo is above threshold due to insufficient replicas
+    - group_id: frontend-proxy-service-1
+      id: HighRequestErrorRate
+      metadata:
+        description: Request error rate in service frontend-proxy in namespace otel-demo is above threshold as errors cascade from frontend
+
+  aliases:
+    - - frontend-hpa-1
+      - frontend-deployment-1
+      - frontend-pod-1
+      - frontend-service-1
+    - - frontend-proxy-service-1
+      - frontend-proxy-pod-1
+
+  fault:
+    - category: Change
+      condition: HPA scale-down behavior patched to use stabilizationWindowSeconds=0 and 100% scale-down in 15s with CPU threshold set to 99%
+      entity:
+        group_id: frontend-hpa-1
+        kind: HorizontalPodAutoscaler
+        name: frontend
+      fault_mechanism: hpa_misconfiguration
+
+  groups:
+    - filter:
+        - frontend\b
+      id: frontend-hpa-1
+      kind: HorizontalPodAutoscaler
+      namespace: otel-demo
+      root_cause: true
+
+    - filter:
+        - frontend\b
+      id: frontend-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+
+    - filter:
+        - ^frontend-[a-z0-9]+-[a-z0-9]+$
+      id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+
+    - filter:
+        - frontend\b
+      id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+
+    - filter:
+        - frontend-proxy\b
+      id: frontend-proxy-service-1
+      kind: Service
+      namespace: otel-demo
+
+    - filter:
+        - ^frontend-proxy-[a-z0-9]+-[a-z0-9]+$
+      id: frontend-proxy-pod-1
+      kind: Pod
+      namespace: otel-demo
+
+  propagations:
+    - condition: HPA configured with stabilizationWindowSeconds=0 and 100% scale-down policy at CPU threshold of 99%, causing immediate scale-down to
+        minReplicas=1
+      effect: Frontend deployment is kept at minimum replicas despite high incoming traffic from load generator
+      source: frontend-hpa-1
+      target: frontend-deployment-1
+    - condition: Single replica cannot handle the flood of requests from loadGeneratorFloodHomepage feature flag
+      effect: Frontend pods become overwhelmed and fail readiness checks
+      source: frontend-deployment-1
+      target: frontend-pod-1
+    - condition: Insufficient healthy pods to serve incoming traffic
+      effect: Frontend service experiences elevated error rates and latency
+      source: frontend-pod-1
+      target: frontend-service-1
+    - condition: Frontend errors cascade to proxy layer
+      effect: Frontend-proxy service experiences elevated error rates
+      source: frontend-service-1
+      target: frontend-proxy-service-1
+
+  recommendedActions:
+    - solution:
+        actions:
+          - Identify the HPA misconfiguration by inspecting the scale-down behavior block
+          - Remove or correct the aggressive scaleDown behavior and restore appropriate CPU utilization thresholds
+        id: fix_hpa_scaledown_behavior
+    - solution:
+        actions:
+          - Disable the loadGeneratorFloodHomepage feature flag in the flagd-config ConfigMap to reduce traffic load
+          - Restart all Deployment workloads to pick up the updated flag configuration
+        id: disable_load_generator_flag
