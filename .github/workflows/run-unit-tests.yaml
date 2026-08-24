@@ -5,6 +5,8 @@ on:
     branches:
       - main
     paths:
+      - scripts/**
+      - tests/scripts/**
       - scenarios/sre/scripts/**
       - scenarios/sre/tools/clickhouse-recorder/**
       - scenarios/sre/tools/jaeger-recorder/**
@@ -16,6 +18,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scripts:
+    name: Scripts Unit Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version-file: pyproject.toml
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Run unit tests
+        run: |
+          make test-scripts
+
   sre:
     name: SRE Scripts Unit Tests
     runs-on: ubuntu-24.04

@@ -16,21 +16,6 @@ group-vars: ## Generates the group variables
 	cp inventory/group_vars/runner/github.yaml.example inventory/group_vars/runner/github.yaml
 	cp inventory/group_vars/runner/stack.yaml.example inventory/group_vars/runner/stack.yaml
 
-.PHONY: generate-library
-generate-library: ## Generates library indexes, schemas, and other related documentation
-	$(UV) run scripts/generate_library_indexes.py \
-		--templates_directory=$(abspath ./templates/library/indexes) \
-		--library_index_directory=$(abspath ./library/indexes) \
-		--playbooks_directory=$(abspath ./project)
-	$(UV) run scripts/generate_library_index_schemas.py \
-		--library_index_directory=$(abspath ./library/indexes) \
-		--schemas_directory=$(abspath ../../schemas/json) \
-		--templates_directory=$(abspath ./templates/schemas/json/library/index)
-	$(UV) run scripts/generate_library_readmes.py \
-		--templates_directory=$(abspath ./templates/documentation/library) \
-		--library_index_directory=$(abspath ./library/indexes) \
-		--documentation_directory=$(abspath ../../documentation/library)
-
 .PHONY: generate-fault-index
 generate-fault-index: ## Generate a new fault index based on user input
 	$(UV) run ansible-playbook -i inventory.yaml project/generate_documentation_index.yaml --tags "generate_fault"
@@ -43,12 +28,6 @@ generate-scenario-index: ## Generate a new scenario index based on user input
 generate-resource-files: ## Generates task files, scenario manifests, and other related files
 	$(UV) run ansible-playbook -i inventory project/manage_resource_files.yaml --tags "generate_files"
 	cd ../../ && $(UV) run ansible-lint $(abspath project/roles/scenarios/files) --fix
-
-.PHONY: validate-library
-validate-library: ## Validates library indexes
-	$(UV) run scripts/validate_library_indexes.py \
-		--library_index_directory=$(abspath ./library/indexes) \
-		--schemas_directory=$(abspath ../../schemas/json)
 
 .PHONY: deploy-tools
 deploy-tools: ## Deploys the observability and fault tools to cluster
