@@ -13,11 +13,31 @@ deps: ## Installs dependencies
 lint: ## Lints files
 	$(UV) run ansible-lint
 
-.PHONY: pre-commit-hooks
-pre-commit-hooks: ## Installs pre-commit hooks
-	$(UV) run pre-commit install
-	$(UV) run pre-commit install --hook-type commit-msg --hook-type pre-push
+.PHONY: generate-library
+generate-library: ## Generates library indexes, schemas, and other related documentation
+	$(UV) run scripts/generate_library_indexes.py \
+		--templates_directory=$(abspath ./templates/library/indexes) \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--playbooks_directory=$(abspath ./scenarios/sre/project)
+	$(UV) run scripts/generate_library_index_schemas.py \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--schemas_directory=$(abspath ./schemas/json) \
+		--templates_directory=$(abspath ./templates/schemas/json/library/index)
+	$(UV) run scripts/generate_library_readmes.py \
+		--templates_directory=$(abspath ./templates/documentation/library) \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--documentation_directory=$(abspath ./documentation/library)
+
+.PHONY: validate-library
+validate-library: ## Validates library indexes
+	$(UV) run scripts/validate_library_indexes.py \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--schemas_directory=$(abspath .schemas/json)
 
 .PHONY: update-secrets-baseline
 update-secrets-baseline: ## Updates the baseline secret file
 	$(UV) run detect-secrets scan --update .secrets.baseline
+
+.PHONY: test-scripts
+test-scripts: ## Runs unit tests for scripts/
+	$(UV) run pytest tests/scripts/
