@@ -3,11 +3,7 @@
 
 # Corrupted Kubernetes Secret Credentials
 
-<<<<<<< HEAD
 | [Source](../../../library/indexes/faults/corrupted-kubernetes-secret-credentials.json) | [Schema](../../../schemas/json/faults/corrupted-kubernetes-secret-credentials.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_corrupted_kubernetes_secret_credentials.yaml) | Kubernetes | Authentication, Deployment |
-=======
-| [Source](../../../scenarios/sre/library/indexes/faults/corrupted-kubernetes-secret-credentials.json) | [Schema](../../../schemas/json/faults/corrupted-kubernetes-secret-credentials.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_corrupted_kubernetes_secret_credentials.yaml) | Kubernetes | Authentication, Deployment |
->>>>>>> ee186536 (refactor: place scenario releated specs at root level library)
 
 This fault corrupts a Kubernetes Secret by replacing its data with invalid credentials, simulating real-world incidents where secret rotation failures, registry authentication issues, or Vault access problems cause service outages.
 
