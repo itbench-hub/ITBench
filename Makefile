@@ -36,7 +36,7 @@ generate-library: ## Generates library indexes, schemas, documentation, and spec
 validate-library: ## Validates library indexes
 	$(UV) run scripts/validate_library_indexes.py \
 		--library_index_directory=$(abspath ./library/indexes) \
-		--schemas_directory=$(abspath .schemas/json)
+		--schemas_directory=$(abspath ./schemas/json)
 
 .PHONY: update-secrets-baseline
 update-secrets-baseline: ## Updates the baseline secret file
