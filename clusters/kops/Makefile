@@ -15,7 +15,7 @@ group-vars: ## Generates the group variables from templates
 	cp inventory/group_vars/all/cluster.yaml.example inventory/group_vars/all/cluster.yaml
 	cp inventory/group_vars/all/docker.yaml.example inventory/group_vars/all/docker.yaml
 	cp inventory/group_vars/all/ssh_keys.yaml.example inventory/group_vars/all/ssh_keys.yaml
-	cp inventory/group_vars/awx/stack.yaml.example inventory/group_vars/awx/stack.yaml
+	cp inventory/group_vars/argo/stack.yaml.example inventory/group_vars/argo/stack.yaml
 	cp inventory/group_vars/single/runner.yaml.example inventory/group_vars/single/runner.yaml
 
 .PHONY: create-cluster
@@ -49,36 +49,36 @@ destroy-cluster: ## Deletes a single cluster
 	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
 		--extra-vars "target=single-cluster"
 
-.PHONY: create-awx-stack
-create-awx-stack: ## Creates an AWX stack
+.PHONY: create-argo-stack
+create-argo-stack: ## Creates an Argo stack
 	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
 	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
-		--extra-vars "target=awx-stack"
+		--extra-vars "target=argo-stack"
 	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
-		--extra-vars "target=awx-stack"
+		--extra-vars "target=argo-stack"
 
 .PHONY: get-stack-kubeconfigs
-get-stack-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an AWX stack
+get-stack-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an Argo stack
 	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
-		--extra-vars "target=awx-stack"
+		--extra-vars "target=argo-stack"
 
 .PHONY: install-stack-docker-registry
-install-stack-docker-registry: get-stack-kubeconfigs ## Installs docker registry into AWX stack clusters
+install-stack-docker-registry: get-stack-kubeconfigs ## Installs docker registry into Argo stack clusters
 	$(UV) run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
-		--extra-vars "target=awx-stack"
+		--extra-vars "target=argo-stack"
 
 .PHONY: sync-stack-group-vars
 sync-stack-group-vars: get-stack-kubeconfigs ## Syncs the kubeconfig with the scenarios group variables
 	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
-		--extra-vars "target=awx-stack"
+		--extra-vars "target=argo-stack"
 	cd ../../ && $(UV) run ansible-lint scenarios/sre/inventory/group_vars/runner --fix
 
-.PHONY: destroy-awx-stack
-destroy-awx-stack: ## Destroy an AWX stack
+.PHONY: destroy-argo-stack
+destroy-argo-stack: ## Destroys an Argo stack
 	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
-		--extra-vars "target=awx-stack"
+		--extra-vars "target=argo-stack"
 	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
-		--extra-vars "target=awx-stack"
+		--extra-vars "target=argo-stack"
 
 .PHONY: list-clusters
 list-clusters: ## Lists all active clusters

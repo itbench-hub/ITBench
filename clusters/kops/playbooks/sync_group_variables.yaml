@@ -6,7 +6,7 @@
     - name: Validate target variable
       ansible.builtin.assert:
         that:
-          - target in ["awx-stack", "single-cluster"]
+          - target in ["argo-stack", "single-cluster"]
         fail_msg: Invalid target provided. Please provide valid target.
         success_msg: Valid target provided.
   tasks:
@@ -51,7 +51,7 @@
 
     - name: Write runner group variables
       when:
-        - target == "awx-stack"
+        - target == "argo-stack"
       block:
         - name: Validate the existence of kubeconfig
           ansible.builtin.assert:
@@ -67,7 +67,7 @@
                 (
                   {
                     "stack": {
-                      "awx": {
+                      "argo": {
                         "kubeconfig": (
                           kubeconfig_paths.files |
                           ansible.builtin.selectattr("path", "search", stack.name.prefix + "-head") |
