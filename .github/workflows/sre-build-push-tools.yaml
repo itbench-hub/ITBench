@@ -5,6 +5,11 @@ on:
     branches:
       - main
     paths:
+      - Dockerfile
+      - pyproject.toml
+      - requirements.yaml
+      - library/specs/**
+      - scenarios/sre/project/**
       - scenarios/sre/tools/**
       - '!scenarios/sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/**'
 
@@ -13,6 +18,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  bench-runner:
+    uses: ./.github/workflows/_build-image.yaml
+    with:
+      context: .
+      image: quay.io/it-bench/bench-runner
+      tags: |
+        quay.io/it-bench/bench-runner:1.0.0
+        quay.io/it-bench/bench-runner:latest
+      push: true
+    secrets:
+      QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+      QUAY_ROBOT_TOKEN: ${{ secrets.QUAY_ROBOT_TOKEN }}
+
   hello-bench-amd64:
     runs-on: ubuntu-24.04
     steps:
