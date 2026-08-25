@@ -6,7 +6,7 @@
     - name: Validate target variable
       ansible.builtin.assert:
         that:
-          - target in ["awx-stack", "single-cluster"]
+          - target in ["argo-stack", "single-cluster"]
         fail_msg: Invalid target provided. Please provide valid target.
         success_msg: Valid target provided.
       tags:
@@ -30,7 +30,7 @@
       tags:
         - always
       when:
-        - target == "awx-stack"
+        - target == "argo-stack"
 
     - name: Import executables role
       ansible.builtin.import_role:
@@ -71,7 +71,7 @@
             label: runner/{{ runner_index }}
             loop_var: runner_index
           when:
-            - target == "awx-stack"
+            - target == "argo-stack"
 
     - name: Create role variables
       tags:
@@ -99,7 +99,7 @@
                 }}
               name: "{{ stack.name.prefix }}"
           when:
-            - target == "awx-stack"
+            - target == "argo-stack"
 
         - name: Create kOps configuration variable
           ansible.builtin.set_fact:

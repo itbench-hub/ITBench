@@ -5,14 +5,84 @@ on:
     branches:
       - main
     paths:
-      - clusters/kind/go.*
+      - clusters/kind/**
+      - clusters/minikube/**
       - scenarios/sre/project/roles/tools/install_*.yaml
+      - '!clusters/kind/README.md'
+      - '!clusters/minikube/README.md'
 
 concurrency:
   group: ci-network-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  clusters-kind:
+    name: ITBench Kind Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version-file: pyproject.toml
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: clusters/kind/go.mod
+          cache-dependency-path: clusters/kind/go.sum
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.2.4
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Create Kind cluster
+        run: |
+          make -C clusters/kind create-environment-cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C clusters/kind run-service-provider &
+          sleep 10
+      - name: Run tests
+        run: |
+          make -C clusters/kind test
+      - name: Destroy Minikube cluster
+        run: |
+          make -C clusters/kind destroy-environment-cluster
+  clusters-minikube:
+    name: ITBench Minikube Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version-file: pyproject.toml
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.2.4
+      - uses: medyagh/setup-minikube@v0.0.21
+        with:
+          cache: false
+          cni: cilium
+          container-runtime: containerd
+          driver: docker
+          kubernetes-version: v1.35.0
+          minikube-version: 1.38.1
+          start: false
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Create Minikube cluster
+        run: |
+          make -C clusters/minikube create-environment-cluster
+      - name: Start Minikube tunnel
+        run: |
+          make -C clusters/minikube start-environment-tunnel &
+          sleep 10
+      - name: Run tests
+        run: |
+          make -C clusters/minikube test
+      - name: Destroy Minikube cluster
+        run: |
+          make -C clusters/minikube destroy-environment-cluster
   environment-tools-gateway-kind:
     name: ITBench Environment Tools Gateway Network Tests on Kind
     runs-on: ubuntu-24.04
@@ -36,7 +106,10 @@ jobs:
           make -C scenarios/sre group-vars
       - name: Create Kind cluster
         run: |
-          make -C clusters/kind create-simple-cluster
+          make -C clusters/kind create-environment-cluster
+      - name: Sync cluster group vars
+        run: |
+          make -C clusters/kind sync-cluster-group-vars
       - name: Run Cloud Provider
         run: |
           make -C clusters/kind run-service-provider &
@@ -46,4 +119,4 @@ jobs:
           make -C scenarios/sre test-network-gateway
       - name: Destroy Kind cluster
         run: |
-          make -C clusters/kind destroy-simple-cluster
+          make -C clusters/kind destroy-environment-cluster

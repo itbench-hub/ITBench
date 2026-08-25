@@ -11,7 +11,10 @@
 >Generally, there are minimal differences between using Podman or Docker for Minikube. For simplicity, only instructions for Podman have been provided. However, if one wants to use Docker, the instructions for downloading it are provided [here](https://docs.docker.com/get-started/get-docker/).
 
 >[!IMPORTANT]
->If using a Minikube cluster for SRE scenarios, please ensure that the machine has the necessary [hardware requirements](../../documentation/getting-started/awx.md#requirements).
+>If using a Minikube cluster for SRE scenarios, please ensure that the machine has the necessary [hardware requirements](../../documentation/getting-started/argo.md#requirements).
+
+>[!IMPORTANT]
+>Minikube supports **local development only**. For full-scale multi-trial benchmarks, use [kOps](../kops/README.md).
 
 ## Installation
 
@@ -99,50 +102,50 @@ export KUBECONFIG=~/.kube/config
 kubectl cluster-info
 ```
 
-### AWX Cluster
+### Argo Stack
 
 #### Creation
 
-1. Run the following command to create a Minikube cluster:
+1. Run the following command to create a two-cluster Minikube stack for Argo Workflows orchestration:
 ```shell
-make create-awx-cluster
+make create-argo-stack
 ```
 
-2. Open a new terminal window and run the following command to start the Minikube tunnel
+2. Open a new terminal window and run the following command to start the Minikube tunnel for the orchestrator cluster
 ```shell
-make start-awx-tunnel
+make start-argo-tunnel
 ```
 
 #### Deletion
 
 1. In the terminal window running the Minikube tunnel, press `Ctrl` and `C` keys on your keyboard.
 
-2. Run the following command to destroy a Minikube cluster
+2. Run the following command to destroy the Argo stack
 ```shell
-make destroy-awx-cluster
+make destroy-argo-stack
 ```
 
-### Simple Cluster
+### Environment Cluster
 
 #### Creation
 
 1. Run the following command to create a Minikube cluster:
 ```shell
-make create-simple-cluster
+make create-environment-cluster
 ```
 
 2. Open a new terminal window and run the following command to start the Minikube tunnel
 ```shell
-make start-simple-tunnel
+make start-environment-tunnel
 ```
 
 #### Deletion
 
 1. In the terminal window running the Minikube tunnel, press `Ctrl` and `C` keys on your keyboard.
 
-2. Run the following command to destroy a Minikube cluster
+2. Run the following command to destroy the Minikube cluster
 ```shell
-make destroy-simple-cluster
+make destroy-environment-cluster
 ```
 
 ## Troubleshooting

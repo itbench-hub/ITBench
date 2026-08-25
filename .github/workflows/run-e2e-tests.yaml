@@ -42,7 +42,7 @@ jobs:
           version: v4.2.4
       - name: Create Kind cluster
         run: |
-          make -C clusters/kind create-simple-cluster
+          make -C clusters/kind create-environment-cluster
       - name: Run Cloud Provider
         run: |
           make -C clusters/kind run-service-provider &
@@ -53,6 +53,9 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
+      - name: Sync cluster group vars
+        run: |
+          make -C clusters/kind sync-cluster-group-vars
       - name: Start FinOps Scenario 37 # Due to resources, skip deploying recorders
         run: |
           SCENARIO_NUMBER=37 make -C scenarios/sre create-environment
@@ -63,7 +66,7 @@ jobs:
           SCENARIO_NUMBER=37 make -C scenarios/sre destroy-environment
       - name: Destroy Kind cluster
         run: |
-          make -C clusters/kind destroy-simple-cluster
+          make -C clusters/kind destroy-environment-cluster
   sre:
     runs-on: ubuntu-24.04
     steps:
@@ -80,7 +83,7 @@ jobs:
           version: v4.2.4
       - name: Create Kind cluster
         run: |
-          make -C clusters/kind create-simple-cluster
+          make -C clusters/kind create-environment-cluster
       - name: Run Cloud Provider
         run: |
           make -C clusters/kind run-service-provider &
@@ -91,6 +94,9 @@ jobs:
       - name: Create group vars
         run: |
           make -C scenarios/sre group-vars
+      - name: Sync cluster group vars
+        run: |
+          make -C clusters/kind sync-cluster-group-vars
       - name: Start SRE Scenario 60
         run: |
           SCENARIO_NUMBER=60 make -C scenarios/sre start-scenario
@@ -99,4 +105,4 @@ jobs:
           SCENARIO_NUMBER=60 make -C scenarios/sre stop-scenario
       - name: Destroy Kind cluster
         run: |
-          make -C clusters/kind destroy-simple-cluster
+          make -C clusters/kind destroy-environment-cluster
