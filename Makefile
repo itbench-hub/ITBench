@@ -14,7 +14,7 @@ lint: ## Lints files
 	$(UV) run ansible-lint
 
 .PHONY: generate-library
-generate-library: ## Generates library indexes, schemas, and other related documentation
+generate-library: ## Generates library indexes, schemas, documentation, and spec files
 	$(UV) run scripts/generate_library_indexes.py \
 		--templates_directory=$(abspath ./templates/library/indexes) \
 		--library_index_directory=$(abspath ./library/indexes) \
@@ -23,6 +23,10 @@ generate-library: ## Generates library indexes, schemas, and other related docum
 		--library_index_directory=$(abspath ./library/indexes) \
 		--schemas_directory=$(abspath ./schemas/json) \
 		--templates_directory=$(abspath ./templates/schemas/json/library/index)
+	$(UV) run scripts/generate_library_specs.py \
+		--templates_directory=$(abspath ./templates/library/specs/scenarios) \
+		--library_index_directory=$(abspath ./library/indexes) \
+		--specs_directory=$(abspath ./library/specs/scenarios)
 	$(UV) run scripts/generate_library_readmes.py \
 		--templates_directory=$(abspath ./templates/documentation/library) \
 		--library_index_directory=$(abspath ./library/indexes) \

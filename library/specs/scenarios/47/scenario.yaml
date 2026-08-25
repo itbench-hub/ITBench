@@ -1,0 +1,24 @@
+---
+apiVersion: itbench.io/v2
+kind: Scenario
+metadata:
+  name: scenario-47
+spec:
+  applications:
+    bookInfo:
+      enabled: true
+  faults:
+  - injections:
+    - args:
+        httpMethods:
+        - GET
+        kubernetesObject:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: Gateway
+          metadata:
+            name: bookinfo-gateway
+            namespace: book-info
+      id: traffic-denying-istio-gateway-authorization-policy
+  tools:
+    sre:
+      enabled: true
