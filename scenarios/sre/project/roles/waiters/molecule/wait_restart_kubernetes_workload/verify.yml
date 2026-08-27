@@ -13,14 +13,12 @@
           - status
           - deployment
           - test-workload
-          - --kubeconfig={{ cluster.kubeconfig | ansible.builtin.expanduser }}
           - --timeout=60s
       changed_when:
         - false
 
     - name: Retrieve workload after restart
       kubernetes.core.k8s_info:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: apps/v1
         kind: Deployment
         name: test-workload

@@ -5,7 +5,6 @@
   tasks:
     - name: Check token is no longer valid
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: authentication.k8s.io/v1
           kind: TokenReview
@@ -32,7 +31,6 @@
 
     - name: Retrieve ClusterRoleBinding
       kubernetes.core.k8s_info:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: rbac.authorization.k8s.io/v1
         kind: ClusterRoleBinding
         name: agent-cluster-access
@@ -47,7 +45,6 @@
 
     - name: Retrieve ClusterRole
       kubernetes.core.k8s_info:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: rbac.authorization.k8s.io/v1
         kind: ClusterRole
         name: agent-cluster-access
@@ -62,7 +59,6 @@
 
     - name: Retrieve ServiceAccount
       kubernetes.core.k8s_info:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: v1
         kind: ServiceAccount
         name: agent

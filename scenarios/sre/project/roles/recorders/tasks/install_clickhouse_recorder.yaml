@@ -5,11 +5,9 @@
     tasks_from: set_credentials_clickhouse
   vars:
     tools_cluster:
-      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
 
 - name: Create PersistentVolumeClaim for clickhouse-recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: PersistentVolumeClaim
@@ -32,7 +30,6 @@
   kubernetes.core.k8s_info:
     api_version: batch/v1
     kind: Job
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     name: "{{ recorders_instances.clickhouse_data_recorder.name }}"
     namespace: "{{ recorders_instances.clickhouse_data_recorder.namespace }}"
   register: recorders_job
@@ -43,7 +40,6 @@
 
 - name: Install Kubernetes Job for clickhouse-recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: batch/v1
       kind: Job

@@ -1,7 +1,6 @@
 ---
 - name: Create schedule
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ fault_args.kubernetesObject.apiVersion }}"
       kind: "{{ fault_args.kubernetesObject.kind }}"
@@ -25,7 +24,6 @@
   kubernetes.core.k8s_info:
     api_version: "{{ fault_args.kubernetesObject.apiVersion }}"
     kind: "{{ fault_args.kubernetesObject.kind }}"
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     name: "{{ fault_args.kubernetesObject.metadata.name }}"
     namespace: "{{ fault_args.kubernetesObject.metadata.namespace }}"
   register: faults_schedule
@@ -41,7 +39,6 @@
   kubernetes.core.k8s_info:
     api_version: "{{ faults_schedule.resources[0].status.active[0].apiVersion }}"
     kind: "{{ faults_schedule.resources[0].status.active[0].kind }}"
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     name: "{{ faults_schedule.resources[0].status.active[0].name }}"
     namespace: "{{ faults_schedule.resources[0].status.active[0].namespace }}"
     wait: true

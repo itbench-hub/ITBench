@@ -9,7 +9,6 @@
   kubernetes.core.k8s_info:
     api_version: v1
     kind: PersistentVolumeClaim
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     name: "{{ recorder.name }}-records"
     namespace: "{{ recorder.namespace }}"
   register: recorders_persistent_volume_claims
@@ -21,7 +20,6 @@
   block:
     - name: Create Deployment to export records from {{ recorder.name }}
       kubernetes.core.k8s:
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: apps/v1
           kind: Deployment
@@ -85,7 +83,6 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Pod
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
         namespace: "{{ recorder.namespace }}"
         label_selectors:
           - app.kubernetes.io/managed-by = ITBench
@@ -109,7 +106,6 @@
           - cp
           - "{{ pod.metadata.namespace }}/{{ pod.metadata.name }}:/opt/app-root/src/records"
           - "{{ recorders_export_directory.path }}"
-          - --kubeconfig={{ recorders_cluster.kubeconfig | ansible.builtin.expanduser }}
       register: recorders_copy_result
       changed_when:
         - recorders_copy_result.rc == 0
@@ -120,7 +116,6 @@
   always:
     - name: Delete Deployment
       kubernetes.core.k8s:
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: apps/v1
           kind: Deployment

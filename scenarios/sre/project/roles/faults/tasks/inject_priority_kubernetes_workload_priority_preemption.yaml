@@ -13,7 +13,6 @@
 
 - name: Create PriorityClass (high priority)
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: scheduling.k8s.io/v1
       kind: PriorityClass
@@ -29,7 +28,6 @@
 
 - name: Create PriorityClass (lower priority)
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: scheduling.k8s.io/v1
       kind: PriorityClass
@@ -45,7 +43,6 @@
 
 - name: Patch workload with priority class and assign to node
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
       kind: "{{ faults_kubernetes_object.kind }}"
@@ -63,7 +60,6 @@
 - name: Wait for workload to update
   kubernetes.core.k8s_info:
     api_version: "{{ faults_kubernetes_object.apiVersion }}"
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     kind: "{{ faults_kubernetes_object.kind }}"
     name: "{{ faults_kubernetes_object.metadata.name }}"
     namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
@@ -77,7 +73,6 @@
 
 - name: Create priority workload
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: apps/v1
       kind: Deployment

@@ -3,7 +3,6 @@
   kubernetes.core.k8s_info:
     api_version: certificates.k8s.io/v1
     kind: CertificateSigningRequest
-    kubeconfig: "{{ cluster_files.kubeconfig }}"
     field_selectors:
       - spec.signerName=kubernetes.io/kubelet-serving
     wait: true
@@ -16,7 +15,6 @@
       - certificate
       - approve
       - "{{ request.metadata.name }}"
-      - "--kubeconfig={{ cluster_files.kubeconfig | ansible.builtin.expanduser }}"
   register: cluster_certs_approve_output
   changed_when:
     - cluster_certs_approve_output.rc == 0
@@ -31,7 +29,6 @@
   kubernetes.core.k8s_info:
     api_version: certificates.k8s.io/v1
     kind: CertificateSigningRequest
-    kubeconfig: "{{ cluster_files.kubeconfig }}"
     name: "{{ request.metadata.name }}"
     wait: true
     wait_condition:

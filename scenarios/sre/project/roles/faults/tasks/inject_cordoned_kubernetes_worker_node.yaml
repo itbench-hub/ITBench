@@ -13,7 +13,6 @@
 
 - name: Assign workload to selected worker node
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
       kind: "{{ faults_kubernetes_object.kind }}"
@@ -30,7 +29,6 @@
 - name: Wait for workload to update
   kubernetes.core.k8s_info:
     api_version: "{{ faults_kubernetes_object.apiVersion }}"
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     kind: "{{ faults_kubernetes_object.kind }}"
     name: "{{ faults_kubernetes_object.metadata.name }}"
     namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
@@ -44,7 +42,6 @@
 
 - name: Cordon the selected worker node
   kubernetes.core.k8s_drain:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     name: "{{ faults_node.metadata.name }}"
     state: cordon
 
@@ -55,7 +52,6 @@
 - name: Scale workload
   kubernetes.core.k8s_scale:
     api_version: "{{ faults_kubernetes_object.apiVersion }}"
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     kind: "{{ faults_kubernetes_object.kind }}"
     name: "{{ faults_kubernetes_object.metadata.name }}"
     namespace: "{{ faults_kubernetes_object.metadata.namespace }}"

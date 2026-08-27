@@ -1,7 +1,6 @@
 ---
 - name: Create Namespace for OpenCost
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     state: present
     template: templates/kubernetes/opencost/namespace.j2
 
@@ -21,7 +20,6 @@
   kubernetes.core.helm:
     chart_ref: "oci://ghcr.io/opencost/charts/opencost"
     chart_version: "2.5.31"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.opencost.name }}"
     release_namespace: "{{ tools_releases.opencost.namespace }}"
     release_state: present
@@ -35,6 +33,5 @@
 
 - name: Create PrometheusRules
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     state: present
     template: templates/kubernetes/opencost/prometheusrules.j2

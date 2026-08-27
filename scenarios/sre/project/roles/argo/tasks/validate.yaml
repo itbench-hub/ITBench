@@ -19,6 +19,13 @@
       when:
         - not runner.kubeconfig is ansible.builtin.file
 
+    - name: Fail playbook due to `missing S3 credentials` error
+      ansible.builtin.fail:
+        msg: S3 storage is configured but credentials are not available in the environment.
+      when:
+        - argo_storage.s3 is defined
+        - lookup("ansible.builtin.env", "AWS_ACCESS_KEY_ID") == ''
+
 - name: Validate launch_workflows inputs
   tags:
     - install_tools
