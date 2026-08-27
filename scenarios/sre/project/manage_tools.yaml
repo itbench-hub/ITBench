@@ -22,13 +22,11 @@
       tags:
         - install_tools
       when:
-        - scenario_id is ansible.builtin.defined
+        - scenario_specs_directory is ansible.builtin.defined
       block:
         - name: Import scenarios role
           ansible.builtin.import_role:
             name: scenarios
-          vars:
-            scenarios_identifier: "{{ scenario_id }}"
 
         - name: Create tool installation variable
           ansible.builtin.set_fact:
@@ -38,7 +36,7 @@
       tags:
         - install_tools
       when:
-        - scenario_id is ansible.builtin.undefined
+        - scenario_specs_directory is not ansible.builtin.defined
       block:
         - name: Create tool installation variable
           ansible.builtin.set_fact:

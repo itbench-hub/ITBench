@@ -1,0 +1,74 @@
+{% macro step(name, playbook, tag=None, extra_params=[]) %}
+    - name: {{ name }}
+      inputs:
+        parameters:
+          - name: scenario_id
+          - name: kubeconfig_secret
+          - name: trial_id
+          - name: storage
+            value: "{}"
+{% for param in extra_params %}
+          - name: {{ param }}
+{% endfor %}
+      container:
+        image: quay.io/it-bench/bench-runner:1.0.0
+        command: [ansible-playbook]
+        args:
+          - scenarios/sre/project/{{ playbook }}
+{% if tag %}
+          - --tags
+          - {{ tag }}
+{% endif %}
+          - --extra-vars
+          - >-
+            scenario_specs_directory=/runner/scenario
+            cluster={"kubeconfig":"/runner/kubeconfig/kubeconfig"}
+            storage=[[inputs.parameters.storage]]
+{% for param in extra_params %}
+            {{ param }}=[[inputs.parameters.{{ param }}]]
+{% endfor %}
+{% if argo_credentials.providers.aws is defined %}
+        envFrom:
+          - secretRef:
+              name: aws-credentials
+{% endif %}
+        volumeMounts:
+          - name: runner-kubeconfig
+            mountPath: /runner/kubeconfig
+          - name: scenario-manifest
+            mountPath: /runner/scenario
+      volumes:
+        - name: runner-kubeconfig
+          secret:
+            secretName: [[inputs.parameters.kubeconfig_secret]]
+        - name: scenario-manifest
+          configMap:
+            name: scenario-[[inputs.parameters.scenario_id]]
+{% endmacro %}
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: itbench-steps
+  namespace: {{ argo_releases.argo_workflows.namespace }}
+spec:
+  templates:
+{{ step('deploy-tools',             'manage_tools.yaml',            'install_tools') }}
+{{ step('undeploy-tools',           'manage_tools.yaml',            'uninstall_tools') }}
+{{ step('deploy-applications',      'manage_applications.yaml',     'install_applications') }}
+{{ step('undeploy-applications',    'manage_applications.yaml',     'uninstall_applications') }}
+{{ step('clear-kubernetes-events',  'clear_kubernetes_events.yaml') }}
+{{ step('inject-faults',            'manage_faults.yaml',           'inject_faults',       ['faults_index']) }}
+{{ step('remove-faults',            'manage_faults.yaml',           'remove_faults') }}
+{{ step('deploy-data-recorders',    'manage_recorders.yaml',        'install_recorders',   ['benchmark_phase']) }}
+{{ step('undeploy-data-recorders',  'manage_recorders.yaml',        'uninstall_recorders', ['benchmark_phase']) }}
+{{ step('grant-access-to-agent',    'manage_agent_access.yaml',     'grant_access') }}
+{{ step('remove-access-from-agent', 'manage_agent_access.yaml',     'revoke_access') }}
+{{ step('handover-to-agent',        'manage_agent_transition.yaml', 'agent_handover') }}
+{{ step('handback-from-agent',      'manage_agent_transition.yaml', 'agent_handback') }}
+
+    - name: pause
+      inputs:
+        parameters:
+          - name: duration
+      suspend:
+        duration: "[[inputs.parameters.duration]]"

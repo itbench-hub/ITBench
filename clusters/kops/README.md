@@ -44,7 +44,7 @@ The playbooks feature a number of [group variables](./inventory/group_vars/). Ea
 | [docker.yaml](./inventory/group_vars/all/docker.yaml.example) | Configures the registry secret |
 | [runner.yaml](./inventory/group_vars/single/runner.yaml.example) | Configures the name prefix for a single cluster |
 | [ssh_keys.yaml](./inventory/group_vars/all/ssh_keys.yaml.example) | Configured the ssh key to access the cluster |
-| [stack.yaml](./inventory/group_vars/awx/stack.yaml) | Configures the name prefix and number of clusters in AWX stack |
+| [stack.yaml](./inventory/group_vars/argo/stack.yaml) | Configures the name prefix and number of clusters in Argo stack |
 
 >[!NOTE]
 >Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
@@ -66,21 +66,21 @@ aws configure
 
 ## Cluster Management
 
-There are two management targets that are controlled by these playbooks: **AWX Stack** and **Single Cluster**.
+There are two management targets that are controlled by these playbooks: **Argo Stack** and **Single Cluster**.
 
-An AWX stack requires multiple clusters (one per scenario) and a controller cluster. The controller cluster is called the `head` and any cluster running a scenario is called a `runner`. To reduce resource complexity, only one [virtual private cloud (VPC)](https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html) object is created. From that VPC, several [subnets](https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html) (one per cluster) are created.
+An Argo stack requires multiple clusters (one per runner) and a controller cluster. The controller cluster is called the `head` and any cluster running a scenario is called a `runner`. To reduce resource complexity, only one [virtual private cloud (VPC)](https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html) object is created. From that VPC, several [subnets](https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html) (one per cluster) are created.
 
 A single cluster is only one `runner` cluster.
 
-For general development, most users will require only the single cluster target. The AWX stack is only recommended for running multiple scenarios with multiple trials simulatenously due to the intense amount of resources required.
+For general development, most users will require only the single cluster target. The Argo stack is only recommended for running multiple scenarios with multiple trials simultaneously due to the intense amount of resources required.
 
-### AWX Stack
+### Argo Stack
 
 #### Creation
 
 1. Run the following command to create a "stack" of clusters
 ```shell
-make create-awx-stack
+make create-argo-stack
 ```
 
 2. Once the previous command successfully completes, run the following command to export the kubeconfig:
@@ -99,7 +99,7 @@ kubectl cluster-info
 make sync-stack-group-vars
 ```
 
-5. **(Optional)**: To install a Docker registry secret into the AWX stack clusters, use the following command:
+5. **(Optional)**: To install a Docker registry secret into the Argo stack clusters, use the following command:
 ```shell
 make install-stack-docker-registry
 ```
@@ -108,7 +108,7 @@ make install-stack-docker-registry
 
 1. Run the following command to delete a cluster
 ```shell
-make destroy-awx-stack
+make destroy-argo-stack
 ```
 
 ### Single Cluster

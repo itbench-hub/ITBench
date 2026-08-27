@@ -29,7 +29,6 @@ EOF
 
 RUN microdnf upgrade -y \
     && microdnf install -y --nodocs \
-      tar \
       kubectl \
     && microdnf clean all
 
@@ -44,5 +43,4 @@ RUN ansible-galaxy collection install -r requirements.yaml
 
 WORKDIR /runner
 
-COPY library/specs/ library/specs/
 COPY scenarios/ scenarios/

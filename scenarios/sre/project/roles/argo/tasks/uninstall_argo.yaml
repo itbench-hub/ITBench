@@ -1,0 +1,20 @@
+---
+- name: Uninstall Argo Workflows
+  kubernetes.core.helm:
+    kubeconfig: "{{ argo_cluster.kubeconfig }}"
+    release_name: "{{ argo_releases.argo_workflows.name }}"
+    release_namespace: "{{ argo_releases.argo_workflows.namespace }}"
+    release_state: absent
+    timeout: 10m0s
+    wait: true
+
+- name: Delete the Argo Workflows namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ argo_cluster.kubeconfig }}"
+    resource_definition:
+      api_version: v1
+      kind: Namespace
+      metadata:
+        name: "{{ argo_releases.argo_workflows.namespace }}"
+    state: absent
+    wait: true

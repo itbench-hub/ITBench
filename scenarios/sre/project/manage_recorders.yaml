@@ -32,7 +32,7 @@
           vars:
             template_path: "{{ playbook_dir }}/templates/group_variables/storage.j2"
           when:
-            - scenario_id is ansible.builtin.defined
+            - scenario_specs_directory is ansible.builtin.defined
             - storage is ansible.builtin.defined
             - storage_overrides is ansible.builtin.defined
 
@@ -48,13 +48,11 @@
       tags:
         - install_recorders
       when:
-        - scenario_id is ansible.builtin.defined
+        - scenario_specs_directory is ansible.builtin.defined
       block:
         - name: Import scenarios role
           ansible.builtin.import_role:
             name: scenarios
-          vars:
-            scenarios_identifier: "{{ scenario_id }}"
 
         - name: Create recorders installation variable
           ansible.builtin.set_fact:
@@ -66,7 +64,7 @@
       tags:
         - install_recorders
       when:
-        - scenario_id is ansible.builtin.undefined
+        - scenario_specs_directory is not ansible.builtin.defined
       block:
         - name: Create recorders installation variable
           ansible.builtin.set_fact:

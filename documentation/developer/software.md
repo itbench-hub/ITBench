@@ -10,17 +10,7 @@ For issues and support directly related to the software, it is often best to rea
 | --- | --- |
 | amazon.aws | https://github.com/ansible-collections/amazon.aws |
 | ansible.posix | https://github.com/ansible-collections/ansible.posix |
-| ansible.windows | https://github.com/ansible-collections/ansible.windows |
-| awx.awx | https://github.com/ansible/awx |
-| azure.azcollection | https://github.com/ansible-collections/azure |
-| community.aws | https://github.com/ansible-collections/community.aws |
-| community.vmware | https://github.com/ansible-collections/community.vmware |
-| google.cloud | https://github.com/ansible-collections/google.cloud |
 | kubernetes.core | https://github.com/ansible-collections/kubernetes.core |
-| kubevirt.core | https://github.com/kubevirt/kubevirt.core |
-| openstack.cloud | https://opendev.org/openstack/ansible-collections-openstack |
-| ovirt.ovirt | https://github.com/ovirt/ovirt-ansible-collection |
-| theforeman.foreman | https://github.com/theforeman/foreman-ansible-modules |
 
 ## Chaos Engineering
 
@@ -84,6 +74,12 @@ For issues and support directly related to the software, it is often best to rea
 | Jaeger | https://github.com/jaegertracing/jaeger |
 | OpenTelemetry Collector | https://github.com/open-telemetry/opentelemetry-collector |
 | Prometheus | https://github.com/prometheus/prometheus |
+
+## Orchestration
+
+| Name | Repository |
+| --- | --- |
+| Argo Workflows | https://github.com/argoproj/argo-workflows |
 
 ## Service Mesh
 

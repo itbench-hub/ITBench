@@ -1,0 +1,58 @@
+---
+- name: Validate install_tools inputs
+  tags:
+    - install_tools
+  block:
+    - name: Fail playbook due to `invalid argument` error
+      ansible.builtin.fail:
+        msg: No runners provided. Please set `argo_runners` to a non-empty list.
+      when:
+        - argo_runners | ansible.builtin.default([]) | ansible.builtin.length == 0
+
+    - name: Fail playbook due to `file not found` error
+      ansible.builtin.fail:
+        msg: "Runner kubeconfig path does not exist: {{ runner.kubeconfig }}"
+      loop: "{{ argo_runners }}"
+      loop_control:
+        label: "{{ runner.kubeconfig }}"
+        loop_var: runner
+      when:
+        - not runner.kubeconfig is ansible.builtin.file
+
+- name: Validate launch_workflows inputs
+  tags:
+    - install_tools
+    - launch_workflows
+  block:
+    - name: Fail playbook due to `invalid argument` error
+      ansible.builtin.fail:
+        msg: No experiments provided. Please set `argo_experiments` to a non-empty list.
+      when:
+        - argo_experiments | ansible.builtin.default([]) | ansible.builtin.length == 0
+
+    - name: Fail playbook due to `file not found` error
+      ansible.builtin.fail:
+        msg: "Scenario manifest not found: {{ _path }}"
+      loop: "{{ argo_experiments | map(attribute='scenario') | unique }}"
+      loop_control:
+        label: "scenario-{{ scenario }}"
+        loop_var: scenario
+      vars:
+        _path: |-
+          {{
+            [
+              playbook_dir,
+              "..",
+              "..",
+              "..",
+              "library",
+              "specs",
+              "scenarios",
+              scenario,
+              "scenario.yaml"
+            ] |
+            ansible.builtin.path_join |
+            ansible.builtin.realpath
+          }}
+      when:
+        - not _path is ansible.builtin.file

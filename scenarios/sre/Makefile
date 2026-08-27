@@ -33,7 +33,7 @@ generate-resource-files: ## Generates task files, scenario manifests, and other 
 deploy-tools: ## Deploys the observability and fault tools to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install_tools" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install_tools"
 endif
@@ -46,7 +46,7 @@ display-endpoints: ## Shows the urls for accessing deployed tools in browser
 undeploy-tools: ## Undeploys the observability and fault tools from cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall_tools" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall_tools"
 endif
@@ -55,7 +55,7 @@ endif
 deploy-applications: ## Deploys the applications to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install_applications" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install_applications"
 endif
@@ -64,7 +64,7 @@ endif
 undeploy-applications: ## Undeploys the applications to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall_applications" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall_applications"
 endif
@@ -73,19 +73,14 @@ endif
 deploy-recorders: ## Deploys the data recorders to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install_recorders" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install_recorders"
 endif
 
 .PHONY: undeploy-recorders
 undeploy-recorders: ## Undeploys the data recorders to cluster
-ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "uninstall_recorders" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
 	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "uninstall_recorders"
-endif
 
 .PHONY: inject-scenario-faults
 inject-scenario-faults: ## Injects the fault used in a specific scenario
@@ -117,7 +112,7 @@ stop-scenario: undeploy-recorders remove-fault-resources destroy-environment ## 
 enable-agent-access: ## Adds access controls for llm agent
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "grant_access" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif
@@ -126,45 +121,36 @@ endif
 disable-agent-access: ## Removes access controls for llm agent
 	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "revoke_access"
 
-.PHONY: deploy-awx
-deploy-awx: ## Deploys AWX to a cluster
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "install_tools"
+.PHONY: deploy-argo
+deploy-argo: ## Deploys Argo Workflows to the orchestrator cluster
+	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "install_tools"
 
-.PHONY: undeploy-awx
-undeploy-awx: ## Undeploys AWX to a cluster
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "uninstall_tools"
-
-.PHONY: configure-awx-stack
-configure-awx-stack: ## Add job and workflow templates to AWX pipeline
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "configure_awx"
+.PHONY: undeploy-argo
+undeploy-argo: ## Undeploys Argo Workflows from the orchestrator cluster
+	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "uninstall_tools"
 
 .PHONY: launch-start-workflow
-launch-start-workflow: ## Launches the workflow equivalent of start_incident on AWX
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=start"
+launch-start-workflow: ## Launches the start-scenario workflow on Argo
+	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "launch_workflows" \
+		--extra-vars "argo_workflow_type=start-scenario"
 
 .PHONY: launch-stop-workflow
-launch-stop-workflow: ## Launches the workflow equivalent of stop_incident on AWX
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=stop"
-
-.PHONY: launch-full-workflow
-launch-full-workflow: ## Launches the scenario full execution workflow
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=full"
+launch-stop-workflow: ## Launches the stop-scenario workflow on Argo
+	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "launch_workflows" \
+		--extra-vars "argo_workflow_type=stop-scenario"
 
 .PHONY: launch-data-collection-workflow
-launch-data-collection-workflow: ## Launches the data collection execution workflow
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=data"
+launch-data-collection-workflow: ## Launches the data-collection workflow on Argo
+	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "launch_workflows" \
+		--extra-vars "argo_workflow_type=data-collection"
 
 .PHONY: test-molecule-agent
 test-molecule-agent: ## Runs Molecule tests for the Agent role
 	cd project/roles/agent && $(UV) run molecule test --all --report --command-borders
 
-.PHONY: test-molecule-awx
-test-molecule-awx: ## Runs Molecule tests for the AWX role
-	cd project/roles/awx && $(UV) run molecule test --all --report --command-borders
+.PHONY: test-molecule-argo
+test-molecule-argo: ## Runs Molecule tests for the Argo role
+	cd project/roles/argo && $(UV) run molecule test --all --report --command-borders
 
 .PHONY: test-molecule-faults
 test-molecule-faults: ## Runs Molecule tests for the Faults role
