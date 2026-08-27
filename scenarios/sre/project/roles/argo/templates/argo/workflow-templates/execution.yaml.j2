@@ -1,0 +1,121 @@
+{% set _benchmark_tasks = [
+  {
+    'name': 'deploy-tools',
+    'template': 'deploy-tools',
+    'deps': [],
+    'when': ['data-collection', 'start-scenario']
+  },
+  {
+    'name': 'deploy-applications',
+    'template': 'deploy-applications',
+    'deps': ['deploy-tools'],
+    'when': ['data-collection', 'start-scenario']
+  },
+  {
+    'name': 'clear-kubernetes-events',
+    'template': 'clear-kubernetes-events',
+    'deps': ['deploy-applications'],
+    'when': ['data-collection', 'start-scenario']
+  },
+  {
+    'name': 'deploy-data-recorders',
+    'template': 'deploy-data-recorders',
+    'deps': ['clear-kubernetes-events'],
+    'when': ['data-collection', 'start-scenario'],
+    'extra_params': {'benchmark_phase': '[[inputs.parameters.benchmark_phase]]'}
+  },
+  {
+    'name': 'inject-faults',
+    'template': 'inject-faults',
+    'deps': ['deploy-data-recorders'],
+    'when': ['data-collection', 'start-scenario'],
+    'with_param': '[[inputs.parameters.fault_indexes]]',
+    'extra_params': {'faults_index': '[[item]]'}
+  },
+  {
+    'name': 'remove-faults',
+    'template': 'remove-faults',
+    'deps': ['inject-faults'],
+    'when': ['data-collection', 'stop-scenario']
+  },
+  {
+    'name': 'undeploy-data-recorders',
+    'template': 'undeploy-data-recorders',
+    'deps': ['remove-faults'],
+    'when': ['data-collection', 'stop-scenario'],
+    'extra_params': {'benchmark_phase': '[[inputs.parameters.benchmark_phase]]'}
+  },
+  {
+    'name': 'undeploy-applications',
+    'template': 'undeploy-applications',
+    'deps': ['undeploy-data-recorders'],
+    'when': ['data-collection', 'stop-scenario']
+  },
+  {
+    'name': 'undeploy-tools',
+    'template': 'undeploy-tools',
+    'deps': ['undeploy-applications'],
+    'when': ['data-collection', 'stop-scenario']
+  }
+] %}
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: itbench-scenario-execution
+  namespace: {{ argo_releases.argo_workflows.namespace }}
+spec:
+  entrypoint: run
+  arguments:
+    parameters:
+      - name: scenario_id
+      - name: kubeconfig_secret
+      - name: workflow_type
+      - name: fault_indexes
+      - name: trial_id
+      - name: storage
+        value: "{}"
+      - name: benchmark_phase
+        value: pre-fault-injection
+  templates:
+    - name: run
+      inputs:
+        parameters:
+          - name: scenario_id
+          - name: kubeconfig_secret
+          - name: workflow_type
+          - name: fault_indexes
+          - name: trial_id
+          - name: storage
+          - name: benchmark_phase
+      dag:
+        tasks:
+{% for task in _benchmark_tasks %}
+          - name: {{ task.name }}
+            templateRef:
+              name: itbench-steps
+              template: {{ task.template }}
+            when: >-
+{% for wt in task.when %}
+              "[[inputs.parameters.workflow_type]]" == "{{ wt }}"{{ " ||" if not loop.last else "" }}
+{% endfor %}
+{% if task.deps %}
+            dependencies: {{ task.deps | to_json }}
+{% endif %}
+{% if task.with_param is defined %}
+            withParam: "{{ task.with_param }}"
+{% endif %}
+            arguments:
+              parameters:
+                - name: scenario_id
+                  value: "[[inputs.parameters.scenario_id]]"
+                - name: kubeconfig_secret
+                  value: "[[inputs.parameters.kubeconfig_secret]]"
+                - name: trial_id
+                  value: "[[inputs.parameters.trial_id]]"
+                - name: storage
+                  value: "[[inputs.parameters.storage]]"
+{% for param_name, param_value in (task.extra_params | default({})).items() %}
+                - name: {{ param_name }}
+                  value: "{{ param_value }}"
+{% endfor %}
+{% endfor %}

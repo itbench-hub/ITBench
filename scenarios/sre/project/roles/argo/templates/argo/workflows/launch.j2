@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: itbench-runner-{{ _runner_id }}-trial-{{ _trial_id }}-
+  namespace: {{ argo_releases.argo_workflows.namespace }}
+spec:
+  workflowTemplateRef:
+    name: itbench-orchestration-runner-{{ _runner_id }}
+  arguments:
+    parameters:
+      - name: workflow_type
+        value: "{{ _workflow_type }}"
+      - name: trial_id
+        value: "{{ _trial_id }}"
+      - name: benchmark_phase
+        value: pre-fault-injection

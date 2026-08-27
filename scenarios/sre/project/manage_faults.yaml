@@ -24,13 +24,11 @@
       vars:
         faults_idx: "{{ faults_index | ansible.builtin.default('0') | ansible.builtin.int }}"
       when:
-        - scenario_id is ansible.builtin.defined
+        - scenario_specs_directory is ansible.builtin.defined
       block:
         - name: Import scenarios role
           ansible.builtin.import_role:
             name: scenarios
-          vars:
-            scenarios_identifier: "{{ scenario_id }}"
 
         - name: Validate injection index
           ansible.builtin.assert:

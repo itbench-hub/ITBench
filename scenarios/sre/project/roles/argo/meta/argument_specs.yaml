@@ -1,0 +1,75 @@
+---
+argument_specs:
+  main:
+    author:
+      - Gerard Vanloo
+    options:
+      argo_credentials:
+        required: false
+        type: dict
+        options:
+          providers:
+            required: false
+            type: dict
+            options:
+              aws:
+                required: false
+                type: dict
+                options:
+                  access_key:
+                    required: true
+                    type: str
+                  secret_access_key:
+                    required: true
+                    type: str
+      argo_experiments:
+        elements: dict
+        required: false
+        type: list
+        options:
+          scenario:
+            required: true
+            type: int
+          trials:
+            default: 1
+            required: false
+            type: int
+          workflow:
+            choices:
+              - data-collection
+              - start-scenario
+              - stop-scenario
+            required: true
+            type: str
+      argo_runners:
+        elements: dict
+        required: false
+        type: list
+        options:
+          kubeconfig:
+            required: true
+            type: str
+      argo_storage:
+        required: false
+        type: dict
+        options:
+          local:
+            required: false
+            type: dict
+            options:
+              directory:
+                required: true
+                type: str
+          s3:
+            required: false
+            type: dict
+            options:
+              bucket:
+                required: true
+                type: str
+              directory:
+                required: false
+                type: str
+              endpoint:
+                required: true
+                type: str

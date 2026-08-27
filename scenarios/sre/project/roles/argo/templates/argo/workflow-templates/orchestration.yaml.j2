@@ -1,0 +1,59 @@
+{% if argo_storage.s3 is defined %}
+{% set _storage_json = {"s3": {"bucket": argo_storage.s3.bucket, "endpoint": argo_storage.s3.endpoint, "directory": argo_storage.s3.directory | default('')}} | to_json %}
+{% elif argo_storage.local is defined %}
+{% set _storage_json = {"local": {"directory": argo_storage.local.directory}} | to_json %}
+{% else %}
+{% set _storage_json = '{}' %}
+{% endif %}
+{% for runner in argo_runners %}
+{% set _runner_loop = loop %}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: itbench-orchestration-runner-{{ _runner_loop.index }}
+  namespace: {{ argo_releases.argo_workflows.namespace }}
+spec:
+  entrypoint: run
+  arguments:
+    parameters:
+      - name: workflow_type
+      - name: trial_id
+      - name: benchmark_phase
+        value: pre-fault-injection
+  templates:
+    - name: run
+      inputs:
+        parameters:
+          - name: workflow_type
+          - name: trial_id
+          - name: benchmark_phase
+      steps:
+{% for sid in _scenarios %}
+{% if loop.index0 % (argo_runners | length) == _runner_loop.index0 %}
+{% set _spec_path = [_base_path, sid | string, 'scenario.yaml'] | path_join %}
+{% set _spec = lookup('ansible.builtin.file', _spec_path) | from_yaml %}
+{% set _fault_indexes = range(_spec.spec.faults | length) | list | to_json %}
+        - - name: scenario-{{ sid }}
+            templateRef:
+              name: itbench-scenario-execution
+              template: run
+            arguments:
+              parameters:
+                - name: scenario_id
+                  value: "{{ sid }}"
+                - name: kubeconfig_secret
+                  value: "runner-{{ _runner_loop.index }}-kubeconfig"
+                - name: workflow_type
+                  value: "[[inputs.parameters.workflow_type]]"
+                - name: fault_indexes
+                  value: "{{ _fault_indexes }}"
+                - name: trial_id
+                  value: "[[inputs.parameters.trial_id]]"
+                - name: storage
+                  value: "{{ _storage_json }}"
+                - name: benchmark_phase
+                  value: "[[inputs.parameters.benchmark_phase]]"
+{% endif %}
+{% endfor %}
+{% endfor %}

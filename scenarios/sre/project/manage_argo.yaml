@@ -1,0 +1,23 @@
+---
+- name: Manage Argo Workflows Benchmark Orchestration
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Import executables role
+      ansible.builtin.import_role:
+        name: executables
+      tags:
+        - always
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+      vars:
+        cluster_files:
+          kubeconfig: "{{ argo.kubeconfig }}"
+  tasks:
+    - name: Import Argo Workflows role
+      ansible.builtin.import_role:
+        name: argo
