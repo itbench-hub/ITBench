@@ -1,7 +1,6 @@
 ---
 - name: Create Namespace for Istio
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     state: present
     resource_definition:
       apiVersion: v1
@@ -15,7 +14,6 @@
   kubernetes.core.helm:
     chart_ref: "oci://registry.istio.io/release/charts/base"
     chart_version: "1.30.4"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.istio_base.name }}"
     release_namespace: "{{ tools_releases.istio_base.namespace }}"
     release_state: present
@@ -30,7 +28,6 @@
   kubernetes.core.helm:
     chart_ref: "oci://registry.istio.io/release/charts/istiod"
     chart_version: "1.30.4"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.istio_istiod.name }}"
     release_namespace: "{{ tools_releases.istio_istiod.namespace }}"
     release_state: present
@@ -43,7 +40,6 @@
 
 - name: Create Telemetry
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: telemetry.istio.io/v1
       kind: Telemetry
@@ -62,7 +58,6 @@
 
 - name: Create ServiceMonitor for Control Plane
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: monitoring.coreos.com/v1
       kind: ServiceMonitor
@@ -83,7 +78,6 @@
   kubernetes.core.helm:
     chart_ref: "oci://registry.istio.io/release/charts/cni"
     chart_version: "1.30.4"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.istio_cni.name }}"
     release_namespace: |-
       {{
@@ -100,7 +94,6 @@
 
 - name: Create PodMonitor for CNI Pods
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: monitoring.coreos.com/v1
       kind: PodMonitor
@@ -125,7 +118,6 @@
   kubernetes.core.helm:
     chart_ref: "oci://registry.istio.io/release/charts/ztunnel"
     chart_version: "1.30.4"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.istio_ztunnel.name }}"
     release_namespace: |-
       {{
@@ -142,7 +134,6 @@
 
 - name: Create PodMonitor for ZTunnel Pods
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: monitoring.coreos.com/v1
       kind: PodMonitor
@@ -167,7 +158,6 @@
   kubernetes.core.k8s_json_patch:
     api_version: network.operator.openshift.io/v1
     kind: EgressRouter
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     name: cluster
     patch:
       - op: replace

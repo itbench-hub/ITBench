@@ -5,7 +5,6 @@
   block:
     - name: Uninstall Prometheus Operator and Prometheus
       kubernetes.core.helm:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         release_name: "{{ tools_releases.kube_prometheus_stack.name }}"
         release_namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
         release_state: absent
@@ -14,7 +13,6 @@
 
     - name: Delete Namespace for Prometheus
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           api_version: v1
           kind: Namespace
@@ -30,7 +28,6 @@
   block:
     - name: Delete User Workload ConfigMap
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: ConfigMap
@@ -41,7 +38,6 @@
 
     - name: Delete Cluster Monitoring ConfigMap
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: ConfigMap

@@ -1,5 +1,7 @@
 UV = $(shell which uv)
 
+AWS_PROFILE ?= default
+
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
@@ -9,7 +11,6 @@ group-vars: ## Generates the group variables
 	echo "---\nansible_python_interpreter: $(shell $(UV) python find)" > inventory/group_vars/all/python.yaml
 	cp inventory/group_vars/all/storage.yaml.example inventory/group_vars/all/storage.yaml
 	cp inventory/group_vars/environment/applications.yaml.example inventory/group_vars/environment/applications.yaml
-	cp inventory/group_vars/environment/cluster.yaml.example inventory/group_vars/environment/cluster.yaml
 	cp inventory/group_vars/environment/tools.yaml.example inventory/group_vars/environment/tools.yaml
 	cp inventory/group_vars/runner/agent.yaml.example inventory/group_vars/runner/agent.yaml
 	cp inventory/group_vars/runner/experiments.yaml.example inventory/group_vars/runner/experiments.yaml
@@ -123,6 +124,7 @@ disable-agent-access: ## Removes access controls for llm agent
 
 .PHONY: deploy-argo
 deploy-argo: ## Deploys Argo Workflows to the orchestrator cluster
+	eval $$(scripts/export-aws-credentials.sh $(AWS_PROFILE)); \
 	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "install_tools"
 
 .PHONY: undeploy-argo

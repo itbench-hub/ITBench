@@ -3,7 +3,6 @@
   kubernetes.core.k8s_info:
     api_version: chaos-mesh.org/v1alpha1
     kind: Schedule
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
   register: faults_schedules
 
 - name: Clean up scheduled experiments
@@ -17,7 +16,6 @@
   block:
     - name: Pause all scheduled experiments
       kubernetes.core.k8s:
-        kubeconfig: "{{ faults_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: "{{ schedule.apiVersion }}"
           kind: "{{ schedule.kind }}"
@@ -36,7 +34,6 @@
       kubernetes.core.k8s_info:
         api_version: "{{ experiment.apiVersion }}"
         kind: "{{ experiment.kind }}"
-        kubeconfig: "{{ faults_cluster.kubeconfig }}"
         name: "{{ experiment.name }}"
         namespace: "{{ experiment.namespace }}"
         wait: true
@@ -50,7 +47,6 @@
 
     - name: Delete associated scheduled experiment(s)
       kubernetes.core.k8s:
-        kubeconfig: "{{ faults_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: "{{ experiment.apiVersion }}"
           kind: "{{ experiment.kind }}"
@@ -67,7 +63,6 @@
 
 - name: Delete Chaos Mesh schedules
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition: "{{ definitions }}"
     state: absent
     wait: true

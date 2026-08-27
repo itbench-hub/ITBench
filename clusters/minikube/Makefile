@@ -24,6 +24,9 @@ create-cluster: kubeconfigs
 		--extra-config=controller-manager.authorization-always-allow-paths="/metrics" \
 		--extra-config=scheduler.bind-address="0.0.0.0" \
 		--extra-config=scheduler.authorization-always-allow-paths="/metrics"
+	@echo "Run the following commands to access the cluster ($(CLUSTER_PROFILE)) using kubectl:"
+	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_PROFILE))"
+	@echo "export K8S_AUTH_KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_PROFILE))"
 
 .PHONY: destroy-cluster
 destroy-cluster:
@@ -40,12 +43,6 @@ create-environment-cluster: ## Creates Minikube cluster for local development
 	$(MAKE) check-resources CLUSTER_TARGET=environment-cluster
 	$(MAKE) create-cluster CLUSTER_PROFILE=$(ENVIRONMENT_CLUSTER_PROFILE)
 
-.PHONY: sync-cluster-group-vars
-sync-cluster-group-vars: ## Syncs the environment cluster kubeconfig with the scenarios group variables
-	$(UV) run python $(abspath ../../scripts/sync_cluster_group_vars.py) \
-		--kubeconfig $(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE)) \
-		--cluster-group-variable $(abspath ../../scenarios/sre/inventory/group_vars/environment/cluster.yaml)
-
 .PHONY: destroy-environment-cluster
 destroy-environment-cluster: ## Deletes the local development Minikube cluster
 	$(MAKE) destroy-cluster CLUSTER_PROFILE=$(ENVIRONMENT_CLUSTER_PROFILE)
@@ -59,13 +56,6 @@ create-argo-stack: ## Creates a two-cluster Minikube stack for Argo Workflows or
 	$(MAKE) check-resources CLUSTER_TARGET=argo-stack
 	$(MAKE) create-cluster CLUSTER_PROFILE=$(ARGO_CLUSTER_PROFILE)
 	$(MAKE) create-cluster CLUSTER_PROFILE=$(ENVIRONMENT_CLUSTER_PROFILE)
-
-.PHONY: sync-stack-group-vars
-sync-stack-group-vars: ## Syncs the Argo stack kubeconfigs with the scenarios group variables
-	$(UV) run python $(abspath ../../scripts/sync_stack_group_vars.py) \
-		--orchestrator-kubeconfig $(abspath kubeconfigs/$(ARGO_CLUSTER_PROFILE)) \
-		--runner-kubeconfigs $(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE)) \
-		--stack-group-variable $(abspath ../../scenarios/sre/inventory/group_vars/runner/stack.yaml)
 
 .PHONY: destroy-argo-stack
 destroy-argo-stack: ## Deletes the Argo Minikube stack

@@ -1,7 +1,6 @@
 ---
 - name: Create Namespace for Clickhouse Operator managed instances
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Namespace
@@ -22,7 +21,6 @@
 
 - name: Create Secret for Clickhouse installation default user
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Secret
@@ -38,7 +36,6 @@
 
 - name: Create ConfigMap for Prometheus database initialization
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: ConfigMap
@@ -61,7 +58,6 @@
 
 - name: Create Clickhouse Installation
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallation
@@ -198,7 +194,6 @@
   kubernetes.core.k8s_info:
     api_version: clickhouse.altinity.com/v1
     kind: ClickHouseInstallation
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     name: "{{ tools_operands.alinity_clickhouse.main.name }}"
     namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
   register: tools_chi
@@ -211,7 +206,6 @@
 
 - name: Create ServiceMonitor for Clickhouse Installation
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: monitoring.coreos.com/v1
       kind: ServiceMonitor

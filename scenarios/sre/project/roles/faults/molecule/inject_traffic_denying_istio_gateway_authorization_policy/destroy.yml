@@ -5,7 +5,6 @@
   tasks:
     - name: Delete test namespace
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Namespace
@@ -16,7 +15,6 @@
 
     - name: Uninstall Istio Istiod (Control Plane)
       kubernetes.core.helm:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         release_name: istiod
         release_namespace: istio-system
         release_state: absent
@@ -24,7 +22,6 @@
 
     - name: Uninstall Istio Base (CRDs)
       kubernetes.core.helm:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         release_name: istio-base
         release_namespace: istio-system
         release_state: absent
@@ -32,7 +29,6 @@
 
     - name: Delete Istio namespace
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Namespace
@@ -45,8 +41,6 @@
       ansible.builtin.import_role:
         name: cluster
       vars:
-        cluster_files:
-          kubeconfig: "{{ cluster.kubeconfig }}"
 
     - name: Import tools role
       ansible.builtin.import_role:
@@ -54,6 +48,5 @@
         tasks_from: remove_custom_resource_definitions.yaml
       vars:
         tools_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
           provider: "{{ cluster_provider }}"

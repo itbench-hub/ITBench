@@ -8,7 +8,6 @@
         chart_ref: "oci://registry.istio.io/release/charts/base"
         chart_version: "1.30.4"
         create_namespace: true
-        kubeconfig: "{{ cluster.kubeconfig }}"
         release_name: istio-base
         release_namespace: istio-system
         release_state: present
@@ -18,7 +17,6 @@
       kubernetes.core.helm:
         chart_ref: "oci://registry.istio.io/release/charts/istiod"
         chart_version: "1.30.4"
-        kubeconfig: "{{ cluster.kubeconfig }}"
         release_name: istiod
         release_namespace: istio-system
         release_state: present
@@ -32,14 +30,12 @@
           - --server-side
           - -f
           - "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
-          - --kubeconfig={{ cluster.kubeconfig | ansible.builtin.expanduser }}
       register: faults_kubernetes_gateway_crds_apply
       changed_when:
         - faults_kubernetes_gateway_crds_apply.rc == 0
 
     - name: Create test namespace
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Namespace
@@ -49,7 +45,6 @@
 
     - name: Create Gateway
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: gateway.networking.k8s.io/v1
           kind: Gateway
@@ -74,7 +69,6 @@
 
     - name: Create test deployment
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: apps/v1
           kind: Deployment
@@ -104,7 +98,6 @@
 
     - name: Create test service
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Service

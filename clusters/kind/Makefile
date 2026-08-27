@@ -21,6 +21,9 @@ create-cluster: kubeconfigs
 		--config $(abspath configs/$(CLUSTER_CONFIG_FILE))
 	$(GO) tool kind export kubeconfig --name $(CLUSTER_NAME) \
 		--kubeconfig $(abspath kubeconfigs/$(CLUSTER_NAME))
+	@echo "Run the following commands to access the cluster ($(CLUSTER_NAME)) using kubectl:"
+	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_NAME))"
+	@echo "export K8S_AUTH_KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_NAME))"
 
 .PHONY: destroy-cluster
 destroy-cluster:
@@ -31,12 +34,6 @@ create-environment-cluster: ## Creates a Kind cluster for local development
 	$(MAKE) check-resources CLUSTER_TARGET=environment-cluster
 	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=environment.yaml CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
 
-.PHONY: sync-cluster-group-vars
-sync-cluster-group-vars: ## Syncs the environment cluster kubeconfig with the scenarios group variables
-	$(UV) run python $(abspath ../../scripts/sync_cluster_group_vars.py) \
-		--kubeconfig $(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME)) \
-		--cluster-group-variable $(abspath ../../scenarios/sre/inventory/group_vars/environment/cluster.yaml)
-
 .PHONY: destroy-environment-cluster
 destroy-environment-cluster: ## Deletes the local development Kind cluster
 	$(MAKE) destroy-cluster CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
@@ -46,13 +43,6 @@ create-argo-stack: ## Creates a two-cluster Kind stack for Argo Workflows orches
 	$(MAKE) check-resources CLUSTER_TARGET=argo-stack
 	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=argo.yaml CLUSTER_NAME=$(ARGO_CLUSTER_NAME)
 	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=environment.yaml CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
-
-.PHONY: sync-stack-group-vars
-sync-stack-group-vars: ## Syncs the Argo stack kubeconfigs with the scenarios group variables
-	$(UV) run python $(abspath ../../scripts/sync_stack_group_vars.py) \
-		--orchestrator-kubeconfig $(abspath kubeconfigs/$(ARGO_CLUSTER_NAME)) \
-		--runner-kubeconfigs $(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME)) \
-		--stack-group-variable $(abspath ../../scenarios/sre/inventory/group_vars/runner/stack.yaml)
 
 .PHONY: destroy-argo-stack
 destroy-argo-stack: ## Deletes the local development Argo Kind cluster

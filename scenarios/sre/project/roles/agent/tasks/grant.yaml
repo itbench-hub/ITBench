@@ -3,7 +3,6 @@
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Namespace
-    kubeconfig: "{{ agent_cluster.kubeconfig }}"
   register: agent_k8s_namespaces
 
 - name: Validate that all requesting namespaces exist
@@ -18,7 +17,6 @@
 
 - name: Create ServiceAccount
   kubernetes.core.k8s:
-    kubeconfig: "{{ agent_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: ServiceAccount
@@ -32,7 +30,6 @@
 
 - name: Create RBAC objects in each requested namespace
   kubernetes.core.k8s:
-    kubeconfig: "{{ agent_cluster.kubeconfig }}"
     resource_definition:
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: Role
@@ -89,7 +86,6 @@
 
 - name: Create cluster-scoped RBAC objects
   kubernetes.core.k8s:
-    kubeconfig: "{{ agent_cluster.kubeconfig }}"
     resource_definition:
       - apiVersion: rbac.authorization.k8s.io/v1
         kind: ClusterRole
@@ -142,7 +138,6 @@
       - 18h
       - -o
       - json
-      - --kubeconfig={{ agent_cluster.kubeconfig | ansible.builtin.expanduser }}
   register: agent_token_creation_output
   changed_when:
     - agent_token_creation_output.rc == 0
@@ -157,7 +152,7 @@
   vars:
     kubeconfig: |-
       {{
-        lookup("ansible.builtin.file", (agent_cluster.kubeconfig | ansible.builtin.expanduser)) |
+        lookup("ansible.builtin.file", lookup("ansible.builtin.env", "KUBECONFIG")) |
         ansible.builtin.from_yaml
       }}
 

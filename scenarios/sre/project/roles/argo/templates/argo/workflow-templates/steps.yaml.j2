@@ -22,15 +22,19 @@
           - --extra-vars
           - >-
             scenario_specs_directory=/runner/scenario
-            cluster={"kubeconfig":"/runner/kubeconfig/kubeconfig"}
             storage=[[inputs.parameters.storage]]
 {% for param in extra_params %}
             {{ param }}=[[inputs.parameters.{{ param }}]]
 {% endfor %}
-{% if argo_credentials.providers.aws is defined %}
+        env:
+          - name: KUBECONFIG
+            value: /runner/kubeconfig/kubeconfig
+          - name: K8S_AUTH_KUBECONFIG
+            value: /runner/kubeconfig/kubeconfig
+{% if argo_storage.s3 is defined %}
         envFrom:
           - secretRef:
-              name: aws-credentials
+              name: storage-credentials
 {% endif %}
         volumeMounts:
           - name: runner-kubeconfig

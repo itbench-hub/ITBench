@@ -14,15 +14,11 @@
         name: cluster
       tags:
         - always
-      vars:
-        cluster_files:
-          kubeconfig: "{{ cluster.kubeconfig }}"
   tasks:
     - name: Retrieve all events
       kubernetes.core.k8s_info:
         api_version: events.k8s.io/v1
         kind: Event
-        kubeconfig: "{{ cluster.kubeconfig }}"
       register: tools_events
 
     - name: Delete all events
@@ -30,7 +26,6 @@
         api_version: events.k8s.io/v1
         delete_all: true
         kind: Event
-        kubeconfig: "{{ cluster.kubeconfig }}"
         namespace: "{{ event_namespace }}"
         state: absent
       loop: |

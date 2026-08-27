@@ -7,7 +7,6 @@
 
 - name: Create Namespace
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Namespace
@@ -23,7 +22,6 @@
     tasks_from: set_credentials_clickhouse
   vars:
     tools_cluster:
-      kubeconfig: "{{ applications_cluster.kubeconfig }}"
 
 - name: Import tools role for variable setting tasks
   ansible.builtin.import_role:
@@ -31,7 +29,6 @@
     tasks_from: set_internal_endpoints
   vars:
     tools_cluster:
-      kubeconfig: "{{ applications_cluster.kubeconfig }}"
       platform: "{{ applications_cluster.platform }}"
 
 - name: Create Service Account with `anyuid` access
@@ -40,7 +37,6 @@
   block:
     - name: Create ServiceAccount for OpenTelemetry Demo
       kubernetes.core.k8s:
-        kubeconfig: "{{ applications_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: ServiceAccount
@@ -51,7 +47,6 @@
 
     - name: Create RoleBinding for access to anyuid SecurityContextConstraint
       kubernetes.core.k8s:
-        kubeconfig: "{{ applications_cluster.kubeconfig }}"
         resource_definition:
           kind: RoleBinding
           apiVersion: rbac.authorization.k8s.io/v1
@@ -72,7 +67,6 @@
   kubernetes.core.helm:
     chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-demo"
     chart_version: "0.40.10"
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     release_name: "{{ applications_releases.opentelemetry_demo.name }}"
     release_namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
     release_state: present
@@ -88,7 +82,6 @@
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Pod
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
   register: applications_otel_demo_pods
 
@@ -96,7 +89,6 @@
   kubernetes.core.k8s_info:
     api_version: "{{ pod.apiVersion }}"
     kind: "{{ pod.kind }}"
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     name: "{{ pod.metadata.name }}"
     namespace: "{{ pod.metadata.namespace }}"
     wait: true
@@ -113,13 +105,11 @@
   kubernetes.core.k8s_info:
     api_version: apps/v1
     kind: Deployment
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
   register: applications_otel_demo_deployments
 
 - name: Create HorizontalPodAutorscalers
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: autoscaling/v2
       kind: HorizontalPodAutoscaler
@@ -171,7 +161,6 @@
 
 - name: Create Common PrometheusRules
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     template:
       path: templates/kubernetes/common/prometheusrules.j2
       variable_end_string: "]]"
@@ -183,7 +172,6 @@
 
 - name: Create OpenTelemetry Demo PrometheusRules
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     template:
       path: templates/kubernetes/otel_demo/prometheusrules.j2
       variable_end_string: "]]"
