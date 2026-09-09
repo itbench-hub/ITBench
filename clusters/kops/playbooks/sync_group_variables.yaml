@@ -1,5 +1,5 @@
 ---
-- name: Sync kubeconfig with scenarios group variables
+- name: Sync kubeconfig and group variables with scenarios directory
   hosts:
     - localhost
   pre_tasks:
@@ -9,6 +9,19 @@
           - target in ["argo-stack", "single-cluster"]
         fail_msg: Invalid target provided. Please provide valid target.
         success_msg: Valid target provided.
+
+    - name: Fail playbook with `directory not found` error
+      ansible.builtin.fail:
+        msg: Unable to find scenarios directory. Please ensure the path exists.
+      when:
+        - not scenarios_playbook_directory is ansible.builtin.directory
+
+    - name: Fail playbook with `directory not found` error
+      ansible.builtin.fail:
+        msg: Unable to find group variable directory. Please ensure the path exists.
+      when:
+        - target == "argo-stack"
+        - not scenarios_group_variables_directory is ansible.builtin.directory
   tasks:
     - name: Retrieve exported kubeconfig(s)
       ansible.builtin.find:
@@ -20,7 +33,7 @@
         filename_prefix: "{{ runner.name.prefix if target == 'single-cluster' else stack.name.prefix }}"
         kubeconfig_directory: "{{ playbook_dir }}/../kubeconfigs"
 
-    - name: Write environment group variables
+    - name: Write single-cluster .env file
       when:
         - target == "single-cluster"
       block:
@@ -31,63 +44,63 @@
             fail_msg: Unable to find kubeconfig. Please ensure that cluster kubeconfig has been exported.
             success_msg: Located kubeconfig.
 
-        - name: Write environment group variables
+        - name: Write .env file
           ansible.builtin.copy:
-            content: |-
-              {{
-                (
-                  {
-                    "cluster": {
-                      "kubeconfig": kubeconfig_paths.files[0].path
-                    }
-                  }
-                ) |
-                ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
-              }}
-            dest: "{{ group_vars_path | ansible.builtin.realpath }}"
+            content: "{{ 'K8S_AUTH_KUBECONFIG=' ~ kubeconfig_path  ~ '\n' }}"
+            dest: "{{ [scenarios_playbook_directory, '.env'] | ansible.builtin.path_join }}"
             mode: "0644"
           vars:
-            group_vars_path: "{{ playbook_dir }}/../../../scenarios/sre/inventory/group_vars/environment/cluster.yaml"
+            kubeconfig_path: "{{ kubeconfig_paths.files[0].path }}"
 
-    - name: Write runner group variables
+    - name: Write argo-stack .env file and stack group variables
       when:
         - target == "argo-stack"
       block:
-        - name: Validate the existence of kubeconfig
+        - name: Validate the existence of kubeconfigs
           ansible.builtin.assert:
             that:
-              - kubeconfig_paths.matched == 1 + stack.runners.count
+              - kubeconfig_paths.matched == 1 + stack.environments.count
             fail_msg: Unable to find kubeconfigs. Please ensure that cluster kubeconfigs has been exported.
             success_msg: Located kubeconfigs.
 
-        - name: Write runner group variables
+        - name: Write .env file
+          ansible.builtin.copy:
+            content: "{{ 'K8S_AUTH_KUBECONFIG=' ~ kubeconfig_path ~ '\n' }}"
+            dest: "{{ [scenarios_playbook_directory, '.env'] | ansible.builtin.path_join }}"
+            mode: "0644"
+          vars:
+            kubeconfig_path: |-
+              {{
+                kubeconfig_paths.files |
+                ansible.builtin.selectattr("path", "search", stack.name.prefix ~ "-orchestrator") |
+                map(attribute="path") |
+                ansible.builtin.first
+              }}
+
+        - name: Write stack group variables
           ansible.builtin.copy:
             content: |-
               {{
                 (
                   {
                     "stack": {
-                      "argo": {
-                        "kubeconfig": (
-                          kubeconfig_paths.files |
-                          ansible.builtin.selectattr("path", "search", stack.name.prefix + "-head") |
-                          map(attribute="path") |
-                          ansible.builtin.first
-                        )
-                      },
-                      "runners": {
-                        "kubeconfigs": (
-                          kubeconfig_paths.files |
-                          ansible.builtin.select("search", stack.name.prefix + "-runner") |
-                          map(attribute="path")
-                        )
-                      }
+                      "environments": (
+                        [] |
+                        ansible.builtin.zip_longest(
+                          (
+                            kubeconfig_paths.files |
+                            ansible.builtin.selectattr("path", "search", stack.name.prefix ~ "-environment") |
+                            map(attribute="path")
+                          ),
+                          fillvalue="kubeconfig"
+                        ) |
+                        map("ansible.builtin.batch", 2) |
+                        map("ansible.builtin.dict")
+                      )
                     }
                   }
                 ) |
                 ansible.builtin.to_nice_yaml(explicit_start=true, indent=2)
               }}
-            dest: "{{ group_vars_path | ansible.builtin.realpath }}"
+            dest: "{{ [scenarios_group_variables_directory, 'stack.yaml'] | ansible.builtin.path_join }}"
             mode: "0644"
-          vars:
-            group_vars_path: "{{ playbook_dir }}/../../../scenarios/sre/inventory/group_vars/runner/stack.yaml"

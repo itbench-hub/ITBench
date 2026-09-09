@@ -1,3 +1,7 @@
+-include .env
+
+export K8S_AUTH_KUBECONFIG
+
 UV = $(shell which uv)
 
 AWS_PROFILE ?= default
@@ -12,10 +16,8 @@ group-vars: ## Generates the group variables
 	cp inventory/group_vars/all/storage.yaml.example inventory/group_vars/all/storage.yaml
 	cp inventory/group_vars/environment/applications.yaml.example inventory/group_vars/environment/applications.yaml
 	cp inventory/group_vars/environment/tools.yaml.example inventory/group_vars/environment/tools.yaml
-	cp inventory/group_vars/runner/agent.yaml.example inventory/group_vars/runner/agent.yaml
-	cp inventory/group_vars/runner/experiments.yaml.example inventory/group_vars/runner/experiments.yaml
-	cp inventory/group_vars/runner/github.yaml.example inventory/group_vars/runner/github.yaml
-	cp inventory/group_vars/runner/stack.yaml.example inventory/group_vars/runner/stack.yaml
+	cp inventory/group_vars/orchestrator/experiments.yaml.example inventory/group_vars/orchestrator/experiments.yaml
+	cp inventory/group_vars/orchestrator/stack.yaml.example inventory/group_vars/orchestrator/stack.yaml
 
 .PHONY: generate-fault-index
 generate-fault-index: ## Generate a new fault index based on user input

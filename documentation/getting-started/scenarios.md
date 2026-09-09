@@ -1,26 +1,30 @@
 # ITBench Scenarios
 
-In ITBench, a `scenario` is some problem which is creating some unwanted effect within a system. The criteria for solving a `scenario` is correctly ascertaining the root cause and providing a solution to resolve the issue. Many scenarios in ITBench are based or simulated from problems that have occured in the real world.
+In ITBench, a `scenario` is a problem creating an unwanted effect within a system. The criteria for solving a `scenario` is correctly ascertaining the root cause and providing a solution to resolve the issue. Many scenarios in ITBench are based on or simulated from problems that have occurred in the real world.
 
 Currently, there are three domains of `scenarios` offered by ITBench:
 
 - CISO (Compliance & Security Operations)
-- FinOps (Finacial Operations)
+- FinOps (Financial Operations)
 - SRE (Site Reliability Engineering)
 
 Briefly, one could think of a scenario in each domain as such:
 
-- CISO: Ensure the application is running in compiliance with a set of rules or standards (ie, HIPAA)
+- CISO: Ensure the application is running in compliance with a set of rules or standards (e.g. HIPAA)
 - FinOps: Ensure that the cost of running an application does not exceed the budget
-- SRE: Ensures that an application is running and fully available for customers
+- SRE: Ensure that an application is running and fully available for customers
 
-There is currently not a unifed running procedure that covers both CISO, FinOps, and SRE scenarios. Since FinOps and SRE are deployed using the same mechanism, the process to run them is described here. For instructions for CISO scenarios, please use the instructions [here](../../scenarios/ciso/README.md).
+There is currently not a unified running procedure that covers both CISO, FinOps, and SRE scenarios. Since FinOps and SRE are deployed using the same mechanism, the process to run them is described here. For instructions for CISO scenarios, please use the instructions [here](../../scenarios/ciso/README.md).
 
 ## Required Software
 
 - [helm](https://helm.sh/docs/intro/install/)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+## Recommended Software
+
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [oc](https://docs.redhat.com/en/documentation/openshift_container_platform/4.22/html/cli_tools/openshift-cli-oc)
 
 ## Installation
 
@@ -29,12 +33,12 @@ There is currently not a unifed running procedure that covers both CISO, FinOps,
 1. Download the following packages
 ```shell
 brew install helm
-brew install kubectl
 brew install uv
 ```
 
 2. Download the following packages **(optional)**
 ```shell
+brew install kubectl
 brew install python@3.14
 brew install openshift-cli
 ```
@@ -43,24 +47,24 @@ brew install openshift-cli
 >Installing `python` through Homebrew is not required as `uv` will install a version of Python if one is not provided. However, it can be helpful from a dependency management perspective to just have Homebrew manage the installation.
 
 >[!NOTE]
->The OpenShift CLI is only required if using an OpenShift cluster.
+>`kubectl` is useful for inspecting the cluster directly but is not required to run scenarios. The OpenShift CLI is only required if using an OpenShift cluster.
 
 ### Linux
 
 1. Download the following packages
     - **a.** Install Helm 4 by following the instructions [here](https://helm.sh/docs/intro/install#from-script)
-    - **b.** Install kubectl by following the instructions [here](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
-    - **c.** Install UV by following the instructions [here](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
+    - **b.** Install UV by following the instructions [here](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
 
 2. Download the following packages **(optional)**
     - **a.** Install Python by downloading the package [here](https://www.python.org/downloads/source/)
-    - **b.** Install the OpenShift CLI by following the instructions [here](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/cli_tools/openshift-cli-oc#cli-installing-cli_cli-developer-commands)
+    - **b.** Install kubectl by following the instructions [here](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
+    - **c.** Install the OpenShift CLI by following the instructions [here](https://docs.redhat.com/en/documentation/openshift_container_platform/4.22/html/cli_tools/openshift-cli-oc#cli-installing-cli-linux_cli-developer-commands)
 
 >[!TIP]
 >Python 3.14 can be downloaded and managed by various managers on Linux. However, some may not yet offer this version of python through the default package manager. To ensure that the correct version is used, the binary can either be downloaded through the link above or the `uv` version of Python 3.14 can be used. `uv` will automatically download its version of Python if it does not detect an available version on the machine.
 
 >[!NOTE]
->The OpenShift CLI is only required if using an OpenShift cluster.
+>`kubectl` is useful for inspecting the cluster directly but is not required to run scenarios. The OpenShift CLI is only required if using an OpenShift cluster.
 
 ## Set Up
 
@@ -90,7 +94,7 @@ ITBench uses [Ansible](https://docs.ansible.com/ansible/latest/getting_started/i
 >[!NOTE]
 >Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
 
-This document functions as `quick-start` guide to running scenarios. Thus, it will not go through all the options available to develop them. For more infomation, please consult the `developer` section of the documentation.
+This document functions as a quick-start guide to running scenarios. It will not go through all the options available to develop them. For more information, please consult the `developer` section of the documentation.
 
 >[!TIP]
 >See [scenario library](../library/scenarios/README.md) for a full comprehensive list of runnable scenarios.
@@ -118,7 +122,7 @@ SCENARIO_NUMBER=1 make start-scenario
 
 ### Running an Agent
 
-Once a scenario has started, one can begin runnning an agent to pull information from the cluster and the various observability tools so that it can attempt to diagnose and remidiate a problem.
+Once a scenario has started, an agent can begin pulling information from the cluster and the various observability tools to attempt to diagnose and remediate a problem.
 
 >[!TIP]
 >If you don't have an agent yet, you can use the [SRE-Agent](https://github.com/itbench-hub/itbench-sre-agent) to see how it works.
@@ -135,11 +139,11 @@ SCENARIO_NUMBER=1 make stop-scenario
 
 ## Observing Scenario Impact
 
-Every fault in ITBench causes a noticeable effect on the application it has been injected to which can be obsevered through observability data.
+Every fault in ITBench causes a noticeable effect on the application it has been injected into, which can be observed through observability data.
 
 ### Alerts & Metrics
 
-An **alert** is a notification that some threshold (set by the user) has been surpased. These thresholds are defined using **metrics**. When an alert is active, the engineers are notified that something is wrong with an application and that they need to begin invetigating.
+An **alert** is a notification that some threshold (set by the user) has been surpassed. These thresholds are defined using **metrics**. When an alert is active, engineers are notified that something is wrong with an application and need to begin investigating.
 
 ITBench uses [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) and [Prometheus](https://prometheus.io/docs/introduction/overview/) to collect metrics and configure alerts from an application and Kubernetes cluster. To access the dashboard, follow these steps:
 
@@ -165,7 +169,7 @@ make display-endpoints
 
 ### Logs
 
-A **log** is a tool that show some message. These messages are crafted by the application developer(s) for a variety of purposes (following execution, debuging, etc.). Logs tend to be volumous in nature. Thus, normally only a subset of all possible displayed logs are captured for performance and storage reasons.
+A **log** is a record of a message emitted by an application. These messages are crafted by developers for a variety of purposes (tracing execution, debugging, etc.). Logs tend to be voluminous, so normally only a subset of all possible logs are captured for performance and storage reasons.
 
 ITBench uses [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) to collect logs from application, which are then stored in Clickhouse. To access the dashboard, follow these steps:
 
@@ -180,7 +184,7 @@ make display-endpoints
 
 These metrics are more of a specification of a type of metric, [discussed earlier](#alerts--metrics).
 
-ITBench uses [OpenCost](https://opencost.io/docs/) to collect and analyze cost metrics of an application. These metrics themselves are supplied from [Promethues](https://prometheus.io/docs/introduction/overview/). To access the dashboard, follow these steps:
+ITBench uses [OpenCost](https://opencost.io/docs/) to collect and analyze cost metrics of an application. These metrics are supplied from [Prometheus](https://prometheus.io/docs/introduction/overview/). To access the dashboard, follow these steps:
 
 1. Use the following command to show the host address:
 ```shell

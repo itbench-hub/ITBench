@@ -3,6 +3,19 @@
   hosts:
     - localhost
   tasks:
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+        
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: install_kubernetes_gateway_api.yaml
+      vars:
+        tools_cluster:
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+
     - name: Install Istio Base (CRDs)
       kubernetes.core.helm:
         chart_ref: "oci://registry.istio.io/release/charts/base"
@@ -21,18 +34,6 @@
         release_namespace: istio-system
         release_state: present
         wait: true
-
-    - name: Apply Kubernetes Gateway API Custom Resource Definitions
-      ansible.builtin.command:
-        argv:
-          - kubectl
-          - apply
-          - --server-side
-          - -f
-          - "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
-      register: faults_kubernetes_gateway_crds_apply
-      changed_when:
-        - faults_kubernetes_gateway_crds_apply.rc == 0
 
     - name: Create test namespace
       kubernetes.core.k8s:

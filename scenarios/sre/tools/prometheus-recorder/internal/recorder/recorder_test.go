@@ -27,6 +27,24 @@ func fakePrometheus(t *testing.T, body string) *httptest.Server {
 	}))
 }
 
+// fakePrometheusWithAuthCheck returns an httptest.Server that requires a specific
+// Authorization header value and returns 401 otherwise.
+func fakePrometheusWithAuthCheck(t *testing.T, body, expectedAuth string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/alerts" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Header.Get("Authorization") != expectedAuth {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
+	}))
+}
+
 const (
 	firingAlert = `{
 		"status": "success",
@@ -99,7 +117,6 @@ func TestRun_NoAlerts_FileStillWritten(t *testing.T) {
 		t.Fatalf("Run: %v", err)
 	}
 
-	// Python writes even an empty array — Go should match.
 	entries, err := os.ReadDir(dir)
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("expected 1 output file even with no alerts, got %d", len(entries))
@@ -124,6 +141,36 @@ func TestRun_HTTP500_ReturnsError(t *testing.T) {
 	dir := t.TempDir()
 	if err := recorder.Run(context.Background(), srv.URL, "", dir); err == nil {
 		t.Error("expected error on HTTP 500, got nil")
+	}
+}
+
+func TestRun_BearerTokenSentWithPrefix(t *testing.T) {
+	srv := fakePrometheusWithAuthCheck(t, noAlerts, "Bearer mytoken")
+	defer srv.Close()
+
+	dir := t.TempDir()
+	if err := recorder.Run(context.Background(), srv.URL, "mytoken", dir); err != nil {
+		t.Fatalf("Run with explicit token: %v", err)
+	}
+}
+
+func TestRun_SATokenFallback(t *testing.T) {
+	// SA token file won't exist on the test host; verifies the no-auth path succeeds.
+	srv := fakePrometheusWithAuthCheck(t, noAlerts, "")
+	defer srv.Close()
+
+	dir := t.TempDir()
+	_ = recorder.Run(context.Background(), srv.URL, "", dir)
+}
+
+func TestRun_SATokenFileUsed(t *testing.T) {
+	const tok = "explicit-token-value"
+	srv := fakePrometheusWithAuthCheck(t, noAlerts, "Bearer "+tok)
+	defer srv.Close()
+
+	dir := t.TempDir()
+	if err := recorder.Run(context.Background(), srv.URL, tok, dir); err != nil {
+		t.Fatalf("Run with explicit token: %v", err)
 	}
 }
 

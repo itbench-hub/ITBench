@@ -1,8 +1,8 @@
 GO := $(shell command -v go)
 UV := $(shell command -v uv)
 
-ARGO_CLUSTER_NAME        ?= itbench-orchestrator
-ENVIRONMENT_CLUSTER_NAME ?= itbench-environment
+ENVIRONMENT_CLUSTER_NAME 	?= itbench-environment
+ORCHESTRATOR_CLUSTER_NAME	?= itbench-orchestrator
 
 .PHONY: help
 help: ## Display this help.
@@ -21,9 +21,6 @@ create-cluster: kubeconfigs
 		--config $(abspath configs/$(CLUSTER_CONFIG_FILE))
 	$(GO) tool kind export kubeconfig --name $(CLUSTER_NAME) \
 		--kubeconfig $(abspath kubeconfigs/$(CLUSTER_NAME))
-	@echo "Run the following commands to access the cluster ($(CLUSTER_NAME)) using kubectl:"
-	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_NAME))"
-	@echo "export K8S_AUTH_KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_NAME))"
 
 .PHONY: destroy-cluster
 destroy-cluster:
@@ -33,6 +30,9 @@ destroy-cluster:
 create-environment-cluster: ## Creates a Kind cluster for local development
 	$(MAKE) check-resources CLUSTER_TARGET=environment-cluster
 	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=environment.yaml CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
+	@printf 'K8S_AUTH_KUBECONFIG=%s\n' "$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME))" > $(abspath ../../scenarios/sre/.env)
+	@echo "Run the following command to access the cluster ($(ENVIRONMENT_CLUSTER_NAME)) using kubectl:"
+	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME))"
 
 .PHONY: destroy-environment-cluster
 destroy-environment-cluster: ## Deletes the local development Kind cluster
@@ -41,12 +41,18 @@ destroy-environment-cluster: ## Deletes the local development Kind cluster
 .PHONY: create-argo-stack
 create-argo-stack: ## Creates a two-cluster Kind stack for Argo Workflows orchestration
 	$(MAKE) check-resources CLUSTER_TARGET=argo-stack
-	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=argo.yaml CLUSTER_NAME=$(ARGO_CLUSTER_NAME)
+	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=argo.yaml CLUSTER_NAME=$(ORCHESTRATOR_CLUSTER_NAME)
 	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=environment.yaml CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
+	@printf 'K8S_AUTH_KUBECONFIG=%s\n' "$(abspath kubeconfigs/$(ORCHESTRATOR_CLUSTER_NAME))" > $(abspath ../../scenarios/sre/.env)
+	@printf '---\nstack:\n  environments:\n    - kubeconfig: %s\n' \
+		"$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME))" \
+		> $(abspath ../../scenarios/sre/inventory/group_vars/orchestrator/stack.yaml)
+	@echo "Run the following commands to access the orchestrator cluster ($(ORCHESTRATOR_CLUSTER_NAME)) using kubectl:"
+	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(ORCHESTRATOR_CLUSTER_NAME))"
 
 .PHONY: destroy-argo-stack
 destroy-argo-stack: ## Deletes the local development Argo Kind cluster
-	$(MAKE) destroy-cluster CLUSTER_NAME=$(ARGO_CLUSTER_NAME)
+	$(MAKE) destroy-cluster CLUSTER_NAME=$(ORCHESTRATOR_CLUSTER_NAME)
 	$(MAKE) destroy-cluster CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
 
 .PHONY: run-service-provider
@@ -55,4 +61,5 @@ run-service-provider: ## Runs Cloud Provider Kind for Load Balancer services
 
 .PHONY: test
 test: ## Run integration tests
-	$(UV) run pytest tests/clusters/local/
+	KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME)) \
+		$(UV) run pytest $(abspath ../../tests/integration/clusters/) -m integration

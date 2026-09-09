@@ -5,10 +5,14 @@ Requires a running local cluster with a LoadBalancer provider active:
   - Kind:     cloud-provider-kind
   - Minikube: minikube tunnel
 
-Run with: uv run pytest tests/clusters/local/
+Run with: uv run pytest tests/integration/clusters/ -v -m integration
 """
+import os
+
 import pytest
 from kubernetes import client, config, watch
+
+pytestmark = pytest.mark.integration
 
 
 NAMESPACE_ONE = "lb-test-one"
@@ -52,7 +56,12 @@ def _wait_for_external_ip(v1: client.CoreV1Api, name: str, namespace: str) -> st
 
 @pytest.fixture(scope="module")
 def v1() -> client.CoreV1Api:
-    config.load_kube_config()
+    if not os.environ.get("KUBECONFIG"):
+        pytest.skip("KUBECONFIG is not set.")
+    try:
+        config.load_kube_config()
+    except Exception as e:
+        pytest.skip(f"Cluster unreachable: {e}")
     return client.CoreV1Api()
 
 

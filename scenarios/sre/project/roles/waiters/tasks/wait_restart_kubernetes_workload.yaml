@@ -3,16 +3,14 @@
   ansible.builtin.include_tasks:
     file: validate_waiter_arguments.yaml
 
-- name: Restart only the deployments associated with the modified flags
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - -n
-      - "{{ waiters_kubernetes_object.metadata.namespace }}"
-      - rollout
-      - restart
-      - "{{ waiters_kubernetes_object.kind | ansible.builtin.lower }}"
-      - "{{ waiters_kubernetes_object.metadata.name }}"
-  register: waiters_rollout_restart_result
-  changed_when:
-    - waiters_rollout_restart_result.rc == 0
+- name: Restart workloads
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: "{{ waiters_kubernetes_object.apiVersion }}"
+      kind: "{{ waiters_kubernetes_object.kind }}"
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+        name: "{{ waiters_kubernetes_object.metadata.name }}"
+        namespace: "{{ waiters_kubernetes_object.metadata.namespace }}"
+    state: patched

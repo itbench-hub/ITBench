@@ -1,8 +1,8 @@
 """
-Tests for generate_library_readmes.py
+Tests for generate_readmes.py
 
 Makefile invocation:
-  scripts/generate_library_readmes.py
+  scripts/library/generate_readmes.py
     --templates_directory=<path>
     --library_index_directory=<path>
     --documentation_directory=<path>
@@ -10,11 +10,11 @@ Makefile invocation:
 from pathlib import Path
 from unittest.mock import patch
 
-import generate_library_readmes
+import generate_readmes
 
 
 ARGV = [
-    "generate_library_readmes.py",
+    "generate_readmes.py",
     "--templates_directory", "/templates/documentation/library",
     "--library_index_directory", "/lib/indexes",
     "--documentation_directory", "/documentation/library",
@@ -25,13 +25,13 @@ _INDEXES = [{"id": "item-1", "name": "Item 1"}]
 
 def _patched_main():
     with patch("sys.argv", ARGV), \
-         patch("generate_library_readmes.load_library_indexes", return_value=_INDEXES) as mock_load, \
-         patch("generate_library_readmes.create_applications_documentation") as mock_apps, \
-         patch("generate_library_readmes.create_faults_documentation") as mock_faults, \
-         patch("generate_library_readmes.create_waiters_documentation") as mock_waiters, \
-         patch("generate_library_readmes.create_scenarios_documentation") as mock_scenarios, \
-         patch("generate_library_readmes.Environment"):
-        generate_library_readmes.main()
+         patch("generate_readmes.load_library_indexes", return_value=_INDEXES) as mock_load, \
+         patch("generate_readmes.create_applications_documentation") as mock_apps, \
+         patch("generate_readmes.create_faults_documentation") as mock_faults, \
+         patch("generate_readmes.create_waiters_documentation") as mock_waiters, \
+         patch("generate_readmes.create_scenarios_documentation") as mock_scenarios, \
+         patch("generate_readmes.Environment"):
+        generate_readmes.main()
         return mock_load, mock_apps, mock_faults, mock_waiters, mock_scenarios
 
 

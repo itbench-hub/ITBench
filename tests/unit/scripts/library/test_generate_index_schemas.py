@@ -1,8 +1,8 @@
 """
-Tests for generate_library_index_schemas.py
+Tests for generate_index_schemas.py
 
 Makefile invocation:
-  scripts/generate_library_index_schemas.py
+  scripts/library/generate_index_schemas.py
     --library_index_directory=<path>
     --schemas_directory=<path>
     --templates_directory=<path>
@@ -11,11 +11,11 @@ import json
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import generate_library_index_schemas
+import generate_index_schemas
 
 
 ARGV = [
-    "generate_library_index_schemas.py",
+    "generate_index_schemas.py",
     "--library_index_directory", "/lib/indexes",
     "--schemas_directory", "/schemas/json",
     "--templates_directory", "/templates/schemas/json/library/index",
@@ -25,10 +25,11 @@ ARGV = [
 def _patched_main():
     """Run main() with standard Makefile args, mocking I/O."""
     with patch("sys.argv", ARGV), \
-         patch("generate_library_index_schemas.process_library_type", return_value=([], [])) as mock_process, \
-         patch("generate_library_index_schemas.Environment") as mock_env_cls:
+         patch("generate_index_schemas.process_library_type", return_value=([], [])) as mock_process, \
+         patch("generate_index_schemas.write_json_schema_file") as mock_write, \
+         patch("generate_index_schemas.Environment") as mock_env_cls:
         mock_env_cls.return_value.get_template.return_value.render.return_value = json.dumps({"type": "object"})
-        generate_library_index_schemas.main()
+        generate_index_schemas.main()
         return mock_process, mock_env_cls.return_value
 
 
@@ -57,11 +58,11 @@ def test_subdirectories():
 def test_scenario_schema_written():
     """main() renders scenario.json.j2 and writes it to schemas/library/index/scenario.json."""
     with patch("sys.argv", ARGV), \
-         patch("generate_library_index_schemas.process_library_type", return_value=(["an-id"], [{}])), \
-         patch("generate_library_index_schemas.write_json_schema_file") as mock_write, \
-         patch("generate_library_index_schemas.Environment") as mock_env_cls:
+         patch("generate_index_schemas.process_library_type", return_value=(["an-id"], [{}])), \
+         patch("generate_index_schemas.write_json_schema_file") as mock_write, \
+         patch("generate_index_schemas.Environment") as mock_env_cls:
         mock_env_cls.return_value.get_template.return_value.render.return_value = json.dumps({"type": "object"})
-        generate_library_index_schemas.main()
+        generate_index_schemas.main()
 
     mock_env_cls.return_value.get_template.assert_called_once_with("scenario.json.j2")
     mock_write.assert_called_once()

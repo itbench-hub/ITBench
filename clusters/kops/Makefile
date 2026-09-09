@@ -1,5 +1,8 @@
 UV = $(shell which uv)
 
+ENVIRONMENT_CLUSTER_NAME 	?= itbench-environment
+ORCHESTRATOR_CLUSTER_NAME	?= itbench-orchestrator
+
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
@@ -18,8 +21,8 @@ group-vars: ## Generates the group variables from templates
 	cp inventory/group_vars/argo/stack.yaml.example inventory/group_vars/argo/stack.yaml
 	cp inventory/group_vars/single/runner.yaml.example inventory/group_vars/single/runner.yaml
 
-.PHONY: create-cluster
-create-cluster: ## Creates a single cluster
+.PHONY: create-environment-cluster
+create-environment-cluster: ## Creates a single cluster
 	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
 	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
 		--extra-vars "target=single-cluster"
@@ -39,11 +42,11 @@ install-cluster-docker-registry: get-cluster-kubeconfig ## Installs docker regis
 .PHONY: sync-cluster-group-vars
 sync-cluster-group-vars: get-cluster-kubeconfig ## Syncs the kubeconfig with the scenarios group variables
 	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
-		--extra-vars "target=single-cluster"
-	cd ../../ && $(UV) run ansible-lint scenarios/sre/inventory/group_vars/environment --fix
+		--extra-vars "target=single-cluster" \
+		--extra-vars "scenarios_playbook_directory=$(abspath ./../../scenarios/sre)"
 
-.PHONY: destroy-cluster
-destroy-cluster: ## Deletes a single cluster
+.PHONY: destroy-environment-cluster
+destroy-environment-cluster: ## Deletes a single cluster
 	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
 		--extra-vars "target=single-cluster"
 	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
@@ -70,8 +73,10 @@ install-stack-docker-registry: get-stack-kubeconfigs ## Installs docker registry
 .PHONY: sync-stack-group-vars
 sync-stack-group-vars: get-stack-kubeconfigs ## Syncs the kubeconfig with the scenarios group variables
 	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
-		--extra-vars "target=argo-stack"
-	cd ../../ && $(UV) run ansible-lint scenarios/sre/inventory/group_vars/runner --fix
+		--extra-vars "target=argo-stack" \
+		--extra-vars "scenarios_playbook_directory=$(abspath ./../../scenarios/sre)" \
+		--extra-vars "scenarios_group_variables_directory=$(abspath ./../../scenarios/sre/inventory/group_vars/orchestrator)"
+	cd ../../ && $(UV) run ansible-lint scenarios/sre/inventory/group_vars/orchestrator --fix
 
 .PHONY: destroy-argo-stack
 destroy-argo-stack: ## Destroys an Argo stack

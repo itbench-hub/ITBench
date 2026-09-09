@@ -1,8 +1,8 @@
 """
-Tests for generate_library_specs.py
+Tests for generate_specs.py
 
 Makefile invocation:
-  scripts/generate_library_specs.py
+  scripts/library/generate_specs.py
     --templates_directory=<path>
     --library_index_directory=<path>
     --specs_directory=<path>
@@ -13,11 +13,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import generate_library_specs
+import generate_specs
 
 
 ARGV = [
-    "generate_library_specs.py",
+    "generate_specs.py",
     "--templates_directory", "/templates/library/specs/scenarios",
     "--library_index_directory", "/lib/indexes",
     "--specs_directory", "/library/specs/scenarios",
@@ -49,10 +49,10 @@ SCENARIOS = [
 
 def _patched_main():
     with patch("sys.argv", ARGV), \
-         patch("generate_library_specs.load_scenarios", return_value=SCENARIOS) as mock_load, \
-         patch("generate_library_specs.generate_scenario_specs") as mock_gen, \
-         patch("generate_library_specs.Environment"):
-        generate_library_specs.main()
+         patch("generate_specs.load_scenarios", return_value=SCENARIOS) as mock_load, \
+         patch("generate_specs.generate_scenario_specs") as mock_gen, \
+         patch("generate_specs.Environment"):
+        generate_specs.main()
         return mock_load, mock_gen
 
 
@@ -86,7 +86,7 @@ def test_load_scenarios(tmp_path):
             json.dumps(scenario), encoding="utf-8"
         )
 
-    result = generate_library_specs.load_scenarios(tmp_path)
+    result = generate_specs.load_scenarios(tmp_path)
 
     assert len(result) == 2
     assert {s["id"] for s in result} == {"1", "2"}
@@ -100,7 +100,7 @@ def test_scenario_directory_created(tmp_path):
     mock_env = MagicMock()
     mock_env.get_template.return_value.render.return_value = _RENDERED_YAML
 
-    generate_library_specs.generate_scenario_specs(SCENARIOS[0], tmp_path, mock_env)
+    generate_specs.generate_scenario_specs(SCENARIOS[0], tmp_path, mock_env)
 
     assert (tmp_path / "1").is_dir()
 
@@ -110,7 +110,7 @@ def test_spec_files_written(tmp_path):
     mock_env = MagicMock()
     mock_env.get_template.return_value.render.return_value = _RENDERED_YAML
 
-    generate_library_specs.generate_scenario_specs(SCENARIOS[0], tmp_path, mock_env)
+    generate_specs.generate_scenario_specs(SCENARIOS[0], tmp_path, mock_env)
 
     assert (tmp_path / "1" / "scenario.yaml").exists()
     assert (tmp_path / "1" / "groundtruth.yaml").exists()
@@ -121,7 +121,7 @@ def test_correct_templates_rendered(tmp_path):
     mock_env = MagicMock()
     mock_env.get_template.return_value.render.return_value = _RENDERED_YAML
 
-    generate_library_specs.generate_scenario_specs(SCENARIOS[0], tmp_path, mock_env)
+    generate_specs.generate_scenario_specs(SCENARIOS[0], tmp_path, mock_env)
 
     requested = [c.args[0] for c in mock_env.get_template.call_args_list]
     assert "scenario.yaml.j2" in requested

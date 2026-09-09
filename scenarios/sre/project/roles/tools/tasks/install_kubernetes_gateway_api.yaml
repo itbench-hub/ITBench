@@ -1,17 +1,25 @@
 ---
-# NOTE: `kubectl` is used in place of the `kubernetes.core` module because
-#       the server side configuration the yaml files are still downloaded
-#       and rendered on the client side. Depending on the file, sometimes
-#       there are rendering issues.
-
 - name: Apply Kubernetes Gateway API Custom Resource Definitions
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - apply
-      - --server-side
-      - -f
-      - "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
-  register: tools_kubernetes_gateway_crds_apply
-  changed_when:
-    - tools_kubernetes_gateway_crds_apply.rc == 0
+  block:
+    - name: Create temporary file for Kubernetes Gateway API CRD manifest
+      ansible.builtin.tempfile:
+        suffix: .yaml
+      register: tools_kubernetes_gateway_api_manifest
+
+    - name: Download Kubernetes Gateway API CRD manifest
+      ansible.builtin.get_url:
+        url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
+        dest: "{{ tools_kubernetes_gateway_api_manifest.path }}"
+        mode: "0644"
+
+    - name: Apply Kubernetes Gateway API Custom Resource Definitions
+      kubernetes.core.k8s:
+        src: "{{ tools_kubernetes_gateway_api_manifest.path }}"
+        state: present
+        server_side_apply:
+          field_manager: ansible
+  always:
+    - name: Delete temporary file for Kubernetes Gateway API CRD manifest
+      ansible.builtin.file:
+        path: "{{ tools_kubernetes_gateway_api_manifest.path }}"
+        state: absent
