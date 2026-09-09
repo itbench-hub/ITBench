@@ -1,7 +1,7 @@
 FROM registry.access.redhat.com/ubi10-minimal:10.2-1786960640@sha256:61f820b7893b6226e499e928db99c59a0a9135aa17e4e056fdaf1015908cca14 AS downloader
 
 RUN microdnf install -y --nodocs \
-      curl tar \
+      curl tar gzip \
     && microdnf clean all
 
 # Download Helm
@@ -18,20 +18,6 @@ RUN ARCH=$(uname -m) && \
 
 FROM registry.access.redhat.com/ubi10/python-314-minimal:10.2-1787002610@sha256:b6cc4d6c56a139b763af6cb9cd6b838d0f8ed5a67caadfa3418e68dec6ab755f
 
-RUN cat <<EOF > /etc/yum.repos.d/kubernetes.repo
-[kubernetes]
-name=Kubernetes
-baseurl=https://pkgs.k8s.io/core:/stable:/v1.36.0/rpm/
-enabled=1
-gpgcheck=1
-gpgkey=https://pkgs.k8s.io/core:/stable:/v1.36.0/rpm/repodata/repomd.xml.key
-EOF
-
-RUN microdnf upgrade -y \
-    && microdnf install -y --nodocs \
-      kubectl \
-    && microdnf clean all
-
 COPY --from=downloader /usr/local/bin/helm /usr/local/bin/helm
 
 COPY pyproject.toml pyproject.toml
@@ -44,3 +30,4 @@ RUN ansible-galaxy collection install -r requirements.yaml
 WORKDIR /runner
 
 COPY scenarios/ scenarios/
+COPY scripts/agent/ scripts/agent/

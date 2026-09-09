@@ -1,8 +1,8 @@
 """
-Tests for generate_library_indexes.py
+Tests for generate_indexes.py
 
 Makefile invocation:
-  scripts/generate_library_indexes.py
+  scripts/library/generate_indexes.py
     --templates_directory=<path>
     --library_index_directory=<path>
     --playbooks_directory=<path>
@@ -10,11 +10,11 @@ Makefile invocation:
 from pathlib import Path
 from unittest.mock import patch
 
-import generate_library_indexes
+import generate_indexes
 
 
 ARGV = [
-    "generate_library_indexes.py",
+    "generate_indexes.py",
     "--templates_directory", "/templates/library/indexes",
     "--library_index_directory", "/lib/indexes",
     "--playbooks_directory", "/scenarios/sre/project",
@@ -23,9 +23,9 @@ ARGV = [
 
 def _patched_main():
     with patch("sys.argv", ARGV), \
-         patch("generate_library_indexes.load_and_write_library_index", return_value={}) as mock_load, \
-         patch("generate_library_indexes.create_scenarios_indexes") as mock_scenarios:
-        generate_library_indexes.main()
+         patch("generate_indexes.load_and_write_library_index", return_value={}) as mock_load, \
+         patch("generate_indexes.create_scenarios_indexes") as mock_scenarios:
+        generate_indexes.main()
         return mock_load, mock_scenarios
 
 
@@ -57,9 +57,9 @@ def test_faults_passed_to_scenarios():
     """main() passes the faults lookup from load_and_write_library_index into create_scenarios_indexes."""
     faults_cache = {"test-fault": {"id": "test-fault"}}
     with patch("sys.argv", ARGV), \
-         patch("generate_library_indexes.load_and_write_library_index", side_effect=[{}, faults_cache, {}]), \
-         patch("generate_library_indexes.create_scenarios_indexes") as mock_scenarios:
-        generate_library_indexes.main()
+         patch("generate_indexes.load_and_write_library_index", side_effect=[{}, faults_cache, {}]), \
+         patch("generate_indexes.create_scenarios_indexes") as mock_scenarios:
+        generate_indexes.main()
 
     passed_faults = mock_scenarios.call_args.args[4]
     assert passed_faults == faults_cache

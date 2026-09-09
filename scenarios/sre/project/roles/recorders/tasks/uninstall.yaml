@@ -84,6 +84,17 @@
       directory: alerts
     recorder: "{{ recorders_instances.prometheus_data_recorder }}"
 
+- name: Delete prometheus-recorder ClusterRoleBinding
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: "{{ recorders_instances.prometheus_data_recorder.name }}-cluster-monitoring-view"
+    state: absent
+  when:
+    - recorders_cluster.platform == "openshift"
+
 - name: Delete the namespace
   kubernetes.core.k8s:
     resource_definition:

@@ -8,16 +8,23 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	prometheusapi "github.com/prometheus/client_golang/api"
 	prometheusv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 )
 
+const serviceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+
 // Run fetches firing alerts from Prometheus and writes them as JSON to outputDir.
-// endpoint is the full HTTP URL of the Prometheus server (e.g. "http://prometheus:9090").
-// token is an optional Bearer token; pass empty string if not needed.
+// Bearer token is optional; falls back to the pod's projected service account token.
 func Run(ctx context.Context, endpoint, token, outputDir string) error {
+	if token == "" {
+		if data, err := os.ReadFile(serviceAccountTokenPath); err == nil {
+			token = strings.TrimSpace(string(data))
+		}
+	}
 	client, err := prometheusapi.NewClient(prometheusapi.Config{
 		Address:      endpoint,
 		RoundTripper: newRoundTripper(token),
@@ -80,6 +87,6 @@ func newRoundTripper(token string) http.RoundTripper {
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.Clone(req.Context())
-	req.Header.Set("Authorization", rt.token)
+	req.Header.Set("Authorization", "Bearer "+rt.token)
 	return rt.inner.RoundTrip(req)
 }

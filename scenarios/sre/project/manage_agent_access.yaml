@@ -20,47 +20,55 @@
         - storage is ansible.builtin.defined
         - storage.local is ansible.builtin.defined
   tasks:
-    - name: Import role variables from scenario
+    - name: Grant agent access
       tags:
         - grant_access
-      when:
-        - scenario_specs_directory is ansible.builtin.defined
       block:
-        - name: Import scenarios role
-          ansible.builtin.import_role:
-            name: scenarios
+        - name: Create temporary file for restricted kubeconfig
+          ansible.builtin.tempfile:
+            prefix: restricted-kubeconfig
+          register: agent_temporary_kubeconfig
 
-        - name: Create fault injections variable
-          ansible.builtin.set_fact:
-            agent_access_request:
-              namespaces: |-
-                {{
-                  (
-                    (
-                      scenarios_scenario.spec.faults |
-                      map(attribute='injections') |
-                      ansible.builtin.flatten |
-                      ansible.builtin.selectattr('args.kubernetesObject.metadata.namespace', 'defined') |
-                      map(attribute='args.kubernetesObject.metadata.namespace')
-                    ) +
-                    (
-                      scenarios_scenario.spec.faults |
-                      map(attribute='injections') |
-                      ansible.builtin.flatten |
-                      ansible.builtin.selectattr('args.kubernetesObject.kind', 'defined') |
-                      ansible.builtin.selectattr('args.kubernetesObject.kind', '==', 'Namespace') |
-                      map(attribute='args.kubernetesObject.metadata.name')
-                    )
-                  ) |
-                  ansible.builtin.unique
-                }}
+        - name: Create restricted kubeconfig
+          ansible.builtin.command:
+            argv:
+              - "{{ ansible_python_interpreter }}"
+              - "{{ [playbook_dir, '..', '..', '..', 'scripts', 'agent', 'grant_access.py'] | ansible.builtin.path_join }}"
+              - "{{ agent_temporary_kubeconfig.path }}"
+          changed_when:
+            - true
 
-        - name: Create storage variable
-          ansible.builtin.set_fact:
-            agent_storage: "{{ storage }}"
+        - name: Copy restricted kubeconfig into local directory
+          ansible.builtin.copy:
+            dest: "{{ [storage.local.directory, 'kubeconfig'] | ansible.builtin.path_join }}"
+            mode: "0644"
+            src: "{{ agent_temporary_kubeconfig.path }}"
           when:
             - storage is ansible.builtin.defined
+            - storage.local is ansible.builtin.defined
 
-    - name: Import agent role
-      ansible.builtin.import_role:
-        name: agent
+        - name: Upload restricted kubeconfig to S3 bucket
+          amazon.aws.s3_object:
+            endpoint_url: "{{ storage.s3.endpoint }}"
+            bucket: "{{ storage.s3.bucket }}"
+            object: "{{ [storage.s3.directory, 'kubeconfig'] | ansible.builtin.path_join }}"
+            src: "{{ agent_temporary_kubeconfig.path }}"
+            mode: put
+          when:
+            - storage is ansible.builtin.defined
+            - storage.s3 is ansible.builtin.defined
+      always:
+        - name: Delete the temporary kubeconfig
+          ansible.builtin.file:
+            path: "{{ agent_temporary_kubeconfig.path }}"
+            state: absent
+
+    - name: Revoke agent access
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_python_interpreter }}"
+          - "{{ [playbook_dir, '..', '..', '..', 'scripts', 'agent', 'revoke_access.py'] | ansible.builtin.path_join }}"
+      changed_when:
+        - true
+      tags:
+        - revoke_access

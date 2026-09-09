@@ -16,15 +16,17 @@
       ansible.builtin.assert:
         that:
           - runner.name.prefix != stack.name.prefix
-          - runner.name.prefix != (stack.name.prefix + "-head")
-          - runner.name.prefix != (stack.name.prefix + "-runner")
+          - runner.name.prefix != (stack.name.prefix + "-orchestrator")
+          - runner.name.prefix != (stack.name.prefix + "-environment")
         fail_msg: Invalid name prefix. Ensure that the stack and runner name prefixes are differnt.
         success_msg: Name prefixes are valid.
+      tags:
+        - always
 
-    - name: Validate runners cluster count
+    - name: Validate environments cluster count
       ansible.builtin.assert:
         that:
-          - stack.runners.count > 0
+          - stack.environments.count > 0
         fail_msg: Invalid number of kOps clusters set. Must be greater than 0.
         success_msg: Valid number of kOps clusters configured.
       tags:
@@ -59,14 +61,14 @@
                 [
                   [
                     stack.name.prefix,
-                    "runner",
+                    "environment",
                     runner_index,
                     "aws.k8s.local"
                   ] |
                   ansible.builtin.join("-")
                 ]
               }}
-          loop: "{{ range(1, stack.runners.count + 1) | ansible.builtin.list }}"
+          loop: "{{ range(1, stack.environments.count + 1) | ansible.builtin.list }}"
           loop_control:
             label: runner/{{ runner_index }}
             loop_var: runner_index
@@ -92,7 +94,7 @@
                 {{
                   (
                     [
-                      stack.name.prefix + "-head-aws.k8s.local"
+                      stack.name.prefix + "-orchestrator-aws.k8s.local"
                     ]
                   ) +
                   runner_clusters

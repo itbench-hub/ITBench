@@ -1,4 +1,4 @@
-name: Run ITBench Network Tests
+name: Run ITBench Integration Tests
 
 on:
   pull_request:
@@ -8,14 +8,50 @@ on:
       - clusters/kind/**
       - clusters/minikube/**
       - scenarios/sre/project/roles/tools/install_*.yaml
+      - scripts/agent/**
+      - tests/integration/**
       - '!clusters/kind/README.md'
       - '!clusters/minikube/README.md'
 
 concurrency:
-  group: ci-network-${{ github.ref }}
+  group: ci-integration-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  agent-integration:
+    name: Agent Integration Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version-file: pyproject.toml
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: clusters/kind/go.mod
+          cache-dependency-path: clusters/kind/go.sum
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.2.4
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Create Kind cluster
+        run: |
+          make -C clusters/kind create-environment-cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C clusters/kind run-service-provider &
+          sleep 10
+      - name: Run integration tests
+        run: |
+          make test-integration-agent
+        env:
+          K8S_AUTH_KUBECONFIG: ${{ github.workspace }}/clusters/kind/kubeconfigs/itbench-environment
+      - name: Destroy Kind cluster
+        if: always()
+        run: |
+          make -C clusters/kind destroy-environment-cluster
   clusters-kind:
     name: ITBench Kind Tests
     runs-on: ubuntu-24.04
@@ -44,7 +80,8 @@ jobs:
       - name: Run tests
         run: |
           make -C clusters/kind test
-      - name: Destroy Minikube cluster
+      - name: Destroy Kind cluster
+        if: always()
         run: |
           make -C clusters/kind destroy-environment-cluster
   clusters-minikube:
@@ -81,6 +118,7 @@ jobs:
         run: |
           make -C clusters/minikube test
       - name: Destroy Minikube cluster
+        if: always()
         run: |
           make -C clusters/minikube destroy-environment-cluster
   environment-tools-gateway-kind:
@@ -107,9 +145,6 @@ jobs:
       - name: Create Kind cluster
         run: |
           make -C clusters/kind create-environment-cluster
-      - name: Sync cluster group vars
-        run: |
-          make -C clusters/kind sync-cluster-group-vars
       - name: Run Cloud Provider
         run: |
           make -C clusters/kind run-service-provider &
@@ -118,5 +153,6 @@ jobs:
         run: |
           make -C scenarios/sre test-network-gateway
       - name: Destroy Kind cluster
+        if: always()
         run: |
           make -C clusters/kind destroy-environment-cluster

@@ -15,26 +15,26 @@ lint: ## Lints files
 
 .PHONY: generate-library
 generate-library: ## Generates library indexes, schemas, documentation, and spec files
-	$(UV) run scripts/generate_library_indexes.py \
+	$(UV) run scripts/library/generate_indexes.py \
 		--templates_directory=$(abspath ./templates/library/indexes) \
 		--library_index_directory=$(abspath ./library/indexes) \
 		--playbooks_directory=$(abspath ./scenarios/sre/project)
-	$(UV) run scripts/generate_library_index_schemas.py \
+	$(UV) run scripts/library/generate_index_schemas.py \
 		--library_index_directory=$(abspath ./library/indexes) \
 		--schemas_directory=$(abspath ./schemas/json) \
 		--templates_directory=$(abspath ./templates/schemas/json/library/index)
-	$(UV) run scripts/generate_library_specs.py \
+	$(UV) run scripts/library/generate_specs.py \
 		--templates_directory=$(abspath ./templates/library/specs/scenarios) \
 		--library_index_directory=$(abspath ./library/indexes) \
 		--specs_directory=$(abspath ./library/specs/scenarios)
-	$(UV) run scripts/generate_library_readmes.py \
+	$(UV) run scripts/library/generate_readmes.py \
 		--templates_directory=$(abspath ./templates/documentation/library) \
 		--library_index_directory=$(abspath ./library/indexes) \
 		--documentation_directory=$(abspath ./documentation/library)
 
 .PHONY: validate-library
 validate-library: ## Validates library indexes
-	$(UV) run scripts/validate_library_indexes.py \
+	$(UV) run scripts/library/validate_indexes.py \
 		--library_index_directory=$(abspath ./library/indexes) \
 		--schemas_directory=$(abspath ./schemas/json)
 
@@ -44,4 +44,12 @@ update-secrets-baseline: ## Updates the baseline secret file
 
 .PHONY: test-scripts
 test-scripts: ## Runs unit tests for scripts/
-	$(UV) run pytest tests/scripts/
+	$(UV) run pytest tests/unit/
+
+.PHONY: test-integration-agent
+test-integration-agent: ## Runs agent integration tests (requires a live Kubernetes cluster)
+	$(UV) run pytest tests/integration/agent/ -m integration
+
+.PHONY: test-integration
+test-integration: ## Runs all integration tests (requires a live Kubernetes cluster)
+	$(UV) run pytest tests/integration/ -m integration

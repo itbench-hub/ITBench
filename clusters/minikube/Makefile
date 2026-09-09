@@ -1,8 +1,8 @@
 MINIKUBE := $(shell command -v minikube)
 UV := $(shell command -v uv)
 
-ARGO_CLUSTER_PROFILE        ?= minikube-orchestrator
-ENVIRONMENT_CLUSTER_PROFILE ?= minikube-environment
+ENVIRONMENT_CLUSTER_PROFILE 	?= itbench-environment
+ORCHESTRATOR_CLUSTER_PROFILE	?= itbench-orchestrator
 
 .PHONY: help
 help: ## Display this help.
@@ -24,9 +24,6 @@ create-cluster: kubeconfigs
 		--extra-config=controller-manager.authorization-always-allow-paths="/metrics" \
 		--extra-config=scheduler.bind-address="0.0.0.0" \
 		--extra-config=scheduler.authorization-always-allow-paths="/metrics"
-	@echo "Run the following commands to access the cluster ($(CLUSTER_PROFILE)) using kubectl:"
-	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_PROFILE))"
-	@echo "export K8S_AUTH_KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_PROFILE))"
 
 .PHONY: destroy-cluster
 destroy-cluster:
@@ -42,6 +39,9 @@ start-tunnel:
 create-environment-cluster: ## Creates Minikube cluster for local development
 	$(MAKE) check-resources CLUSTER_TARGET=environment-cluster
 	$(MAKE) create-cluster CLUSTER_PROFILE=$(ENVIRONMENT_CLUSTER_PROFILE)
+	@printf 'K8S_AUTH_KUBECONFIG=%s\n' "$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE))" > $(abspath ../../scenarios/sre/.env)
+	@echo "Run the following commands to access the cluster ($(ENVIRONMENT_CLUSTER_PROFILE)) using kubectl:"
+	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE))"
 
 .PHONY: destroy-environment-cluster
 destroy-environment-cluster: ## Deletes the local development Minikube cluster
@@ -54,18 +54,25 @@ start-environment-tunnel: ## Opens Minikube tunnel to allow external IP access t
 .PHONY: create-argo-stack
 create-argo-stack: ## Creates a two-cluster Minikube stack for Argo Workflows orchestration
 	$(MAKE) check-resources CLUSTER_TARGET=argo-stack
-	$(MAKE) create-cluster CLUSTER_PROFILE=$(ARGO_CLUSTER_PROFILE)
+	$(MAKE) create-cluster CLUSTER_PROFILE=$(ORCHESTRATOR_CLUSTER_PROFILE)
 	$(MAKE) create-cluster CLUSTER_PROFILE=$(ENVIRONMENT_CLUSTER_PROFILE)
+	@printf 'K8S_AUTH_KUBECONFIG=%s\n' "$(abspath kubeconfigs/$(ORCHESTRATOR_CLUSTER_PROFILE))" > $(abspath ../../scenarios/sre/.env)
+	@printf '---\nstack:\n  environments:\n    - kubeconfig: %s\n' \
+		"$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE))" \
+		> $(abspath ../../scenarios/sre/inventory/group_vars/orchestrator/stack.yaml)
+	@echo "Run the following commands to access the orchestrator cluster ($(ORCHESTRATOR_CLUSTER_PROFILE)) using kubectl:"
+	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(ORCHESTRATOR_CLUSTER_PROFILE))"
 
 .PHONY: destroy-argo-stack
 destroy-argo-stack: ## Deletes the Argo Minikube stack
-	$(MAKE) destroy-cluster CLUSTER_PROFILE=$(ARGO_CLUSTER_PROFILE)
+	$(MAKE) destroy-cluster CLUSTER_PROFILE=$(ORCHESTRATOR_CLUSTER_PROFILE)
 	$(MAKE) destroy-cluster CLUSTER_PROFILE=$(ENVIRONMENT_CLUSTER_PROFILE)
 
 .PHONY: start-argo-tunnel
 start-argo-tunnel: ## Opens Minikube tunnel for the Argo orchestrator cluster
-	$(MAKE) start-tunnel CLUSTER_PROFILE=$(ARGO_CLUSTER_PROFILE)
+	$(MAKE) start-tunnel CLUSTER_PROFILE=$(ORCHESTRATOR_CLUSTER_PROFILE)
 
 .PHONY: test
 test: ## Run integration tests
-	$(UV) run pytest tests/clusters/local/
+	KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE)) \
+		$(UV) run pytest $(abspath ../../tests/integration/clusters/) -m integration

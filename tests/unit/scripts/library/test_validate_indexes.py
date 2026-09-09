@@ -1,8 +1,8 @@
 """
-Tests for validate_library_indexes.py
+Tests for validate_indexes.py
 
 Makefile invocation:
-  scripts/validate_library_indexes.py
+  scripts/library/validate_indexes.py
     --library_index_directory=<path>
     --schemas_directory=<path>
 """
@@ -11,11 +11,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-import validate_library_indexes
+import validate_indexes
 
 
 ARGV = [
-    "validate_library_indexes.py",
+    "validate_indexes.py",
     "--library_index_directory", "/lib/indexes",
     "--schemas_directory", "/schemas/json",
 ]
@@ -23,13 +23,13 @@ ARGV = [
 
 def _patched_main():
     with patch("sys.argv", ARGV), \
-         patch("validate_library_indexes.load_and_validate_library_index") as mock_validate, \
+         patch("validate_indexes.load_and_validate_library_index") as mock_validate, \
          patch.object(Path, "rglob", return_value=[]), \
-         patch("validate_library_indexes.Registry") as mock_registry_cls:
+         patch("validate_indexes.Registry") as mock_registry_cls:
         mock_registry = Mock()
         mock_registry.with_resource.return_value = mock_registry
         mock_registry_cls.return_value = mock_registry
-        validate_library_indexes.main()
+        validate_indexes.main()
         return mock_validate, mock_registry
 
 
@@ -70,10 +70,10 @@ def test_exits_on_validation_failure():
     mock_validator = Mock()
     mock_validator.validate.side_effect = ValidationError("missing field")
 
-    with patch("validate_library_indexes.Draft202012Validator", return_value=mock_validator), \
+    with patch("validate_indexes.Draft202012Validator", return_value=mock_validator), \
          patch.object(Path, "glob", return_value=[Path("book-info.json")]), \
          patch.object(Path, "read_text", return_value='{"id": "book-info"}'), \
          pytest.raises(SystemExit) as exc:
-        validate_library_indexes.load_and_validate_library_index(mock_registry, index_dir, schema_file)
+        validate_indexes.load_and_validate_library_index(mock_registry, index_dir, schema_file)
 
     assert exc.value.code == 1
