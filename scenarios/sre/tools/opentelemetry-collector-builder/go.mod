@@ -1,6 +1,6 @@
 module github.com/itbench-hub/ITBench/tools/opentelemetry-collector
 
-go 1.25.0
+go 1.26.0
 
 tool go.opentelemetry.io/collector/cmd/builder
 
@@ -18,10 +18,10 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	go.opentelemetry.io/collector/cmd/builder v0.159.0 // indirect
+	go.opentelemetry.io/collector/cmd/builder v0.160.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/mod v0.39.0 // indirect
+	golang.org/x/mod v0.40.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 )
