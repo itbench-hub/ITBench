@@ -519,3 +519,53 @@
       reason: Reconciled
       status: "True"
       type: Ready
+
+- name: Create HTTPRoute for Jaeger
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.jaeger.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_kubernetes_gateways.istio.name }}"
+            namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}-collector"
+                port: 16686
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /jaeger/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_response_headers.http_route }}"
+    state: present
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Create Route for Jaeger
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.jaeger.namespace }}"
+      spec:
+        httpHeaders:
+          actions:
+            response: "{{ tools_response_headers.route }}"
+        path: /jaeger
+        port:
+          targetPort: 16686
+        to:
+          kind: Service
+          name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}-collector"
+    state: present
+  when:
+    - tools_cluster.platform == "openshift"

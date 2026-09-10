@@ -25,6 +25,51 @@
       }}
     wait: true
 
+- name: Create HTTPRoute for OpenCost
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_releases.opencost.name }}"
+        namespace: "{{ tools_releases.opencost.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_kubernetes_gateways.istio.name }}"
+            namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_releases.opencost.name }}"
+                port: 9090
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_response_headers.http_route }}"
+    state: present
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Create Route for OpenCost
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: "{{ tools_releases.opencost.name }}"
+        namespace: "{{ tools_releases.opencost.namespace }}"
+      spec:
+        httpHeaders:
+          actions:
+            response: "{{ tools_response_headers.route }}"
+        port:
+          targetPort: 9090
+        to:
+          kind: Service
+          name: "{{ tools_releases.opencost.name }}"
+    state: present
+  when:
+    - tools_cluster.platform == "openshift"
+
 - name: Create PrometheusRules
   kubernetes.core.k8s:
     state: present

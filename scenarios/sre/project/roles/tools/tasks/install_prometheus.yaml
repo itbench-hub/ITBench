@@ -99,6 +99,32 @@
             enabled: "{{ tools_cluster.provider == 'kind' }}"
         wait: true
 
+    - name: Create HTTPRoute for Prometheus
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: HTTPRoute
+          metadata:
+            name: "{{ tools_releases.kube_prometheus_stack.name }}"
+            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
+          spec:
+            parentRefs:
+              - name: "{{ tools_kubernetes_gateways.istio.name }}"
+                namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
+            rules:
+              - backendRefs:
+                  - name: "{{ tools_releases.kube_prometheus_stack.name }}-kube-prometheus-prometheus"
+                    port: 9090
+                matches:
+                  - path:
+                      type: PathPrefix
+                      value: /prometheus/
+                filters:
+                  - type: ResponseHeaderModifier
+                    responseHeaderModifier:
+                      add: "{{ tools_response_headers.http_route }}"
+        state: present
+
 - name: Enabled OpenShift User Worklord Monitoring (Prometheus)
   when:
     - tools_cluster.platform == "openshift"
