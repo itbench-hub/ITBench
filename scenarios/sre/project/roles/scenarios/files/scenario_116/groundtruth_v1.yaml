@@ -1,0 +1,71 @@
+---
+apiVersion: itbench.io/v1
+kind: GroundTruth
+metadata:
+  name: scenario-116
+spec:
+  alerts:
+    - group_id: frontend-service-1
+      id: HighRequestLatency
+      metadata:
+        description: Increased API server latency in namespace otel-demo due to etcd storage pressure from excessive ConfigMap creation
+  groups:
+    - id: configmap-fill-1
+      kind: ConfigMap
+      namespace: otel-demo
+      filter:
+        - etcd-fill-.*
+      root_cause: true
+    - id: frontend-deployment-1
+      kind: Deployment
+      namespace: otel-demo
+      filter:
+        - frontend\b
+    - id: frontend-pod-1
+      kind: Pod
+      namespace: otel-demo
+      filter:
+        - frontend-.*
+    - id: frontend-service-1
+      kind: Service
+      namespace: otel-demo
+      filter:
+        - frontend\b
+  aliases:
+    - - frontend-deployment-1
+      - frontend-pod-1
+    - - frontend-deployment-1
+      - frontend-service-1
+  propagations:
+    - source: configmap-fill-1
+      target: frontend-deployment-1
+      condition: Large number of ConfigMaps created consuming etcd storage
+      effect: etcd database experiences storage pressure, API server latency increases for all operations in the namespace
+    - source: frontend-deployment-1
+      target: frontend-pod-1
+      condition: API server latency increased due to etcd storage pressure
+      effect: Frontend pods experience slower responses from Kubernetes API, degrading application performance
+    - source: frontend-pod-1
+      target: frontend-service-1
+      condition: Frontend pods responding slowly due to cluster-wide API latency
+      effect: Frontend service exhibits higher request latency visible to end users
+  fault:
+    - category: Fill
+      condition: etcd database filled with ConfigMaps creating storage pressure
+      entity:
+        group_id: configmap-fill-1
+        kind: ConfigMap
+        name: etcd-fill
+      fault_mechanism: Storage pressure via bulk ConfigMap creation simulating real-world etcd storage growth incidents
+  recommendedActions:
+    - solution:
+        actions:
+          - Delete the etcd-fill ConfigMaps using kubectl delete configmap -l app=etcd-storage-fill -n otel-demo
+          - Compact and defragment etcd to reclaim space
+          - Monitor etcd storage usage returning to normal levels
+        id: cleanup-configmaps
+    - solution:
+        actions:
+          - Increase etcd storage quota if current limit is insufficient
+          - Review resource creation patterns to prevent future growth
+        id: increase-quota
