@@ -1,0 +1,20 @@
+---
+- name: Run fault injection test
+  hosts:
+    - localhost
+  tasks:
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+        faults_injection_tasks:
+          - id: corrupted-kubernetes-secret-credentials
+            args:
+              kubernetesObject:
+                apiVersion: v1
+                kind: Secret
+                metadata:
+                  name: test-secret
+                  namespace: corrupted-kubernetes-secret-credentials-test

@@ -1,0 +1,22 @@
+---
+apiVersion: itbench.io/v2
+kind: GroundTruth
+metadata:
+  name: scenario-63
+spec:
+  alerts:
+    - labels: {}
+      name: HighRequestErrorRate
+  entities:
+    - apiVersion: v1
+      kind: Secret
+      metadata:
+        name: email-service-secret
+        namespace: otel-demo
+  solutions:
+    - - steps:
+          - command: kubectl -n otel-demo get secret email-service-secret -o yaml
+            text: Inspect the corrupted secret to identify the invalid data.
+          - text: Restore the secret with correct credentials from the credential management system.
+      - steps:
+          - text: Rotate the credentials in the external system and update the Kubernetes Secret to match.

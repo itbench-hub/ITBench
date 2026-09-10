@@ -1,10 +1,4 @@
 ---
-- name: Create Prometheus Data Recorder environment variables
-  ansible.builtin.set_fact:
-    recorders_prometheus_env_vars:
-      - name: PROMETHEUS_ENDPOINT
-        value: "{{ tools_prometheus_endpoint.http }}"
-
 - name: Add Prometheus Bearer Token
   when:
     - recorders_cluster.platform == "openshift"
@@ -27,27 +21,155 @@
             token: "{{ prometheus_bearer_token }}"
         state: present
 
-    - name: Add Secret to environment list
-      ansible.builtin.set_fact:
-        recorders_prometheus_env_vars: "{{ recorders_prometheus_env_vars + secret_env_vars }}"
-      vars:
-        secret_env_vars:
-          - name: PROMETHEUS_TOKEN
-            valueFrom:
-              key: token
-              secretKeyRef: "{{ recorders_instances.prometheus_data_recorder.name }}-token"
+- name: Create PersistentVolumeClaim for prometheus-recorder
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/name": "{{ recorders_instances.prometheus_data_recorder.name }}-records"
+        name: "{{ recorders_instances.prometheus_data_recorder.name }}-records"
+        namespace: "{{ recorders_namespaces.data_recorders }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+        volumeMode: Filesystem
+    state: present
 
-- name: Import recorder deployment tasks
-  ansible.builtin.import_tasks:
-    file: deploy_python_recorder.yaml
-  vars:
-    python_recorder:
-      job:
-        environment_variables: "{{ recorders_prometheus_env_vars }}"
+- name: Install Kubernetes Job for prometheus-recorder
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        labels:
+          "app.kubernetes.io/component": "{{ recorders_instances.prometheus_data_recorder.name }}"
+          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/name": "{{ recorders_instances.prometheus_data_recorder.name }}-init"
+        name: "{{ recorders_instances.prometheus_data_recorder.name }}-init"
+        namespace: "{{ recorders_namespaces.data_recorders }}"
+      spec:
+        template:
+          metadata:
+            labels:
+              "app.kubernetes.io/managed-by": ITBench
+              "app.kubernetes.io/name": "{{ recorders_instances.prometheus_data_recorder.name }}"
+          spec:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.itbench.io/sandbox
+                          operator: DoesNotExist
+            containers:
+              - name: recorder
+                image: quay.io/it-bench/prometheus-recorder:1.0.0
+                env:
+                  - name: PROMETHEUS_ENDPOINT
+                    value: "{{ tools_prometheus_endpoint.http }}"
+                  - name: PROMETHEUS_TOKEN
+                    valueFrom:
+                      secretKeyRef:
+                        name: "{{ recorders_instances.prometheus_data_recorder.name }}-token"
+                        key: token
+                        optional: true
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 128Mi
+                  limits:
+                    memory: 512Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+                volumeMounts:
+                  - name: records
+                    mountPath: /root/records
+            restartPolicy: Never
+            securityContext:
+              fsGroup: 0
+              runAsNonRoot: false
+              seccompProfile:
+                type: RuntimeDefault
+            volumes:
+              - name: records
+                persistentVolumeClaim:
+                  claimName: "{{ recorders_instances.prometheus_data_recorder.name }}-records"
+    state: present
+
+- name: Install Kubernetes CronJob for prometheus-recorder
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: batch/v1
+      kind: CronJob
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/name": "{{ recorders_instances.prometheus_data_recorder.name }}"
+        name: "{{ recorders_instances.prometheus_data_recorder.name }}"
+        namespace: "{{ recorders_namespaces.data_recorders }}"
+      spec:
         schedule: "* * * * *"
-      name: "{{ recorders_instances.prometheus_data_recorder.name }}"
-      scripts:
-        requirements_file_path: "files/scripts/prometheus/requirements.txt"
-        scripts_file_path: "files/scripts/prometheus/gather.py"
-      volume:
-        size: 1Gi
+        jobTemplate:
+          spec:
+            template:
+              metadata:
+                labels:
+                  "app.kubernetes.io/managed-by": ITBench
+                  "app.kubernetes.io/name": "{{ recorders_instances.prometheus_data_recorder.name }}"
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                        - matchExpressions:
+                            - key: node-role.itbench.io/sandbox
+                              operator: DoesNotExist
+                containers:
+                  - name: recorder
+                    image: quay.io/it-bench/prometheus-recorder:1.0.0
+                    env:
+                      - name: PROMETHEUS_ENDPOINT
+                        value: "{{ tools_prometheus_endpoint.http }}"
+                      - name: PROMETHEUS_TOKEN
+                        valueFrom:
+                          secretKeyRef:
+                            name: "{{ recorders_instances.prometheus_data_recorder.name }}-token"
+                            key: token
+                            optional: true
+                    resources:
+                      requests:
+                        cpu: 100m
+                        memory: 128Mi
+                      limits:
+                        memory: 512Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop:
+                          - ALL
+                    volumeMounts:
+                      - name: records
+                        mountPath: /root/records
+                restartPolicy: Never
+                securityContext:
+                  fsGroup: 0
+                  runAsNonRoot: false
+                  seccompProfile:
+                    type: RuntimeDefault
+                volumes:
+                  - name: records
+                    persistentVolumeClaim:
+                      claimName: "{{ recorders_instances.prometheus_data_recorder.name }}-records"
+    state: present

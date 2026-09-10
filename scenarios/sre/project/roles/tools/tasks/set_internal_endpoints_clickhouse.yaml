@@ -34,6 +34,19 @@
           ) +
           ":8123"
         }}
+      tcp: |-
+        {{
+          (
+            [
+              tools_clickhouse_service.resources[0].metadata.name,
+              tools_clickhouse_service.resources[0].metadata.namespace,
+              "svc",
+              "cluster",
+              "local"
+            ] |
+            ansible.builtin.join(".")
+          )
+        }}
       prometheus: |-
         {{
           (

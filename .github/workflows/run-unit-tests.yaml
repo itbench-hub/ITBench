@@ -6,6 +6,10 @@ on:
       - main
     paths:
       - scenarios/sre/scripts/**
+      - scenarios/sre/tools/clickhouse-recorder/**
+      - scenarios/sre/tools/jaeger-recorder/**
+      - scenarios/sre/tools/kubernetes-topology-monitor-recorder/**
+      - scenarios/sre/tools/prometheus-recorder/**
 
 concurrency:
   group: ci-unit-${{ github.ref }}
@@ -17,10 +21,62 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@v9.0.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version-file: pyproject.toml
       - name: Install project dependencies
         run: |
           make deps
       - name: Run unit tests
         run: |
           make -C scenarios/sre test-scripts
+
+  clickhouse-recorder:
+    name: ClickHouse Recorder Unit Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: scenarios/sre/tools/clickhouse-recorder/go.mod
+          cache-dependency-path: scenarios/sre/tools/clickhouse-recorder/go.sum
+      - name: Test
+        run: go test -count=1 ./...
+        working-directory: scenarios/sre/tools/clickhouse-recorder
+
+  prometheus-recorder:
+    name: Prometheus Recorder Unit Tests
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: scenarios/sre/tools/prometheus-recorder/go.mod
+          cache-dependency-path: scenarios/sre/tools/prometheus-recorder/go.sum
+      - name: Test
+        run: go test -count=1 ./...
+        working-directory: scenarios/sre/tools/prometheus-recorder
+
+  jaeger-recorder:
+    name: Jaeger Recorder Unit Tests
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version-file: scenarios/sre/tools/jaeger-recorder/pyproject.toml
+      - name: Test
+        run: uv run python -m unittest discover -s . -p 'test_*.py'
+        working-directory: scenarios/sre/tools/jaeger-recorder
+
+  kubernetes-topology-monitor-recorder:
+    name: Kubernetes Topology Monitor Recorder Unit Tests
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version-file: scenarios/sre/tools/kubernetes-topology-monitor-recorder/pyproject.toml
+      - name: Test
+        run: uv run python -m unittest discover -s . -p 'test_*.py'
+        working-directory: scenarios/sre/tools/kubernetes-topology-monitor-recorder

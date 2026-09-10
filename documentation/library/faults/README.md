@@ -8,6 +8,7 @@ A fault is a solvable issue injected into an environment to create an incident.
 | Name | Platform |
 | --- | --- |
 | [Cordoned Kubernetes Worker Node](./cordoned-kubernetes-worker-node.md) | Kubernetes |
+| [Corrupted Kubernetes Secret Credentials](./corrupted-kubernetes-secret-credentials.md) | Kubernetes |
 | [Crashing Kubernetes Workload Init Container](./crashing-kubernetes-workload-init-container.md) | Kubernetes |
 | [Deleted Kubernetes Service](./deleted-kubernetes-service.md) | Kubernetes |
 | [Disabled Istio Ambient Mode Kubernetes Namespace](./disabled-istio-ambient-mode-kubernetes-namespace.md) | Kubernetes |
