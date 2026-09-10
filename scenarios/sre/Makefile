@@ -36,7 +36,7 @@ generate-resource-files: ## Generates task files, scenario manifests, and other 
 deploy-tools: ## Deploys the observability and fault tools to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install_tools" \
-		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install_tools"
 endif
@@ -49,7 +49,7 @@ display-endpoints: ## Shows the urls for accessing deployed tools in browser
 undeploy-tools: ## Undeploys the observability and fault tools from cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall_tools" \
-		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall_tools"
 endif
@@ -58,7 +58,7 @@ endif
 deploy-applications: ## Deploys the applications to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install_applications" \
-		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install_applications"
 endif
@@ -67,7 +67,7 @@ endif
 undeploy-applications: ## Undeploys the applications to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall_applications" \
-		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall_applications"
 endif
@@ -76,7 +76,7 @@ endif
 deploy-recorders: ## Deploys the data recorders to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install_recorders" \
-		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install_recorders"
 endif
@@ -115,7 +115,7 @@ stop-scenario: undeploy-recorders remove-fault-resources destroy-environment ## 
 enable-agent-access: ## Adds access controls for llm agent
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "grant_access" \
-		--extra-vars "scenario_specs_directory=$(abspath ../../../library/specs/scenarios/$(SCENARIO_NUMBER))"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif

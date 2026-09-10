@@ -8,9 +8,9 @@
 
     - name: Download Kubernetes Gateway API CRD manifest
       ansible.builtin.get_url:
-        url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
         dest: "{{ tools_kubernetes_gateway_api_manifest.path }}"
         mode: "0644"
+        url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
 
     - name: Apply Kubernetes Gateway API Custom Resource Definitions
       kubernetes.core.k8s:
@@ -18,6 +18,17 @@
         state: present
         server_side_apply:
           field_manager: ansible
+
+    - name: Create Namespace for Kubernetes Gateway instances
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            labels:
+              "prometheus.itbench.io/monitor": "true"
+            name: "{{ tools_kubernetes_gateways.istio.namespace }}"
+        state: present
   always:
     - name: Delete temporary file for Kubernetes Gateway API CRD manifest
       ansible.builtin.file:

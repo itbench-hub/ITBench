@@ -165,3 +165,77 @@
         value: true
   when:
     - tools_cluster.platform == "openshift"
+
+- name: Create Kubernetes Gateway
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Create ConfigMap for Istio Gateway
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: "{{ tools_kubernetes_gateways.istio.name }}-options"
+            namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
+          data:
+            deployment: |
+              spec:
+                template:
+                  spec:
+                    affinity:
+                      nodeAffinity:
+                        requiredDuringSchedulingIgnoredDuringExecution:
+                          nodeSelectorTerms:
+                          - matchExpressions:
+                            - key: node-role.itbench.io/sandbox
+                              operator: DoesNotExist
+
+    - name: Create Istio implemented Gateway
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: Gateway
+          metadata:
+            name: "{{ tools_kubernetes_gateways.istio.name }}"
+            namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
+          spec:
+            infrastructure:
+              parametersRef:
+                group: ""
+                kind: ConfigMap
+                name: "{{ tools_kubernetes_gateways.istio.name }}-options"
+            gatewayClassName: istio
+            listeners:
+              - name: http
+                port: 80
+                protocol: HTTP
+                allowedRoutes:
+                  namespaces:
+                    from: Selector
+                    selector:
+                      matchLabels:
+                        "itbench.io/gateway-access": shared
+        state: present
+        wait: true
+        wait_condition:
+          reason: Programmed
+          status: "True"
+          type: Programmed
+
+    - name: Create PodMonitor for Istio Kubernetes Gateway
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: monitoring.coreos.com/v1
+          kind: PodMonitor
+          metadata:
+            name: "{{ tools_kubernetes_gateways.istio.name }}"
+            namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
+          spec:
+            selector:
+              matchLabels:
+                "gateway.networking.k8s.io/gateway-name": "{{ tools_kubernetes_gateways.istio.name }}"
+            podMetricsEndpoints:
+              - interval: 30s
+                port: metrics
+        state: present

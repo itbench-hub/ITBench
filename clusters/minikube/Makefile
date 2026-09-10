@@ -17,7 +17,8 @@ kubeconfigs:
 
 .PHONY: create-cluster
 create-cluster: kubeconfigs
-	KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_PROFILE)) $(MINIKUBE) start -p $(CLUSTER_PROFILE) \
+	KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_PROFILE)) \
+		$(MINIKUBE) start -p $(CLUSTER_PROFILE) \
 		--nodes 2 \
 		--extra-config=kube-proxy.metrics-bind-address="0.0.0.0:10249" \
 		--extra-config=controller-manager.bind-address="0.0.0.0" \
@@ -28,12 +29,15 @@ create-cluster: kubeconfigs
 .PHONY: destroy-cluster
 destroy-cluster:
 	-sudo pkill -f "minikube.*$(CLUSTER_PROFILE).*tunnel"
-	-sudo $(MINIKUBE) tunnel -p $(CLUSTER_PROFILE) --cleanup
-	$(MINIKUBE) delete -p $(CLUSTER_PROFILE)
+	-sudo KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_PROFILE)) \
+		$(MINIKUBE) tunnel -p $(CLUSTER_PROFILE) --cleanup
+	KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_PROFILE)) \
+		$(MINIKUBE) delete -p $(CLUSTER_PROFILE)
 
 .PHONY: start-tunnel
 start-tunnel:
-	$(MINIKUBE) -p $(CLUSTER_PROFILE) tunnel
+	KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_PROFILE)) \
+		$(MINIKUBE) -p $(CLUSTER_PROFILE) tunnel
 
 .PHONY: create-environment-cluster
 create-environment-cluster: ## Creates Minikube cluster for local development
