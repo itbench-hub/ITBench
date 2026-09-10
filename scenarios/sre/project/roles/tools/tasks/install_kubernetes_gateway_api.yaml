@@ -1,23 +1,26 @@
 ---
 - name: Apply Kubernetes Gateway API Custom Resource Definitions
   block:
-    - name: Create temporary file for Kubernetes Gateway API CRD manifest
+    - name: Create temporary directory for Kubernetes Gateway API CRD manifest
       ansible.builtin.tempfile:
-        suffix: .yaml
-      register: tools_kubernetes_gateway_api_manifest
+        prefix: kubernetes-gateway-api
+        state: directory
+      register: tools_temporary_directory
 
     - name: Download Kubernetes Gateway API CRD manifest
       ansible.builtin.get_url:
-        dest: "{{ tools_kubernetes_gateway_api_manifest.path }}"
-        mode: "0644"
+        dest: "{{ [tools_temporary_directory.path, 'standard-install.yaml'] | ansible.builtin.path_join }}"
         url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
+      register: tools_download_result
 
     - name: Apply Kubernetes Gateway API Custom Resource Definitions
       kubernetes.core.k8s:
-        src: "{{ tools_kubernetes_gateway_api_manifest.path }}"
-        state: present
+        apply: true
         server_side_apply:
           field_manager: ansible
+          force_conflicts: true
+        src: "{{ tools_download_result.dest }}"
+        state: present
 
     - name: Create Namespace for Kubernetes Gateway instances
       kubernetes.core.k8s:
@@ -30,7 +33,7 @@
             name: "{{ tools_kubernetes_gateways.istio.namespace }}"
         state: present
   always:
-    - name: Delete temporary file for Kubernetes Gateway API CRD manifest
+    - name: Delete temporary directory for Kubernetes Gateway API CRD manifest
       ansible.builtin.file:
-        path: "{{ tools_kubernetes_gateway_api_manifest.path }}"
+        path: "{{ tools_temporary_directory.path }}"
         state: absent

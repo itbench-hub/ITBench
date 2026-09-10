@@ -88,50 +88,53 @@
 
 - name: Copy files from volume
   vars:
+    archive_path: "{{ ['/tmp', recorder.name ~ '_records.tar.gz'] | ansible.builtin.path_join }}"
     pod: "{{ recorders_pods.resources | ansible.builtin.first }}"
-    tarball_path: "{{ ['/tmp', recorder.name ~ '_records.tar.gz'] | ansible.builtin.path_join }}"
   block:
-    - name: Create temporary file for tarball from {{ recorder.name }}
+    - name: Create temporary directory for records from {{ recorder.name }}
       ansible.builtin.tempfile:
         prefix: "{{ export.directory }}"
-      register: recorders_export_tarball
+        state: directory
+      register: recorders_records_directory
+
+    - name: Create temporary directory for tarball from {{ recorder.name }}
+      ansible.builtin.tempfile:
+        prefix: "{{ recorder.name }}-tarball"
+        state: directory
+      register: recorders_tarball_directory
 
     - name: Create tarball of the files in the records directory
       kubernetes.core.k8s_exec:
-        command: "tar -czf {{ tarball_path }} -C /opt/app-root/src/records ."
+        command: "tar -czf {{ archive_path }} -C /opt/app-root/src/records ."
         namespace: "{{ pod.metadata.namespace }}"
         pod: "{{ pod.metadata.name }}"
 
     - name: Copy tarball to the local machine
       kubernetes.core.k8s_cp:
-        local_path: "{{ recorders_export_tarball.path }}"
+        local_path: "{{ [recorders_tarball_directory.path, 'records.tar.gz'] | ansible.builtin.path_join }}"
         namespace: "{{ pod.metadata.namespace }}"
         pod: "{{ pod.metadata.name }}"
-        remote_path: "{{ tarball_path }}"
+        remote_path: "{{ archive_path }}"
         state: from_pod
-
-    - name: Create temporary directory for records from {{ recorder.name }}
-      ansible.builtin.tempfile:
-        prefix: "{{ export.directory }}"
-        state: directory
-      register: recorders_export_directory
 
     - name: Extract tarball contents
       ansible.builtin.unarchive:
-        dest: "{{ recorders_export_directory.path }}"
-        src: "{{ recorders_export_tarball.path }}"
+        dest: "{{ recorders_records_directory.path }}"
+        src: "{{ [recorders_tarball_directory.path, 'records.tar.gz'] | ansible.builtin.path_join }}"
   rescue:
     - name: Delete temporary directory for records from {{ recorder.name }}
       ansible.builtin.file:
-        path: "{{ recorders_export_directory.path }}"
+        path: "{{ recorders_records_directory.path }}"
         state: absent
       when:
-        - recorders_export_directory is ansible.builtin.defined
+        - recorders_records_directory is ansible.builtin.defined
   always:
-    - name: Delete temporary file for tarball from {{ recorder.name }}
+    - name: Delete temporary directory for tarball from {{ recorder.name }}
       ansible.builtin.file:
-        path: "{{ recorders_export_tarball.path }}"
+        path: "{{ recorders_tarball_directory.path }}"
         state: absent
+      when:
+        - recorders_tarball_directory is ansible.builtin.defined
 
     - name: Delete Deployment
       kubernetes.core.k8s:
@@ -166,7 +169,7 @@
       ansible.builtin.copy:
         dest: "{{ recorders_local_directory.path }}"
         mode: "0644"
-        src: "{{ recorders_export_directory.path }}/"
+        src: "{{ recorders_records_directory.path }}/"
 
 - name: Copy exported data into S3
   when:
@@ -174,7 +177,7 @@
   block:
     - name: Retrieve all files in temporary directory for {{ recorder.name }}
       ansible.builtin.find:
-        path: "{{ recorders_export_directory.path }}"
+        path: "{{ recorders_records_directory.path }}"
       register: recorders_exported_files
 
     - name: Create AWS S3 bucket
@@ -205,5 +208,7 @@
 
 - name: Delete temporary directory for records from {{ recorder.name }}
   ansible.builtin.file:
-    path: "{{ recorders_export_directory.path }}"
+    path: "{{ recorders_records_directory.path }}"
     state: absent
+  when:
+    - recorders_records_directory is ansible.builtin.defined

@@ -17,9 +17,9 @@ If running both Argo Workflows and a `runner` on the same cluster (i.e. Kind, Mi
 
 ## Set Up
 
-ITBench defines an Argo setup as a stack. This Argo stack has two components: one cluster which acts as the `head` (the orchestrator) and one or more cluster(s) which act as `runners`. When using a local machine, the `head` and the `runner` can be the same, but — as noted in the [requirements](#requirements) section — this requires more resources. The `head` cluster is where Argo Workflows will be installed. The `runners` are used by the `head` cluster to execute the scenarios.
+ITBench defines an Argo setup as a stack. This Argo stack has two components: one cluster which acts as the orchestrator and one or more clusters which act as environment clusters. When using a local machine, the orchestrator and an environment cluster can be the same, but — as noted in the [requirements](#requirements) section — this requires more resources. The orchestrator cluster is where Argo Workflows will be installed. The environment clusters are used by the orchestrator to execute the scenarios.
 
-Each scenario step runs as a container in the Argo workflow using the `bench-runner` image. The image contains all ITBench playbooks and scenario manifests baked in. Runner cluster credentials are mounted into each container from a Kubernetes Secret — no credentials are stored in the image or passed over the network at runtime.
+Each scenario step runs as a container in the Argo workflow using the `bench-runner` image. The image contains all ITBench playbooks and scenario manifests baked in. Environment cluster credentials are mounted into each container from a Kubernetes Secret — no credentials are stored in the image or passed over the network at runtime.
 
 ### Argo Workflows with SRE and FinOps Scenarios
 
@@ -29,7 +29,7 @@ The playbooks feature a number of [group variables](../../scenarios/sre/inventor
 | --- | --- |
 | [agent.yaml](../../scenarios/sre/inventory/group_vars/runner/agent.yaml.example) | Configures the agent configuration and version |
 | [experiments.yaml](../../scenarios/sre/inventory/group_vars/runner/experiments.yaml.example) | Configures scenarios, number of trials, and workflow type to run |
-| [stack.yaml](../../scenarios/sre/inventory/group_vars/runner/stack.yaml.example) | Configures the head and runner clusters |
+| [stack.yaml](../../scenarios/sre/inventory/group_vars/orchestrator/stack.yaml.example) | Configures the environment clusters |
 | [storage.yaml](../../scenarios/sre/inventory/group_vars/all/storage.yaml.example) | Configures the storage options for data files |
 
 >[!NOTE]
@@ -58,11 +58,8 @@ The `workflow` field controls which steps execute per scenario run:
 
 ```yaml
 stack:
-  argo:
-    kubeconfig: ~/.kube/config   # kubeconfig for the head/orchestrator cluster
-  runners:
-    kubeconfigs:
-      - ~/.kube/config           # one entry per runner cluster
+  environments:
+    - kubeconfig: ~/.kube/config # one entry per environment cluster
 ```
 
 After creating an Argo stack, go to the `scenarios/sre` directory.
@@ -75,12 +72,12 @@ make group-vars
 ```
 
 >[!TIP]
->If using [our kops setup](../../clusters/kops/README.md), use `make sync-stack-group-vars` to export the kubeconfig files and configure the [`stack.yaml`](../../scenarios/sre/inventory/group_vars/runner/stack.yaml) group variables. If using [our kind setup](../../clusters/kind/README.md), the default group variables made at creation will suffice.
+>If using [our kops setup](../../clusters/kops/README.md), run `make get-stack-kubeconfigs` from `clusters/kops` to export kubeconfigs and automatically write the [`stack.yaml`](../../scenarios/sre/inventory/group_vars/orchestrator/stack.yaml) group variables. If using [our kind](../../clusters/kind/README.md) or [Minikube](../../clusters/minikube/README.md) setup, the group variables are written automatically at creation.
 
 >[!WARNING]
 >If the group variables were already created as part of development or running the SRE and FinOps scenarios beforehand, skip this step. Running the command will override the existing files.
 
-2. Install Argo Workflows on the `head` cluster and upload all scenario manifests and runner credentials.
+2. Install Argo Workflows on the orchestrator cluster and upload all scenario manifests and environment cluster credentials.
 ```shell
 make deploy-argo
 ```
@@ -94,7 +91,7 @@ This single command performs the full install-and-configure pass:
 Installation takes around 5 minutes.
 
 >[!WARNING]
->Ensure that the head cluster has a working storage class available. Without it, the Argo Workflows installation may fail. If using one of [our cluster setups](../../clusters/), then this should be taken care of.
+>Ensure that the orchestrator cluster has a working storage class available. Without it, the Argo Workflows installation may fail. If using one of [our cluster setups](../../clusters/), then this should be taken care of.
 
 #### Scenario Execution
 
@@ -125,18 +122,18 @@ make launch-data-collection-workflow
 
 #### Deletion
 
-1. Uninstall Argo Workflows from the `head` cluster.
+1. Uninstall Argo Workflows from the orchestrator cluster.
 ```shell
 make undeploy-argo
 ```
 
 >[!WARNING]
->The runner clusters are not automatically cleaned once Argo Workflows has been uninstalled. If runs were left in an unfinished state, they need to be cleaned up manually. Retrieve the offending runner's kubeconfig path from `stack.yaml`, set it as `cluster.kubeconfig` in [`cluster.yaml`](../../scenarios/sre/inventory/group_vars/environment/cluster.yaml.example), then run `make destroy-environment` to clean the cluster.
+>Environment clusters are not automatically cleaned once Argo Workflows has been uninstalled. If runs were left in an unfinished state, they need to be cleaned up manually. Retrieve the environment cluster's kubeconfig path from `stack.yaml`, set it as `cluster.kubeconfig` in [`cluster.yaml`](../../scenarios/sre/inventory/group_vars/environment/cluster.yaml.example), then run `make destroy-environment` to clean the cluster.
 
 ## Troubleshooting
 
 >[!TIP]
->Argo Workflows should not be considered a proper development environment for creating or troubleshooting scenarios. Scenarios should be developed and hardened on a standalone cluster using the single-cluster Makefile targets first, before running on the Argo stack.
+>Argo Workflows should not be considered a proper development environment for creating or troubleshooting scenarios. Scenarios should be developed and hardened on a standalone environment cluster first, before running on the Argo stack.
 
 ### Workflow Step Failed
 
@@ -147,4 +144,4 @@ kubectl get workflows -n argo
 kubectl logs -n argo -l workflows.argoproj.io/workflow=<workflow-name> --prefix
 ```
 
-Once debugged, if the runner cluster was left in a dirty state (e.g. an `undeploy` step did not run), retrieve the runner's kubeconfig from `stack.yaml`, set it as `cluster.kubeconfig` in [`cluster.yaml`](../../scenarios/sre/inventory/group_vars/environment/cluster.yaml.example), and run `make destroy-environment` to clean the cluster before scheduling additional runs.
+Once debugged, if the environment cluster was left in a dirty state (e.g. an `undeploy` step did not run), retrieve the environment cluster's kubeconfig from `stack.yaml`, set it as `cluster.kubeconfig` in [`cluster.yaml`](../../scenarios/sre/inventory/group_vars/environment/cluster.yaml.example), and run `make destroy-environment` to clean the cluster before scheduling additional runs.

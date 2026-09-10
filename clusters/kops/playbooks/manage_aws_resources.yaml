@@ -29,7 +29,7 @@
               vpc:
                 cidr: "{{ aws.vpc.cidr }}"
                 subnets:
-                  count: "{{ 1 if target == 'single-cluster' else stack.runners.count + 1 }}"
+                  count: "{{ 1 if target == 'single-cluster' else environments_count | int + 1 }}"
               zones: "{{ aws.zones }}"
 
         - name: Add NAT gateway information to configuration
@@ -53,7 +53,7 @@
           ansible.builtin.set_fact:
             aws_cluster_group:
               name:
-                prefix: "{{ runner.name.prefix if target == 'single-cluster' else stack.name.prefix }}"
+                prefix: "{{ name_prefix }}"
 
     - name: Import AWS role
       ansible.builtin.import_role:

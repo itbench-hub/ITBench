@@ -22,10 +22,9 @@
       ansible.builtin.find:
         path: "{{ kubeconfig_directory | ansible.builtin.realpath }}"
         patterns:
-          - "{{ filename_prefix }}-*"
+          - "{{ name_prefix }}-*"
       register: kubeconfig_paths
       vars:
-        filename_prefix: "{{ runner.name.prefix if target == 'single-cluster' else stack.name.prefix }}"
         kubeconfig_directory: "{{ playbook_dir }}/../kubeconfigs"
 
     - name: Validate the existence of single cluster kubeconfig
@@ -40,8 +39,8 @@
     - name: Validate the existence of Argo stack kubeconfigs
       ansible.builtin.assert:
         that:
-          - kubeconfig_paths.matched == 1 + stack.runners.count
-        fail_msg: Unable to find kubeconfigs. Please ensure that cluster kubeconfigs has been exported.
+          - kubeconfig_paths.matched == environments_count | int + 1
+        fail_msg: Unable to find kubeconfigs. Please ensure that cluster kubeconfigs have been exported.
         success_msg: Located kubeconfigs.
       when:
         - target == "argo-stack"
