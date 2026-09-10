@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10-minimal:10.2-1786960640@sha256:61f820b7893b6226e499e928db99c59a0a9135aa17e4e056fdaf1015908cca14 AS certs
+FROM registry.access.redhat.com/ubi10-minimal:10.2-1788940913@sha256:26dc3089ab24491c1ba01ab92a7d502d181425b6021e362a07484daee696a3aa AS certs
 
 FROM registry.access.redhat.com/ubi10/go-toolset:1.26.5-1787080020@sha256:a7e505b797c95c8e618a364de3a8c0383882935a12a1222a376d667c65d119b8 AS builder
 
