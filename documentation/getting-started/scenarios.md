@@ -105,7 +105,7 @@ make group-vars
 ```
 
 >[!TIP]
->If using [our kops setup](../../clusters/kops/README.md), use `make sync-cluster-group-vars` to export the kubeconfig files and configure the [`stack.yaml`](../../scenarios/sre/inventory/group_vars/runner/stack.yaml) group variables. If using [our kind setup](../../clusters/kind/README.md), the default group variables made at creation will suffice.
+>If using [our kops setup](../../clusters/kops/README.md), run `make get-cluster-kubeconfig` from `clusters/kops` to export the kubeconfig and automatically write the `.env` file. If using [our kind](../../clusters/kind/README.md) or [Minikube](../../clusters/minikube/README.md) setup, the `.env` file is written automatically at creation.
 
 >[!WARNING]
 >If the group variables were already created as a part of development or running the SRE and FinOps scenarios beforehand, skip this step. Running the command will override the existing files.

@@ -1,7 +1,7 @@
 UV = $(shell which uv)
 
-ENVIRONMENT_CLUSTER_NAME 	?= itbench-environment
-ORCHESTRATOR_CLUSTER_NAME	?= itbench-orchestrator
+CLUSTER_NAME_PREFIX  ?= itbench-dev
+ENVIRONMENTS_COUNT   ?= 1
 
 .PHONY: help
 help: ## Display this help.
@@ -18,72 +18,105 @@ group-vars: ## Generates the group variables from templates
 	cp inventory/group_vars/all/cluster.yaml.example inventory/group_vars/all/cluster.yaml
 	cp inventory/group_vars/all/docker.yaml.example inventory/group_vars/all/docker.yaml
 	cp inventory/group_vars/all/ssh_keys.yaml.example inventory/group_vars/all/ssh_keys.yaml
-	cp inventory/group_vars/argo/stack.yaml.example inventory/group_vars/argo/stack.yaml
-	cp inventory/group_vars/single/runner.yaml.example inventory/group_vars/single/runner.yaml
 
 .PHONY: create-environment-cluster
-create-environment-cluster: ## Creates a single cluster
+create-environment-cluster: ## Creates a single kops cluster on AWS
 	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
-	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
-		--extra-vars "target=single-cluster"
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
-		--extra-vars "target=single-cluster"
+	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml \
+		--tags "create_clusters" \
+		--extra-vars "target=single-cluster" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)"
+	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml \
+		--tags "create_clusters" \
+		--extra-vars "target=single-cluster" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)"
 
 .PHONY: get-cluster-kubeconfig
-get-cluster-kubeconfig: ## Exports the kubeconfig of a single cluster
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
-		--extra-vars "target=single-cluster"
-
-.PHONY: install-cluster-docker-registry
-install-cluster-docker-registry: get-cluster-kubeconfig ## Installs docker registry into single cluster
-	$(UV) run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
-		--extra-vars "target=single-cluster"
-
-.PHONY: sync-cluster-group-vars
-sync-cluster-group-vars: get-cluster-kubeconfig ## Syncs the kubeconfig with the scenarios group variables
-	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
+get-cluster-kubeconfig: ## Exports kubeconfig, configures and writes .env for a single cluster
+	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml \
+		--tags "export_clusters" \
 		--extra-vars "target=single-cluster" \
-		--extra-vars "scenarios_playbook_directory=$(abspath ./../../scenarios/sre)"
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)"
+	KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_NAME_PREFIX)-environment-aws.k8s.local) \
+		$(UV) run python $(abspath ../../scripts/configure_environment_cluster.py)
+	@printf 'K8S_AUTH_KUBECONFIG=%s\n' \
+		"$(abspath kubeconfigs/$(CLUSTER_NAME_PREFIX)-environment-aws.k8s.local)" \
+		> $(abspath ../../scenarios/sre/.env)
+	@echo "Run the following command to access the cluster using kubectl:"
+	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_NAME_PREFIX)-environment-aws.k8s.local)"
 
 .PHONY: destroy-environment-cluster
-destroy-environment-cluster: ## Deletes a single cluster
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
-		--extra-vars "target=single-cluster"
-	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
-		--extra-vars "target=single-cluster"
+destroy-environment-cluster: ## Deletes a single kops cluster on AWS
+	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml \
+		--tags "delete_clusters" \
+		--extra-vars "target=single-cluster" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)"
+	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml \
+		--tags "delete_clusters" \
+		--extra-vars "target=single-cluster" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)"
 
 .PHONY: create-argo-stack
-create-argo-stack: ## Creates an Argo stack
+create-argo-stack: ## Creates an Argo stack on AWS
 	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
-	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
-		--extra-vars "target=argo-stack"
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
-		--extra-vars "target=argo-stack"
+	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml \
+		--tags "create_clusters" \
+		--extra-vars "target=argo-stack" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)" \
+		--extra-vars "environments_count=$(ENVIRONMENTS_COUNT)"
+	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml \
+		--tags "create_clusters" \
+		--extra-vars "target=argo-stack" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)" \
+		--extra-vars "environments_count=$(ENVIRONMENTS_COUNT)"
 
 .PHONY: get-stack-kubeconfigs
-get-stack-kubeconfigs: ## Exports the kubeconfigs of all clusters used in an Argo stack
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
-		--extra-vars "target=argo-stack"
-
-.PHONY: install-stack-docker-registry
-install-stack-docker-registry: get-stack-kubeconfigs ## Installs docker registry into Argo stack clusters
-	$(UV) run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
-		--extra-vars "target=argo-stack"
-
-.PHONY: sync-stack-group-vars
-sync-stack-group-vars: get-stack-kubeconfigs ## Syncs the kubeconfig with the scenarios group variables
+get-stack-kubeconfigs: ## Exports kubeconfigs, configures and writes .env for an Argo stack
+	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml \
+		--tags "export_clusters" \
+		--extra-vars "target=argo-stack" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)" \
+		--extra-vars "environments_count=$(ENVIRONMENTS_COUNT)"
+	$(foreach i,$(shell seq 1 $(ENVIRONMENTS_COUNT)), \
+		KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_NAME_PREFIX)-environment-$(i)-aws.k8s.local) \
+			$(UV) run python $(abspath ../../scripts/configure_environment_cluster.py);)
+	@printf 'K8S_AUTH_KUBECONFIG=%s\n' \
+		"$(abspath kubeconfigs/$(CLUSTER_NAME_PREFIX)-orchestrator-aws.k8s.local)" \
+		> $(abspath ../../scenarios/sre/.env)
 	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=argo-stack" \
-		--extra-vars "scenarios_playbook_directory=$(abspath ./../../scenarios/sre)" \
-		--extra-vars "scenarios_group_variables_directory=$(abspath ./../../scenarios/sre/inventory/group_vars/orchestrator)"
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)" \
+		--extra-vars "environments_count=$(ENVIRONMENTS_COUNT)" \
+		--extra-vars "scenarios_group_variables_directory=$(abspath ../../scenarios/sre/inventory/group_vars/orchestrator)"
 	cd ../../ && $(UV) run ansible-lint scenarios/sre/inventory/group_vars/orchestrator --fix
+	@echo "Run the following command to access the orchestrator cluster using kubectl:"
+	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_NAME_PREFIX)-orchestrator-aws.k8s.local)"
 
 .PHONY: destroy-argo-stack
-destroy-argo-stack: ## Destroys an Argo stack
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
-		--extra-vars "target=argo-stack"
-	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
-		--extra-vars "target=argo-stack"
+destroy-argo-stack: ## Destroys an Argo stack on AWS
+	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml \
+		--tags "delete_clusters" \
+		--extra-vars "target=argo-stack" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)" \
+		--extra-vars "environments_count=$(ENVIRONMENTS_COUNT)"
+	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml \
+		--tags "delete_clusters" \
+		--extra-vars "target=argo-stack" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)" \
+		--extra-vars "environments_count=$(ENVIRONMENTS_COUNT)"
+
+.PHONY: install-cluster-docker-registry
+install-cluster-docker-registry: ## Installs docker registry into single cluster
+	$(UV) run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
+		--extra-vars "target=single-cluster" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)"
+
+.PHONY: install-stack-docker-registry
+install-stack-docker-registry: ## Installs docker registry into Argo stack clusters
+	$(UV) run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
+		--extra-vars "target=argo-stack" \
+		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)" \
+		--extra-vars "environments_count=$(ENVIRONMENTS_COUNT)"
 
 .PHONY: list-clusters
 list-clusters: ## Lists all active clusters

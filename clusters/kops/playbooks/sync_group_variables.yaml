@@ -1,81 +1,38 @@
 ---
-- name: Sync kubeconfig and group variables with scenarios directory
+- name: Sync stack group variables with scenarios directory
   hosts:
     - localhost
   pre_tasks:
     - name: Validate target variable
       ansible.builtin.assert:
         that:
-          - target in ["argo-stack", "single-cluster"]
-        fail_msg: Invalid target provided. Please provide valid target.
+          - target == "argo-stack"
+        fail_msg: Invalid target provided. This playbook only supports the argo-stack target.
         success_msg: Valid target provided.
-
-    - name: Fail playbook with `directory not found` error
-      ansible.builtin.fail:
-        msg: Unable to find scenarios directory. Please ensure the path exists.
-      when:
-        - not scenarios_playbook_directory is ansible.builtin.directory
 
     - name: Fail playbook with `directory not found` error
       ansible.builtin.fail:
         msg: Unable to find group variable directory. Please ensure the path exists.
       when:
-        - target == "argo-stack"
         - not scenarios_group_variables_directory is ansible.builtin.directory
   tasks:
-    - name: Retrieve exported kubeconfig(s)
+    - name: Retrieve exported environment kubeconfigs
       ansible.builtin.find:
         path: "{{ kubeconfig_directory | ansible.builtin.realpath }}"
         patterns:
-          - "{{ filename_prefix }}-*"
+          - "{{ name_prefix }}-environment-*"
       register: kubeconfig_paths
       vars:
-        filename_prefix: "{{ runner.name.prefix if target == 'single-cluster' else stack.name.prefix }}"
         kubeconfig_directory: "{{ playbook_dir }}/../kubeconfigs"
 
-    - name: Write single-cluster .env file
-      when:
-        - target == "single-cluster"
-      block:
-        - name: Validate the existence of kubeconfig
-          ansible.builtin.assert:
-            that:
-              - kubeconfig_paths.matched == 1
-            fail_msg: Unable to find kubeconfig. Please ensure that cluster kubeconfig has been exported.
-            success_msg: Located kubeconfig.
-
-        - name: Write .env file
-          ansible.builtin.copy:
-            content: "{{ 'K8S_AUTH_KUBECONFIG=' ~ kubeconfig_path  ~ '\n' }}"
-            dest: "{{ [scenarios_playbook_directory, '.env'] | ansible.builtin.path_join }}"
-            mode: "0644"
-          vars:
-            kubeconfig_path: "{{ kubeconfig_paths.files[0].path }}"
-
-    - name: Write argo-stack .env file and stack group variables
-      when:
-        - target == "argo-stack"
+    - name: Write stack group variables
       block:
         - name: Validate the existence of kubeconfigs
           ansible.builtin.assert:
             that:
-              - kubeconfig_paths.matched == 1 + stack.environments.count
-            fail_msg: Unable to find kubeconfigs. Please ensure that cluster kubeconfigs has been exported.
+              - kubeconfig_paths.matched == environments_count | int
+            fail_msg: Unable to find kubeconfigs. Please ensure that cluster kubeconfigs have been exported.
             success_msg: Located kubeconfigs.
-
-        - name: Write .env file
-          ansible.builtin.copy:
-            content: "{{ 'K8S_AUTH_KUBECONFIG=' ~ kubeconfig_path ~ '\n' }}"
-            dest: "{{ [scenarios_playbook_directory, '.env'] | ansible.builtin.path_join }}"
-            mode: "0644"
-          vars:
-            kubeconfig_path: |-
-              {{
-                kubeconfig_paths.files |
-                ansible.builtin.selectattr("path", "search", stack.name.prefix ~ "-orchestrator") |
-                map(attribute="path") |
-                ansible.builtin.first
-              }}
 
         - name: Write stack group variables
           ansible.builtin.copy:
@@ -89,7 +46,7 @@
                         ansible.builtin.zip_longest(
                           (
                             kubeconfig_paths.files |
-                            ansible.builtin.selectattr("path", "search", stack.name.prefix ~ "-environment") |
+                            ansible.builtin.selectattr("path", "search", name_prefix ~ "-environment") |
                             map(attribute="path")
                           ),
                           fillvalue="kubeconfig"

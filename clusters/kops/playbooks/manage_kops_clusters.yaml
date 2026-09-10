@@ -12,21 +12,10 @@
       tags:
         - always
 
-    - name: Validate cluster name prefixs
-      ansible.builtin.assert:
-        that:
-          - runner.name.prefix != stack.name.prefix
-          - runner.name.prefix != (stack.name.prefix + "-orchestrator")
-          - runner.name.prefix != (stack.name.prefix + "-environment")
-        fail_msg: Invalid name prefix. Ensure that the stack and runner name prefixes are differnt.
-        success_msg: Name prefixes are valid.
-      tags:
-        - always
-
     - name: Validate environments cluster count
       ansible.builtin.assert:
         that:
-          - stack.environments.count > 0
+          - environments_count | int > 0
         fail_msg: Invalid number of kOps clusters set. Must be greater than 0.
         success_msg: Valid number of kOps clusters configured.
       tags:
@@ -40,38 +29,38 @@
       tags:
         - always
   tasks:
-    - name: Generate runner cluster names
+    - name: Generate cluster names
       tags:
         - always
       block:
-        - name: Generate runner cluster name
+        - name: Generate environment cluster name
           ansible.builtin.set_fact:
-            runner_clusters:
-              - "{{ runner.name.prefix + '-aws.k8s.local' }}"
+            environment_clusters:
+              - "{{ name_prefix + '-environment-aws.k8s.local' }}"
           when:
             - target == "single-cluster"
 
-        - name: Generate runner cluster names
+        - name: Generate environment cluster names
           ansible.builtin.set_fact:
-            runner_clusters: |-
+            environment_clusters: |-
               {{
                 (
-                  runner_clusters | ansible.builtin.default([])
+                  environment_clusters | ansible.builtin.default([])
                 ) +
                 [
                   [
-                    stack.name.prefix,
+                    name_prefix,
                     "environment",
-                    runner_index,
+                    environment_index,
                     "aws.k8s.local"
                   ] |
                   ansible.builtin.join("-")
                 ]
               }}
-          loop: "{{ range(1, stack.environments.count + 1) | ansible.builtin.list }}"
+          loop: "{{ range(1, environments_count | int + 1) | ansible.builtin.list }}"
           loop_control:
-            label: runner/{{ runner_index }}
-            loop_var: runner_index
+            label: environment/{{ environment_index }}
+            loop_var: environment_index
           when:
             - target == "argo-stack"
 
@@ -82,8 +71,8 @@
         - name: Create kOps cluster group variable
           ansible.builtin.set_fact:
             kops_cluster_group:
-              clusters: "{{ runner_clusters }}"
-              name: "{{ runner.name.prefix }}"
+              clusters: "{{ environment_clusters }}"
+              name: "{{ name_prefix }}"
           when:
             - target == "single-cluster"
 
@@ -94,12 +83,12 @@
                 {{
                   (
                     [
-                      stack.name.prefix + "-orchestrator-aws.k8s.local"
+                      name_prefix + "-orchestrator-aws.k8s.local"
                     ]
                   ) +
-                  runner_clusters
+                  environment_clusters
                 }}
-              name: "{{ stack.name.prefix }}"
+              name: "{{ name_prefix }}"
           when:
             - target == "argo-stack"
 
