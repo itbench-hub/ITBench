@@ -20,7 +20,7 @@ const testPassword = "testpassword" // pragma: allowlist secret
 func TestRun(t *testing.T) {
 	ctx := context.Background()
 
-	ctr, err := clickhouse.Run(ctx, "clickhouse/clickhouse-server:26.7",
+	ctr, err := clickhouse.Run(ctx, "clickhouse/clickhouse-server:26.8",
 		clickhouse.WithPassword(testPassword),
 	)
 	if err != nil {
