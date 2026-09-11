@@ -17,16 +17,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def load_scenario_spec(private_project_directory: Path, scenario_id: int) -> Dict[str, Any]:
-    file_path = (
-        private_project_directory
-        / "project"
-        / "roles"
-        / "scenarios"
-        / "files"
-        / f"scenario_{scenario_id}"
-        / "scenario.yaml"
-    )
+def load_scenario_spec(scenario_specs_directory: Path) -> Dict[str, Any]:
+    file_path = scenario_specs_directory / "scenario.yaml"
 
     logger.info(f"loading scenario spec from: {file_path}")
 
@@ -47,7 +39,7 @@ def load_scenario_spec(private_project_directory: Path, scenario_id: int) -> Dic
 
 def inject_fault_group(
     private_project_directory: Path,
-    scenario_id: int,
+    scenario_specs_directory: Path,
     faults_index: int
 ) -> Any:
     logger.info(f"Starting fault injection for group {faults_index + 1}")
@@ -55,8 +47,8 @@ def inject_fault_group(
     _, runner = ansible_runner.interface.run_async(
         private_data_dir=str(private_project_directory),
         playbook="manage_faults.yaml",
-        ident=f"scenario-{scenario_id}-fault-{faults_index}",
-        cmdline=f"--tags inject_faults --extra-vars scenario_id={scenario_id} --extra-vars faults_index={faults_index}"
+        ident=f"scenario-{scenario_specs_directory.name}-fault-{faults_index}",
+        cmdline=f"--tags inject_faults --extra-vars scenario_specs_directory={scenario_specs_directory} --extra-vars faults_index={faults_index}"
     )
 
     return runner
@@ -76,17 +68,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="CLI for asynchronous fault injection for live ITBench SRE and FinOps scenarios")
 
     parser.add_argument("--private_project_directory", type=Path, required=True,)
-    parser.add_argument("--scenario_id", type=int, required=True)
+    parser.add_argument("--scenario_specs_directory", type=Path, required=True)
 
     args = parser.parse_args()
 
-    spec = load_scenario_spec(args.private_project_directory, args.scenario_id)
+    spec = load_scenario_spec(args.scenario_specs_directory)
 
     runners = []
     for faults_index in range(len(spec["spec"]["faults"])):
         runner = inject_fault_group(
             args.private_project_directory,
-            args.scenario_id,
+            args.scenario_specs_directory,
             faults_index
         )
         runners.append(runner)

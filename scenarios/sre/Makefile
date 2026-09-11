@@ -88,9 +88,9 @@ undeploy-recorders: ## Undeploys the data recorders to cluster
 .PHONY: inject-scenario-faults
 inject-scenario-faults: ## Injects the fault used in a specific scenario
 ifdef SCENARIO_NUMBER
-	$(UV) run scripts/inject_scenario_faults.py \
+	$(UV) run python $(abspath ../../scripts/scenarios/inject_scenario_faults.py) \
 		--private_project_directory $(abspath .) \
-		--scenario_id $(SCENARIO_NUMBER)
+		--scenario_specs_directory $(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))
 else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif
@@ -167,10 +167,6 @@ test-molecule-waiters: ## Runs Molecule tests for the Waiters role
 .PHONY: test-network-gateway
 test-network-gateway: ## Run tool gateway network tests
 	cd project/roles/tools && $(UV) run molecule test --scenario-name external_endpoints --report --command-borders
-
-.PHONY: test-scripts
-test-scripts: ## Run unit tests for Python scripts
-	$(UV) run python -m unittest discover -s scripts/unittests -p "test_*.py"
 
 .PHONY: generate-agent-bundle
 generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with
