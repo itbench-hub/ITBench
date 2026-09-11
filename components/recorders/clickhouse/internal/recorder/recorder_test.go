@@ -12,15 +12,18 @@ import (
 	ch "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/testcontainers/testcontainers-go/modules/clickhouse"
 
-	"github.com/itbench-hub/ITBench/scenarios/sre/tools/clickhouse-recorder/internal/recorder"
+	"github.com/itbench-hub/ITBench/components/recorders/clickhouse/internal/recorder"
 )
 
-const testPassword = "testpassword" // pragma: allowlist secret
+const (
+	image        = "clickhouse/clickhouse-server:26.8"
+	testPassword = "testpassword" // pragma: allowlist secret
+)
 
 func TestRun(t *testing.T) {
 	ctx := context.Background()
 
-	ctr, err := clickhouse.Run(ctx, "clickhouse/clickhouse-server:26.8",
+	ctr, err := clickhouse.Run(ctx, image,
 		clickhouse.WithPassword(testPassword),
 	)
 	if err != nil {

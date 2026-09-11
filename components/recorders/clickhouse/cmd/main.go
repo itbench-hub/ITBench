@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/itbench-hub/ITBench/scenarios/sre/tools/clickhouse-recorder/internal/recorder"
+	"github.com/itbench-hub/ITBench/components/recorders/clickhouse/internal/recorder"
 )
 
 func main() {
