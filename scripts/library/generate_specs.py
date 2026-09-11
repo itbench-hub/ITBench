@@ -8,6 +8,14 @@ from typing import Any, Dict, List
 
 import yaml
 
+from yaml import SafeDumper
+
+
+class _IndentedSafeDumper(SafeDumper):
+    def increase_indent(self, flow=False, indentless=False):
+        return super().increase_indent(flow=flow, indentless=False)
+
+
 from jinja2 import Environment, FileSystemLoader
 
 logging.basicConfig(
@@ -45,7 +53,7 @@ def generate_scenario_specs(
         rendered = yaml.safe_load(environment.get_template(template_name).render(scenario=scenario))
         write_yaml_file(
             scenario_dir / output_name,
-            yaml.safe_dump(rendered, explicit_start=True, indent=2, width=160),
+            yaml.dump(rendered, Dumper=_IndentedSafeDumper, explicit_start=True, indent=2, width=160),
         )
 
 

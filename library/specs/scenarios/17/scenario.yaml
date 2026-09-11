@@ -8,27 +8,27 @@ spec:
     opentelemetryDemo:
       enabled: true
   faults:
-  - injections:
-    - args:
-        kubernetesObject:
-          apiVersion: chaos-mesh.org/v1alpha1
-          kind: Schedule
-          metadata:
-            name: product-catalog-network-delay
-            namespace: chaos-mesh
-        scheduleSpec:
-          networkChaos:
-            action: delay
-            delay:
-              latency: 20000ms
-            mode: all
-            selector:
-              labelSelectors:
-                app.kubernetes.io/component: product-catalog
-              namespaces:
-              - otel-demo
-          type: NetworkChaos
-      id: scheduled-chaos-mesh-experiment
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: product-catalog-network-delay
+                namespace: chaos-mesh
+            scheduleSpec:
+              networkChaos:
+                action: delay
+                delay:
+                  latency: 20000ms
+                mode: all
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: product-catalog
+                  namespaces:
+                    - otel-demo
+              type: NetworkChaos
+          id: scheduled-chaos-mesh-experiment
   tools:
     sre:
       enabled: true

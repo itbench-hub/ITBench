@@ -8,27 +8,27 @@ spec:
     opentelemetryDemo:
       enabled: true
   faults:
-  - injections:
-    - args:
-        container:
-          name: checkout
-        kubernetesObject:
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: checkout
-            namespace: otel-demo
-      id: unsupported-architecture-kubernetes-workload-container-image
-    waitFor:
-      postInjection:
-      - args:
-          kubernetesObject:
-            apiVersion: apps/v1
-            kind: Deployment
-            metadata:
+    - injections:
+        - args:
+            container:
               name: checkout
-              namespace: otel-demo
-        id: delete-workload-pods
+            kubernetesObject:
+              apiVersion: apps/v1
+              kind: Deployment
+              metadata:
+                name: checkout
+                namespace: otel-demo
+          id: unsupported-architecture-kubernetes-workload-container-image
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: checkout
+                  namespace: otel-demo
+            id: delete-workload-pods
   tools:
     sre:
       enabled: true
