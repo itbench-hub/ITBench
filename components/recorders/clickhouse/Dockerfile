@@ -15,6 +15,4 @@ FROM gcr.io/distroless/static-debian13:nonroot@sha256:1c2c046bc09ed40fad370b599a
 
 COPY --from=builder /build/clickhouse-recorder /clickhouse-recorder
 
-USER nonroot:nonroot
-
 ENTRYPOINT ["/clickhouse-recorder"]
