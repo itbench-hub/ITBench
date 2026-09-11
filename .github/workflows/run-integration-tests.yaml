@@ -10,6 +10,7 @@ on:
       - scenarios/sre/project/roles/tools/install_*.yaml
       - scripts/agent/**
       - tests/integration/**
+      - components/recorders/**
       - '!clusters/kind/README.md'
       - '!clusters/minikube/README.md'
 
@@ -121,6 +122,46 @@ jobs:
         if: always()
         run: |
           make -C clusters/minikube destroy-environment-cluster
+
+  clickhouse-recorder:
+    name: ClickHouse Recorder Integration Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: components/recorders/clickhouse/go.mod
+          cache-dependency-path: components/recorders/clickhouse/go.sum
+      - name: Test
+        run: go test -count=1 ./...
+        working-directory: components/recorders/clickhouse
+
+  jaeger-recorder:
+    name: Jaeger Recorder Integration Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: components/recorders/jaeger/go.mod
+          cache-dependency-path: components/recorders/jaeger/go.sum
+      - name: Test
+        run: go test -count=1 ./...
+        working-directory: components/recorders/jaeger
+
+  prometheus-recorder:
+    name: Prometheus Recorder Integration Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: components/recorders/prometheus/go.mod
+          cache-dependency-path: components/recorders/prometheus/go.sum
+      - name: Test
+        run: go test -count=1 ./...
+        working-directory: components/recorders/prometheus
+
   environment-tools-gateway-kind:
     name: ITBench Environment Tools Gateway Network Tests on Kind
     runs-on: ubuntu-24.04

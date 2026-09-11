@@ -11,6 +11,7 @@ on:
       - library/specs/**
       - scenarios/sre/project/**
       - scenarios/sre/tools/**
+      - components/recorders/**
       - '!scenarios/sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/**'
 
 concurrency:
@@ -49,7 +50,7 @@ jobs:
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: scenarios/sre/tools/hello-bench
+          context: components/faults/common/hello-bench
           platforms: |
             linux/amd64
           push: true
@@ -75,7 +76,7 @@ jobs:
         env:
           DOCKER_BUILD_RECORD_UPLOAD: false
         with:
-          context: scenarios/sre/tools/hello-bench
+          context: components/faults/common/hello-bench
           platforms: |
             linux/arm64
           push: true
@@ -86,7 +87,7 @@ jobs:
   opentelemetry-collector:
     uses: ./.github/workflows/_build-image.yaml
     with:
-      context: scenarios/sre/tools/opentelemetry-collector-builder
+      context: components/opentelemetry/collector
       image: quay.io/it-bench/opentelemetry-collector
       tags: |
         quay.io/it-bench/opentelemetry-collector:2.0.0
@@ -99,7 +100,7 @@ jobs:
   clickhouse-recorder:
     uses: ./.github/workflows/_build-image.yaml
     with:
-      context: scenarios/sre/tools/clickhouse-recorder
+      context: components/recorders/clickhouse
       image: quay.io/it-bench/clickhouse-recorder
       tags: |
         quay.io/it-bench/clickhouse-recorder:1.0.0
@@ -112,7 +113,7 @@ jobs:
   jaeger-recorder:
     uses: ./.github/workflows/_build-image.yaml
     with:
-      context: scenarios/sre/tools/jaeger-recorder
+      context: components/recorders/jaeger
       image: quay.io/it-bench/jaeger-recorder
       tags: |
         quay.io/it-bench/jaeger-recorder:1.0.0
@@ -138,7 +139,7 @@ jobs:
   prometheus-recorder:
     uses: ./.github/workflows/_build-image.yaml
     with:
-      context: scenarios/sre/tools/prometheus-recorder
+      context: components/recorders/prometheus
       image: quay.io/it-bench/prometheus-recorder
       tags: |
         quay.io/it-bench/prometheus-recorder:1.0.0

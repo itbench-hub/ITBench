@@ -8,6 +8,7 @@ on:
       - Dockerfile
       - pyproject.toml
       - requirements.yaml
+      - components/recorders/**
       - library/specs/**
       - scenarios/sre/project/**
       - scenarios/sre/tools/**
@@ -28,50 +29,10 @@ jobs:
         quay.io/it-bench/bench-runner:latest
       push: false
 
-  hello-bench-amd64:
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout codebase
-        uses: actions/checkout@v7.0.1
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
-      - name: Build Hello Bench image
-        uses: docker/build-push-action@v7.3.0
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: scenarios/sre/tools/hello-bench
-          platforms: |
-            linux/amd64
-          push: false
-          tags: |
-            quay.io/it-bench/hello-bench-amd64:2.0.0
-            quay.io/it-bench/hello-bench-amd64:latest
-
-  hello-bench-arm64:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - name: Checkout codebase
-        uses: actions/checkout@v7.0.1
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
-      - name: Build Hello Bench image
-        uses: docker/build-push-action@v7.3.0
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: scenarios/sre/tools/hello-bench
-          platforms: |
-            linux/arm64
-          push: false
-          tags: |
-            quay.io/it-bench/hello-bench-arm64:2.0.0
-            quay.io/it-bench/hello-bench-arm64:latest
-
   opentelemetry-collector:
     uses: ./.github/workflows/_build-image.yaml
     with:
-      context: scenarios/sre/tools/opentelemetry-collector-builder
+      context: components/opentelemetry/collector
       image: quay.io/it-bench/opentelemetry-collector
       tags: |
         quay.io/it-bench/opentelemetry-collector:2.0.0
@@ -81,7 +42,7 @@ jobs:
   clickhouse-recorder:
     uses: ./.github/workflows/_build-image.yaml
     with:
-      context: scenarios/sre/tools/clickhouse-recorder
+      context: components/recorders/clickhouse
       image: quay.io/it-bench/clickhouse-recorder
       tags: |
         quay.io/it-bench/clickhouse-recorder:1.0.0
@@ -91,7 +52,7 @@ jobs:
   jaeger-recorder:
     uses: ./.github/workflows/_build-image.yaml
     with:
-      context: scenarios/sre/tools/jaeger-recorder
+      context: components/recorders/jaeger
       image: quay.io/it-bench/jaeger-recorder
       tags: |
         quay.io/it-bench/jaeger-recorder:1.0.0
@@ -111,7 +72,7 @@ jobs:
   prometheus-recorder:
     uses: ./.github/workflows/_build-image.yaml
     with:
-      context: scenarios/sre/tools/prometheus-recorder
+      context: components/recorders/prometheus
       image: quay.io/it-bench/prometheus-recorder
       tags: |
         quay.io/it-bench/prometheus-recorder:1.0.0
