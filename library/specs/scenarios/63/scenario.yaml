@@ -8,25 +8,25 @@ spec:
     opentelemetryDemo:
       enabled: true
   faults:
-  - injections:
-    - args:
-        kubernetesObject:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: email-service-secret
-            namespace: otel-demo
-      id: corrupted-kubernetes-secret-credentials
-    waitFor:
-      postInjection:
-      - args:
-          kubernetesObject:
-            apiVersion: apps/v1
-            kind: Deployment
-            metadata:
-              name: email
-              namespace: otel-demo
-        id: delete-workload-pods
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: email-service-secret
+                namespace: otel-demo
+          id: corrupted-kubernetes-secret-credentials
+      waitFor:
+        postInjection:
+          - args:
+              kubernetesObject:
+                apiVersion: apps/v1
+                kind: Deployment
+                metadata:
+                  name: email
+                  namespace: otel-demo
+            id: delete-workload-pods
   tools:
     sre:
       enabled: true

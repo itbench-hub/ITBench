@@ -8,33 +8,33 @@ spec:
     opentelemetryDemo:
       enabled: true
   faults:
-  - injections:
-    - args:
-        kubernetesObject:
-          apiVersion: chaos-mesh.org/v1alpha1
-          kind: Schedule
-          metadata:
-            name: email-http-chaos-post-body-tamper
-            namespace: chaos-mesh
-        scheduleSpec:
-          httpChaos:
-            duration: 55s
-            method: POST
-            mode: all
-            patch:
-              body:
-                type: JSON
-                value: '{''email'': ''12345'', ''order'': ''error body''}'
-            path: '*'
-            port: 8080
-            selector:
-              labelSelectors:
-                app.kubernetes.io/component: email
-              namespaces:
-              - otel-demo
-            target: Request
-          type: HTTPChaos
-      id: scheduled-chaos-mesh-experiment
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: email-http-chaos-post-body-tamper
+                namespace: chaos-mesh
+            scheduleSpec:
+              httpChaos:
+                duration: 55s
+                method: POST
+                mode: all
+                patch:
+                  body:
+                    type: JSON
+                    value: '{''email'': ''12345'', ''order'': ''error body''}'
+                path: '*'
+                port: 8080
+                selector:
+                  labelSelectors:
+                    app.kubernetes.io/component: email
+                  namespaces:
+                    - otel-demo
+                target: Request
+              type: HTTPChaos
+          id: scheduled-chaos-mesh-experiment
   tools:
     sre:
       enabled: true

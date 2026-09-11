@@ -8,29 +8,29 @@ spec:
     opentelemetryDemo:
       enabled: true
   faults:
-  - injections:
-    - args:
-        kubernetesObject:
-          apiVersion: chaos-mesh.org/v1alpha1
-          kind: Schedule
-          metadata:
-            name: api-server-memory-stress
-            namespace: chaos-mesh
-        scheduleSpec:
-          ioChaos:
-            action: latency
-            delay: 200ms
-            duration: 5m
-            mode: all
-            percent: 50
-            selector:
-              labelSelectors:
-                component: etcd
-              namespaces:
-              - kube-system
-            volumePath: /var/lib/etcd
-          type: IOChaos
-      id: scheduled-chaos-mesh-experiment
+    - injections:
+        - args:
+            kubernetesObject:
+              apiVersion: chaos-mesh.org/v1alpha1
+              kind: Schedule
+              metadata:
+                name: api-server-memory-stress
+                namespace: chaos-mesh
+            scheduleSpec:
+              ioChaos:
+                action: latency
+                delay: 200ms
+                duration: 5m
+                mode: all
+                percent: 50
+                selector:
+                  labelSelectors:
+                    component: etcd
+                  namespaces:
+                    - kube-system
+                volumePath: /var/lib/etcd
+              type: IOChaos
+          id: scheduled-chaos-mesh-experiment
   tools:
     sre:
       enabled: true
