@@ -7,6 +7,7 @@ Namespaces are discovered automatically by the label ``itbench.io/agent-accessib
 
 import argparse
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -23,11 +24,7 @@ LABELS = {
 }
 TOKEN_EXPIRY_SECONDS = 64800  # 18 h
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-)
-
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
 
@@ -180,6 +177,10 @@ def main() -> None:
     parser.add_argument("output_path", type=Path, help="Path where the restricted kubeconfig will be written.")
     args = parser.parse_args()
 
+    kubeconfig = os.environ.get("KUBECONFIG")
+    if not kubeconfig:
+        raise EnvironmentError("KUBECONFIG environment variable is not set.")
+
     config.load_kube_config()
 
     core = CoreV1Api()
@@ -195,7 +196,7 @@ def main() -> None:
     logger.info("RBAC applied.")
 
     token = request_token(core)
-    restricted = build_kubeconfig(kubeconfig, token)
+    restricted = build_kubeconfig(Path(kubeconfig), token)
 
     args.output_path.write_text(
         yaml.safe_dump(restricted, default_flow_style=False), encoding="utf-8"
@@ -204,4 +205,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from utils.logging import configure_logging
+    configure_logging()
     main()

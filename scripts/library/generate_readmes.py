@@ -5,22 +5,19 @@ import sys
 
 from operator import itemgetter
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-)
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
 
 def write_markdown_file(file_path: Path, content: str) -> None:
-    logger.info(f"writing markdown file: {file_path}")
+    logger.debug("writing markdown file: %s", file_path)
     file_path.write_text(content, encoding="utf-8")
 
-def load_library_indexes(index_directory: Path) -> List[Dict[str, Any]]:
+def load_library_indexes(index_directory: Path) -> list[dict[str, Any]]:
     return [
         json.loads(f.read_text(encoding="utf-8")) for f in index_directory.glob("*.json")
     ]
@@ -29,7 +26,7 @@ def create_library_readme(
     library_type: str,
     documentation_directory: Path,
     environment: Environment,
-    indexes: List[Dict[str, Any]]
+    indexes: list[dict[str, Any]]
 ) -> None:
     template = environment.get_template(f"{library_type}/README.md.j2")
 
@@ -41,9 +38,9 @@ def create_library_readme(
 def create_applications_documentation(
     documentation_directory: Path,
     environment: Environment,
-    indexes: List[Dict[str, Any]]
+    indexes: list[dict[str, Any]]
 ) -> None:
-    logger.info("creating applications documentation")
+    logger.info("creating documentation for %d application(s)", len(indexes))
 
     create_library_readme("applications", documentation_directory, environment, indexes)
     template = environment.get_template("applications/application.md.j2")
@@ -63,9 +60,9 @@ def create_applications_documentation(
 def create_faults_documentation(
     documentation_directory: Path,
     environment: Environment,
-    indexes: List[Dict[str, Any]]
+    indexes: list[dict[str, Any]]
 ) -> None:
-    logger.info("creating faults documentation")
+    logger.info("creating documentation for %d fault(s)", len(indexes))
 
     create_library_readme("faults", documentation_directory, environment, indexes)
     template = environment.get_template("faults/fault.md.j2")
@@ -85,9 +82,9 @@ def create_faults_documentation(
 def create_waiters_documentation(
     documentation_directory: Path,
     environment: Environment,
-    indexes: List[Dict[str, Any]]
+    indexes: list[dict[str, Any]]
 ) -> None:
-    logger.info("creating waiters documentation")
+    logger.info("creating documentation for %d waiter(s)", len(indexes))
 
     create_library_readme("waiters", documentation_directory, environment, indexes)
     template = environment.get_template("waiters/waiter.md.j2")
@@ -106,7 +103,7 @@ def create_waiters_documentation(
 def create_scenarios_statistics(
     documentation_directory: Path,
     environment: Environment,
-    scenarios: List[Dict[str, Any]]
+    scenarios: list[dict[str, Any]]
 ) -> None:
     statistics = {
         "application": {"book_info": 0, "otel_demo": 0},
@@ -141,11 +138,11 @@ def create_scenarios_documentation(
     index_directory: Path,
     documentation_directory: Path,
     environment: Environment,
-    scenarios_indexes: List[Dict[str, Any]],
-    application_indexes: List[Dict[str, Any]],
-    faults_indexes: List[Dict[str, Any]]
+    scenarios_indexes: list[dict[str, Any]],
+    application_indexes: list[dict[str, Any]],
+    faults_indexes: list[dict[str, Any]]
 ) -> None:
-    logger.info("creating scenarios documentation")
+    logger.info("creating documentation for %d scenario(s)", len(scenarios_indexes))
 
     create_library_readme("scenarios", documentation_directory, environment, scenarios_indexes)
     create_scenarios_statistics(documentation_directory, environment, scenarios_indexes)
@@ -216,4 +213,7 @@ def main() -> None:
     )
 
 if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from utils.logging import configure_logging
+    configure_logging()
     sys.exit(main())

@@ -40,8 +40,8 @@ def test_get_memory_gb_converts_bytes_to_gb():
         assert check_localhost_resources.get_memory_gb() == 16
 
 
-def test_get_memory_gb_floors_fractional_gb():
-    """get_memory_gb() floors, so 15.9 GB reports as 15."""
+def test_get_memory_gb_floors_fractional_gib():
+    """get_memory_gb() uses integer division by 1024³ (GiB), so 15_900_000_000 bytes → 14."""
     with patch("check_localhost_resources.psutil.virtual_memory") as mock_mem:
         mock_mem.return_value.total = 15_900_000_000
         assert check_localhost_resources.get_memory_gb() == 14
@@ -58,7 +58,7 @@ def test_check_resources_warns_on_low_cpu(caplog):
         with caplog.at_level("WARNING"):
             check_localhost_resources.check_resources("argo-stack")
     assert "CPU" in caplog.text
-    assert "Memory" not in caplog.text.title()
+    assert "memory" not in caplog.text.lower()
 
 
 def test_check_resources_warns_on_low_memory(caplog):

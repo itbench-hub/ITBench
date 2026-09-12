@@ -4,25 +4,22 @@ import logging
 import sys
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 from jsonschema import Draft202012Validator
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-)
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
 
-def write_json_schema_file(file_path: Path, schema: Dict[str, Any]) -> None:
-    logger.info(f"writing JSON schema: {file_path}")
+def write_json_schema_file(file_path: Path, schema: dict[str, Any]) -> None:
+    logger.debug("writing JSON schema: %s", file_path)
     file_path.write_text(json.dumps(schema, sort_keys=True, indent=4) + "\n", encoding="utf-8")
 
-def process_library_type(library_type: str, index_dir: Path, schema_dir: Path) -> tuple[List[str], List[Dict[str, Any]]]:
-    ids: List[str] = []
-    items: List[Dict[str, Any]] = []
+def process_library_type(library_type: str, index_dir: Path, schema_dir: Path) -> tuple[list[str], list[dict[str, Any]]]:
+    ids: list[str] = []
+    items: list[dict[str, Any]] = []
 
     for index_file in index_dir.glob("*.json"):
         index = json.loads(index_file.read_text(encoding="utf-8"))
@@ -62,14 +59,14 @@ def main():
 
     args = parser.parse_args()
 
-    template_ids: Dict[str, List[str]] = {}
-    template_items: Dict[str, List[Dict[str, Any]]] = {}
+    template_ids: dict[str, list[str]] = {}
+    template_items: dict[str, list[dict[str, Any]]] = {}
 
     # Create the JSON schema for each application, fault, and waiter index
     # These types all render the same way due to the same key/value pairings
 
     for library_type in ["applications", "faults", "waiters"]:
-        logger.info(f"writing {library_type} library index JSON schema")
+        logger.info("writing %s library index JSON schema", library_type)
 
         ids, items = process_library_type(
             library_type,
@@ -91,4 +88,7 @@ def main():
     write_json_schema_file(schema_dir / "scenario.json", schema)
 
 if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from utils.logging import configure_logging
+    configure_logging()
     sys.exit(main())

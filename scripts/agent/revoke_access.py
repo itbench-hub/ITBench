@@ -15,11 +15,7 @@ LABEL_SELECTOR = (
     "app.kubernetes.io/managed-by=ITBench"
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-)
-
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
 
@@ -53,4 +49,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from utils.logging import configure_logging
+    configure_logging()
     main()

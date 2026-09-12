@@ -5,7 +5,7 @@ This script is invoked by the Makefile or inside the Argo Docker container;
 we only test the logic that can meaningfully fail in isolation.
 """
 from pathlib import Path
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
 import pytest
 import yaml
@@ -28,21 +28,21 @@ _SPEC = {
 # ---------------------------------------------------------------------------
 
 def test_load_scenario_spec_returns_parsed_dict():
-    with patch("builtins.open", mock_open()), \
+    with patch.object(Path, "read_text", return_value="spec: {}"), \
          patch("inject_scenario_faults.yaml.safe_load", return_value=_SPEC):
         result = inject_scenario_faults.load_scenario_spec(Path("/specs"))
     assert result == _SPEC
 
 
 def test_load_scenario_spec_exits_on_missing_file():
-    with patch("builtins.open", side_effect=FileNotFoundError), \
+    with patch.object(Path, "read_text", side_effect=FileNotFoundError), \
          patch("sys.exit") as mock_exit:
         inject_scenario_faults.load_scenario_spec(Path("/nonexistent"))
     mock_exit.assert_called_once_with(1)
 
 
 def test_load_scenario_spec_exits_on_invalid_yaml():
-    with patch("builtins.open", mock_open()), \
+    with patch.object(Path, "read_text", return_value="spec: {}"), \
          patch("inject_scenario_faults.yaml.safe_load", side_effect=yaml.YAMLError("bad")), \
          patch("sys.exit") as mock_exit:
         inject_scenario_faults.load_scenario_spec(Path("/specs"))

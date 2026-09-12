@@ -4,28 +4,21 @@ import logging
 import sys
 
 from pathlib import Path
-from typing import Any, Dict, List
+
+# Ensure `scripts/` is on sys.path for utils imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import yaml
 
-from yaml import SafeDumper
-
-
-class _IndentedSafeDumper(SafeDumper):
-    def increase_indent(self, flow=False, indentless=False):
-        return super().increase_indent(flow=flow, indentless=False)
-
-
 from jinja2 import Environment, FileSystemLoader
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-)
+from utils.yaml import IndentedSafeDumper
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
 
-def load_scenarios(library_index_directory: Path) -> List[Dict[str, Any]]:
+def load_scenarios(library_index_directory: Path) -> list[dict]:
     return [
         json.loads(f.read_text(encoding="utf-8"))
         for f in (library_index_directory / "scenarios").glob("*.json")
@@ -33,12 +26,12 @@ def load_scenarios(library_index_directory: Path) -> List[Dict[str, Any]]:
 
 
 def write_yaml_file(file_path: Path, content: str) -> None:
-    logger.info(f"writing spec file: {file_path}")
+    logger.debug("writing spec file: %s", file_path)
     file_path.write_text(content, encoding="utf-8")
 
 
 def generate_scenario_specs(
-    scenario: Dict[str, Any],
+    scenario: dict,
     specs_directory: Path,
     environment: Environment,
 ) -> None:
@@ -53,7 +46,7 @@ def generate_scenario_specs(
         rendered = yaml.safe_load(environment.get_template(template_name).render(scenario=scenario))
         write_yaml_file(
             scenario_dir / output_name,
-            yaml.dump(rendered, Dumper=_IndentedSafeDumper, explicit_start=True, indent=2, width=160),
+            yaml.dump(rendered, Dumper=IndentedSafeDumper, explicit_start=True, indent=2, width=160),
         )
 
 
@@ -74,11 +67,13 @@ def main() -> None:
     )
 
     scenarios = load_scenarios(args.library_index_directory)
-    logger.info(f"generating spec files for {len(scenarios)} scenarios")
+    logger.info("generating spec files for %d scenario(s)", len(scenarios))
 
     for scenario in scenarios:
         generate_scenario_specs(scenario, args.specs_directory, env)
 
 
 if __name__ == "__main__":
+    from utils.logging import configure_logging
+    configure_logging()
     sys.exit(main())

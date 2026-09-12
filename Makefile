@@ -38,17 +38,23 @@ validate-library: ## Validates library indexes
 		--library_index_directory=$(abspath ./library/indexes) \
 		--schemas_directory=$(abspath ./schemas/json)
 
+.PHONY: scaffold-fault
+scaffold-fault: ## Scaffold a new fault index stub
+	$(UV) run scripts/library/scaffold_fault.py \
+		--templates_directory=$(abspath ./templates/library/indexes)
+
+.PHONY: scaffold-scenario
+scaffold-scenario: ## Scaffold a new scenario index stub
+	$(UV) run scripts/library/scaffold_scenario.py \
+		--templates_directory=$(abspath ./templates/library/indexes)
+
 .PHONY: update-secrets-baseline
 update-secrets-baseline: ## Updates the baseline secret file
 	$(UV) run detect-secrets scan --update .secrets.baseline
 
-.PHONY: test-scripts
-test-scripts: ## Runs unit tests for scripts/
+.PHONY: test-unit
+test-unit: ## Runs unit tests for scripts/
 	$(UV) run pytest tests/unit/
-
-.PHONY: test-integration-agent
-test-integration-agent: ## Runs agent integration tests (requires a live Kubernetes cluster)
-	$(UV) run pytest tests/integration/agent/ -m integration
 
 .PHONY: test-integration
 test-integration: ## Runs all integration tests (requires a live Kubernetes cluster)

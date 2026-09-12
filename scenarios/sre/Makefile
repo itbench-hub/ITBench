@@ -19,17 +19,11 @@ group-vars: ## Generates the group variables
 	cp inventory/group_vars/orchestrator/experiments.yaml.example inventory/group_vars/orchestrator/experiments.yaml
 	cp inventory/group_vars/orchestrator/stack.yaml.example inventory/group_vars/orchestrator/stack.yaml
 
-.PHONY: generate-fault-index
-generate-fault-index: ## Generate a new fault index based on user input
-	$(UV) run ansible-playbook -i inventory.yaml project/generate_documentation_index.yaml --tags "generate_fault"
-
-.PHONY: generate-scenario-index
-generate-scenario-index: ## Generate a new scenario index based on user input
-	$(UV) run ansible-playbook -i inventory.yaml project/generate_documentation_index.yaml --tags "generate_scenario"
-
 .PHONY: generate-resource-files
 generate-resource-files: ## Generates task files, scenario manifests, and other related files
-	$(UV) run ansible-playbook -i inventory project/manage_resource_files.yaml --tags "generate_files"
+	$(UV) run ../../scripts/ansible/generate_role_files.py \
+		--library_index_directory=$(abspath ../../library/indexes) \
+		--playbooks_directory=$(abspath project)
 	cd ../../ && $(UV) run ansible-lint $(abspath project/roles/scenarios/files) --fix
 
 .PHONY: deploy-tools
