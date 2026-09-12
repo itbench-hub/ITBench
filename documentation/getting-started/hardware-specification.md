@@ -10,11 +10,11 @@ We recommend the following hardware requirements for good performance on a virtu
 | --- | --- | --- |
 | 8 | 16 GB | 50 GB |
 
-### Development on AWX
+### Development on Argo Workflows
 
-When using AWX locally, one needs significate resources to ensure good performance. This is because a single cluster is responsible for running both AWX and the benchmark at the same time.
+When running both the Argo Workflows orchestrator and a runner on the same local cluster, one needs significant resources to ensure good performance. This is because a single cluster is responsible for running both the orchestrator and the benchmark at the same time.
 
-Generally, it is not recommended to run AWX locally outside of testing purposes.
+Generally, it is not recommended to run both on the same cluster outside of testing purposes.
 
 | CPU | Memory | Storage |
 | --- | --- | --- |

@@ -1,7 +1,6 @@
 ---
 - name: Retrieve cluster information
   kubernetes.core.k8s_cluster_info:
-    kubeconfig: "{{ cluster_files.kubeconfig }}"
   register: cluster_information
 
 - name: Parse kubernetes cluster version string
@@ -30,16 +29,10 @@
   when:
     - cluster_platform == "openshift"
   block:
-    - name: Import executables role
-      ansible.builtin.import_role:
-        name: executables
-        tasks_from: validate_oc
-
     - name: Retrieve OpenShift server version
       kubernetes.core.k8s_info:
         api_version: config.openshift.io/v1
         kind: ClusterVersion
-        kubeconfig: "{{ cluster_files.kubeconfig }}"
         name: version
       register: cluster_cluster_version
 

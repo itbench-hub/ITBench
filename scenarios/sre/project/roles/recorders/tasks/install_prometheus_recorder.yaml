@@ -1,29 +1,41 @@
 ---
-- name: Add Prometheus Bearer Token
+- name: Create ServiceAccount for prometheus-recorder
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/name": "{{ recorders_instances.prometheus_data_recorder.name }}"
+        name: "{{ recorders_instances.prometheus_data_recorder.name }}"
+        namespace: "{{ recorders_namespaces.data_recorders }}"
+    state: present
+
+- name: Bind prometheus-recorder ServiceAccount to cluster-monitoring-view
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/name": "{{ recorders_instances.prometheus_data_recorder.name }}"
+        name: "{{ recorders_instances.prometheus_data_recorder.name }}-cluster-monitoring-view"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: cluster-monitoring-view
+      subjects:
+        - kind: ServiceAccount
+          name: "{{ recorders_instances.prometheus_data_recorder.name }}"
+          namespace: "{{ recorders_namespaces.data_recorders }}"
+    state: present
   when:
     - recorders_cluster.platform == "openshift"
-  block:
-    - name: Import Prometheus credential variable setting tasks
-      ansible.builtin.import_role:
-        name: tools
-        tasks_from: set_credentials_prometheus
-
-    - name: Create Secret for Prometheus Bearer Token
-      kubernetes.core.k8s:
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: "{{ recorders_instances.prometheus_data_recorder.name }}-token"
-            namespace: "{{ recorders_instances.prometheus_data_recorder.namespace }}"
-          data:
-            token: "{{ prometheus_bearer_token }}"
-        state: present
 
 - name: Create PersistentVolumeClaim for prometheus-recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: PersistentVolumeClaim
@@ -44,7 +56,6 @@
 
 - name: Install Kubernetes Job for prometheus-recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: batch/v1
       kind: Job
@@ -75,12 +86,6 @@
                 env:
                   - name: PROMETHEUS_ENDPOINT
                     value: "{{ tools_prometheus_endpoint.http }}"
-                  - name: PROMETHEUS_TOKEN
-                    valueFrom:
-                      secretKeyRef:
-                        name: "{{ recorders_instances.prometheus_data_recorder.name }}-token"
-                        key: token
-                        optional: true
                 resources:
                   requests:
                     cpu: 100m
@@ -101,6 +106,7 @@
               runAsNonRoot: false
               seccompProfile:
                 type: RuntimeDefault
+            serviceAccountName: "{{ recorders_instances.prometheus_data_recorder.name }}"
             volumes:
               - name: records
                 persistentVolumeClaim:
@@ -109,7 +115,6 @@
 
 - name: Install Kubernetes CronJob for prometheus-recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: batch/v1
       kind: CronJob
@@ -142,12 +147,6 @@
                     env:
                       - name: PROMETHEUS_ENDPOINT
                         value: "{{ tools_prometheus_endpoint.http }}"
-                      - name: PROMETHEUS_TOKEN
-                        valueFrom:
-                          secretKeyRef:
-                            name: "{{ recorders_instances.prometheus_data_recorder.name }}-token"
-                            key: token
-                            optional: true
                     resources:
                       requests:
                         cpu: 100m
@@ -168,6 +167,7 @@
                   runAsNonRoot: false
                   seccompProfile:
                     type: RuntimeDefault
+                serviceAccountName: "{{ recorders_instances.prometheus_data_recorder.name }}"
                 volumes:
                   - name: records
                     persistentVolumeClaim:

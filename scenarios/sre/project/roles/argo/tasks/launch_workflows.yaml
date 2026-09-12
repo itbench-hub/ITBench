@@ -1,0 +1,18 @@
+---
+- name: Launch Argo Workflows
+  vars:
+    _runner_ids: "{{ range(1, argo_runners | length + 1) | list }}"
+  block:
+    - name: Submit Workflow CR per trial per runner
+      kubernetes.core.k8s:
+        resource_definition: >-
+          {{ lookup('ansible.builtin.template', 'argo/workflows/launch.j2') | ansible.builtin.from_yaml }}
+        state: present
+      vars:
+        _runner_id: "{{ item.0 }}"
+        _trial_id: "{{ item.1 }}"
+        _workflow_type: "{{ argo_workflow_type }}"
+      loop: >-
+        {{ _runner_ids | product(range(1, (argo_experiments | map(attribute='trials') | max) + 1) | list) | list }}
+      loop_control:
+        label: "workflow/runner-{{ item.0 }}-trial-{{ item.1 }}"

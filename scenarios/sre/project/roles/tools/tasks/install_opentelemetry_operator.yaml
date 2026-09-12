@@ -5,7 +5,6 @@
   block:
     - name: Create Namespace OpenTelemetry Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Namespace
@@ -19,7 +18,6 @@
       kubernetes.core.helm:
         chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-operator"
         chart_version: "0.122.0"
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         release_name: "{{ tools_releases.opentelemetry_operator.name }}"
         release_namespace: "{{ tools_releases.opentelemetry_operator.namespace }}"
         release_state: present
@@ -48,7 +46,6 @@
   block:
     - name: Create the project for RH build of OpenTelemetry Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: project.openshift.io/v1
           kind: Project
@@ -61,7 +58,6 @@
 
     - name: Create the operator group for RH build of OpenTelemetry Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: operators.coreos.com/v1
           kind: OperatorGroup
@@ -74,7 +70,6 @@
 
     - name: Create the subscription for RH build of OpenTelemetry Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: operators.coreos.com/v1alpha1
           kind: Subscription
@@ -93,7 +88,6 @@
       kubernetes.core.k8s_info:
         api_version: operators.coreos.com/v1alpha1
         kind: ClusterServiceVersion
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         namespace: openshift-opentelemetry-operator
       register: tools_openshift_otel_operator_csv
       until:
@@ -105,7 +99,6 @@
       kubernetes.core.k8s_info:
         api_version: apiextensions.k8s.io/v1
         kind: CustomResourceDefinition
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         name: opentelemetrycollectors.opentelemetry.io
       register: tools_openshift_otel_collector_crd
       until:

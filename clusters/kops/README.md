@@ -1,11 +1,11 @@
 # kOps Cluster Setup
 
-[kOps](https://kops.sigs.k8s.io/) is a tool which create a [Kubernetes](https://kubernetes.io/) cluster using resources offered by cloud providers.
+[kOps](https://kops.sigs.k8s.io/) is a tool which creates a [Kubernetes](https://kubernetes.io/) cluster using resources offered by cloud providers.
 
 [Kyverno](https://kyverno.io/) ensures that registry secrets (used to access private Docker registries) are configured in every namespace on the cluster.
 
 >[!NOTE]
->As of the time writing (**03/09/2026**) these playbooks in this directory use [Amazon Web Services (AWS)](https://docs.aws.amazon.com/#products) as the provisoner. While other cloud providers may supported by kOps, orchestrating the additional pieces from those providers is not instrumented here.
+>As of the time of writing (**03/09/2026**) these playbooks use [Amazon Web Services (AWS)](https://docs.aws.amazon.com/#products) as the provisioner. While other cloud providers may be supported by kOps, orchestrating the additional pieces from those providers is not instrumented here.
 
 ## Required Software
 
@@ -35,136 +35,134 @@ sudo dnf install jq
 
 ## Set Up
 
-The playbooks feature a number of [group variables](./inventory/group_vars/). Each one will be described here:
+The playbooks use a set of [group variables](./inventory/group_vars/all/) to configure AWS resources and the clusters themselves:
 
-| File Name | Function |
+| File | Description |
 | --- | --- |
-| [aws.yaml](./inventory/group_vars/all/aws.yaml.example) | Configures region, vpc, and s3 storage |
-| [cluster.yaml](./inventory/group_vars/all/cluster.yaml.example) | Configures the cluster itself |
-| [docker.yaml](./inventory/group_vars/all/docker.yaml.example) | Configures the registry secret |
-| [runner.yaml](./inventory/group_vars/single/runner.yaml.example) | Configures the name prefix for a single cluster |
-| [ssh_keys.yaml](./inventory/group_vars/all/ssh_keys.yaml.example) | Configured the ssh key to access the cluster |
-| [stack.yaml](./inventory/group_vars/awx/stack.yaml) | Configures the name prefix and number of clusters in AWX stack |
+| [aws.yaml](./inventory/group_vars/all/aws.yaml.example) | AWS region, VPC CIDR, S3 state bucket, and availability zones |
+| [cluster.yaml](./inventory/group_vars/all/cluster.yaml.example) | Kubernetes version, networking mode, and node sizes/counts |
+| [docker.yaml](./inventory/group_vars/all/docker.yaml.example) | Private Docker registry secret (optional) |
+| [ssh_keys.yaml](./inventory/group_vars/all/ssh_keys.yaml.example) | SSH public key path for cluster node access |
 
 >[!NOTE]
->Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
+>Some YAML files contain commented-out sections for optional parameters. Leave them commented out if not needed; otherwise uncomment and fill them in.
 
-1. Create the playbooks' group variables from the templates
+1. Create the group variable files from the provided templates
 ```shell
 make group-vars
 ```
 
-2. Edit the group variables files accordingly
+2. Edit the generated group variable files accordingly
 
 >[!IMPORTANT]
->Before or during this step, one should create an SSH key. This will allow ssh access to the cluster after creation. A guide to making an ssh key can be found [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).
+>Before or during this step, create an SSH key pair. This allows SSH access to cluster nodes after creation. A guide to generating an SSH key can be found [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).
 
-3. Configure the AWS CLI tool
+3. Configure the AWS CLI
 ```shell
 aws configure
 ```
 
 ## Cluster Management
 
-There are two management targets that are controlled by these playbooks: **AWX Stack** and **Single Cluster**.
+There are two management targets: **Environment Cluster** and **Argo Stack**.
 
-An AWX stack requires multiple clusters (one per scenario) and a controller cluster. The controller cluster is called the `head` and any cluster running a scenario is called a `runner`. To reduce resource complexity, only one [virtual private cloud (VPC)](https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html) object is created. From that VPC, several [subnets](https://docs.aws.amazon.com/vpc/latest/userguide/configure-subnets.html) (one per cluster) are created.
+An **Argo stack** provisions one orchestrator cluster and one or more environment clusters, all sharing a single [VPC](https://docs.aws.amazon.com/vpc/latest/userguide/what-is-amazon-vpc.html) with one subnet per cluster. It is intended for running multiple scenarios with multiple trials simultaneously. Due to the resources required, the Argo stack is not recommended for general development.
 
-A single cluster is only one `runner` cluster.
+An **environment cluster** is a single cluster for local development or running individual benchmark trials.
 
-For general development, most users will require only the single cluster target. The AWX stack is only recommended for running multiple scenarios with multiple trials simulatenously due to the intense amount of resources required.
+Both targets use the `CLUSTER_NAME_PREFIX` Makefile variable (default: `itbench-dev`) to namespace all AWS and cluster resources. Override it on the command line if sharing an S3 state bucket with other users:
 
-### AWX Stack
-
-#### Creation
-
-1. Run the following command to create a "stack" of clusters
 ```shell
-make create-awx-stack
+CLUSTER_NAME_PREFIX=my-prefix make create-environment-cluster
 ```
 
-2. Once the previous command successfully completes, run the following command to export the kubeconfig:
-```shell
-make get-stack-kubeconfigs
-```
-
-3. To access the cluster from a terminal window, use the following command:
-```shell
-export KUBECONFIG=$(pwd)/kubeconfigs/<cluster name>
-kubectl cluster-info
-```
-
-4. To create or re-crete the kubeconfig group variables for use in the SRE scenarios, use the following command:
-```shell
-make sync-stack-group-vars
-```
-
-5. **(Optional)**: To install a Docker registry secret into the AWX stack clusters, use the following command:
-```shell
-make install-stack-docker-registry
-```
-
-### Deletion
-
-1. Run the following command to delete a cluster
-```shell
-make destroy-awx-stack
-```
-
-### Single Cluster
+### Environment Cluster
 
 #### Creation
 
 1. Run the following command to create a cluster
 ```shell
-make create-cluster
+make create-environment-cluster
 ```
 
-2. Once the previous command successfully completes, run the following command to export the kubeconfig:
+2. Once the clusters are ready (kOps validation can take up to 20 minutes), run the following command to export the kubeconfig, configure the cluster, and write the `.env` file for the SRE scenarios:
 ```shell
 make get-cluster-kubeconfig
 ```
 
-3. To access the cluster from a terminal window, use the following command:
+3. To access the cluster from a terminal window, use the following command printed at the end of the previous step:
 ```shell
 export KUBECONFIG=$(pwd)/kubeconfigs/<cluster name>
 kubectl cluster-info
 ```
 
-4. To create or re-crete the kubeconfig group variables for use in the SRE scenarios, use the following command:
-```shell
-make sync-cluster-group-vars
-```
-
-5. **(Optional)**: To install a Docker registry secret into a single cluster, use the following command:
+4. **(Optional)**: To install a Docker registry secret into the cluster, use the following command:
 ```shell
 make install-cluster-docker-registry
 ```
 
-### Deletion
+#### Deletion
 
-1. Run the following command to delete a cluster
+1. Run the following command to delete the cluster
 ```shell
-make destroy-cluster
+make destroy-environment-cluster
+```
+
+### Argo Stack
+
+The number of environment clusters in the stack is controlled by the `ENVIRONMENTS_COUNT` Makefile variable (default: `1`). Override it as needed:
+
+```shell
+ENVIRONMENTS_COUNT=20 make create-argo-stack
+```
+
+#### Creation
+
+1. Run the following command to create the Argo stack
+```shell
+make create-argo-stack
+```
+
+2. Once the clusters are ready (kOps validation can take up to 20 minutes per cluster, running in parallel), run the following command to export kubeconfigs, configure the environment clusters, write the `.env` file, and sync the stack group variables for the SRE scenarios:
+```shell
+make get-stack-kubeconfigs
+```
+
+3. To access the orchestrator cluster from a terminal window, use the following command printed at the end of the previous step:
+```shell
+export KUBECONFIG=$(pwd)/kubeconfigs/<cluster name>
+kubectl cluster-info
+```
+
+4. **(Optional)**: To install a Docker registry secret into all Argo stack clusters, use the following command:
+```shell
+make install-stack-docker-registry
+```
+
+#### Deletion
+
+1. Run the following command to destroy the Argo stack
+```shell
+make destroy-argo-stack
 ```
 
 ## Troubleshooting
 
 ### AWS Resource Limits
 
-While the playbooks have some checking to avoid unclear gaps in execution, sometimes resource creation or deletion failures occur. Often times, this is because of a [lack of resources available](https://docs.aws.amazon.com/servicequotas/latest/userguide/intro.html) (ie, no VPCs availabilty in a region). In order to fix this, one must either [increase the service quotas](https://docs.aws.amazon.com/servicequotas/latest/userguide/request-quota-increase.html) for a given resource or remove unused resources.
+While the playbooks include checks to surface clear errors, resource creation or deletion failures can still occur. Often this is caused by [service quota limits](https://docs.aws.amazon.com/servicequotas/latest/userguide/intro.html) being reached (e.g. no VPC capacity in a region). To resolve this, either [request a quota increase](https://docs.aws.amazon.com/servicequotas/latest/userguide/request-quota-increase.html) or remove unused resources.
 
 ### Cluster Validation Errors
 
-Before use, kOps cluster must pass a validation step. This step is run as part of the creation process. After the cluster is built, the results of the validation can be checked using the following command:
+kOps clusters must pass a validation step before they can be used. This is run automatically during the `get-cluster-kubeconfig` / `get-stack-kubeconfigs` steps. After the cluster is built, the validation results can also be checked manually:
 ```shell
 CLUSTER_NAME=<cluster name> make validate-cluster
 ```
 
 >[!NOTE]
->Generally speaking, the validation results only need to be checked in the case of a validation failure. This will result in the creation command failing.
+>Validation only needs to be checked manually in the case of a failure, which will cause the relevant `get-*` command to error.
 
-Clusters may fail to validate for a variety of reasons. While not complete, the following command can be used to attempt remidiation of a cluster with validation failures. **This command is not guarenteed to result in a working cluster, but may help recover the cluster in response to a known validation failure.**
+The following command can attempt to remediate a cluster with validation failures. **This is not guaranteed to produce a working cluster, but may help recover from known failure modes.**
 ```shell
 CLUSTER_NAME=<cluster name> make fix-cluster
 ```

@@ -1,126 +1,143 @@
 ---
-- name: Create temporary directory for records from {{ recorder.name }}
-  ansible.builtin.tempfile:
-    prefix: "{{ export.directory }}"
-    state: directory
-  register: recorders_export_directory
-
 - name: Retrieve PersistentVolumeClaim for {{ recorder.name }}
   kubernetes.core.k8s_info:
     api_version: v1
     kind: PersistentVolumeClaim
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     name: "{{ recorder.name }}-records"
     namespace: "{{ recorder.namespace }}"
   register: recorders_persistent_volume_claims
 
-- name: Copy files from volume
+- name: Fail playbook with `resource not found` error
+  ansible.builtin.fail:
+    msg: Unable to find persistent volume claim. Please ensure persistent volume claim exists.
   when:
-    - recorders_persistent_volume_claims.api_found
-    - recorders_persistent_volume_claims.resources | ansible.builtin.length == 1
-  block:
-    - name: Create Deployment to export records from {{ recorder.name }}
-      kubernetes.core.k8s:
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: apps/v1
-          kind: Deployment
+    - recorders_persistent_volume_claims.resources | ansible.builtin.length != 1
+
+- name: Create Deployment to export records from {{ recorder.name }}
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
+          "app.kubernetes.io/part-of": "{{ recorder.name }}"
+        name: "{{ recorder.name }}-exporter"
+        namespace: "{{ recorder.namespace }}"
+      spec:
+        selector:
+          matchLabels:
+            "app.kubernetes.io/managed-by": ITBench
+            "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
+            "app.kubernetes.io/part-of": "{{ recorder.name }}"
+        template:
           metadata:
             labels:
               "app.kubernetes.io/managed-by": ITBench
               "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
               "app.kubernetes.io/part-of": "{{ recorder.name }}"
-            name: "{{ recorder.name }}-exporter"
-            namespace: "{{ recorder.namespace }}"
           spec:
-            selector:
-              matchLabels:
-                "app.kubernetes.io/managed-by": ITBench
-                "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
-                "app.kubernetes.io/part-of": "{{ recorder.name }}"
-            template:
-              metadata:
-                labels:
-                  "app.kubernetes.io/managed-by": ITBench
-                  "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
-                  "app.kubernetes.io/part-of": "{{ recorder.name }}"
-              spec:
-                containers:
-                  - name: exporter
-                    image: registry.access.redhat.com/ubi10:10.2-1788943607@sha256:60cd050b8dced7e972273b45bfd6052a2153475042f8b7c86d5e3e558b266780
-                    command:
-                      - /bin/sh
-                    args:
-                      - -c
-                      - "sleep 600"
-                    resources:
-                      requests:
-                        cpu: 10m
-                        memory: 50Mi
-                      limits:
-                        memory: 100Mi
-                    securityContext:
-                      allowPrivilegeEscalation: false
-                      capabilities:
-                        drop:
-                          - ALL
-                    volumeMounts:
-                      - name: records
-                        mountPath: /opt/app-root/src/records
+            containers:
+              - name: exporter
+                image: registry.access.redhat.com/ubi10:10.2-1788943607@sha256:60cd050b8dced7e972273b45bfd6052a2153475042f8b7c86d5e3e558b266780
+                command:
+                  - /bin/sh
+                args:
+                  - -c
+                  - "sleep 600"
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 50Mi
+                  limits:
+                    memory: 100Mi
                 securityContext:
-                  fsGroup: 1001
-                  runAsUser: 1001
-                  runAsNonRoot: true
-                  seccompProfile:
-                    type: RuntimeDefault
-                volumes:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+                volumeMounts:
                   - name: records
-                    persistentVolumeClaim:
-                      claimName: "{{ recorders_persistent_volume_claims.resources[0].metadata.name }}"
-            replicas: 1
-        state: present
-        wait: true
+                    mountPath: /opt/app-root/src/records
+            securityContext:
+              fsGroup: 1001
+              runAsUser: 1001
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+            volumes:
+              - name: records
+                persistentVolumeClaim:
+                  claimName: "{{ recorders_persistent_volume_claims.resources[0].metadata.name }}"
+        replicas: 1
+    state: present
+    wait: true
 
-    - name: Retrieve record exporter pod
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Pod
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-        namespace: "{{ recorder.namespace }}"
-        label_selectors:
-          - app.kubernetes.io/managed-by = ITBench
-          - app.kubernetes.io/name = {{ recorder.name }}-exporter
-          - app.kubernetes.io/part-of = {{ recorder.name }}
-      register: recorders_pods
+- name: Retrieve record exporter pod
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ recorder.namespace }}"
+    label_selectors:
+      - app.kubernetes.io/managed-by = ITBench
+      - app.kubernetes.io/name = {{ recorder.name }}-exporter
+      - app.kubernetes.io/part-of = {{ recorder.name }}
+    wait: true
+  register: recorders_pods
 
-    - name: Validate that exporter pod exists
-      ansible.builtin.fail:
-        msg: Unable to find recorder exporter pod. Please ensure deployment exists.
+- name: Copy files from volume
+  vars:
+    archive_path: "{{ ['/tmp', recorder.name ~ '_records.tar.gz'] | ansible.builtin.path_join }}"
+    pod: "{{ recorders_pods.resources | ansible.builtin.first }}"
+  block:
+    - name: Create temporary directory for records from {{ recorder.name }}
+      ansible.builtin.tempfile:
+        prefix: "{{ export.directory }}"
+        state: directory
+      register: recorders_records_directory
+
+    - name: Create temporary directory for tarball from {{ recorder.name }}
+      ansible.builtin.tempfile:
+        prefix: "{{ recorder.name }}-tarball"
+        state: directory
+      register: recorders_tarball_directory
+
+    - name: Create tarball of the files in the records directory
+      kubernetes.core.k8s_exec:
+        command: "tar -czf {{ archive_path }} -C /opt/app-root/src/records ."
+        namespace: "{{ pod.metadata.namespace }}"
+        pod: "{{ pod.metadata.name }}"
+
+    - name: Copy tarball to the local machine
+      kubernetes.core.k8s_cp:
+        local_path: "{{ [recorders_tarball_directory.path, 'records.tar.gz'] | ansible.builtin.path_join }}"
+        namespace: "{{ pod.metadata.namespace }}"
+        pod: "{{ pod.metadata.name }}"
+        remote_path: "{{ archive_path }}"
+        state: from_pod
+
+    - name: Extract tarball contents
+      ansible.builtin.unarchive:
+        dest: "{{ recorders_records_directory.path }}"
+        src: "{{ [recorders_tarball_directory.path, 'records.tar.gz'] | ansible.builtin.path_join }}"
+  rescue:
+    - name: Delete temporary directory for records from {{ recorder.name }}
+      ansible.builtin.file:
+        path: "{{ recorders_records_directory.path }}"
+        state: absent
       when:
-        - not recorders_pods.api_found or recorders_pods.resources | ansible.builtin.length == 0
-
-    # NOTE: `kubectl` is used in place of the `kubernetes.core` collection because
-    #       the `k8_cp` module has an internal error when using it.
-
-    - name: Copy records from pod
-      ansible.builtin.command:
-        argv:
-          - kubectl
-          - cp
-          - "{{ pod.metadata.namespace }}/{{ pod.metadata.name }}:/opt/app-root/src/records"
-          - "{{ recorders_export_directory.path }}"
-          - --kubeconfig={{ recorders_cluster.kubeconfig | ansible.builtin.expanduser }}
-      register: recorders_copy_result
-      changed_when:
-        - recorders_copy_result.rc == 0
-      retries: 8
-      delay: 15
-      vars:
-        pod: "{{ recorders_pods.resources | ansible.builtin.first }}"
+        - recorders_records_directory is ansible.builtin.defined
   always:
+    - name: Delete temporary directory for tarball from {{ recorder.name }}
+      ansible.builtin.file:
+        path: "{{ recorders_tarball_directory.path }}"
+        state: absent
+      when:
+        - recorders_tarball_directory is ansible.builtin.defined
+
     - name: Delete Deployment
       kubernetes.core.k8s:
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: apps/v1
           kind: Deployment
@@ -152,7 +169,7 @@
       ansible.builtin.copy:
         dest: "{{ recorders_local_directory.path }}"
         mode: "0644"
-        src: "{{ recorders_export_directory.path }}/"
+        src: "{{ recorders_records_directory.path }}/"
 
 - name: Copy exported data into S3
   when:
@@ -160,7 +177,7 @@
   block:
     - name: Retrieve all files in temporary directory for {{ recorder.name }}
       ansible.builtin.find:
-        path: "{{ recorders_export_directory.path }}"
+        path: "{{ recorders_records_directory.path }}"
       register: recorders_exported_files
 
     - name: Create AWS S3 bucket
@@ -191,5 +208,7 @@
 
 - name: Delete temporary directory for records from {{ recorder.name }}
   ansible.builtin.file:
-    path: "{{ recorders_export_directory.path }}"
+    path: "{{ recorders_records_directory.path }}"
     state: absent
+  when:
+    - recorders_records_directory is ansible.builtin.defined

@@ -1,0 +1,84 @@
+---
+- name: Install Argo Workflows
+  kubernetes.core.helm:
+    chart_ref: "oci://ghcr.io/argoproj/argo-helm/argo-workflows"
+    chart_version: "2.0.1"
+    create_namespace: true
+    release_name: "{{ argo_releases.argo_workflows.name }}"
+    release_namespace: "{{ argo_releases.argo_workflows.namespace }}"
+    release_state: present
+    timeout: 10m0s
+    wait: true
+
+- name: Create Argo resources
+  vars:
+    _base_path: |-
+      {{
+        [
+          playbook_dir,
+          "..",
+          "..",
+          "library",
+          "specs",
+          "scenarios"
+        ] |
+        ansible.builtin.path_join |
+        ansible.builtin.realpath
+      }}
+    _scenarios: "{{ argo_experiments | map(attribute='scenario') | ansible.builtin.unique }}"
+  block:
+    - name: Create S3 storage credentials secret
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: storage-credentials
+            namespace: "{{ argo_releases.argo_workflows.namespace }}"
+          stringData:
+            AWS_ACCESS_KEY_ID: "{{ lookup('ansible.builtin.env', 'AWS_ACCESS_KEY_ID') }}" # pragma: allowlist secret
+            AWS_ENDPOINT_URL: "{{ argo_storage.s3.endpoint }}"
+            AWS_SECRET_ACCESS_KEY: "{{ lookup('ansible.builtin.env', 'AWS_SECRET_ACCESS_KEY') }}" # pragma: allowlist secret
+        state: present
+      when:
+        - argo_storage.s3 is defined
+
+    - name: Create Secrets for workflows
+      kubernetes.core.k8s:
+        template:
+          path: templates/kubernetes/secrets.yaml.j2
+          variable_start_string: "[["
+          variable_end_string: "]]"
+        state: present
+
+    - name: Create ConfigMaps for scenarios
+      kubernetes.core.k8s:
+        template:
+          path: templates/kubernetes/configmaps.yaml.j2
+          variable_start_string: "[["
+          variable_end_string: "]]"
+        state: present
+
+    - name: Create WorkflowTemplate for scenario steps
+      kubernetes.core.k8s:
+        template:
+          path: templates/argo/workflow-templates/steps.yaml.j2
+          variable_start_string: "[["
+          variable_end_string: "]]"
+        state: present
+
+    - name: Create WorkflowTemplate for scenario execution
+      kubernetes.core.k8s:
+        template:
+          path: templates/argo/workflow-templates/execution.yaml.j2
+          variable_start_string: "[["
+          variable_end_string: "]]"
+        state: present
+
+    - name: Create WorkflowTemplate for scenario orchestration
+      kubernetes.core.k8s:
+        template:
+          path: templates/argo/workflow-templates/orchestration.yaml.j2
+          variable_start_string: "[["
+          variable_end_string: "]]"
+        state: present

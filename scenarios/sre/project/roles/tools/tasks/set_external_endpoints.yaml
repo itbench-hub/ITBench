@@ -3,7 +3,6 @@
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Namespace
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
   register: tools_k8s_namespaces
 
 - name: Validate that namespaces exists
@@ -29,7 +28,6 @@
   kubernetes.core.k8s_info:
     api_version: gateway.networking.k8s.io/v1
     kind: Gateway
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     name: "{{ tools_kubernetes_gateways.istio.name }}"
     namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
   register: tools_istio_gateway
@@ -42,8 +40,7 @@
 
 - name: Extract gateway address information
   ansible.builtin.set_fact:
-    tools_gateway_http_address:
-      http: http://{{ address.value }}{{ ":80" if address.type == "IPAddress" else "" }}
+    tools_gateway_http_address: "http://{{ address.value }}{{ ':80' if address.type == 'IPAddress' else '' }}"
   vars:
     address: "{{ tools_istio_gateway.resources[0].status.addresses[0] }}"
   when:

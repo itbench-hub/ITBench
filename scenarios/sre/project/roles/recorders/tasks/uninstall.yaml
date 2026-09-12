@@ -3,13 +3,11 @@
   kubernetes.core.k8s_info:
     api_version: batch/v1
     kind: CronJob
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     namespace: "{{ recorders_namespaces.data_recorders }}"
   register: recorders_cronjobs
 
 - name: Suspend all CronJobs
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ cronjob.apiVersion }}"
       kind: "{{ cronjob.kind }}"
@@ -28,7 +26,6 @@
   kubernetes.core.k8s_info:
     api_version: batch/v1
     kind: Job
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     namespace: "{{ recorders_namespaces.data_recorders }}"
   register: recorders_jobs
 
@@ -36,7 +33,6 @@
   kubernetes.core.k8s_info:
     api_version: "{{ job.apiVersion }}"
     kind: "{{ job.kind }}"
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     name: "{{ job.metadata.name }}"
     namespace: "{{ job.metadata.namespace }}"
   loop: "{{ recorders_jobs.resources }}"
@@ -88,9 +84,19 @@
       directory: alerts
     recorder: "{{ recorders_instances.prometheus_data_recorder }}"
 
+- name: Delete prometheus-recorder ClusterRoleBinding
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: "{{ recorders_instances.prometheus_data_recorder.name }}-cluster-monitoring-view"
+    state: absent
+  when:
+    - recorders_cluster.platform == "openshift"
+
 - name: Delete the namespace
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Namespace

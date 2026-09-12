@@ -3,7 +3,6 @@
   kubernetes.core.k8s_json_patch:
     api_version: network.operator.openshift.io/v1
     kind: EgressRouter
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     name: cluster
     patch:
       - op: replace
@@ -14,7 +13,6 @@
 
 - name: Uninstall Istio ZTunnel
   kubernetes.core.helm:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.istio_ztunnel.name }}"
     release_namespace: |-
       {{
@@ -26,7 +24,6 @@
 
 - name: Uninstall Istio CNI Node Agent
   kubernetes.core.helm:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.istio_cni.name }}"
     release_namespace: |-
       {{
@@ -38,7 +35,6 @@
 
 - name: Uninstall Istiod Control Plane
   kubernetes.core.helm:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.istio_istiod.name }}"
     release_namespace: "{{ tools_releases.istio_istiod.namespace }}"
     release_state: absent
@@ -46,7 +42,6 @@
 
 - name: Uninstall Istio Base (CRDs)
   kubernetes.core.helm:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.istio_base.name }}"
     release_namespace: "{{ tools_releases.istio_base.namespace }}"
     release_state: absent
@@ -54,7 +49,6 @@
 
 - name: Delete Istio namespace
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       api_version: v1
       kind: Namespace

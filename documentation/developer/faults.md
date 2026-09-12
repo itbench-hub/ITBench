@@ -23,12 +23,12 @@ Please follow the instructions listed [here](../getting-started/scenarios.md#set
 
 ### Generating Boilerplate
 
-1. Run the following command and respond to the prompts appropriately to create a new index in the fault library:
+1. Run the following command from the **root directory** and respond to the prompts appropriately to create a new fault index stub:
 ```shell
-make generate-fault-index
+make scaffold-fault
 ```
 
-2. Run the following commands to generate the new files for the fault
+2. Run the following commands to generate the library outputs and Ansible role files:
 ```shell
 make generate-library
 make generate-resource-files
@@ -44,7 +44,7 @@ make generate-resource-files
 
 **This process is meant to be iterative.** Once the fault is confirmed to work and the index is fully filled out, move to the next phase: [validation](#validating-new-fault).
 
-1. Edit the new fault index. This will be located in the [fault library index directory](../../scenarios/sre/project/roles/documentation/files/library/faults/indexes/). Ensure that all the fields listed have value. Resource links should be provided in the `resources` field and a JSON schema for the fault's arguments should be provided in the `arguments.jsonSchema` field.
+1. Edit the new fault index template. This will be located in the [fault library index template directory](../../templates/library/indexes/faults/). Ensure that all the fields listed have a value. Resource links should be provided in the `resources` field and a JSON schema for the fault's arguments should be provided in the `arguments.jsonSchema` field.
 
 >[!IMPORTANT]
 >The JSON schema should be valid with the `2020-12` ruleset.
@@ -64,7 +64,7 @@ make test-molecule-faults
 
 ### Validating New Fault
 
-1. Run the following command to generate the documentation for the new fault:
+1. Run the following command to generate the library outputs (documentation, indexes, specs):
 ```shell
 make generate-library
 ```

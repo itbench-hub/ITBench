@@ -1,0 +1,172 @@
+name: Run ITBench Integration Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - clusters/kind/**
+      - clusters/minikube/**
+      - scenarios/sre/project/roles/tools/install_*.yaml
+      - scripts/agent/**
+      - tests/integration/**
+      - components/recorders/**
+      - '!clusters/kind/README.md'
+      - '!clusters/minikube/README.md'
+
+concurrency:
+  group: ci-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clusters-kind:
+    name: ITBench Kind Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version-file: pyproject.toml
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: clusters/kind/go.mod
+          cache-dependency-path: clusters/kind/go.sum
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.2.4
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Create Kind cluster
+        run: |
+          make -C clusters/kind create-environment-cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C clusters/kind run-service-provider &
+          sleep 10
+      - name: Run integration tests
+        run: |
+          make test-integration
+        env:
+          KUBECONFIG: ${{ github.workspace }}/clusters/kind/kubeconfigs/itbench-environment
+          K8S_AUTH_KUBECONFIG: ${{ github.workspace }}/clusters/kind/kubeconfigs/itbench-environment
+      - name: Destroy Kind cluster
+        if: always()
+        run: |
+          make -C clusters/kind destroy-environment-cluster
+
+  clusters-minikube:
+    name: ITBench Minikube Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version-file: pyproject.toml
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.2.4
+      - uses: medyagh/setup-minikube@v0.0.21
+        with:
+          cache: false
+          cni: cilium
+          container-runtime: containerd
+          driver: docker
+          kubernetes-version: v1.35.0
+          minikube-version: 1.38.1
+          start: false
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Create Minikube cluster
+        run: |
+          make -C clusters/minikube create-environment-cluster
+      - name: Start Minikube tunnel
+        run: |
+          make -C clusters/minikube start-environment-tunnel &
+          sleep 10
+      - name: Run integration tests
+        run: |
+          make test-integration
+        env:
+          KUBECONFIG: ${{ github.workspace }}/clusters/minikube/kubeconfigs/itbench-environment
+          K8S_AUTH_KUBECONFIG: ${{ github.workspace }}/clusters/minikube/kubeconfigs/itbench-environment
+      - name: Destroy Minikube cluster
+        if: always()
+        run: |
+          make -C clusters/minikube destroy-environment-cluster
+
+  environment-tools-gateway-kind:
+    name: ITBench Environment Tools Gateway Network Tests on Kind
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version-file: pyproject.toml
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: clusters/kind/go.mod
+          cache-dependency-path: clusters/kind/go.sum
+      - uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.2.4
+      - name: Install project dependencies
+        run: |
+          make deps
+      - name: Create group vars
+        run: |
+          make -C scenarios/sre group-vars
+      - name: Create Kind cluster
+        run: |
+          make -C clusters/kind create-environment-cluster
+      - name: Run Cloud Provider
+        run: |
+          make -C clusters/kind run-service-provider &
+          sleep 10
+      - name: Run connection tests
+        run: |
+          make -C scenarios/sre test-network-gateway
+      - name: Destroy Kind cluster
+        if: always()
+        run: |
+          make -C clusters/kind destroy-environment-cluster
+
+  clickhouse-recorder:
+    name: ClickHouse Recorder Integration Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: components/recorders/clickhouse/go.mod
+          cache-dependency-path: components/recorders/clickhouse/go.sum
+      - name: Test
+        run: go test -count=1 ./...
+        working-directory: components/recorders/clickhouse
+
+  jaeger-recorder:
+    name: Jaeger Recorder Integration Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: components/recorders/jaeger/go.mod
+          cache-dependency-path: components/recorders/jaeger/go.sum
+      - name: Test
+        run: go test -count=1 ./...
+        working-directory: components/recorders/jaeger
+
+  prometheus-recorder:
+    name: Prometheus Recorder Integration Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: components/recorders/prometheus/go.mod
+          cache-dependency-path: components/recorders/prometheus/go.sum
+      - name: Test
+        run: go test -count=1 ./...
+        working-directory: components/recorders/prometheus

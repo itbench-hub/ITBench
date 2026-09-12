@@ -3,7 +3,6 @@
   kubernetes.core.k8s_info:
     api_version: batch/v1
     kind: Job
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     name: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}"
     namespace: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.namespace }}"
   register: recorders_job
@@ -14,7 +13,6 @@
 
 - name: Create PersistentVolumeClaim for kubernetes-topology-monitor-recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: PersistentVolumeClaim
@@ -35,7 +33,6 @@
 
 - name: Install Kubernetes Job for kubernetes-topology-monitor-recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: batch/v1
       kind: Job

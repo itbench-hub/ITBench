@@ -13,7 +13,7 @@
 >Generally, there are minimal differences between using Podman or Docker for Kind. For simplicity, only instructions for Podman have been provided. However, if one wants to use Docker, the instructions for downloading it are provided [here](https://docs.docker.com/get-started/get-docker/).
 
 >[!IMPORTANT]
->If using a Kind cluster for SRE scenarios, please ensure that the machine has the necessary [hardware requirements](../../documentation/getting-started/awx.md#requirements).
+>If using a Kind cluster for SRE scenarios, please ensure that the machine has the necessary [hardware requirements](../../documentation/getting-started/argo.md#requirements).
 
 ## Installation
 
@@ -94,12 +94,8 @@ podman machine start
 
 Two configuration templates are provided in the `configs` directory:
 
-- [awx](./configs/awx.yaml)
-- [simple](./configs/simple.yaml)
-
-The `simple` configuration is for basic use cases, such as developing new faults or scenarios or running a single benchmark trial. This cluster will suffice for most needs. For management instructions for a Kind cluster based on the `simple` configuration, please see [here](#simple-cluster).
-
-The `AWX` configuration is for advanced use cases which require orchestration to run multi-trial benchmarks across a cluster or clusters. This requires a machine with significantly more resources than the `simple` configuration. For management instructions for a Kind cluster based on the `awx` configuration, please see [here](#awx-cluster).
+- [argo](./configs/argo.yaml) — for Argo Workflows orchestration (multi-cluster, multi-trial benchmarks)
+- [environment](./configs/environment.yaml) — for basic use cases such as developing faults or scenarios or running a single benchmark trial
 
 Regardless of the configuration used, once the cluster has been started, it can be accessed with kubectl using the following command:
 
@@ -108,13 +104,13 @@ export KUBECONFIG=~/.kube/config
 kubectl cluster-info
 ```
 
-### AWX Cluster
+### Argo Stack
 
 #### Creation
 
-1. Run the following command to create a Kind cluster:
+1. Run the following command to create a two-cluster Kind stack for Argo Workflows orchestration:
 ```shell
-make create-awx-cluster
+make create-argo-stack
 ```
 
 2. Open a new terminal window and run the following command to start the Cloud Provider Kind
@@ -126,18 +122,18 @@ make run-service-provider
 
 1. In the terminal window running the Cloud Provider Kind, press `Ctrl` and `C` keys on your keyboard.
 
-2. Run the following command to destroy a Kind cluster
+2. Run the following command to destroy the Argo stack
 ```shell
-make destroy-awx-cluster
+make destroy-argo-stack
 ```
 
-### Simple Cluster
+### Environment Cluster
 
 #### Creation
 
 1. Run the following command to create a Kind cluster:
 ```shell
-make create-simple-cluster
+make create-environment-cluster
 ```
 
 2. Open a new terminal window and run the following command to start the Cloud Provider Kind
@@ -149,9 +145,9 @@ make run-service-provider
 
 1. In the terminal window running the Cloud Provider Kind, press `Ctrl` and `C` keys on your keyboard.
 
-2. Run the following command to destroy a Kind cluster
+2. Run the following command to destroy the Kind cluster
 ```shell
-make destroy-simple-cluster
+make destroy-environment-cluster
 ```
 
 ## Troubleshooting

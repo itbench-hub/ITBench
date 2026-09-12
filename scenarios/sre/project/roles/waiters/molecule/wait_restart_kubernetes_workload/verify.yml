@@ -3,28 +3,13 @@
   hosts:
     - localhost
   tasks:
-    - name: Wait for rollout to complete
-      ansible.builtin.command:
-        argv:
-          - kubectl
-          - -n
-          - restart-kubernetes-workload-test
-          - rollout
-          - status
-          - deployment
-          - test-workload
-          - --kubeconfig={{ cluster.kubeconfig | ansible.builtin.expanduser }}
-          - --timeout=60s
-      changed_when:
-        - false
-
     - name: Retrieve workload after restart
       kubernetes.core.k8s_info:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: apps/v1
         kind: Deployment
         name: test-workload
         namespace: restart-kubernetes-workload-test
+        wait: true
       register: waiters_deployment
 
     - name: Validate that workload was restarted

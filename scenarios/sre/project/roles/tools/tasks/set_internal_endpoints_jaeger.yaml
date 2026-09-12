@@ -3,7 +3,6 @@
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Service
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}-collector"
     namespace: "{{ tools_operands.opentelemetry_collector.jaeger.namespace }}"
   register: tools_jaeger_service
@@ -35,6 +34,20 @@
             ":4317"
           }}
       querier:
+        grpc: |-
+          {{
+            (
+              [
+                tools_jaeger_service.resources[0].metadata.name,
+                tools_jaeger_service.resources[0].metadata.namespace,
+                "svc",
+                "cluster",
+                "local"
+              ] |
+              ansible.builtin.join(".")
+            ) +
+            ":16685"
+          }}
         http: |-
           {{
             "http://" +

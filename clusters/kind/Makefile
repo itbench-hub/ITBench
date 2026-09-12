@@ -1,60 +1,64 @@
 GO := $(shell command -v go)
 UV := $(shell command -v uv)
 
+ENVIRONMENT_CLUSTER_NAME 	?= itbench-environment
+ORCHESTRATOR_CLUSTER_NAME	?= itbench-orchestrator
+
 .PHONY: help
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-.PHONY: lint
-lint: ## Lints files
-	$(UV) run ansible-lint
-
-.PHONY: group-vars
-group-vars: ## Generates the group variables
-	mkdir -p inventory/group_vars/all
-	echo "ansible_python_interpreter: $$($(UV) python find)" > inventory/group_vars/all/ansible.yaml
-
 .PHONY: check-resources
 check-resources:
-	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml \
-		--extra-vars "target=$(CLUSTER_TARGET)"
+	$(UV) run python $(abspath ../../scripts/check_localhost_resources.py) --target $(CLUSTER_TARGET)
+
+kubeconfigs:
+	mkdir -p $@
 
 .PHONY: create-cluster
-create-cluster:
-	$(GO) tool kind create cluster --config configs/$(CLUSTER_CONFIG_FILE)
+create-cluster: kubeconfigs
+	$(GO) tool kind create cluster --name $(CLUSTER_NAME) \
+		--config $(abspath configs/$(CLUSTER_CONFIG_FILE))
+	$(GO) tool kind export kubeconfig --name $(CLUSTER_NAME) \
+		--kubeconfig $(abspath kubeconfigs/$(CLUSTER_NAME))
 
 .PHONY: destroy-cluster
 destroy-cluster:
 	$(GO) tool kind delete cluster --name $(CLUSTER_NAME)
 
-.PHONY: create-simple-cluster
-create-simple-cluster: CLUSTER_CONFIG_FILE=simple.yaml
-create-simple-cluster: CLUSTER_TARGET=single-cluster
-create-simple-cluster: group-vars ## Creates a Kind cluster for local development
-	$(MAKE) check-resources CLUSTER_TARGET=$(CLUSTER_TARGET)
-	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=$(CLUSTER_CONFIG_FILE)
+.PHONY: create-environment-cluster
+create-environment-cluster: ## Creates a Kind cluster for local development
+	$(MAKE) check-resources CLUSTER_TARGET=environment-cluster
+	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=environment.yaml CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
+	KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME)) \
+		$(UV) run python $(abspath ../../scripts/configure_environment_cluster.py)
+	@printf 'K8S_AUTH_KUBECONFIG=%s\n' "$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME))" > $(abspath ../../scenarios/sre/.env)
+	@echo "Run the following command to access the cluster ($(ENVIRONMENT_CLUSTER_NAME)) using kubectl:"
+	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME))"
 
-.PHONY: destroy-simple-cluster
-destroy-simple-cluster: CLUSTER_NAME=kind-dev
-destroy-simple-cluster: ## Deletes the local development Kind cluster
-	$(MAKE) destroy-cluster CLUSTER_NAME=$(CLUSTER_NAME)
+.PHONY: destroy-environment-cluster
+destroy-environment-cluster: ## Deletes the local development Kind cluster
+	$(MAKE) destroy-cluster CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
 
-.PHONY: create-awx-cluster
-create-awx-cluster: CLUSTER_CONFIG_FILE=awx.yaml
-create-awx-cluster: CLUSTER_TARGET=awx-stack
-create-awx-cluster: group-vars ## Create a Kind cluster for local development on AWX
-	$(MAKE) check-resources CLUSTER_TARGET=$(CLUSTER_TARGET)
-	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=$(CLUSTER_CONFIG_FILE)
+.PHONY: create-argo-stack
+create-argo-stack: ## Creates a two-cluster Kind stack for Argo Workflows orchestration
+	$(MAKE) check-resources CLUSTER_TARGET=argo-stack
+	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=argo.yaml CLUSTER_NAME=$(ORCHESTRATOR_CLUSTER_NAME)
+	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=environment.yaml CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
+	KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME)) \
+		$(UV) run python $(abspath ../../scripts/configure_environment_cluster.py)
+	@printf 'K8S_AUTH_KUBECONFIG=%s\n' "$(abspath kubeconfigs/$(ORCHESTRATOR_CLUSTER_NAME))" > $(abspath ../../scenarios/sre/.env)
+	@printf '---\nstack:\n  environments:\n    - kubeconfig: %s\n' \
+		"$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME))" \
+		> $(abspath ../../scenarios/sre/inventory/group_vars/orchestrator/stack.yaml)
+	@echo "Run the following commands to access the orchestrator cluster ($(ORCHESTRATOR_CLUSTER_NAME)) using kubectl:"
+	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(ORCHESTRATOR_CLUSTER_NAME))"
 
-.PHONY: destroy-awx-cluster
-destroy-awx-cluster: CLUSTER_NAME=kind-awx
-destroy-awx-cluster: ## Deletes the local development AWX Kind cluster
-	$(MAKE) destroy-cluster CLUSTER_NAME=$(CLUSTER_NAME)
+.PHONY: destroy-argo-stack
+destroy-argo-stack: ## Deletes the local development Argo Kind cluster
+	$(MAKE) destroy-cluster CLUSTER_NAME=$(ORCHESTRATOR_CLUSTER_NAME)
+	$(MAKE) destroy-cluster CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
 
 .PHONY: run-service-provider
 run-service-provider: ## Runs Cloud Provider Kind for Load Balancer services
 	$(GO) tool cloud-provider-kind --gateway-channel disabled
-
-.PHONY: test-molecule
-test-molecule: ## Run Molecule tests
-	$(UV) run molecule test --all --report --command-borders

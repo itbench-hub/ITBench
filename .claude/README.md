@@ -14,11 +14,8 @@ Inspired by the [Langfuse .claude structure](https://github.com/langfuse/langfus
 │   ├── sre/             # SRE-specific skills
 │   │   ├── fault-scaffolding/
 │   │   │   └── SKILL.md
-│   │   ├── scenario-scaffolding/
-│   │   │   └── SKILL.md
-│   │   └── trial-verifier/
-│   │       ├── SKILL.md
-│   │       └── trial_verifier_service_aware.py
+│   │   └── scenario-scaffolding/
+│   │       └── SKILL.md
 │   └── skill-rules.json
 ├── hooks/               # Automation scripts
 │   └── skill-activation-prompt.sh
@@ -32,23 +29,23 @@ Inspired by the [Langfuse .claude structure](https://github.com/langfuse/langfus
 
 **Skills are reusable instruction blocks** that auto-activate when working on specific tasks:
 
-1. **`fault-scaffolding`** - Helps complete fault TODO fields
-   - Auto-activates when editing `faults/index.json` or `inject_*.yaml` files
+1. **`fault-scaffolding`** - Guides creating new faults from incident description to Ansible implementation
+   - Auto-activates when editing `templates/library/indexes/faults/*.yaml.j2` or `inject_*.yaml` files
    - Provides patterns for JSON schemas, Ansible tasks, solutions
-   - References existing fault implementations
+   - References existing fault implementations in `library/indexes/faults/`
 
-2. **`scenario-scaffolding`** - Helps complete scenario TODO fields
-   - Auto-activates when editing `scenarios/index.json`
-   - Guides disruption configuration
-   - Adapts fault solutions to scenarios
+2. **`scenario-scaffolding`** - Guides creating complete scenarios with ground truth
+   - Auto-activates when editing `templates/library/indexes/scenarios/*.yaml.j2`
+   - Guides disruption configuration and ground truth DSL generation
+   - References existing groundtruth files in `library/specs/scenarios/`
 
 ### Agents
 
 **Agents orchestrate complete workflows** from start to finish:
 
 1. **`sre-scenario-creator`** - Full workflow for creating new scenarios
-   - Step-by-step guidance from concept to documentation
-   - Integration with scaffolding commands
+   - Step-by-step guidance from concept to validation
+   - Integration with scaffold commands
    - Quality validation checklists
 
 ### Hooks
@@ -67,10 +64,10 @@ Inspired by the [Langfuse .claude structure](https://github.com/langfuse/langfus
 Skills auto-activate based on context, but you can manually invoke them:
 
 ```bash
-# After running scaffold_fault
+# After running make scaffold-fault
 /skill fault-scaffolding
 
-# After running scaffold_scenario
+# After running make scaffold-scenario
 /skill scenario-scaffolding
 ```
 
@@ -89,31 +86,32 @@ Then describe what you want to create:
 ### Complete Workflow Example
 
 ```bash
-# 1. Start in the SRE scenarios directory
-cd scenarios/sre
+# 1. From the root directory, scaffold a new fault
+make scaffold-fault
+# Follow prompts (name, description, expectation)
 
-# 2. Scaffold a new fault
-make scaffold_fault
-# Follow prompts...
-
-# 3. Ask Claude to complete the TODOs
+# 2. Ask Claude to complete the fault index template
 # The fault-scaffolding skill will auto-activate
-> "Help me complete the fault TODOs for excessive-memory-consumption"
+> "Help me complete the fault template for excessive-memory-consumption"
 
-# 4. Scaffold a scenario using that fault
-make scaffold_scenario
-# Select the fault you just created...
+# 3. Generate library outputs and Ansible role files
+make generate-library
+make validate-library
+cd scenarios/sre && make generate-resource-files
 
-# 5. Ask Claude to complete the scenario
+# 4. From root, scaffold a new scenario
+make scaffold-scenario
+
+# 5. Ask Claude to complete the scenario template and ground truth
 # The scenario-scaffolding skill will auto-activate
 > "Help me complete the scenario using the excessive-memory-consumption fault"
 
-# 6. Generate documentation
-make regenerate-scenario-files
+# 6. Validate everything
+make generate-library && make validate-library
 
-# 7. Review the results
-cat docs/faults.md | grep -A 30 "Excessive Memory Consumption"
-cat docs/scenarios.md | grep -A 50 "Scenario [ID]"
+# 7. Review generated documentation
+cat documentation/library/faults/<fault-name>.md
+cat documentation/library/scenarios/sre/<id>.md
 ```
 
 ## 📚 Skill Activation Patterns
@@ -121,16 +119,16 @@ cat docs/scenarios.md | grep -A 50 "Scenario [ID]"
 Skills activate automatically when:
 
 ### Fault Scaffolding
-- ✅ Editing `faults/index.json` with TODO patterns
+- ✅ Editing `templates/library/indexes/faults/*.yaml.j2`
 - ✅ Creating/editing `inject_*.yaml` files
-- ✅ Prompt contains: "fault scaffold", "complete fault", "fill fault"
+- ✅ Prompt contains: "fault scaffold", "new fault", "complete fault"
 - ✅ Prompt contains: "injection task", "fault arguments"
 
 ### Scenario Scaffolding
-- ✅ Editing `scenarios/index.json` with empty arrays
-- ✅ Files contain `"faultId":` scaffolding hint
+- ✅ Editing `templates/library/indexes/scenarios/*.yaml.j2`
+- ✅ Editing `library/specs/scenarios/*/groundtruth*.yaml`
 - ✅ Prompt contains: "scenario scaffold", "complete scenario"
-- ✅ Prompt contains: "disruptions", "scenario solutions"
+- ✅ Prompt contains: "disruptions", "ground truth", "propagations"
 
 ## 🔧 Configuration
 
@@ -190,36 +188,36 @@ The `settings.json` allows:
    - Output Format
    - Important Notes
 
-## 🎓 Learning Resources
+## 🗂️ Key Paths Reference
 
-### Understanding the Structure
+| What | Where |
+| --- | --- |
+| Fault index templates | `templates/library/indexes/faults/<N>.yaml.j2` |
+| Scenario index templates | `templates/library/indexes/scenarios/<N>.yaml.j2` |
+| Rendered fault indexes | `library/indexes/faults/<N>.json` |
+| Rendered scenario indexes | `library/indexes/scenarios/<N>.json` |
+| Scenario specs (groundtruth, scenario.yaml) | `library/specs/scenarios/<ID>/` |
+| Fault injection tasks | `scenarios/sre/project/roles/faults/tasks/inject_*.yaml` |
+| Application releases (names + namespaces) | `scenarios/sre/project/roles/applications/vars/main/releases.yaml` |
+| JSON schemas | `schemas/json/library/index/` |
+| Generated documentation | `documentation/library/` |
 
-- **Skills** → Documentation-driven, context-aware assistance
-- **Agents** → Workflow orchestration with quality gates
-- **Hooks** → Automated suggestions and tracking
+## 🔑 Key Commands
 
-### Best Practices
-
-1. **Skills should be modular** - Focus on one domain
-2. **Agents should be comprehensive** - Cover full workflows
-3. **Hooks should be lightweight** - Fast pattern matching
-4. **Always include examples** - Show, don't just tell
-5. **Reference existing code** - Link to real implementations
-
-### References
-
-- [Langfuse .claude structure](https://github.com/langfuse/langfuse/tree/main/.claude) - Original inspiration
-- [OpenCode.ai Skills Docs](https://opencode.ai/docs/skills/) - Official documentation
-- [ITBench Developer Guide](../../scenarios/sre/DEVELOPER_GUIDE.md) - Project context
-- [Faults Documentation](../../scenarios/sre/docs/faults.md) - Fault reference
-- [Scenarios Documentation](../../scenarios/sre/docs/scenarios.md) - Scenario reference
+| Command | Where | What it does |
+| --- | --- | --- |
+| `make scaffold-fault` | root | Create a new fault index template stub |
+| `make scaffold-scenario` | root | Create a new scenario index template stub |
+| `make generate-library` | root | Render templates → indexes, documentation, specs |
+| `make validate-library` | root | Validate all indexes against JSON schemas |
+| `make generate-resource-files` | `scenarios/sre/` | Generate Ansible role files from library indexes |
 
 ## 🐛 Troubleshooting
 
 ### Skills Not Activating
 
 1. Check `skill-rules.json` syntax: `jq . .claude/skills/skill-rules.json`
-2. Verify file patterns match: `ls -la scenarios/sre/roles/documentation/files/library/faults/index.json`
+2. Verify file patterns match: `ls templates/library/indexes/faults/*.yaml.j2`
 3. Check hook is executable: `ls -la .claude/hooks/`
 4. Review hook output: Check for skill suggestions in responses
 
@@ -229,19 +227,20 @@ The `settings.json` allows:
 2. Check hook permissions: `chmod +x .claude/hooks/*.sh`
 3. Test hook manually: `echo '{"prompt":"fault scaffold"}' | .claude/hooks/skill-activation-prompt.sh`
 
-### JSON Validation Errors
+### Validation Errors
 
-1. Validate faults index: `jq . scenarios/sre/roles/documentation/files/library/faults/index.json`
-2. Validate scenarios index: `jq . scenarios/sre/roles/documentation/files/library/scenarios/index.json`
-3. Run linter: `cd scenarios/sre && make lint`
+1. Validate a fault index: `jq . library/indexes/faults/1.json`
+2. Validate a scenario index: `jq . library/indexes/scenarios/1.json`
+3. Run full validation: `make validate-library`
+4. Check schema: `cat schemas/json/library/index/fault.json`
 
 ## 💡 Tips
 
 - **Start with the agent** (`sre-scenario-creator`) for complete workflows
 - **Use skills directly** when you just need quick patterns
-- **Reference existing implementations** - Search before creating
-- **Test in a cluster** - Don't trust untested solutions
-- **Commit incrementally** - Fault, then scenario, then docs
+- **Reference existing implementations** — search `library/indexes/faults/` before creating
+- **Test in a cluster** — don't trust untested solutions
+- **Commit incrementally** — fault template, then scenario template, then groundtruth
 
 ## 🤝 Contributing
 
@@ -261,3 +260,8 @@ When adding new skills or agents:
   - Added sre-scenario-creator agent
   - Added skill-activation hook
   - Configured permissions and settings
+- **2025-07**: Updated for argo-refactor branch
+  - Paths updated: library indexes now at `library/indexes/`, templates at `templates/library/indexes/`
+  - Commands updated: `scaffold-fault`, `scaffold-scenario`, `generate-library`, `validate-library`, `generate-resource-files`
+  - Application config moved to `scenarios/sre/project/roles/applications/vars/main/releases.yaml`
+  - Groundtruth files now live in `library/specs/scenarios/<ID>/`

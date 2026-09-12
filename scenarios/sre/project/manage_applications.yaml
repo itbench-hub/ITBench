@@ -14,21 +14,16 @@
         name: cluster
       tags:
         - always
-      vars:
-        cluster_files:
-          kubeconfig: "{{ cluster.kubeconfig }}"
   tasks:
     - name: Import role variables from scenario
       tags:
         - install_applications
       when:
-        - scenario_id is ansible.builtin.defined
+        - scenario_specs_directory is ansible.builtin.defined
       block:
         - name: Import scenarios role
           ansible.builtin.import_role:
             name: scenarios
-          vars:
-            scenarios_identifier: "{{ scenario_id }}"
 
         - name: Create application installation variable
           ansible.builtin.set_fact:
@@ -38,7 +33,7 @@
       tags:
         - install_applications
       when:
-        - scenario_id is ansible.builtin.undefined
+        - scenario_specs_directory is not ansible.builtin.defined
       block:
         - name: Create application installation variable
           ansible.builtin.set_fact:
@@ -53,5 +48,4 @@
         name: applications
       vars:
         applications_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"

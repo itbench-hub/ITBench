@@ -21,9 +21,9 @@ Please follow the instructions listed [here](../getting-started/scenarios.md#set
 
 ### Generating Boilerplate
 
-1. Run the following command and respond to the prompts appropriately to create a new index in the fault library:
+1. Run the following command from the **root directory** and respond to the prompts appropriately to create a new scenario index stub:
 ```shell
-make generate-scenario-index
+make scaffold-scenario
 ```
 
 >[!TIP]
@@ -31,15 +31,19 @@ make generate-scenario-index
 
 ### Editing New Scenario
 
-1. Edit the new scenario index template. This will be located in the [scenario library index template directory](../../scenarios/sre/project/roles/documentation/templates/library/scenarios/indexes/). If using an [ITBench supported application](../library/applications/README.md), please ensure that [proper template variables are used](../../scenarios/sre/project/roles/applications/defaults/main/managers.yaml).
+1. Edit the new scenario index template. This will be located in the [scenario library index template directory](../../templates/library/indexes/scenarios/). If using an [ITBench supported application](../library/applications/README.md), please ensure that [proper template variables are used](../../scenarios/sre/project/roles/applications/defaults/main/managers.yaml).
 
 >[!TIP]
 >Use the existing templates to see how to add the variables for templating.
 
+2. Once the index template is complete, run the following command to generate the Ansible role files (scenario manifests, groundtruth stubs, etc.) from `scenarios/sre`:
+```shell
+make generate-resource-files
+```
 
 ### Validating New Scenario
 
-1. Run the following command to generate the documentation for the new scenario:
+1. Run the following command to generate the library outputs (documentation, indexes, specs):
 ```shell
 make generate-library
 ```

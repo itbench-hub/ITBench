@@ -1,4 +1,10 @@
+-include .env
+
+export K8S_AUTH_KUBECONFIG
+
 UV = $(shell which uv)
+
+AWS_PROFILE ?= default
 
 .PHONY: help
 help: ## Display this help.
@@ -9,52 +15,22 @@ group-vars: ## Generates the group variables
 	echo "---\nansible_python_interpreter: $(shell $(UV) python find)" > inventory/group_vars/all/python.yaml
 	cp inventory/group_vars/all/storage.yaml.example inventory/group_vars/all/storage.yaml
 	cp inventory/group_vars/environment/applications.yaml.example inventory/group_vars/environment/applications.yaml
-	cp inventory/group_vars/environment/cluster.yaml.example inventory/group_vars/environment/cluster.yaml
 	cp inventory/group_vars/environment/tools.yaml.example inventory/group_vars/environment/tools.yaml
-	cp inventory/group_vars/runner/agent.yaml.example inventory/group_vars/runner/agent.yaml
-	cp inventory/group_vars/runner/experiments.yaml.example inventory/group_vars/runner/experiments.yaml
-	cp inventory/group_vars/runner/github.yaml.example inventory/group_vars/runner/github.yaml
-	cp inventory/group_vars/runner/stack.yaml.example inventory/group_vars/runner/stack.yaml
-
-.PHONY: generate-library
-generate-library: ## Generates library indexes, schemas, and other related documentation
-	$(UV) run scripts/generate_library_indexes.py \
-		--templates_directory=$(abspath ./templates/library/indexes) \
-		--library_index_directory=$(abspath ./library/indexes) \
-		--playbooks_directory=$(abspath ./project)
-	$(UV) run scripts/generate_library_index_schemas.py \
-		--library_index_directory=$(abspath ./library/indexes) \
-		--schemas_directory=$(abspath ../../schemas/json) \
-		--templates_directory=$(abspath ./templates/schemas/json/library/index)
-	$(UV) run scripts/generate_library_readmes.py \
-		--templates_directory=$(abspath ./templates/documentation/library) \
-		--library_index_directory=$(abspath ./library/indexes) \
-		--documentation_directory=$(abspath ../../documentation/library)
-
-.PHONY: generate-fault-index
-generate-fault-index: ## Generate a new fault index based on user input
-	$(UV) run ansible-playbook -i inventory.yaml project/generate_documentation_index.yaml --tags "generate_fault"
-
-.PHONY: generate-scenario-index
-generate-scenario-index: ## Generate a new scenario index based on user input
-	$(UV) run ansible-playbook -i inventory.yaml project/generate_documentation_index.yaml --tags "generate_scenario"
+	cp inventory/group_vars/orchestrator/experiments.yaml.example inventory/group_vars/orchestrator/experiments.yaml
+	cp inventory/group_vars/orchestrator/stack.yaml.example inventory/group_vars/orchestrator/stack.yaml
 
 .PHONY: generate-resource-files
 generate-resource-files: ## Generates task files, scenario manifests, and other related files
-	$(UV) run ansible-playbook -i inventory project/manage_resource_files.yaml --tags "generate_files"
+	$(UV) run ../../scripts/ansible/generate_role_files.py \
+		--library_index_directory=$(abspath ../../library/indexes) \
+		--playbooks_directory=$(abspath project)
 	cd ../../ && $(UV) run ansible-lint $(abspath project/roles/scenarios/files) --fix
-
-.PHONY: validate-library
-validate-library: ## Validates library indexes
-	$(UV) run scripts/validate_library_indexes.py \
-		--library_index_directory=$(abspath ./library/indexes) \
-		--schemas_directory=$(abspath ../../schemas/json)
 
 .PHONY: deploy-tools
 deploy-tools: ## Deploys the observability and fault tools to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install_tools" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install_tools"
 endif
@@ -67,7 +43,7 @@ display-endpoints: ## Shows the urls for accessing deployed tools in browser
 undeploy-tools: ## Undeploys the observability and fault tools from cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall_tools" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall_tools"
 endif
@@ -76,7 +52,7 @@ endif
 deploy-applications: ## Deploys the applications to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install_applications" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install_applications"
 endif
@@ -85,7 +61,7 @@ endif
 undeploy-applications: ## Undeploys the applications to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall_applications" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall_applications"
 endif
@@ -94,26 +70,21 @@ endif
 deploy-recorders: ## Deploys the data recorders to cluster
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install_recorders" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install_recorders"
 endif
 
 .PHONY: undeploy-recorders
 undeploy-recorders: ## Undeploys the data recorders to cluster
-ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "uninstall_recorders" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
 	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "uninstall_recorders"
-endif
 
 .PHONY: inject-scenario-faults
 inject-scenario-faults: ## Injects the fault used in a specific scenario
 ifdef SCENARIO_NUMBER
-	$(UV) run scripts/inject_scenario_faults.py \
+	$(UV) run python $(abspath ../../scripts/scenarios/inject_scenario_faults.py) \
 		--private_project_directory $(abspath .) \
-		--scenario_id $(SCENARIO_NUMBER)
+		--scenario_specs_directory $(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))
 else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif
@@ -138,7 +109,7 @@ stop-scenario: undeploy-recorders remove-fault-resources destroy-environment ## 
 enable-agent-access: ## Adds access controls for llm agent
 ifdef SCENARIO_NUMBER
 	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "grant_access" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
+		--extra-vars "scenario_specs_directory=$(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))"
 else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif
@@ -147,45 +118,37 @@ endif
 disable-agent-access: ## Removes access controls for llm agent
 	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "revoke_access"
 
-.PHONY: deploy-awx
-deploy-awx: ## Deploys AWX to a cluster
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "install_tools"
+.PHONY: deploy-argo
+deploy-argo: ## Deploys Argo Workflows to the orchestrator cluster
+	eval $$(scripts/export-aws-credentials.sh $(AWS_PROFILE)); \
+	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "install_tools"
 
-.PHONY: undeploy-awx
-undeploy-awx: ## Undeploys AWX to a cluster
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "uninstall_tools"
-
-.PHONY: configure-awx-stack
-configure-awx-stack: ## Add job and workflow templates to AWX pipeline
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "configure_awx"
+.PHONY: undeploy-argo
+undeploy-argo: ## Undeploys Argo Workflows from the orchestrator cluster
+	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "uninstall_tools"
 
 .PHONY: launch-start-workflow
-launch-start-workflow: ## Launches the workflow equivalent of start_incident on AWX
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=start"
+launch-start-workflow: ## Launches the start-scenario workflow on Argo
+	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "launch_workflows" \
+		--extra-vars "argo_workflow_type=start-scenario"
 
 .PHONY: launch-stop-workflow
-launch-stop-workflow: ## Launches the workflow equivalent of stop_incident on AWX
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=stop"
-
-.PHONY: launch-full-workflow
-launch-full-workflow: ## Launches the scenario full execution workflow
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=full"
+launch-stop-workflow: ## Launches the stop-scenario workflow on Argo
+	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "launch_workflows" \
+		--extra-vars "argo_workflow_type=stop-scenario"
 
 .PHONY: launch-data-collection-workflow
-launch-data-collection-workflow: ## Launches the data collection execution workflow
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=data"
+launch-data-collection-workflow: ## Launches the data-collection workflow on Argo
+	$(UV) run ansible-playbook -i inventory project/manage_argo.yaml --tags "launch_workflows" \
+		--extra-vars "argo_workflow_type=data-collection"
 
 .PHONY: test-molecule-agent
 test-molecule-agent: ## Runs Molecule tests for the Agent role
 	cd project/roles/agent && $(UV) run molecule test --all --report --command-borders
 
-.PHONY: test-molecule-awx
-test-molecule-awx: ## Runs Molecule tests for the AWX role
-	cd project/roles/awx && $(UV) run molecule test --all --report --command-borders
+.PHONY: test-molecule-argo
+test-molecule-argo: ## Runs Molecule tests for the Argo role
+	cd project/roles/argo && $(UV) run molecule test --all --report --command-borders
 
 .PHONY: test-molecule-faults
 test-molecule-faults: ## Runs Molecule tests for the Faults role
@@ -198,10 +161,6 @@ test-molecule-waiters: ## Runs Molecule tests for the Waiters role
 .PHONY: test-network-gateway
 test-network-gateway: ## Run tool gateway network tests
 	cd project/roles/tools && $(UV) run molecule test --scenario-name external_endpoints --report --command-borders
-
-.PHONY: test-scripts
-test-scripts: ## Run unit tests for Python scripts
-	$(UV) run python -m unittest discover -s scripts/unittests -p "test_*.py"
 
 .PHONY: generate-agent-bundle
 generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with

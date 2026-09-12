@@ -14,20 +14,19 @@
 
 - name: Create Namespace
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Namespace
       metadata:
         labels:
           "istio.io/dataplane-mode": ambient
+          "itbench.io/agent-accessible": "true"
           "prometheus.itbench.io/monitor": "true"
         name: "{{ applications_releases.book_info.namespace }}"
     state: present
 
 - name: Create BookInfo Kubernetes objects
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     namespace: "{{ applications_releases.book_info.namespace }}"
     state: present
     src: "{{ applications_temporary_directory.path }}/{{ manifest_file_path }}"
@@ -43,7 +42,6 @@
   kubernetes.core.k8s_info:
     api_version: gateway.networking.k8s.io/v1
     kind: Gateway
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     name: bookinfo-gateway
     namespace: "{{ applications_releases.book_info.namespace }}"
     wait: true
@@ -59,7 +57,6 @@
 
 - name: Create Prometheus Pod Monitors
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     resource_definition:
       - apiVersion: monitoring.coreos.com/v1
         kind: PodMonitor
@@ -93,13 +90,11 @@
   kubernetes.core.k8s_info:
     api_version: apps/v1
     kind: Deployment
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     namespace: "{{ applications_releases.book_info.namespace }}"
   register: applications_book_info_deployments
 
 - name: Create HorizontalPodAutorscalers
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: autoscaling/v2
       kind: HorizontalPodAutoscaler
@@ -148,7 +143,6 @@
   kubernetes.core.k8s_info:
     api_version: gateway.networking.k8s.io/v1
     kind: Gateway
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     name: bookinfo-gateway
     namespace: "{{ applications_releases.book_info.namespace }}"
   register: applications_gateway
@@ -170,7 +164,6 @@
 
 - name: Create simple load generator
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: apps/v1
       kind: Deployment
@@ -207,7 +200,6 @@
 
 - name: Create Common PrometheusRules
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     template:
       path: templates/kubernetes/common/prometheusrules.j2
       variable_end_string: "]]"
@@ -219,7 +211,6 @@
 
 - name: Create Book Info PrometheusRules
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     template:
       path: templates/kubernetes/book_info/prometheusrules.j2
       variable_end_string: "]]"
