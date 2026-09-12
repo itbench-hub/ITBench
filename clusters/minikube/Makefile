@@ -79,8 +79,3 @@ destroy-argo-stack: ## Deletes the Argo Minikube stack
 .PHONY: start-argo-tunnel
 start-argo-tunnel: ## Opens Minikube tunnel for the Argo orchestrator cluster
 	$(MAKE) start-tunnel CLUSTER_PROFILE=$(ORCHESTRATOR_CLUSTER_PROFILE)
-
-.PHONY: test
-test: ## Run integration tests
-	KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE)) \
-		$(UV) run pytest $(abspath ../../tests/integration/clusters/) -m integration

@@ -2,24 +2,19 @@ import argparse
 import json
 import logging
 import sys
-
-from operator import itemgetter
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import yaml
 
 from jinja2 import Environment, FileSystemLoader
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
-)
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
 
-def write_json_file(file_path: Path, content: Union[Dict[str, Any], List[Dict[str, Any]]]) -> None:
-    logger.info(f"writing index file: {file_path}")
+def write_json_file(file_path: Path, content: dict[str, Any] | list[dict[str, Any]]) -> None:
+    logger.debug("writing index file: %s", file_path)
     file_path.write_text(json.dumps(content, sort_keys=True, indent=4) + "\n", encoding="utf-8")
 
 def extract_index_from_filename(filename: str) -> int:
@@ -28,7 +23,7 @@ def extract_index_from_filename(filename: str) -> int:
 def generate_id_from_name(name: str) -> str:
     return name.lower().replace(" ", "-")
 
-def load_releases(applications: Path, tools: Path) -> Dict[str, Any]:
+def load_releases(applications: Path, tools: Path) -> dict[str, Any]:
     applications_releases = yaml.safe_load(applications.read_text(encoding="utf-8"))
     tools_releases = yaml.safe_load(tools.read_text(encoding="utf-8"))
 
@@ -37,8 +32,8 @@ def load_releases(applications: Path, tools: Path) -> Dict[str, Any]:
         "tools": tools_releases["tools_releases"]
     }
 
-def load_and_write_library_index(library_type: str, templates_directory: Path, index_directory: Path, generator_directory: Path) -> Dict[str, Any]:
-    logger.info(f"writing {library_type} library indexes")
+def load_and_write_library_index(library_type: str, templates_directory: Path, index_directory: Path) -> dict[str, Any]:
+    logger.info("writing %s library indexes", library_type)
 
     indexes = []
     faults_lookup = {}
@@ -53,26 +48,16 @@ def load_and_write_library_index(library_type: str, templates_directory: Path, i
 
         indexes.append(index)
 
-        """
-        Creating this dictionary is mostly for optimization purposes.
-        This dictionary will be needed to make the scenarios indexes, so
-        initializing it here will save needing to reopen the files later.
-        """
+        # Creating this lookup is an optimisation: the faults data is needed
+        # to build scenario indexes, so caching it here avoids reopening files.
         if library_type == "faults":
             faults_lookup[index_id] = index
 
-        write_json_file(index_directory / (template_file.stem.split(".")[0] + ".json"), index)
-
-    logger.info("writing combined index file")
-
-    write_json_file(
-        generator_directory / f"{library_type}.json",
-        sorted(indexes, key=itemgetter("name"))
-    )
+        write_json_file(index_directory / (Path(template_file.stem).stem + ".json"), index)
 
     return faults_lookup
 
-def create_scenarios_indexes(templates_directory: Path, index_directory: Path, playbooks_directory: Path, generator_directory: Path, faults: Dict[str, Any]) -> None:
+def create_scenarios_indexes(templates_directory: Path, index_directory: Path, playbooks_directory: Path, faults: dict[str, Any]) -> None:
     logger.info("writing scenarios library indexes")
 
     releases = load_releases(
@@ -125,10 +110,7 @@ def create_scenarios_indexes(templates_directory: Path, index_directory: Path, p
 
         indexes.append(index)
 
-        write_json_file(index_directory / (template_file.stem.split(".")[0] + ".json"), index)
-
-    logger.info("writing combined index file")
-    write_json_file(generator_directory / "scenarios.json", sorted(indexes, key=itemgetter("index")))
+        write_json_file(index_directory / (Path(template_file.stem).stem + ".json"), index)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate scenarios schema from library indexes")
@@ -139,37 +121,33 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    generator_directory = args.playbooks_directory.parent / "project" / "roles" / "generator" / "files" / "library" / "index"
-
     _ = load_and_write_library_index(
         "applications",
         args.templates_directory / "applications",
         args.library_index_directory / "applications",
-        generator_directory
     )
 
     faults_cache = load_and_write_library_index(
         "faults",
         args.templates_directory / "faults",
         args.library_index_directory / "faults",
-        generator_directory
     )
 
-    # Process waiters
     _ = load_and_write_library_index(
         "waiters",
         args.templates_directory / "waiters",
         args.library_index_directory / "waiters",
-        generator_directory
     )
 
     create_scenarios_indexes(
         args.templates_directory / "scenarios",
         args.library_index_directory / "scenarios",
         args.playbooks_directory,
-        generator_directory,
         faults_cache
     )
 
 if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from utils.logging import configure_logging
+    configure_logging()
     sys.exit(main())

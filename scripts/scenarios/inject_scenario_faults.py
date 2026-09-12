@@ -4,45 +4,41 @@ import sys
 import time
 
 from pathlib import Path
-from typing import Any, Dict, List
 
 import ansible_runner
 import yaml
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s - %(message)s"
-)
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
 
+_TERMINAL_STATUSES: frozenset[str] = frozenset({"canceled", "successful", "timeout", "failed"})
 
-def load_scenario_spec(scenario_specs_directory: Path) -> Dict[str, Any]:
+
+def load_scenario_spec(scenario_specs_directory: Path) -> dict:
     file_path = scenario_specs_directory / "scenario.yaml"
 
-    logger.info(f"loading scenario spec from: {file_path}")
+    logger.info("loading scenario spec from: %s", file_path)
 
     try:
-        with open(file_path) as f:
-            spec = yaml.safe_load(f)
-        logger.debug(f"Loaded scenario spec with {len(spec["spec"]["faults"])} fault groups")
+        spec = yaml.safe_load(file_path.read_text(encoding="utf-8"))
+        logger.debug("loaded scenario spec with %d fault group(s)", len(spec["spec"]["faults"]))
         return spec
     except FileNotFoundError:
-        logger.error(f"Scenario spec file not found: {file_path}")
+        logger.error("scenario spec file not found: %s", file_path)
         sys.exit(1)
     except yaml.YAMLError as e:
-        logger.error(f"Failed to parse scenario spec YAML: {e}")
+        logger.error("failed to parse scenario spec YAML: %s", e)
         sys.exit(1)
     except Exception as e:
-        logger.exception(f"Unexpected error loading scenario spec: {e}")
+        logger.exception("unexpected error loading scenario spec: %s", e)
         sys.exit(1)
 
 def inject_fault_group(
     private_project_directory: Path,
     scenario_specs_directory: Path,
     faults_index: int
-) -> Any:
-    logger.info(f"Starting fault injection for group {faults_index + 1}")
+) -> object:
+    logger.info("starting fault injection for group %d", faults_index + 1)
 
     _, runner = ansible_runner.interface.run_async(
         private_data_dir=str(private_project_directory),
@@ -53,16 +49,16 @@ def inject_fault_group(
 
     return runner
 
-def wait_for_runners(runners: List[Any]) -> None:
-    logger.info(f"waiting for {len(runners)} fault injection tasks to complete")
+def wait_for_runners(runners: list) -> None:
+    logger.info("waiting for %d fault injection task(s) to complete", len(runners))
 
     for idx, runner in enumerate(runners, 1):
-        logger.debug(f"waiting for runner {idx}/{len(runners)} to complete")
+        logger.debug("waiting for runner %d/%d to complete", idx, len(runners))
 
-        while runner.status not in ["canceled", "successful", "timeout", "failed"]:
+        while runner.status not in _TERMINAL_STATUSES:
             time.sleep(1)
 
-        logger.info(f"runner {idx}/{len(runners)} completed with status: {runner.status}")
+        logger.info("runner %d/%d completed with status: %s", idx, len(runners), runner.status)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="CLI for asynchronous fault injection for live ITBench SRE and FinOps scenarios")
@@ -74,16 +70,19 @@ def main() -> None:
 
     spec = load_scenario_spec(args.scenario_specs_directory)
 
-    runners = []
-    for faults_index in range(len(spec["spec"]["faults"])):
-        runner = inject_fault_group(
+    runners = [
+        inject_fault_group(
             args.private_project_directory,
             args.scenario_specs_directory,
-            faults_index
+            faults_index,
         )
-        runners.append(runner)
+        for faults_index, _ in enumerate(spec["spec"]["faults"])
+    ]
 
     wait_for_runners(runners)
 
 if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from utils.logging import configure_logging
+    configure_logging()
     main()

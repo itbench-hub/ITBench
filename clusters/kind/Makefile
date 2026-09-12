@@ -62,8 +62,3 @@ destroy-argo-stack: ## Deletes the local development Argo Kind cluster
 .PHONY: run-service-provider
 run-service-provider: ## Runs Cloud Provider Kind for Load Balancer services
 	$(GO) tool cloud-provider-kind --gateway-channel disabled
-
-.PHONY: test
-test: ## Run integration tests
-	KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME)) \
-		$(UV) run pytest $(abspath ../../tests/integration/clusters/) -m integration

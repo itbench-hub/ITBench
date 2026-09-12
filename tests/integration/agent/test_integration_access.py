@@ -83,6 +83,7 @@ def cluster_setup(k8s_clients):
 def grant_output(tmp_path, cluster_setup):
     """Run grant_access.main() and return the path to the written kubeconfig."""
     out = tmp_path / "kubeconfig"
+    kubeconfig = Path(os.environ["KUBECONFIG"])
     config.load_kube_config()
 
     core = CoreV1Api()
@@ -91,7 +92,7 @@ def grant_output(tmp_path, cluster_setup):
     namespaces = grant_access.discover_namespaces(core)
     grant_access.apply_all(dyn_client, namespaces)
     token = grant_access.request_token(core)
-    restricted = grant_access.build_kubeconfig(Path(kubeconfig), token)
+    restricted = grant_access.build_kubeconfig(kubeconfig, token)
     out.write_text(yaml.safe_dump(restricted, default_flow_style=False), encoding="utf-8")
     return out
 
