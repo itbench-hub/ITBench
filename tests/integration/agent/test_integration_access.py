@@ -1,5 +1,5 @@
 """
-Integration tests for scripts/agent/grant_access.py and revoke_access.py
+Integration tests for itbench.scenarios.access.
 
 Requires a live Kubernetes cluster. Skipped automatically when
 KUBECONFIG is not set or the cluster is unreachable.
@@ -16,8 +16,15 @@ from kubernetes import client, config, dynamic
 from kubernetes.client import ApiClient, CoreV1Api, RbacAuthorizationV1Api
 from kubernetes.client.exceptions import ApiException
 
-import grant_access
-import revoke_access
+from itbench.scenarios.access import (
+    build_restricted_kubeconfig,
+    create_role_and_binding,
+    create_service_account,
+    discover_namespaces,
+    grant_agent_access,
+    request_token,
+    revoke_agent_access,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -26,9 +33,11 @@ pytestmark = pytest.mark.integration
 #   application  → labelled itbench.io/agent-accessible=true
 #   observability → not labelled
 # ---------------------------------------------------------------------------
+from itbench.scenarios.access import AGENT_ACCESSIBLE_LABEL
+
 LABELLED_NS = "application"
 UNLABELLED_NS = "observability"
-LABEL = {grant_access.AGENT_ACCESSIBLE_LABEL.split("=")[0]: grant_access.AGENT_ACCESSIBLE_LABEL.split("=")[1]}
+LABEL = {AGENT_ACCESSIBLE_LABEL.split("=")[0]: AGENT_ACCESSIBLE_LABEL.split("=")[1]}
 
 
 # ---------------------------------------------------------------------------
@@ -81,19 +90,10 @@ def cluster_setup(k8s_clients):
 
 @pytest.fixture()
 def grant_output(tmp_path, cluster_setup):
-    """Run grant_access.main() and return the path to the written kubeconfig."""
+    """Run grant_agent_access and return the path to the written kubeconfig."""
     out = tmp_path / "kubeconfig"
     kubeconfig = Path(os.environ["KUBECONFIG"])
-    config.load_kube_config()
-
-    core = CoreV1Api()
-    dyn_client = dynamic.DynamicClient(ApiClient())
-
-    namespaces = grant_access.discover_namespaces(core)
-    grant_access.apply_all(dyn_client, namespaces)
-    token = grant_access.request_token(core)
-    restricted = grant_access.build_kubeconfig(kubeconfig, token)
-    out.write_text(yaml.safe_dump(restricted, default_flow_style=False), encoding="utf-8")
+    grant_agent_access(output_path=out, source_kubeconfig_path=kubeconfig)
     return out
 
 
@@ -163,9 +163,8 @@ def test_grant_service_account_created(k8s_clients, grant_output):
 
 @pytest.fixture()
 def after_revoke(grant_output, k8s_clients):
-    """Run revoke_access after grant and return the kubeconfig path for token checks."""
-    dyn_client = dynamic.DynamicClient(ApiClient())
-    revoke_access.revoke_all(dyn_client)
+    """Run revoke_agent_access after grant and return the kubeconfig path for token checks."""
+    revoke_agent_access()
     return grant_output
 
 

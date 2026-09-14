@@ -1,5 +1,5 @@
 """
-Integration tests for configure_environment_cluster.py.
+Integration tests for itbench.cluster.configure.
 
 Requires a running local cluster (Kind or Minikube) with KUBECONFIG set.
 
@@ -10,7 +10,7 @@ import os
 import pytest
 from kubernetes import client, config
 
-import configure_environment_cluster as cec
+import itbench.cluster.configure as cec
 
 pytestmark = pytest.mark.integration
 

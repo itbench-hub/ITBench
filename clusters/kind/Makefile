@@ -10,7 +10,7 @@ help: ## Display this help.
 
 .PHONY: check-resources
 check-resources:
-	$(UV) run python $(abspath ../../scripts/check_localhost_resources.py) --target $(CLUSTER_TARGET)
+	$(UV) run itbench localhost check-resources --target $(CLUSTER_TARGET)
 
 kubeconfigs:
 	mkdir -p $@
@@ -31,7 +31,7 @@ create-environment-cluster: ## Creates a Kind cluster for local development
 	$(MAKE) check-resources CLUSTER_TARGET=environment-cluster
 	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=environment.yaml CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
 	KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME)) \
-		$(UV) run python $(abspath ../../scripts/configure_environment_cluster.py)
+		$(UV) run itbench cluster configure
 	@printf 'K8S_AUTH_KUBECONFIG=%s\n' "$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME))" > $(abspath ../../scenarios/sre/.env)
 	@echo "Run the following command to access the cluster ($(ENVIRONMENT_CLUSTER_NAME)) using kubectl:"
 	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME))"
@@ -46,7 +46,7 @@ create-argo-stack: ## Creates a two-cluster Kind stack for Argo Workflows orches
 	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=argo.yaml CLUSTER_NAME=$(ORCHESTRATOR_CLUSTER_NAME)
 	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=environment.yaml CLUSTER_NAME=$(ENVIRONMENT_CLUSTER_NAME)
 	KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME)) \
-		$(UV) run python $(abspath ../../scripts/configure_environment_cluster.py)
+		$(UV) run itbench cluster configure
 	@printf 'K8S_AUTH_KUBECONFIG=%s\n' "$(abspath kubeconfigs/$(ORCHESTRATOR_CLUSTER_NAME))" > $(abspath ../../scenarios/sre/.env)
 	@printf '---\nstack:\n  environments:\n    - kubeconfig: %s\n' \
 		"$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_NAME))" \

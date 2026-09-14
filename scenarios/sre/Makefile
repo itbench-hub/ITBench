@@ -21,7 +21,7 @@ group-vars: ## Generates the group variables
 
 .PHONY: generate-resource-files
 generate-resource-files: ## Generates task files, scenario manifests, and other related files
-	$(UV) run ../../scripts/ansible/generate_role_files.py \
+	$(UV) run itbench ansible generate-roles \
 		--library_index_directory=$(abspath ../../library/indexes) \
 		--playbooks_directory=$(abspath project)
 	cd ../../ && $(UV) run ansible-lint $(abspath project/roles/scenarios/files) --fix
@@ -82,9 +82,7 @@ undeploy-recorders: ## Undeploys the data recorders to cluster
 .PHONY: inject-scenario-faults
 inject-scenario-faults: ## Injects the fault used in a specific scenario
 ifdef SCENARIO_NUMBER
-	$(UV) run python $(abspath ../../scripts/scenarios/inject_scenario_faults.py) \
-		--private_project_directory $(abspath .) \
-		--scenario_specs_directory $(abspath ../../library/specs/scenarios/$(SCENARIO_NUMBER))
+	$(UV) run itbench scenario inject-faults $(SCENARIO_NUMBER)
 else
 	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
 endif

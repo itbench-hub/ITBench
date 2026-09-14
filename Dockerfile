@@ -20,8 +20,11 @@ FROM registry.access.redhat.com/ubi10/python-314-minimal:10.2-1787002610@sha256:
 
 COPY --from=downloader /usr/local/bin/helm /usr/local/bin/helm
 
+COPY README.md README.md
 COPY pyproject.toml pyproject.toml
 COPY requirements.yaml requirements.yaml
+
+COPY src/ src/
 
 RUN python3.14 -m pip install --no-cache-dir .
 
@@ -30,4 +33,3 @@ RUN ansible-galaxy collection install -r requirements.yaml
 WORKDIR /runner
 
 COPY scenarios/ scenarios/
-COPY scripts/agent/ scripts/agent/

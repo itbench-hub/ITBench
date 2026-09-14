@@ -35,7 +35,11 @@
           ansible.builtin.command:
             argv:
               - "{{ ansible_python_interpreter }}"
-              - "{{ [playbook_dir, '..', '..', '..', 'scripts', 'agent', 'grant_access.py'] | ansible.builtin.path_join }}"
+              - "-m"
+              - "itbench"
+              - "scenario"
+              - "grant-access"
+              - "--output-path"
               - "{{ agent_temporary_kubeconfig.path }}"
           changed_when:
             - true
@@ -69,7 +73,10 @@
       ansible.builtin.command:
         argv:
           - "{{ ansible_python_interpreter }}"
-          - "{{ [playbook_dir, '..', '..', '..', 'scripts', 'agent', 'revoke_access.py'] | ansible.builtin.path_join }}"
+          - "-m"
+          - "itbench"
+          - "scenario"
+          - "revoke-access"
       changed_when:
         - true
       tags:

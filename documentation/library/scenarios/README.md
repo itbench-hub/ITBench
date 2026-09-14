@@ -3,8 +3,6 @@
 
 # ITBench: SRE and FinOps Scenarios
 
-_For statistics on the distrubution spread of scenarios, please see [here](./statistics.md) for more information._
-
 | ID | Category | Complexity |
 | --- | --- | --- |
 | [1](./sre/1.md) | sre | medium |

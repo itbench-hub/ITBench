@@ -38,7 +38,7 @@ get-cluster-kubeconfig: ## Exports kubeconfig, configures and writes .env for a 
 		--extra-vars "target=single-cluster" \
 		--extra-vars "name_prefix=$(CLUSTER_NAME_PREFIX)"
 	KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_NAME_PREFIX)-environment-aws.k8s.local) \
-		$(UV) run python $(abspath ../../scripts/configure_environment_cluster.py)
+		$(UV) run itbench cluster configure
 	@printf 'K8S_AUTH_KUBECONFIG=%s\n' \
 		"$(abspath kubeconfigs/$(CLUSTER_NAME_PREFIX)-environment-aws.k8s.local)" \
 		> $(abspath ../../scenarios/sre/.env)
@@ -79,7 +79,7 @@ get-stack-kubeconfigs: ## Exports kubeconfigs, configures and writes .env for an
 		--extra-vars "environments_count=$(ENVIRONMENTS_COUNT)"
 	$(foreach i,$(shell seq 1 $(ENVIRONMENTS_COUNT)), \
 		KUBECONFIG=$(abspath kubeconfigs/$(CLUSTER_NAME_PREFIX)-environment-$(i)-aws.k8s.local) \
-			$(UV) run python $(abspath ../../scripts/configure_environment_cluster.py);)
+			$(UV) run itbench cluster configure;)
 	@printf 'K8S_AUTH_KUBECONFIG=%s\n' \
 		"$(abspath kubeconfigs/$(CLUSTER_NAME_PREFIX)-orchestrator-aws.k8s.local)" \
 		> $(abspath ../../scenarios/sre/.env)

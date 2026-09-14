@@ -10,7 +10,7 @@ help: ## Display this help.
 
 .PHONY: check-resources
 check-resources:
-	$(UV) run python $(abspath ../../scripts/check_localhost_resources.py) --target $(CLUSTER_TARGET)
+	$(UV) run itbench localhost check-resources --target $(CLUSTER_TARGET)
 
 kubeconfigs:
 	mkdir -p $@
@@ -44,7 +44,7 @@ create-environment-cluster: ## Creates Minikube cluster for local development
 	$(MAKE) check-resources CLUSTER_TARGET=environment-cluster
 	$(MAKE) create-cluster CLUSTER_PROFILE=$(ENVIRONMENT_CLUSTER_PROFILE)
 	KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE)) \
-		$(UV) run python $(abspath ../../scripts/configure_environment_cluster.py)
+		$(UV) run itbench cluster configure
 	@printf 'K8S_AUTH_KUBECONFIG=%s\n' "$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE))" > $(abspath ../../scenarios/sre/.env)
 	@echo "Run the following commands to access the cluster ($(ENVIRONMENT_CLUSTER_PROFILE)) using kubectl:"
 	@echo "export KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE))"
@@ -63,7 +63,7 @@ create-argo-stack: ## Creates a two-cluster Minikube stack for Argo Workflows or
 	$(MAKE) create-cluster CLUSTER_PROFILE=$(ORCHESTRATOR_CLUSTER_PROFILE)
 	$(MAKE) create-cluster CLUSTER_PROFILE=$(ENVIRONMENT_CLUSTER_PROFILE)
 	KUBECONFIG=$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE)) \
-		$(UV) run python $(abspath ../../scripts/configure_environment_cluster.py)
+		$(UV) run itbench cluster configure
 	@printf 'K8S_AUTH_KUBECONFIG=%s\n' "$(abspath kubeconfigs/$(ORCHESTRATOR_CLUSTER_PROFILE))" > $(abspath ../../scenarios/sre/.env)
 	@printf '---\nstack:\n  environments:\n    - kubeconfig: %s\n' \
 		"$(abspath kubeconfigs/$(ENVIRONMENT_CLUSTER_PROFILE))" \
