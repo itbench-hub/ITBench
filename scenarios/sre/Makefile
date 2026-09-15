@@ -19,16 +19,16 @@ group-vars: ## Generates the group variables
 .PHONY: generate-library
 generate-library: ## Generates library indexes, schemas, and other related documentation
 	$(UV) run scripts/generate_library_indexes.py \
-		--templates_directory=$(abspath ./templates/library/indexes) \
-		--library_index_directory=$(abspath ./library/indexes) \
+		--templates_directory=$(abspath ../../templates/library/indexes) \
+		--library_index_directory=$(abspath ../../library/indexes) \
 		--playbooks_directory=$(abspath ./project)
 	$(UV) run scripts/generate_library_index_schemas.py \
-		--library_index_directory=$(abspath ./library/indexes) \
+		--library_index_directory=$(abspath ../../library/indexes) \
 		--schemas_directory=$(abspath ../../schemas/json) \
-		--templates_directory=$(abspath ./templates/schemas/json/library/index)
+		--templates_directory=$(abspath ../../templates/schemas/json/library/index)
 	$(UV) run scripts/generate_library_readmes.py \
-		--templates_directory=$(abspath ./templates/documentation/library) \
-		--library_index_directory=$(abspath ./library/indexes) \
+		--templates_directory=$(abspath ../../templates/documentation/library) \
+		--library_index_directory=$(abspath ../../library/indexes) \
 		--documentation_directory=$(abspath ../../documentation/library)
 
 .PHONY: generate-fault-index
@@ -47,7 +47,7 @@ generate-resource-files: ## Generates task files, scenario manifests, and other 
 .PHONY: validate-library
 validate-library: ## Validates library indexes
 	$(UV) run scripts/validate_library_indexes.py \
-		--library_index_directory=$(abspath ./library/indexes) \
+		--library_index_directory=$(abspath ../../library/indexes) \
 		--schemas_directory=$(abspath ../../schemas/json)
 
 .PHONY: deploy-tools
