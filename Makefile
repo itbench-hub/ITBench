@@ -13,11 +13,30 @@ deps: ## Installs dependencies
 lint: ## Lints files
 	$(UV) run ansible-lint
 
-.PHONY: pre-commit-hooks
-pre-commit-hooks: ## Installs pre-commit hooks
-	$(UV) run pre-commit install
-	$(UV) run pre-commit install --hook-type commit-msg --hook-type pre-push
+.PHONY: generate-library
+generate-library: ## Generates library indexes, schemas, documentation, and spec files
+	$(UV) run library generate all
+
+.PHONY: validate-library
+validate-library: ## Validates library indexes
+	$(UV) run library validate
+
+.PHONY: scaffold-fault
+scaffold-fault: ## Scaffold a new fault index stub
+	$(UV) run library scaffold fault
+
+.PHONY: scaffold-scenario
+scaffold-scenario: ## Scaffold a new scenario index stub
+	$(UV) run library scaffold scenario
 
 .PHONY: update-secrets-baseline
 update-secrets-baseline: ## Updates the baseline secret file
 	$(UV) run detect-secrets scan --update .secrets.baseline
+
+.PHONY: test-unit
+test-unit: ## Runs unit tests
+	$(UV) run pytest tests/unit/
+
+.PHONY: test-integration
+test-integration: ## Runs all integration tests (requires a live Kubernetes cluster)
+	$(UV) run pytest tests/integration/ -m integration

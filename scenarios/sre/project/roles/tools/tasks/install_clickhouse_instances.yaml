@@ -1,7 +1,6 @@
 ---
 - name: Create Namespace for Clickhouse Operator managed instances
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Namespace
@@ -22,7 +21,6 @@
 
 - name: Create Secret for Clickhouse installation default user
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Secret
@@ -38,7 +36,6 @@
 
 - name: Create ConfigMap for Prometheus database initialization
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: ConfigMap
@@ -61,7 +58,6 @@
 
 - name: Create Clickhouse Installation
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallation
@@ -198,7 +194,6 @@
   kubernetes.core.k8s_info:
     api_version: clickhouse.altinity.com/v1
     kind: ClickHouseInstallation
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     name: "{{ tools_operands.alinity_clickhouse.main.name }}"
     namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
   register: tools_chi
@@ -209,9 +204,62 @@
   retries: 10
   delay: 30
 
+- name: Create HTTPRoute for Clickhouse
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_operands.alinity_clickhouse.main.name }}"
+        namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_kubernetes_gateways.istio.name }}"
+            namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
+        rules:
+          - backendRefs:
+              - name: clickhouse-{{ tools_operands.alinity_clickhouse.main.name }}
+                port: 8123
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /clickhouse/{{ tools_operands.alinity_clickhouse.main.name }}/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_response_headers.http_route }}"
+              - type: URLRewrite
+                urlRewrite:
+                  path:
+                    type: ReplacePrefixMatch
+                    replacePrefixMatch: /
+    state: present
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Create Route for Clickhouse
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: "{{ tools_operands.alinity_clickhouse.main.name }}"
+        namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
+      spec:
+        httpHeaders:
+          actions:
+            response: "{{ tools_response_headers.route }}"
+        port:
+          targetPort: 8123
+        to:
+          kind: Service
+          name: clickhouse-{{ tools_operands.alinity_clickhouse.main.name }}
+    state: present
+  when:
+    - tools_cluster.platform == "openshift"
+
 - name: Create ServiceMonitor for Clickhouse Installation
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: monitoring.coreos.com/v1
       kind: ServiceMonitor

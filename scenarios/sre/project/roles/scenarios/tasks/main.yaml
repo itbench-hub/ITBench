@@ -1,18 +1,32 @@
 ---
-- name: Set scenario variables
-  ansible.builtin.set_fact:
-    scenarios_scenario: |-
-      {{
-        lookup("ansible.builtin.file", scenario_path) |
-        ansible.builtin.from_yaml
-      }}
-    scenarios_ground_truth: |-
-      {{
-        lookup("ansible.builtin.file", ground_truth_path) |
-        ansible.builtin.from_yaml
-      }}
-  vars:
-    ground_truth_path: files/scenario_{{ scenarios_identifier }}/groundtruth.yaml
-    scenario_path: files/scenario_{{ scenarios_identifier }}/scenario.yaml
+- name: Fail playbook with a `directory not found` error
+  ansible.builtin.fail:
+    msg: The provided scenario spec directory is not a directory. Please provide the correct path.
   tags:
     - always
+  when:
+    - not scenario_specs_directory is ansible.builtin.directory
+
+- name: Load scenario spec files
+  tags:
+    - always
+  vars:
+    spec_file: "{{ [scenario_specs_directory, 'scenario.yaml'] | ansible.builtin.path_join }}"
+    truth_file: "{{ [scenario_specs_directory, 'groundtruth.yaml'] | ansible.builtin.path_join }}"
+  block:
+    - name: Fail playbook with a `file not found` error
+      ansible.builtin.fail:
+        msg: The provided scenario spec directory does not contain a scenario.yaml file. Please provide the correct path.
+      when:
+        - not spec_file is ansible.builtin.file
+
+    - name: Fail playbook with a `file not found` error
+      ansible.builtin.fail:
+        msg: The provided scenario spec directory does not contain a groundtruth.yaml file. Please provide the correct path.
+      when:
+        - not truth_file is ansible.builtin.file
+
+    - name: Set scenario variables
+      ansible.builtin.set_fact:
+        scenarios_scenario: "{{ lookup('ansible.builtin.file', spec_file) | ansible.builtin.from_yaml }}"
+        scenarios_ground_truth: "{{ lookup('ansible.builtin.file', truth_file) | ansible.builtin.from_yaml }}"

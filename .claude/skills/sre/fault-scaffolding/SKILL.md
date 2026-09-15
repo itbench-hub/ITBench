@@ -19,7 +19,7 @@ This skill guides you through the complete fault creation workflow:
 
 This skill auto-activates when:
 
-- Working with files matching `**/faults/index.json`
+- Working with files matching `**/templates/library/indexes/faults/*.yaml.j2`
 - Editing files in `**/faults/tasks/inject_*.yaml`
 - User mentions "fault scaffold", "new fault", "incident", "reproduce fault"
 - Creating or modifying fault definitions
@@ -39,22 +39,31 @@ If NO TODOs exist → Create new fault scaffolding (Steps 1-3).
 
 **IMPORTANT**: Before creating a new fault, always check if a similar fault already exists.
 
-**Search existing faults:**
+**Search existing fault index files:**
 
-1. **Search fault index by keywords:**
+1. **List all fault index files:**
    ```bash
-   jq '.[] | select(.name | test("(?i)configmap|image|network|memory"))' \
-     scenarios/sre/roles/documentation/files/library/faults/index.json
+   ls library/indexes/faults/
    ```
 
-2. **List all fault injection tasks:**
+2. **Search fault indexes by keyword:**
    ```bash
-   ls scenarios/sre/roles/faults/tasks/inject_*.yaml
+   grep -rl "configmap\|image\|network\|memory" library/indexes/faults/
    ```
 
-3. **Search fault tasks by pattern:**
+3. **Search by name field:**
    ```bash
-   grep -r "ConfigMap\|Image\|NetworkPolicy" scenarios/sre/roles/faults/tasks/
+   grep -h '"name"' library/indexes/faults/*.json | sort
+   ```
+
+4. **List all fault injection tasks:**
+   ```bash
+   ls scenarios/sre/project/roles/faults/tasks/inject_*.yaml
+   ```
+
+5. **Search fault tasks by pattern:**
+   ```bash
+   grep -rl "ConfigMap\|Image\|NetworkPolicy" scenarios/sre/project/roles/faults/tasks/
    ```
 
 **If similar fault exists:**
@@ -64,12 +73,6 @@ If NO TODOs exist → Create new fault scaffolding (Steps 1-3).
 
 **If no similar fault exists:**
 - ✅ Proceed with creating a new fault
-
-**Why check first?**
-- Avoids duplicate faults
-- Maintains consistency across scenarios
-- Saves implementation time
-- Leverages tested fault mechanisms
 
 ### 1.1 Gather Incident Information
 
@@ -84,8 +87,13 @@ If NO TODOs exist → Create new fault scaffolding (Steps 1-3).
 
 ### 1.2 Collect Fault Details
 
-Gather required information (similar to `scaffolding/tasks/collect_fault_inputs.yaml`):
+Run the scaffold command from the **root directory** to create the stub interactively:
 
+```bash
+make scaffold-fault
+```
+
+This prompts for:
 1. **Fault Name** - Human-readable name
    - Example: "Nonexistent Kubernetes Workload Container Image"
 
@@ -93,116 +101,70 @@ Gather required information (similar to `scaffolding/tasks/collect_fault_inputs.
    - Example: "This fault injects a nonexistent image into a designated Kubernetes workload's container."
 
 3. **Fault Expectation** - Observable behavior when fault is active
-   - Example: "The faulted pod(s) will enter the `Pending` state due to an `ImagePullBackOff` error. The workload will become unable to function."
+   - Example: "The faulted pod(s) will enter the `Pending` state due to an `ImagePullBackOff` error."
 
-4. **Tags** - Read available tags from schema file:
-   ```bash
-   jq '.properties.tags.items.enum' \
-     scenarios/sre/roles/documentation/files/library/faults/schema.json
-   ```
-   Choose the most appropriate tag(s) for the fault mechanism.
+The script writes a new `templates/library/indexes/faults/<N>.yaml.j2` stub.
 
-5. **Generate Fault ID** - Derive from name (lowercase, kebab-case):
-   ```
-   fault_id = fault_name.lower().replace(" ", "-").regex_replace("[^a-z0-9-]", "")
-   Example: "Nonexistent Kubernetes Workload Container Image"
-         → "nonexistent-kubernetes-workload-container-image"
-   ```
+### 1.3 Understand the Stub Structure
 
-### 1.3 Create Scaffolding Files
-
-**First, read the fault schema to understand required fields:**
+**Read the fault schema to understand required fields:**
 ```bash
-cat scenarios/sre/roles/documentation/files/library/faults/schema.json
+cat schemas/json/library/index/fault.json
 ```
 
-**File 1**: `scenarios/sre/roles/documentation/files/library/faults/index.json`
-
-Add new fault entry with fields from schema:
+**Check available tags from the schema:**
 ```bash
-# Check required fields
-jq '.required' scenarios/sre/roles/documentation/files/library/faults/schema.json
-
-# Check properties structure
-jq '.properties | keys' scenarios/sre/roles/documentation/files/library/faults/schema.json
+jq '.properties.tags.items.enum' schemas/json/library/index/fault.json
 ```
 
-Create entry matching the schema (required fields: arguments, description, expectation, name, platform, resources, solutions, tags):
-```json
-{
-  "alerts": "TODO",
-  "arguments": "TODO",
-  "description": "<fault description from user>",
-  "expectation": "<fault expectation from user>",
-  "id": "<generated-fault-id>",
-  "name": "<fault name from user>",
-  "platform": "Kubernetes",
-  "resources": "TODO",
-  "solutions": "TODO",
-  "tags": ["<tag from user>"]
-}
+**Check available alert types:**
+```bash
+jq '.properties.alerts.properties.application.items.enum' schemas/json/library/index/fault.json
+jq '.properties.alerts.properties.goldenSignal.items.enum' schemas/json/library/index/fault.json
 ```
 
-**File 2**: `scenarios/sre/roles/faults/tasks/inject_<fault-id>.yaml`
-
-**IMPORTANT**: File naming convention uses **underscores only** (e.g., `inject_my_fault_name.yaml`), not hyphens.
-
-Create stub injection task:
+The generated stub in `templates/library/indexes/faults/<N>.yaml.j2` will have empty fields to complete:
 ```yaml
----
-# TODO: LLM-generated injection task for <fault name>
-- name: Print message
-  ansible.builtin.debug:
-    msg: This fault injection (<fault-id>) is unimplemented.
-```
-
-**Display summary after creation:**
-```
-✅ Fault scaffolding created!
-
-  Name: <fault name>
-  ID: <fault-id>
-  Tags: [<tags>]
-
-Files created:
-  ✓ faults/index.json (entry added with TODOs)
-  ✓ faults/tasks/inject_<fault-id>.yaml (stub created)
-
-Next steps:
-  1. Complete TODO fields in fault index (arguments, alerts, resources, solutions)
-  2. Implement Ansible injection task
-  3. Test fault injection
+alerts: {}
+arguments:
+  jsonSchema: {}
+name: <fault name from prompt>
+description: <fault description from prompt>
+expectation: <fault expectation from prompt>
+platform: ""
+resources: []
+solutions:
+  templates: []
+tags: []
 ```
 
 ## Step 2: Brainstorm Implementation
 
-**Read available applications dynamically from:**
+**Read available applications from:**
 ```bash
-cat scenarios/sre/roles/applications/defaults/main/managers.yaml
+cat scenarios/sre/project/roles/applications/vars/main/releases.yaml
 ```
 
-**Extract application details:**
-```bash
-# List all application keys
-grep -E "^  [a-z_]+:" scenarios/sre/roles/applications/defaults/main/managers.yaml | sed 's/://g' | awk '{print $1}'
-
-# For each application key, get full configuration
-# Replace <app-key> with the actual application key from the list above
-grep -A 15 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml
-
-# Extract specific fields for an application
-grep -A 15 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml | grep -E "namespace:|url:|documentation:"
+This yields the application keys, names, and namespaces:
+```yaml
+applications_releases:
+  book_info:
+    name: book-info
+    namespace: book-info
+  opentelemetry_demo:
+    name: otel-demo
+    namespace: otel-demo
 ```
 
-**For each application found, dynamically extract:**
-- Application key/ID
-- Kubernetes namespace
-- Documentation URL
-- Helm chart details (if applicable)
+For documentation URLs, consult `library/indexes/applications/`:
+```bash
+jq '{id, name, resources}' library/indexes/applications/1.json
+jq '{id, name, resources}' library/indexes/applications/2.json
+```
 
 **Application Preference:**
-- **Prefer OpenTelemetry Demo** (`opentelemetry_demo` / Astronomy Shop) for most scenarios - it's richer, more comprehensive, and better maintained
-- Use BookInfo (`book_info`) only if the fault specifically requires its simpler architecture
+- **Prefer OpenTelemetry Demo** (`opentelemetry_demo` / `otel-demo`) for most scenarios — it's richer, more comprehensive, and better maintained
+- Use BookInfo (`book_info` / `book-info`) only if the fault specifically requires its simpler architecture
 
 **Brainstorm questions:**
 1. Which application best represents this incident scenario?
@@ -212,99 +174,52 @@ grep -A 15 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/manage
 
 ## Step 3: Identify Target Services
 
-**Dynamically identify services for the chosen application:**
-
-### 3.1 List all available applications
+### 3.1 Get application namespace from releases.yaml
 ```bash
-# Extract application keys from managers.yaml
-grep -E "^  [a-z_]+:" scenarios/sre/roles/applications/defaults/main/managers.yaml | sed 's/://g' | awk '{print $1}'
+grep -A 3 "opentelemetry_demo:" scenarios/sre/project/roles/applications/vars/main/releases.yaml
+# namespace: otel-demo
+
+grep -A 3 "book_info:" scenarios/sre/project/roles/applications/vars/main/releases.yaml
+# namespace: book-info
 ```
 
-### 3.2 Get application configuration
+### 3.2 Discover services from Kubernetes templates
 ```bash
-# Replace <app-key> with the chosen application key from step 3.1
-grep -A 20 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml
+NAMESPACE="otel-demo"  # or book-info
+
+# Find all Deployments
+grep -r "kind: Deployment" scenarios/sre/project/roles/applications/templates/kubernetes/ | grep "$NAMESPACE"
+
+# Find all Services
+grep -r "kind: Service" scenarios/sre/project/roles/applications/templates/kubernetes/ | grep "$NAMESPACE"
 ```
 
-### 3.3 Extract metadata
-```bash
-# Get documentation URL
-grep -A 20 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml | grep -E "url:|documentation:" | head -1
+### 3.3 Fetch service architecture from documentation (REQUIRED)
 
-# Get namespace
-grep -A 20 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml | grep "namespace:" | head -1
-```
-
-### 3.4 Fetch service architecture from documentation (REQUIRED)
-Using the documentation URL from step 3.3:
-1. Navigate to the application's documentation URL
-2. **Study the architecture diagram** - This is critical for:
-   - Understanding service dependencies and relationships
-   - Identifying which services communicate with each other
-   - Planning fault propagation paths for scenarios
-3. Look for:
-   - Architecture diagrams (most important!)
-   - Service listings and descriptions
-   - Component documentation and roles
-   - Deployment guides
+Using the `resources` URLs from `library/indexes/applications/2.json` (OpenTelemetry Demo):
+1. Navigate to the documentation URL (e.g., `https://opentelemetry.io/docs/demo/architecture/`)
+2. **Study the architecture diagram** — critical for understanding service dependencies
 3. Identify available services and their roles
 
-### 3.4.1 Optional: Ground in Real Deployment
+### 3.4 Optional: Ground in Real Deployment
 
 **Ask the user:**
-> Would you like to deploy the application to a live cluster to get actual deployment names, service names, and resource details? This ensures accuracy but requires a running Kubernetes cluster.
+> Would you like to deploy the application to a live cluster to get actual deployment names? This requires a running Kubernetes cluster.
 
 **If YES:**
+```bash
+# From scenarios/sre/
+export KUBECONFIG=<path-from-user>
+make deploy-tools
+make deploy-applications
 
-1. **Ask for kubeconfig path:**
-   ```
-   What is the path to your kubeconfig file? (e.g., ~/.kube/config)
-   ```
+# Query live cluster
+kubectl get deployments -n otel-demo -o jsonpath='{.items[*].metadata.name}'
+kubectl get services -n otel-demo -o jsonpath='{.items[*].metadata.name}'
+kubectl get pods -n otel-demo --show-labels
+```
 
-2. **Set kubeconfig and deploy (outputs will be shown):**
-   ```bash
-   # Set the kubeconfig
-   export KUBECONFIG=<path-from-user>
-
-   # Navigate to scenarios directory
-   cd scenarios/sre
-
-   # Deploy tools - outputs will be displayed
-   make deploy-tools
-
-   # Deploy applications - outputs will be displayed
-   make deploy-applications
-   ```
-
-   **Note**: Both commands will display their complete output including:
-   - Ansible playbook task execution
-   - Kubernetes resource creation status
-   - Any warnings or errors
-
-3. **Query live cluster for actual resource names:**
-   ```bash
-   # Get the namespace from step 3.3
-   NAMESPACE=<namespace>
-
-   # Get actual deployments
-   kubectl get deployments -n $NAMESPACE -o jsonpath='{.items[*].metadata.name}'
-
-   # Get actual services
-   kubectl get services -n $NAMESPACE -o jsonpath='{.items[*].metadata.name}'
-
-   # Get actual pods (with labels)
-   kubectl get pods -n $NAMESPACE --show-labels
-
-   # Get actual configmaps
-   kubectl get configmaps -n $NAMESPACE -o jsonpath='{.items[*].metadata.name}'
-
-   # Get container names from a deployment
-   kubectl get deployment <deployment-name> -n $NAMESPACE -o jsonpath='{.spec.template.spec.containers[*].name}'
-   ```
-
-4. **Use these actual names** when implementing the fault in Step 4
-
-**If NO:** Continue with documentation-based discovery
+**If NO:** Continue with template-based discovery from Step 3.2
 
 ### 3.5 Identify target service
 **Consider:**
@@ -317,18 +232,20 @@ Using the documentation URL from step 3.3:
 Create the injection task file following patterns from existing faults.
 
 ### File Location
-`scenarios/sre/roles/faults/tasks/inject_<fault-id>.yaml`
+`scenarios/sre/project/roles/faults/tasks/inject_<fault-id with underscores>.yaml`
 
-### Important Guidelines
+**IMPORTANT**: File naming uses **underscores only** (e.g., `inject_my_fault_name.yaml`), derived from the fault's `id` field with hyphens replaced by underscores.
 
-**CRITICAL - Resource Naming:**
+### Resource Naming Guidelines
+
+**CRITICAL:**
 - **DO NOT** create new resources with names that reveal the fault mechanism
-- **DO NOT** use names like `fault-injector`, `chaos-config`, `memory-leak-pod`, `high-cpu-workload`
-- **DO** use neutral, application-appropriate names that blend in with existing resources
-- **GOOD**: `app-config`, `sidecar-processor`, `cache-helper`, `data-processor`
+- **DO NOT** use names like `fault-injector`, `chaos-config`, `memory-leak-pod`
+- **DO** use neutral, application-appropriate names that blend in
+- **GOOD**: `app-config`, `sidecar-processor`, `cache-helper`
 - **BAD**: `fault-config`, `crash-trigger`, `latency-injector`
 
-**Rationale**: The agent solving scenarios should diagnose the issue based on symptoms and observability, not by discovering obviously-named fault injection resources.
+**Rationale**: The agent solving scenarios should diagnose the issue based on symptoms, not by discovering obviously-named fault injection resources.
 
 ### Standard Pattern
 
@@ -355,7 +272,6 @@ Create the injection task file following patterns from existing faults.
     success_msg: Found [resource-type]
 
 # Step 2: Inject the fault (varies by fault type)
-# See examples below
 
 # Step 3: Wait for fault manifestation
 - name: Wait for [resource-type] to update
@@ -374,73 +290,24 @@ Create the injection task file following patterns from existing faults.
   retries: 20
 ```
 
-### Common Fault Types - Discover Dynamically
+### Discover Existing Fault Patterns Dynamically
 
-**Instead of hardcoded examples, discover existing fault patterns:**
-
-#### Step 1: List All Existing Fault Injection Tasks
 ```bash
-ls scenarios/sre/roles/faults/tasks/inject_*.yaml | sort
+# List all existing injection tasks
+ls scenarios/sre/project/roles/faults/tasks/inject_*.yaml | sort
+
+# Find by fault category
+grep -rl "image:" scenarios/sre/project/roles/faults/tasks/inject_*.yaml
+grep -rl "ConfigMap\|environment" scenarios/sre/project/roles/faults/tasks/inject_*.yaml
+grep -rl "ResourceQuota\|limits\|requests" scenarios/sre/project/roles/faults/tasks/inject_*.yaml
+grep -rl "NetworkPolicy" scenarios/sre/project/roles/faults/tasks/inject_*.yaml
+grep -rl "chaos-mesh.org" scenarios/sre/project/roles/faults/tasks/inject_*.yaml
+
+# Count steps to gauge complexity
+for f in scenarios/sre/project/roles/faults/tasks/inject_*.yaml; do
+  echo "$(grep -c '^- name:' "$f") steps: $(basename "$f")"
+done | sort -n
 ```
-
-#### Step 2: Search by Fault Category/Pattern
-
-**Find Image-Related Faults:**
-```bash
-ls scenarios/sre/roles/faults/tasks/inject_*image*.yaml
-grep -l "image:" scenarios/sre/roles/faults/tasks/inject_*.yaml
-```
-
-**Find Configuration/ConfigMap Faults:**
-```bash
-ls scenarios/sre/roles/faults/tasks/inject_*config*.yaml
-grep -l "ConfigMap\|environment" scenarios/sre/roles/faults/tasks/inject_*.yaml
-```
-
-**Find Resource Faults:**
-```bash
-ls scenarios/sre/roles/faults/tasks/inject_*resource*.yaml
-grep -l "ResourceQuota\|limits\|requests" scenarios/sre/roles/faults/tasks/inject_*.yaml
-```
-
-**Find Network Faults:**
-```bash
-ls scenarios/sre/roles/faults/tasks/inject_*network*.yaml
-grep -l "NetworkPolicy" scenarios/sre/roles/faults/tasks/inject_*.yaml
-```
-
-**Find Chaos Mesh Faults:**
-```bash
-ls scenarios/sre/roles/faults/tasks/inject_*chaos*.yaml
-grep -l "chaos-mesh.org" scenarios/sre/roles/faults/tasks/inject_*.yaml
-```
-
-#### Step 3: Read and Study Relevant Fault Files
-```bash
-# Read a specific fault to understand its pattern
-cat scenarios/sre/roles/faults/tasks/inject_<fault-name>.yaml
-
-# Search for specific Kubernetes resources in faults
-grep -r "kind: Deployment" scenarios/sre/roles/faults/tasks/
-grep -r "kind: ConfigMap" scenarios/sre/roles/faults/tasks/
-grep -r "kind: NetworkPolicy" scenarios/sre/roles/faults/tasks/
-```
-
-#### Step 4: Find Faults by Tag
-```bash
-# Search faults index by tag
-jq '.[] | select(.tags[] | contains("Networking"))' scenarios/sre/roles/documentation/files/library/faults/index.json
-jq '.[] | select(.tags[] | contains("Performance"))' scenarios/sre/roles/documentation/files/library/faults/index.json
-jq '.[] | select(.tags[] | contains("Deployment"))' scenarios/sre/roles/documentation/files/library/faults/index.json
-```
-
-#### Step 5: Match Fault Mechanism to Incident
-Based on your incident analysis (Step 1), identify which existing faults have similar mechanisms:
-- Image issues → search for image-related faults
-- Config problems → search for ConfigMap/environment faults
-- Network connectivity → search for NetworkPolicy faults
-- Resource exhaustion → search for quota/limits faults
-- Application crashes → search for code/chaos faults
 
 ### Important Implementation Notes
 
@@ -450,206 +317,146 @@ Based on your incident analysis (Step 1), identify which existing faults have si
 4. **Wait for manifestation**: Use `k8s_info` with `until` conditions
 5. **Reference similar faults**: Search existing tasks for patterns
 
-## Completing the Fault Index - Dynamic Discovery
+## Completing the Fault Index Template
 
 After implementing the Ansible task, complete the fault entry in:
-**File**: `scenarios/sre/roles/documentation/files/library/faults/index.json`
+**File**: `templates/library/indexes/faults/<N>.yaml.j2`
 
 ### Step 1: Verify Required Fields from Schema
 
 ```bash
-# Check required fields
-jq '.required' scenarios/sre/roles/documentation/files/library/faults/schema.json
-
-# Check all property names and types
-jq '.properties | to_entries[] | {key: .key, type: .value.type, required: .value.required}' \
-  scenarios/sre/roles/documentation/files/library/faults/schema.json
+jq '.required' schemas/json/library/index/fault.json
+jq '.properties | keys' schemas/json/library/index/fault.json
 ```
 
 ### Step 2: Discover Argument Schema Patterns from Existing Faults
 
-**Find similar faults to use as templates:**
 ```bash
-# Find faults with similar argument structures
-jq '.[] | select(.arguments.jsonSchema.required[]? | contains("kubernetesObject")) | {id, required: .arguments.jsonSchema.required}' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+# View a specific fault's argument schema
+jq '.arguments' library/indexes/faults/1.json
 
-# View specific fault's argument schema
-jq '.[] | select(.id == "<similar-fault-id>") | .arguments' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+# Find all unique required-argument patterns
+jq -s '[.[].arguments.jsonSchema.required] | unique' library/indexes/faults/*.json
 
-# Find all unique argument patterns
-jq '[.[] | .arguments.jsonSchema.required] | unique' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+# Find faults with kubernetesObject + container pattern
+grep -l '"container"' library/indexes/faults/*.json
 ```
 
-**Common patterns discovered:**
+### Step 3: Discover Alert Types
+
 ```bash
-# Workload-only pattern
-jq '.[] | select(.arguments.jsonSchema.required == ["kubernetesObject"]) | .id' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+# Available alert enums
+jq '.properties.alerts.properties.application.items.enum' schemas/json/library/index/fault.json
+jq '.properties.alerts.properties.goldenSignal.items.enum' schemas/json/library/index/fault.json
 
-# Workload + container pattern
-jq '.[] | select(.arguments.jsonSchema.required | contains(["kubernetesObject", "container"])) | .id' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
-
-# Custom patterns
-jq '.[] | select(.arguments.jsonSchema.required | length > 2) | {id, required: .arguments.jsonSchema.required}' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
-```
-
-### Step 3: Discover Alert Types Dynamically
-
-**Get available alert types from schema:**
-```bash
-# Application alerts enum
-jq '.properties.alerts.properties.application.items.enum' \
-  scenarios/sre/roles/documentation/files/library/faults/schema.json
-
-# Golden signal alerts enum
-jq '.properties.alerts.properties.goldenSignal.items.enum' \
-  scenarios/sre/roles/documentation/files/library/faults/schema.json
-```
-
-**Find which faults use which alerts:**
-```bash
-# Find faults with specific alert
-jq '.[] | select(.alerts.application[]? == "KubePodCrashLooping") | .id' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
-
-# See all alert combinations
-jq '[.[] | .alerts] | unique' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+# Which existing faults use which alerts
+jq -s '.[] | select(.alerts.application[]? == "KubePodCrashLooping") | .id' library/indexes/faults/*.json
 ```
 
 ### Step 3.1: Registering New Alerts
 
-**If your fault introduces a NEW alert** (not in the schema enum), you must register it in THREE locations:
+**If your fault introduces a NEW alert** (not in the schema enum), register it in THREE locations:
 
-1. **Fault Schema** - Add to alert enum:
+1. **Fault Schema** — add to alert enum:
    ```bash
-   # Edit: scenarios/sre/roles/documentation/files/library/faults/schema.json
+   # Edit: schemas/json/library/index/fault.json
    # Add to: .properties.alerts.properties.application.items.enum
    ```
 
-2. **Alerts Monitoring Playbook** - Add to alert detection (3 locations):
+2. **Alerts Monitoring Playbook** — add to alert detection (3 locations):
    ```bash
-   # Edit: scenarios/sre/playbooks/check_for_specific_alerts_in_firing_state.yaml
-   # Add to ALL THREE alert lists (lines ~58-70, ~79-89, ~101-110)
+   # Edit: scenarios/sre/project/playbooks/check_for_specific_alerts_in_firing_state.yaml
    ```
 
-3. **PrometheusRules Template** - Define the actual alert rule:
+3. **PrometheusRules Template** — define the actual alert rule:
    ```bash
-   # For OpenTelemetry Demo:
-   # scenarios/sre/roles/applications/templates/kubernetes/otel_demo/prometheusrules.j2
-   # For BookInfo:
-   # scenarios/sre/roles/applications/templates/kubernetes/book_info/prometheusrules.j2
+   # OpenTelemetry Demo:
+   scenarios/sre/project/roles/applications/templates/kubernetes/otel_demo/prometheusrules.j2
+   # BookInfo:
+   scenarios/sre/project/roles/applications/templates/kubernetes/book_info/prometheusrules.j2
    ```
 
-**Example**: For `KafkaConsumerGroupInactive` alert, you would:
-- Add to fault schema enum (alphabetically)
-- Add to monitoring playbook (3 locations)
-- Define PrometheusRule with expression: `kafka_consumergroup_members{namespace="..."} == 0`
+### Step 4: Discover Solution Patterns
 
-**See scenario-scaffolding skill section 3.6.1 for detailed checklist and examples.**
-
-### Step 4: Discover Solution Patterns from Existing Faults
-
-**Find common solution templates:**
 ```bash
-# Find faults with rollback solutions
-jq '.[] | select(.solutions.templates[].steps[].command? | contains("rollout undo")) | .id' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+# View a similar fault's solutions
+jq '.solutions' library/indexes/faults/1.json
 
-# View specific fault's solutions
-jq '.[] | select(.id == "<similar-fault-id>") | .solutions' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
-
-# Find all unique solution patterns
-jq '[.[] | .solutions.templates[].steps[].command] | unique' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+# Find all unique solution commands
+jq -rs '[.[].solutions.templates[].steps[].command? // empty] | unique' library/indexes/faults/*.json
 ```
 
-### Step 5: Use Similar Fault as Template
+### Step 5: Use a Similar Fault as Template
 
-**Complete workflow:**
 ```bash
-# 1. Find the most similar fault by searching for keywords
-jq '.[] | select(.name | contains("ConfigMap") or contains("Image")) | {id, name}' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+# Find the most similar fault by name keyword
+grep -hl '"ConfigMap"\|"Image"' library/indexes/faults/*.json
 
-# 2. Extract full entry as template
-jq '.[] | select(.id == "<similar-fault-id>")' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json > /tmp/template.json
-
-# 3. Modify the template for your new fault
-# 4. Validate against schema before adding
+# Read a full fault entry as a reference
+cat library/indexes/faults/3.json
 ```
 
-# Reference Examples - Discover Dynamically
+## After Completing the Template
 
-## Find Faults to Study
+Run from the **root directory**:
 
-**Discover simple faults** (good starting points):
 ```bash
-# Find short/simple fault files (likely easier to understand)
-find scenarios/sre/roles/faults/tasks -name "inject_*.yaml" -exec wc -l {} \; | sort -n | head -10
-
-# Search for specific patterns
-ls scenarios/sre/roles/faults/tasks/inject_*image*.yaml
-ls scenarios/sre/roles/faults/tasks/inject_*environment*.yaml
-ls scenarios/sre/roles/faults/tasks/inject_*node*.yaml
+make generate-library    # renders templates → library/indexes/ and documentation/
+make validate-library    # validates all index JSON against schemas
 ```
 
-**Discover complex faults** (advanced patterns):
+Then from `scenarios/sre/`:
+
 ```bash
-# Find longer fault files (likely more complex)
-find scenarios/sre/roles/faults/tasks -name "inject_*.yaml" -exec wc -l {} \; | sort -n | tail -10
+make generate-resource-files   # generates Ansible role files (argument_specs, task_files vars, task stubs)
+```
 
-# Search for multi-resource faults
-grep -l "kubernetes.core.k8s:" scenarios/sre/roles/faults/tasks/inject_*.yaml | xargs grep -c "kubernetes.core.k8s:" | grep -v ":1$"
+# Reference Examples — Discover Dynamically
 
-# Find Chaos Mesh integration
-grep -l "chaos-mesh.org" scenarios/sre/roles/faults/tasks/inject_*.yaml
+```bash
+# Find simple faults (fewest task steps)
+for f in scenarios/sre/project/roles/faults/tasks/inject_*.yaml; do
+  echo "$(grep -c '^- name:' "$f") $(basename "$f")"
+done | sort -n | head -10
+
+# Find complex faults
+for f in scenarios/sre/project/roles/faults/tasks/inject_*.yaml; do
+  echo "$(grep -c '^- name:' "$f") $(basename "$f")"
+done | sort -n | tail -10
+
+# Find Chaos Mesh faults
+grep -rl "chaos-mesh.org" scenarios/sre/project/roles/faults/tasks/
 
 # Find node-level operations
-grep -l "node\|cordon\|drain" scenarios/sre/roles/faults/tasks/inject_*.yaml
-```
-
-**Study faults by complexity:**
-```bash
-# Count steps in each fault to gauge complexity
-for file in scenarios/sre/roles/faults/tasks/inject_*.yaml; do
-  echo "$(grep -c "^- name:" "$file") steps: $(basename "$file")"
-done | sort -n
+grep -rl "node\|cordon\|drain" scenarios/sre/project/roles/faults/tasks/
 ```
 
 # Anti-Patterns
 
 ❌ **Don't:**
 - Skip brainstorming with available applications
-- Guess service names without checking documentation
+- Guess service names without checking documentation or templates
 - Create faults without checking for similar existing ones
 - Forget the `app.kubernetes.io/managed-by: ITBench` label
-- Use hardcoded namespace/service names in fault index (use Jinja2 templates)
-- **Create resources with obvious fault-revealing names** (e.g., `fault-injector`, `chaos-config`, `crash-trigger`)
+- Use hardcoded namespace/service names in fault index templates (use Jinja2 `{{ args.* }}` variables)
+- **Create resources with obvious fault-revealing names**
 
 ✅ **Do:**
 - Start with incident description
-- Map to available applications and their documentation
+- Map to available applications using `releases.yaml` and `library/indexes/applications/`
 - Reference existing similar fault implementations
 - Test in a real cluster before finalizing
 - Follow consistent Ansible patterns
 - Use Jinja2 templates in solutions for reusability
-- **Use neutral, application-appropriate names for any new resources** (e.g., `app-config`, `cache-helper`, `data-processor`)
+- **Use neutral, application-appropriate names for any new resources**
 
 # Automatic Transition to Scenario Creation
 
 **IMPORTANT**: After completing fault scaffolding, **automatically proceed** to scenario creation using the **scenario-scaffolding** skill.
 
-**Do not wait for user prompt** - transition immediately to:
+**Do not wait for user prompt** — transition immediately to:
 1. Apply this fault to the identified service/component
-2. Populate scenario files with application, faults, and tools
-3. Generate groundtruth.yaml with DSL format
+2. Populate scenario index template with application, faults, and disruptions
+3. Generate groundtruth files with DSL format
 
 This creates a complete end-to-end workflow: **Incident → Fault → Scenario → Ground Truth**

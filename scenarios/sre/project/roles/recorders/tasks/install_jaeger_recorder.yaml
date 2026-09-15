@@ -1,7 +1,6 @@
 ---
 - name: Create PersistentVolumeClaim for jaeger-recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: PersistentVolumeClaim
@@ -22,7 +21,6 @@
 
 - name: Install Kubernetes Job for jaeger-recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: batch/v1
       kind: Job
@@ -52,7 +50,7 @@
                 image: quay.io/it-bench/jaeger-recorder:1.0.0
                 env:
                   - name: JAEGER_ENDPOINT
-                    value: "{{ tools_jaeger_endpoint.querier.http }}"
+                    value: "{{ tools_jaeger_endpoint.querier.grpc }}"
                 resources:
                   requests:
                     cpu: 100m
@@ -81,7 +79,6 @@
 
 - name: Install Kubernetes CronJob for jaeger-recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: batch/v1
       kind: CronJob
@@ -113,7 +110,7 @@
                     image: quay.io/it-bench/jaeger-recorder:1.0.0
                     env:
                       - name: JAEGER_ENDPOINT
-                        value: "{{ tools_jaeger_endpoint.querier.http }}"
+                        value: "{{ tools_jaeger_endpoint.querier.grpc }}"
                     resources:
                       requests:
                         cpu: 100m

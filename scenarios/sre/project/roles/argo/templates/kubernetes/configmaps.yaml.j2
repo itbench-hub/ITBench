@@ -1,0 +1,13 @@
+{% for scenario in _scenarios %}
+{% set _scenario_path = [_base_path, scenario, "scenario.yaml"] | path_join %}
+{% set _groundtruth_path = [_base_path, scenario, "groundtruth.yaml"] | path_join %}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scenario-{{ scenario }}
+  namespace: {{ argo_releases.argo_workflows.namespace }}
+data:
+  scenario.yaml: {{ lookup("ansible.builtin.file", _scenario_path) }}
+  groundtruth.yaml: {{ lookup("ansible.builtin.file", _groundtruth_path) }}
+{% endfor %}

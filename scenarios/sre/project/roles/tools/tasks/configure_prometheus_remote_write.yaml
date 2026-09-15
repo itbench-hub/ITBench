@@ -5,7 +5,6 @@
 
 - name: Redeploy Clickhouse credential to Prometheus namespace
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Secret
@@ -34,7 +33,6 @@
       kubernetes.core.helm:
         chart_ref: "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack"
         chart_version: "87.19.0"
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         release_name: "{{ tools_releases.kube_prometheus_stack.name }}"
         release_namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
         release_state: present
@@ -66,7 +64,6 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: ConfigMap
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         name: user-workload-monitoring-config
         namespace: "{{ tools_releases.kube_prometheus_stack.namespace.openshift }}"
       register: tools_openshift_prometheus_configmap
@@ -81,7 +78,6 @@
 
     - name: Patch configmap with remote write configuration
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: ConfigMap

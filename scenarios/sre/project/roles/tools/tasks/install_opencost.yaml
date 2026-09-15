@@ -1,15 +1,8 @@
 ---
 - name: Create Namespace for OpenCost
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     state: present
     template: templates/kubernetes/opencost/namespace.j2
-
-- name: Import Prometheus credential variable setting tasks
-  ansible.builtin.import_tasks:
-    file: set_credentials_prometheus.yaml
-  when:
-    - tools_prometheus_bearer_token is ansible.builtin.undefined
 
 - name: Import Prometheus endpoint variable setting tasks
   ansible.builtin.import_tasks:
@@ -21,7 +14,6 @@
   kubernetes.core.helm:
     chart_ref: "oci://ghcr.io/opencost/charts/opencost"
     chart_version: "2.5.31"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.opencost.name }}"
     release_namespace: "{{ tools_releases.opencost.namespace }}"
     release_state: present
@@ -33,8 +25,52 @@
       }}
     wait: true
 
+- name: Create HTTPRoute for OpenCost
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_releases.opencost.name }}"
+        namespace: "{{ tools_releases.opencost.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_kubernetes_gateways.istio.name }}"
+            namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_releases.opencost.name }}"
+                port: 9090
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_response_headers.http_route }}"
+    state: present
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Create Route for OpenCost
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        name: "{{ tools_releases.opencost.name }}"
+        namespace: "{{ tools_releases.opencost.namespace }}"
+      spec:
+        httpHeaders:
+          actions:
+            response: "{{ tools_response_headers.route }}"
+        port:
+          targetPort: 9090
+        to:
+          kind: Service
+          name: "{{ tools_releases.opencost.name }}"
+    state: present
+  when:
+    - tools_cluster.platform == "openshift"
+
 - name: Create PrometheusRules
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     state: present
     template: templates/kubernetes/opencost/prometheusrules.j2

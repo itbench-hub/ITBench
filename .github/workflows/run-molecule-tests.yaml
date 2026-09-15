@@ -5,14 +5,9 @@ on:
     branches:
       - main
     paths:
-      - clusters/kind/**
-      - clusters/minikube/**
-      - scenarios/sre/project/roles/agent/**
       - scenarios/sre/project/roles/awx/**
       - scenarios/sre/project/roles/faults/**
       - scenarios/sre/project/roles/waiters/**
-      - '!clusters/kind/README.md'
-      - '!clusters/minikube/README.md'
       - '!scenarios/sre/project/roles/awx/tasks/generate_files.yaml'
       - '!scenarios/sre/project/roles/faults/tasks/generate_files.yaml'
       - '!scenarios/sre/project/roles/waiters/tasks/generate_files.yaml'
@@ -22,134 +17,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  clusters-kind:
-    name: ITBench Kind Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version-file: pyproject.toml
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - uses: azure/setup-helm@v5.0.1
-        with:
-          version: v4.2.4
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Create Kind cluster
-        run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C clusters/kind run-service-provider &
-          sleep 10
-      - name: Run Molecule tests
-        run: |
-          make -C clusters/kind test-molecule
-      - name: Destroy Minikube cluster
-        run: |
-          make -C clusters/kind destroy-simple-cluster
-  clusters-minikube:
-    name: ITBench Minikube Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version-file: pyproject.toml
-      - uses: azure/setup-helm@v5.0.1
-        with:
-          version: v4.2.4
-      - uses: medyagh/setup-minikube@v0.0.21
-        with:
-          cache: false
-          cni: cilium
-          container-runtime: containerd
-          driver: docker
-          kubernetes-version: v1.35.0
-          minikube-version: 1.38.1
-          start: false
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Create Minikube cluster
-        run: |
-          make -C clusters/minikube create-simple-cluster
-      - name: Start Minikube tunnel
-        run: |
-          make -C clusters/minikube start-simple-tunnel &
-          sleep 10
-      - name: Run Molecule tests
-        run: |
-          make -C clusters/minikube test-molecule
-      - name: Destroy Minikube cluster
-        run: |
-          make -C clusters/minikube destroy-simple-cluster
-  sre-agent:
-    name: SRE Agent Access Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version-file: pyproject.toml
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-      - name: Create Kind cluster
-        run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Run Molecule tests
-        run: |
-          make -C scenarios/sre test-molecule-agent
-      - name: Destroy Kind cluster
-        run: |
-          make -C clusters/kind destroy-simple-cluster
-  sre-awx:
-    name: SRE AWX Tests
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version-file: pyproject.toml
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - uses: azure/setup-helm@v5.0.1
-        with:
-          version: v4.2.4
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
-      - name: Create Kind cluster
-        run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C clusters/kind run-service-provider &
-          sleep 10
-      - name: Run Molecule tests
-        run: |
-          make -C scenarios/sre test-molecule-awx
-      - name: Destroy Kind cluster
-        run: |
-          make -C clusters/kind destroy-simple-cluster
   sre-faults:
     name: SRE Fault Injection Tests
     runs-on: ubuntu-24.04
@@ -170,7 +37,7 @@ jobs:
           make -C scenarios/sre group-vars
       - name: Create Kind cluster
         run: |
-          make -C clusters/kind create-simple-cluster
+          make -C clusters/kind create-environment-cluster
       - name: Run Cloud Provider
         run: |
           make -C clusters/kind run-service-provider &
@@ -180,7 +47,7 @@ jobs:
           make -C scenarios/sre test-molecule-faults
       - name: Destroy Kind cluster
         run: |
-          make -C clusters/kind destroy-simple-cluster
+          make -C clusters/kind destroy-environment-cluster
   sre-waiters:
     name: SRE Waiters Tests
     runs-on: ubuntu-24.04
@@ -201,10 +68,10 @@ jobs:
           make -C scenarios/sre group-vars
       - name: Create Kind cluster
         run: |
-          make -C clusters/kind create-simple-cluster
+          make -C clusters/kind create-environment-cluster
       - name: Run Molecule tests
         run: |
           make -C scenarios/sre test-molecule-waiters
       - name: Destroy Kind cluster
         run: |
-          make -C clusters/kind destroy-simple-cluster
+          make -C clusters/kind destroy-environment-cluster

@@ -32,16 +32,10 @@ opencost:
     openshift:
       enabled: {{ tools_cluster.platform == 'openshift' }}
   prometheus:
-{% if tools_prometheus_bearer_token is ansible.builtin.defined %}
-    bearer_token: {{ tools_prometheus_bearer_token }}
-{% endif %}
+    kubeRBACProxy: {{ tools_cluster.platform == 'openshift' }}
     external:
       enabled: true
       url: "{{ tools_prometheus_endpoint.http }}"
     insecureSkipVerify: {{ tools_cluster.platform == 'openshift' }}
     internal:
       enabled: false
-{% if tools_cluster.platform == 'openshift' %}
-podAnnotations:
-  openshift.io/required-scc: "restricted-v2"
-{% endif %}

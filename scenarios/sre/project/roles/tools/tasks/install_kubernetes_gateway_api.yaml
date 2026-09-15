@@ -1,18 +1,40 @@
 ---
-# NOTE: `kubectl` is used in place of the `kubernetes.core` module because
-#       the server side configuration the yaml files are still downloaded
-#       and rendered on the client side. Depending on the file, sometimes
-#       there are rendering issues.
-
 - name: Apply Kubernetes Gateway API Custom Resource Definitions
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - apply
-      - --server-side
-      - -f
-      - "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
-      - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
-  register: tools_kubernetes_gateway_crds_apply
-  changed_when:
-    - tools_kubernetes_gateway_crds_apply.rc == 0
+  block:
+    - name: Create temporary directory for Kubernetes Gateway API CRD manifest
+      ansible.builtin.tempfile:
+        prefix: kubernetes-gateway-api
+        state: directory
+      register: tools_temporary_directory
+
+    - name: Download Kubernetes Gateway API CRD manifest
+      ansible.builtin.get_url:
+        dest: "{{ [tools_temporary_directory.path, 'standard-install.yaml'] | ansible.builtin.path_join }}"
+        mode: "0644"
+        url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
+      register: tools_download_result
+
+    - name: Apply Kubernetes Gateway API Custom Resource Definitions
+      kubernetes.core.k8s:
+        apply: true
+        server_side_apply:
+          field_manager: ansible
+          force_conflicts: true
+        src: "{{ tools_download_result.dest }}"
+        state: present
+
+    - name: Create Namespace for Kubernetes Gateway instances
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            labels:
+              "prometheus.itbench.io/monitor": "true"
+            name: "{{ tools_kubernetes_gateways.istio.namespace }}"
+        state: present
+  always:
+    - name: Delete temporary directory for Kubernetes Gateway API CRD manifest
+      ansible.builtin.file:
+        path: "{{ tools_temporary_directory.path }}"
+        state: absent

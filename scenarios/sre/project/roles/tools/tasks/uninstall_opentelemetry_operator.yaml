@@ -5,7 +5,6 @@
   block:
     - name: Uninstall OpenTelemetry Operator
       kubernetes.core.helm:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         release_name: "{{ tools_releases.opentelemetry_operator.name }}"
         release_namespace: "{{ tools_releases.opentelemetry_operator.namespace }}"
         release_state: absent
@@ -13,7 +12,6 @@
 
     - name: Delete Namespace for OpenTelemetry Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           api_version: v1
           kind: Namespace
@@ -28,7 +26,6 @@
   block:
     - name: Delete the subscription for RH build of OpenTelemetry Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: operators.coreos.com/v1alpha1
           kind: Subscription
@@ -39,7 +36,6 @@
 
     - name: Delete the operator group for RH build of OpenTelemetry Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: operators.coreos.com/v1
           kind: OperatorGroup
@@ -50,7 +46,6 @@
 
     - name: Delete the project for RH build of OpenTelemetry Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: project.openshift.io/v1
           kind: Project

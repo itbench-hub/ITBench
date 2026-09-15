@@ -5,7 +5,6 @@
   block:
     - name: Create Namespace for Prometheus and Prometheus Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Namespace
@@ -20,7 +19,6 @@
       kubernetes.core.helm:
         chart_ref: "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack"
         chart_version: "88.5.0"
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         release_name: "{{ tools_releases.kube_prometheus_stack.name }}"
         release_namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
         release_state: present
@@ -101,13 +99,38 @@
             enabled: "{{ tools_cluster.provider == 'kind' }}"
         wait: true
 
+    - name: Create HTTPRoute for Prometheus
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: HTTPRoute
+          metadata:
+            name: "{{ tools_releases.kube_prometheus_stack.name }}"
+            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
+          spec:
+            parentRefs:
+              - name: "{{ tools_kubernetes_gateways.istio.name }}"
+                namespace: "{{ tools_kubernetes_gateways.istio.namespace }}"
+            rules:
+              - backendRefs:
+                  - name: "{{ tools_releases.kube_prometheus_stack.name }}-kube-prometheus-prometheus"
+                    port: 9090
+                matches:
+                  - path:
+                      type: PathPrefix
+                      value: /prometheus/
+                filters:
+                  - type: ResponseHeaderModifier
+                    responseHeaderModifier:
+                      add: "{{ tools_response_headers.http_route }}"
+        state: present
+
 - name: Enabled OpenShift User Worklord Monitoring (Prometheus)
   when:
     - tools_cluster.platform == "openshift"
   block:
     - name: Create Cluster Monitoring ConfigMap
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: ConfigMap
@@ -121,7 +144,6 @@
 
     - name: Create User Workload ConfigMap
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: ConfigMap
@@ -137,7 +159,6 @@
     - name: Wait for Prometheus workload pods to start
       kubernetes.core.k8s_info:
         kind: Pod
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         label_selectors:
           - app.kubernetes.io/component = prometheus
           - app.kubernetes.io/instance = user-workload
