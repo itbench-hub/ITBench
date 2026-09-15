@@ -5,27 +5,11 @@ from pathlib import Path
 from rich.console import Console
 
 from itbench.ansible.generate_roles import generate_role_files
+from itbench.cli.constants import resolve
 from itbench.cluster.configure import configure_cluster
 from itbench.localhost.resources import check_resources
 
 console = Console()
-
-
-def get_default_paths(root: Path | None = None) -> dict[str, Path]:
-    if root is None:
-        cur = Path.cwd()
-        for parent in [cur] + list(cur.parents):
-            if (parent / "pyproject.toml").exists():
-                root = parent
-                break
-        if root is None:
-            root = Path.cwd()
-
-    return {
-        "root": root,
-        "library_index_directory": root / "library" / "indexes",
-        "playbooks_directory": root / "scenarios" / "sre" / "project",
-    }
 
 
 def handle_cluster_configure(args: argparse.Namespace) -> int:
@@ -51,9 +35,9 @@ def handle_localhost_check_resources(args: argparse.Namespace) -> int:
 
 
 def handle_ansible_generate_roles(args: argparse.Namespace) -> int:
-    paths = get_default_paths(args.root)
-    lib_dir = args.library_index_directory or paths["library_index_directory"]
-    playbooks_dir = args.playbooks_directory or paths["playbooks_directory"]
+    paths = resolve(args.root)
+    lib_dir = args.library_index_directory or paths.library_index_directory
+    playbooks_dir = args.playbooks_directory or paths.playbooks_directory
 
     console.print("[bold blue]Generating Ansible role files (faults & waiters)...[/bold blue]")
     try:

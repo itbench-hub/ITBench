@@ -184,14 +184,18 @@ def grant_agent_access(
     core = CoreV1Api()
     dyn_client = dynamic.DynamicClient(ApiClient())
 
-    # Create primary service account in default namespace
-    create_service_account(dyn_client, service_account_name, "default")
-    create_cluster_role_and_binding(dyn_client, service_account_name)
-
+    # Discover labeled namespaces before creating any RBAC resources so that we
+    # don't leave orphaned ServiceAccount / ClusterRoleBinding objects behind
+    # when no accessible namespaces exist.
     namespaces = discover_namespaces(core)
     if not namespaces:
         logger.warning("No namespaces found with label %s.", AGENT_ACCESSIBLE_LABEL)
         return
+
+    # Create primary service account and cluster-level read access only once we
+    # know there are namespaces to grant access to.
+    create_service_account(dyn_client, service_account_name, "default")
+    create_cluster_role_and_binding(dyn_client, service_account_name)
 
     primary_ns = namespaces[0].metadata.name
     for ns in namespaces:

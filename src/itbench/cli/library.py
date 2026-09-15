@@ -1,12 +1,12 @@
 """CLI handlers for 'library' subcommands."""
 import argparse
-import sys
 
 from pathlib import Path
 
 from rich.console import Console
 from rich.table import Table
 
+from itbench.cli.constants import resolve
 from itbench.library.generate import (
     generate_index_schemas,
     generate_indexes,
@@ -32,35 +32,10 @@ from itbench.library.validate import (
 console = Console()
 
 
-def get_default_paths(root: Path | None = None) -> dict[str, Path]:
-    if root is None:
-        # Search upwards for repo root marker (pyproject.toml)
-        cur = Path.cwd()
-        for parent in [cur] + list(cur.parents):
-            if (parent / "pyproject.toml").exists() and (parent / "library").exists():
-                root = parent
-                break
-        if root is None:
-            root = Path.cwd()
-
-    return {
-        "root": root,
-        "library_index_directory": root / "library" / "indexes",
-        "templates_directory": root / "templates" / "library" / "indexes",
-        "schemas_directory": root / "schemas" / "json",
-        "specs_templates_directory": root / "templates" / "library" / "specs" / "scenarios",
-        "specs_directory": root / "library" / "specs" / "scenarios",
-        "docs_templates_directory": root / "templates" / "documentation" / "library",
-        "documentation_directory": root / "documentation" / "library",
-        "schemas_templates_directory": root / "templates" / "schemas" / "json" / "library" / "index",
-        "playbooks_directory": root / "scenarios" / "sre" / "project",
-    }
-
-
 def handle_validate(args: argparse.Namespace) -> int:
-    paths = get_default_paths(args.root)
-    index_dir = args.library_index_directory or paths["library_index_directory"]
-    schemas_dir = args.schemas_directory or paths["schemas_directory"]
+    paths = resolve(args.root)
+    index_dir = args.library_index_directory or paths.library_index_directory
+    schemas_dir = args.schemas_directory or paths.schemas_directory
 
     console.print(f"[bold blue]Validating library indexes against schemas...[/bold blue]")
     try:
@@ -73,37 +48,37 @@ def handle_validate(args: argparse.Namespace) -> int:
 
 
 def handle_generate(args: argparse.Namespace) -> int:
-    paths = get_default_paths(args.root)
+    paths = resolve(args.root)
     target = args.target
 
     try:
         if target in ["all", "indexes"]:
             console.print("[blue]Generating library indexes...[/blue]")
             generate_indexes(
-                paths["templates_directory"],
-                paths["library_index_directory"],
-                paths["playbooks_directory"],
+                paths.templates_directory,
+                paths.library_index_directory,
+                paths.playbooks_directory,
             )
         if target in ["all", "schemas"]:
             console.print("[blue]Generating index schemas...[/blue]")
             generate_index_schemas(
-                paths["library_index_directory"],
-                paths["schemas_templates_directory"],
-                paths["schemas_directory"],
+                paths.library_index_directory,
+                paths.schemas_templates_directory,
+                paths.schemas_directory,
             )
         if target in ["all", "specs"]:
             console.print("[blue]Generating scenario specs...[/blue]")
             generate_specs(
-                paths["specs_templates_directory"],
-                paths["library_index_directory"],
-                paths["specs_directory"],
+                paths.specs_templates_directory,
+                paths.library_index_directory,
+                paths.specs_dir,
             )
         if target in ["all", "readmes"]:
             console.print("[blue]Generating documentation readmes...[/blue]")
             generate_readmes(
-                paths["docs_templates_directory"],
-                paths["library_index_directory"],
-                paths["documentation_directory"],
+                paths.docs_templates_directory,
+                paths.library_index_directory,
+                paths.documentation_directory,
             )
     except Exception as e:
         console.print(f"[bold red]✗ Generation failed:[/bold red] {e}")
@@ -114,17 +89,17 @@ def handle_generate(args: argparse.Namespace) -> int:
 
 
 def handle_scaffold(args: argparse.Namespace) -> int:
-    paths = get_default_paths(args.root)
+    paths = resolve(args.root)
     item_type = args.item_type
 
     if item_type == "scenario":
-        scenarios_dir = paths["templates_directory"] / "scenarios"
+        scenarios_dir = paths.templates_directory / "scenarios"
         description = args.description or input("Enter description for new scenario: ").strip()
         idx = next_scenario_index(scenarios_dir)
         dest = create_scenario_stub(description, idx, scenarios_dir)
         console.print(f"[bold green]✓ Scenario stub created:[/bold green] {dest.resolve()}")
     elif item_type == "fault":
-        faults_dir = paths["templates_directory"] / "faults"
+        faults_dir = paths.templates_directory / "faults"
         name = args.name or input("Enter fault name: ").strip()
         description = args.description or input("Enter fault description: ").strip()
         expectation = args.expectation or input("Enter fault expectation: ").strip()
@@ -135,9 +110,9 @@ def handle_scaffold(args: argparse.Namespace) -> int:
 
 
 def handle_list(args: argparse.Namespace) -> int:
-    paths = get_default_paths(args.root)
+    paths = resolve(args.root)
     res_type = args.resource_type
-    items = list_resources(paths["library_index_directory"], res_type)
+    items = list_resources(paths.library_index_directory, res_type)
 
     if not items:
         console.print(f"[yellow]No {res_type} found.[/yellow]")
@@ -184,10 +159,10 @@ def handle_list(args: argparse.Namespace) -> int:
 
 
 def handle_show(args: argparse.Namespace) -> int:
-    paths = get_default_paths(args.root)
+    paths = resolve(args.root)
     res_type = args.resource_type
     res_id = args.id
-    item = get_resource(paths["library_index_directory"], res_type, res_id)
+    item = get_resource(paths.library_index_directory, res_type, res_id)
 
     if not item:
         console.print(f"[bold red]Resource not found:[/bold red] {res_type} with ID/index '{res_id}'")
@@ -198,9 +173,9 @@ def handle_show(args: argparse.Namespace) -> int:
 
 
 def handle_search(args: argparse.Namespace) -> int:
-    paths = get_default_paths(args.root)
+    paths = resolve(args.root)
     query = args.query
-    results = search_resources(paths["library_index_directory"], query)
+    results = search_resources(paths.library_index_directory, query)
 
     total_found = sum(len(v) for v in results.values())
     if total_found == 0:
@@ -228,8 +203,8 @@ def handle_search(args: argparse.Namespace) -> int:
 
 
 def handle_stats(args: argparse.Namespace) -> int:
-    paths = get_default_paths(args.root)
-    stats = get_scenario_statistics(paths["library_index_directory"])
+    paths = resolve(args.root)
+    stats = get_scenario_statistics(paths.library_index_directory)
 
     console.print("[bold blue]ITBench Scenario Distribution Statistics[/bold blue]\n")
 
