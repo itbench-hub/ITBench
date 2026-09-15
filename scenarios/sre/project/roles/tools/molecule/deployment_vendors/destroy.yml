@@ -1,0 +1,36 @@
+---
+- name: Uninstall observability vendor agents only
+  hosts:
+    - localhost
+  tasks:
+    - name: Import cluster role to set platform and provider variables
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    # Invoke ONLY the vendor uninstall task files so this scenario never removes
+    # unrelated tools (Prometheus, Istio, cert-manager, etc.). Vendor uninstall is
+    # idempotent and credential-independent, so it safely no-ops when a vendor was
+    # never installed.
+    - name: Set tools role variables for vendor uninstall
+      ansible.builtin.set_fact:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+        tools_configuration:
+          vendors:
+            dynatrace: "{{ observability_vendors.dynatrace | ansible.builtin.default({}) }}"
+            datadog: "{{ observability_vendors.datadog | ansible.builtin.default({}) }}"
+
+    - name: Uninstall Dynatrace vendor agent
+      ansible.builtin.include_role:
+        name: tools
+        tasks_from: uninstall_dynatrace.yaml
+
+    - name: Uninstall Datadog vendor agent
+      ansible.builtin.include_role:
+        name: tools
+        tasks_from: uninstall_datadog.yaml

@@ -1,0 +1,56 @@
+---
+- name: Install observability vendor agents
+  hosts:
+    - localhost
+  tasks:
+    - name: Resolve vendor manifest paths from environment
+      ansible.builtin.set_fact:
+        molecule_datadog_manifest: "{{ lookup('ansible.builtin.env', 'DATADOG_MANIFEST_PATH') }}"
+        molecule_dynatrace_dynakube: "{{ lookup('ansible.builtin.env', 'DYNATRACE_DYNAKUBE_PATH') }}"
+
+    # The vendor scenarios require real SaaS credentials and manifests. Skip the
+    # whole run cleanly when they are not supplied so the scenario is safe in CI.
+    - name: Skip when no vendor credentials are provided
+      ansible.builtin.meta: end_play
+      when:
+        - molecule_datadog_manifest | ansible.builtin.length == 0
+        - molecule_dynatrace_dynakube | ansible.builtin.length == 0
+
+    - name: Import cluster role to set platform and provider variables
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+        tools_configuration:
+          sre:
+            enabled: false
+          finops:
+            enabled: false
+          vendors:
+            datadog: >-
+              {{
+                {
+                  'enabled': molecule_datadog_manifest | ansible.builtin.length > 0,
+                  'manifest_path': molecule_datadog_manifest,
+                  'secret_name': 'datadog-secret',
+                  'api_key_name': 'api-key',
+                  'app_key_name': 'app-key'
+                }
+              }}
+            dynatrace: >-
+              {{
+                {
+                  'enabled': molecule_dynatrace_dynakube | ansible.builtin.length > 0,
+                  'dynakube_path': molecule_dynatrace_dynakube
+                }
+              }}

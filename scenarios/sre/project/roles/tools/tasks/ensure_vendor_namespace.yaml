@@ -1,0 +1,52 @@
+---
+# Safely ensure an ITBench-owned namespace exists.
+#
+# Inputs:
+#   vendor_namespace_name  - namespace to ensure
+#   vendor_namespace_vendor - value for the itbench.io/observability-vendor label
+#
+# Behaviour:
+#   - If the namespace does not exist, create it with ITBench ownership labels.
+#   - If it exists and is already ITBench-owned for this vendor, leave it.
+#   - If it exists but is NOT ITBench-owned for this vendor, fail (never claim a
+#     pre-existing/foreign namespace).
+- name: Look up the {{ vendor_namespace_vendor }} namespace
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ vendor_namespace_name }}"
+  register: vendor_namespace_existing
+
+- name: Assert an existing {{ vendor_namespace_vendor }} namespace is ITBench-owned
+  ansible.builtin.assert:
+    that:
+      - >-
+        vendor_namespace_existing.resources[0].metadata.labels['app.kubernetes.io/managed-by'] | ansible.builtin.default('')
+        == 'ITBench'
+      - >-
+        vendor_namespace_existing.resources[0].metadata.labels['itbench.io/observability-vendor'] | ansible.builtin.default('')
+        == vendor_namespace_vendor
+    fail_msg: >-
+      Namespace '{{ vendor_namespace_name }}' already exists but is not owned by
+      ITBench for the {{ vendor_namespace_vendor }} vendor. Refusing to claim it.
+      Remove or rename the existing namespace, or point the vendor at a different
+      namespace.
+    success_msg: Existing {{ vendor_namespace_vendor }} namespace is ITBench-owned.
+  when:
+    - vendor_namespace_existing.resources | ansible.builtin.length == 1
+
+- name: Create the {{ vendor_namespace_vendor }} namespace when absent
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    state: present
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ vendor_namespace_name }}"
+        labels:
+          app.kubernetes.io/managed-by: ITBench
+          itbench.io/observability-vendor: "{{ vendor_namespace_vendor }}"
+  when:
+    - vendor_namespace_existing.resources | ansible.builtin.length == 0

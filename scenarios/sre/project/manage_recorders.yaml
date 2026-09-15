@@ -95,3 +95,14 @@
         recorders_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
+        # Pass ONLY the recorder subset the role declares (not the whole
+        # observability_vendors blob, which also carries agent-deploy keys the
+        # recorders role's argument spec does not accept).
+        recorders_vendors:
+          dynatrace:
+            recorder: >-
+              {{
+                (observability_vendors | ansible.builtin.default({}))
+                .get('dynatrace', {})
+                .get('recorder', {'enabled': false})
+              }}

@@ -48,6 +48,16 @@
       when:
         - recorders_configuration.phase == "pre-fault-injection"
 
+    - name: Stamp scenario start time for Dynatrace Recorder
+      # The Dynatrace recorder itself runs at teardown (Grail is queryable by
+      # timeframe); here we only record the scenario start so teardown can
+      # back-query [scenario start -> now].
+      ansible.builtin.import_tasks:
+        file: stamp_dynatrace_start_time.yaml
+      when:
+        - recorders_configuration.phase == "pre-fault-injection"
+        - recorders_vendors.dynatrace.recorder.enabled | ansible.builtin.default(false)
+
     - name: Install SRE specific recorders
       when:
         - recorders_configuration.tools.sre.enabled | ansible.builtin.default(false)

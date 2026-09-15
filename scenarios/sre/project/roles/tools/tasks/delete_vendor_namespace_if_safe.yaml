@@ -1,0 +1,84 @@
+---
+# Delete a vendor namespace ONLY when it is exclusively ITBench-owned and drained
+# of meaningful resources. Preserves namespaces by default.
+#
+# Inputs:
+#   vendor_delete_namespace - namespace to consider for deletion
+#   vendor_delete_vendor    - expected itbench.io/observability-vendor label
+- name: Re-read the {{ vendor_delete_vendor }} namespace ownership
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ vendor_delete_namespace }}"
+  register: vendor_delete_ns_owner
+
+- name: Inventory remaining resources in the {{ vendor_delete_vendor }} namespace
+  kubernetes.core.k8s_info:
+    api_version: "{{ vendor_delete_kind.api_version }}"
+    kind: "{{ vendor_delete_kind.kind }}"
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    namespace: "{{ vendor_delete_namespace }}"
+  loop:
+    - {api_version: v1, kind: Pod}
+    - {api_version: v1, kind: PersistentVolumeClaim}
+    - {api_version: v1, kind: Service}
+    - {api_version: v1, kind: ConfigMap}
+    - {api_version: v1, kind: Secret}
+    - {api_version: apps/v1, kind: Deployment}
+    - {api_version: apps/v1, kind: DaemonSet}
+    - {api_version: apps/v1, kind: StatefulSet}
+    - {api_version: batch/v1, kind: Job}
+  loop_control:
+    loop_var: vendor_delete_kind
+    label: "{{ vendor_delete_kind.kind }}"
+  register: vendor_delete_inventory
+  when:
+    - vendor_delete_ns_owner.resources | ansible.builtin.length == 1
+
+# Consider only resources NOT owned by ITBench for this vendor. Default k8s
+# objects such as the `kube-root-ca.crt` ConfigMap and the default ServiceAccount
+# token are ignored implicitly because we only block on foreign, non-default
+# workloads/data below.
+- name: Compute foreign (non-ITBench) resources remaining in the namespace
+  ansible.builtin.set_fact:
+    vendor_delete_foreign_resources: >-
+      {{
+        vendor_delete_inventory.results
+        | map(attribute='resources') | sum(start=[])
+        | rejectattr('metadata.labels.itbench.io/observability-vendor', 'defined')
+        | rejectattr('metadata.name', 'match', '^(kube-root-ca\\.crt|default-token.*|default)$')
+        | list
+      }}
+  when:
+    - vendor_delete_ns_owner.resources | ansible.builtin.length == 1
+
+- name: Delete the {{ vendor_delete_vendor }} namespace when ITBench-owned and empty
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ vendor_delete_namespace }}"
+    state: absent
+    wait: true
+  when:
+    - vendor_delete_ns_owner.resources | ansible.builtin.length == 1
+    - >-
+      vendor_delete_ns_owner.resources[0].metadata.labels['app.kubernetes.io/managed-by'] | ansible.builtin.default('')
+      == 'ITBench'
+    - >-
+      vendor_delete_ns_owner.resources[0].metadata.labels['itbench.io/observability-vendor'] | ansible.builtin.default('')
+      == vendor_delete_vendor
+    - vendor_delete_foreign_resources | ansible.builtin.length == 0
+
+- name: Report that the {{ vendor_delete_vendor }} namespace was preserved
+  ansible.builtin.debug:
+    msg: >-
+      Namespace '{{ vendor_delete_namespace }}' was preserved because it is not
+      exclusively ITBench-owned or still contains non-ITBench resources.
+  when:
+    - vendor_delete_ns_owner.resources | ansible.builtin.length == 1
+    - >-
+      (vendor_delete_ns_owner.resources[0].metadata.labels['app.kubernetes.io/managed-by'] | ansible.builtin.default('') != 'ITBench')
+      or (vendor_delete_ns_owner.resources[0].metadata.labels['itbench.io/observability-vendor'] | ansible.builtin.default('') != vendor_delete_vendor)
+      or (vendor_delete_foreign_resources | ansible.builtin.default([]) | ansible.builtin.length > 0)

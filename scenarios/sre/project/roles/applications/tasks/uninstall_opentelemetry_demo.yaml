@@ -7,6 +7,22 @@
     release_state: absent
     wait: true
 
+# Explicitly remove the projected Dynatrace ingest secret. The namespace
+# deletion below also removes it, but this keeps teardown symmetric with the
+# install and covers cases where the namespace is retained.
+- name: Delete the Dynatrace OTLP ingest Secret
+  kubernetes.core.k8s:
+    kubeconfig: "{{ applications_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: dynatrace-otlp-ingest
+        namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+    state: absent
+  when:
+    - observability_vendors.dynatrace.enabled | ansible.builtin.default(false)
+
 - name: Delete Namespace
   kubernetes.core.k8s:
     kubeconfig: "{{ applications_cluster.kubeconfig }}"

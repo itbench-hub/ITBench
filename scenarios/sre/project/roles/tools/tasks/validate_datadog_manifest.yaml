@@ -1,0 +1,62 @@
+---
+# Validate a Datadog agent manifest. Credential-free and side-effect-free so it
+# can be unit-tested. Sets tools_datadog_agent_cr and tools_datadog_requires_app_key.
+#
+# Inputs:
+#   tools_datadog_documents     - parsed list of manifest documents
+#   tools_datadog_namespace     - managed namespace
+#   tools_datadog_secret_name   - ITBench-created Secret name
+#   tools_datadog_api_key_name  - ITBench Secret key for the API key
+#   tools_datadog_app_key_name  - ITBench Secret key for the app key
+- name: Validate the Datadog agent manifest
+  vars:
+    tools_datadog_non_null: "{{ tools_datadog_documents | ansible.builtin.reject('none') | list }}"
+  ansible.builtin.assert:
+    that:
+      - tools_datadog_documents | ansible.builtin.length == 1
+      - tools_datadog_non_null | ansible.builtin.length == 1
+      - tools_datadog_non_null[0].kind == 'DatadogAgent'
+      - tools_datadog_non_null[0].apiVersion == 'datadoghq.com/v2alpha1'
+      - >-
+        tools_datadog_non_null[0].metadata.namespace | ansible.builtin.default(tools_datadog_namespace)
+        == tools_datadog_namespace
+    fail_msg: >-
+      The Datadog agent manifest must contain exactly one DatadogAgent
+      (datadoghq.com/v2alpha1) document, no additional documents (Secrets are
+      created by ITBench, not accepted from the manifest), and must not target a
+      namespace other than '{{ tools_datadog_namespace }}'.
+    success_msg: Datadog agent manifest passed validation.
+
+- name: Extract the DatadogAgent credential references
+  ansible.builtin.set_fact:
+    tools_datadog_agent_cr: "{{ (tools_datadog_documents | ansible.builtin.reject('none') | list)[0] }}"
+
+- name: Determine referenced credential secrets
+  ansible.builtin.set_fact:
+    tools_datadog_api_secret: "{{ tools_datadog_agent_cr.spec.global.credentials.apiSecret | ansible.builtin.default({}) }}" # pragma: allowlist secret
+    tools_datadog_app_secret: "{{ tools_datadog_agent_cr.spec.global.credentials.appSecret | ansible.builtin.default({}) }}" # pragma: allowlist secret
+    tools_datadog_requires_app_key: "{{ tools_datadog_agent_cr.spec.global.credentials.appSecret is ansible.builtin.defined }}"
+
+- name: Assert the DatadogAgent apiSecret reference matches the ITBench secret
+  ansible.builtin.assert:
+    that:
+      - tools_datadog_api_secret.secretName | ansible.builtin.default('') == tools_datadog_secret_name
+      - tools_datadog_api_secret.keyName | ansible.builtin.default('') == tools_datadog_api_key_name
+    fail_msg: >-
+      The DatadogAgent spec.global.credentials.apiSecret must reference
+      secretName='{{ tools_datadog_secret_name }}' keyName='{{ tools_datadog_api_key_name }}'
+      to match the Secret ITBench creates.
+    success_msg: DatadogAgent apiSecret reference matches the ITBench secret.
+
+- name: Assert the DatadogAgent appSecret reference matches the ITBench secret
+  ansible.builtin.assert:
+    that:
+      - tools_datadog_app_secret.secretName | ansible.builtin.default('') == tools_datadog_secret_name
+      - tools_datadog_app_secret.keyName | ansible.builtin.default('') == tools_datadog_app_key_name
+    fail_msg: >-
+      The DatadogAgent spec.global.credentials.appSecret must reference
+      secretName='{{ tools_datadog_secret_name }}' keyName='{{ tools_datadog_app_key_name }}'
+      to match the Secret ITBench creates.
+    success_msg: DatadogAgent appSecret reference matches the ITBench secret.
+  when:
+    - tools_datadog_requires_app_key

@@ -1,0 +1,131 @@
+---
+# Dynatrace Grail recorder (SaaS). Unlike the in-cluster recorders, Dynatrace
+# retains history queryable by timeframe, so this runs ONCE at teardown and
+# back-queries the whole incident window [scenario start -> now] for every
+# dataset (metrics, spans, logs, events, k8s metrics).
+#
+# All configuration comes from observability_vendors.dynatrace.recorder. The
+# platform token is read at teardown from a gitignored file (platform_token_path,
+# under secrets/ — same convention as dynakube_path) and injected straight into
+# the recorder Job as an environment variable value, mirroring how the ClickHouse
+# recorder injects CLICKHOUSE_PASSWORD. No environment export and no Kubernetes
+# Secret are required.
+
+- name: Resolve Dynatrace recorder configuration
+  ansible.builtin.set_fact:
+    recorders_dynatrace_config: "{{ recorders_vendors.dynatrace.recorder }}"
+
+- name: Validate that the Dynatrace platform token file is configured
+  ansible.builtin.assert:
+    that:
+      - recorders_dynatrace_config.platform_token_path | default("") | ansible.builtin.length > 0
+    fail_msg: >-
+      Dynatrace recorder is enabled but observability_vendors.dynatrace.recorder.platform_token_path
+      is not set. Point it at a file (under secrets/, gitignored) containing a
+      platform token (prefix dt0s16.) with Grail read permissions.
+    success_msg: Dynatrace platform token path found.
+    quiet: true
+
+- name: Resolve the Dynatrace platform token path
+  ansible.builtin.set_fact:
+    recorders_dynatrace_token_path: "{{ recorders_dynatrace_config.platform_token_path }}"
+
+# A relative platform_token_path is resolved against the SRE project root (parent
+# of the playbook directory) so it works regardless of the working directory —
+# mirroring how install_datadog.yaml anchors its manifest_path.
+- name: Anchor a relative Dynatrace platform token path to the project root
+  ansible.builtin.set_fact:
+    recorders_dynatrace_token_path: "{{ [playbook_dir, '..', recorders_dynatrace_token_path] | ansible.builtin.path_join | ansible.builtin.realpath }}"
+  when:
+    - not (recorders_dynatrace_token_path is ansible.builtin.abs)
+
+- name: Validate that the Dynatrace platform token file exists
+  ansible.builtin.stat:
+    path: "{{ recorders_dynatrace_token_path }}"
+  register: recorders_dynatrace_token_file
+
+- name: Assert the Dynatrace platform token file is present and non-empty
+  ansible.builtin.assert:
+    that:
+      - recorders_dynatrace_token_file.stat.exists
+      - recorders_dynatrace_token_file.stat.size > 0
+    fail_msg: >-
+      Dynatrace platform token file not found or empty:
+      {{ recorders_dynatrace_token_path }}
+    success_msg: Dynatrace platform token file found.
+    quiet: true
+
+- name: Read the Dynatrace platform token
+  ansible.builtin.set_fact:
+    recorders_dynatrace_platform_token: >-
+      {{ lookup('ansible.builtin.file', recorders_dynatrace_token_path) | trim }}
+  no_log: true
+
+- name: Validate that the Dynatrace platform URL is set
+  ansible.builtin.assert:
+    that:
+      - recorders_dynatrace_config.platform_url | default("") | ansible.builtin.length > 0
+    fail_msg: >-
+      Dynatrace recorder is enabled but observability_vendors.dynatrace.recorder.platform_url
+      is not set (e.g. https://<env-id>.apps.dynatrace.com).
+    success_msg: Dynatrace platform URL found.
+    quiet: true
+
+- name: Retrieve scenario start time metadata
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    name: "{{ recorders_managers.data_recorders.instances.dynatrace }}-metadata"
+    namespace: "{{ recorders_managers.data_recorders.kubernetes.namespace }}"
+  register: recorders_dynatrace_metadata
+
+- name: Resolve query timeframe start
+  # Prefer the scenario start time stamped at install; fall back to the
+  # configured relative lookback if the marker is missing.
+  ansible.builtin.set_fact:
+    recorders_dynatrace_from: >-
+      {{
+        (
+          recorders_dynatrace_metadata.resources[0].data.scenario_start_time
+          if (recorders_dynatrace_metadata.resources | ansible.builtin.length > 0)
+          else recorders_dynatrace_config.fallback_from | default("now-1h")
+        )
+      }}
+
+- name: Create Dynatrace Data Recorder environment variables
+  # The token is injected as a plain env value (same approach as the ClickHouse
+  # recorder's CLICKHOUSE_PASSWORD). no_log hides it from task output.
+  ansible.builtin.set_fact:
+    recorders_dynatrace_env_vars:
+      - name: DT_PLATFORM_URL
+        value: "{{ recorders_dynatrace_config.platform_url }}"
+      - name: DT_PLATFORM_TOKEN
+        value: "{{ recorders_dynatrace_platform_token }}"
+      - name: DT_K8S_NAMESPACE
+        value: "{{ recorders_dynatrace_config.namespace | default('otel-demo') }}"
+      - name: DT_DQL_FROM
+        value: "{{ recorders_dynatrace_from }}"
+      - name: DT_DQL_TO
+        value: "{{ recorders_dynatrace_config.timeframe_to | default('now') }}"
+      - name: DT_DQL_INTERVAL
+        value: "{{ recorders_dynatrace_config.interval | default('1m') }}"
+      - name: DT_DQL_LIMIT
+        value: "{{ recorders_dynatrace_config.limit | default(1000) | ansible.builtin.string }}"
+      - name: DT_DQL_FORMAT
+        value: "{{ recorders_dynatrace_config.format | default('both') }}"
+  no_log: true
+
+- name: Import recorder deployment tasks
+  ansible.builtin.import_tasks:
+    file: deploy_python_recorder.yaml
+  vars:
+    python_recorder:
+      job:
+        environment_variables: "{{ recorders_dynatrace_env_vars }}"
+      name: "{{ recorders_managers.data_recorders.instances.dynatrace }}"
+      scripts:
+        requirements_file_path: "files/scripts/dynatrace/requirements.txt"
+        scripts_file_path: "files/scripts/dynatrace/gather.py"
+      volume:
+        size: 2Gi

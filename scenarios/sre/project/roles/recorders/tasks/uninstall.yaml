@@ -24,6 +24,15 @@
     label: cronjob/{{ cronjob.metadata.name }}
     loop_var: cronjob
 
+- name: Deploy Dynatrace Recorder
+  # Dynatrace Grail is queryable by timeframe, so the recorder runs ONCE here at
+  # teardown and back-queries [scenario start -> now]. It is deployed before the
+  # job wait below so its one-shot Job is awaited like the others.
+  ansible.builtin.import_tasks:
+    file: install_dynatrace_recorder.yaml
+  when:
+    - recorders_vendors.dynatrace.recorder.enabled | ansible.builtin.default(false)
+
 - name: Retrieve Jobs
   kubernetes.core.k8s_info:
     api_version: batch/v1
@@ -87,6 +96,17 @@
     export:
       directory: alerts
     recorder: "{{ recorders_instances.prometheus_data_recorder }}"
+
+- name: Import Dynatrace recorder export tasks
+  ansible.builtin.import_tasks:
+    file: copy_python_recorder_files.yaml
+  vars:
+    python_recorder:
+      export:
+        path: observability_information_from_dynatrace
+      name: "{{ recorders_managers.data_recorders.instances.dynatrace }}"
+  when:
+    - recorders_vendors.dynatrace.recorder.enabled | ansible.builtin.default(false)
 
 - name: Delete the namespace
   kubernetes.core.k8s:

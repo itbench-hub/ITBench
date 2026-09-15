@@ -1,0 +1,56 @@
+---
+# Idempotent, credential-independent Datadog cleanup. Safe to run even when the
+# vendor was never installed (all lookups/deletes no-op if absent). Only removes
+# resources ITBench created (label itbench.io/observability-vendor=datadog) and
+# preserves the namespace unless it is exclusively ITBench-owned and drained.
+- name: Set Datadog uninstall facts
+  ansible.builtin.set_fact:
+    tools_datadog_namespace: "{{ tools_vendors.datadog.kubernetes.namespace }}"
+
+- name: Check whether the Datadog namespace exists
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    name: "{{ tools_datadog_namespace }}"
+  register: tools_datadog_ns
+
+- name: Clean up Datadog resources
+  when:
+    - tools_datadog_ns.resources | ansible.builtin.length == 1
+  block:
+    - name: Delete ITBench-owned DatadogAgent resources
+      kubernetes.core.k8s:
+        api_version: datadoghq.com/v2alpha1
+        kind: DatadogAgent
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: "{{ tools_datadog_namespace }}"
+        label_selectors:
+          - itbench.io/observability-vendor=datadog
+        state: absent
+        wait: true
+
+    - name: Delete ITBench-owned Datadog credential secrets
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Secret
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        namespace: "{{ tools_datadog_namespace }}"
+        label_selectors:
+          - itbench.io/observability-vendor=datadog
+        state: absent
+        wait: true
+
+    - name: Uninstall the Datadog Operator Helm release
+      kubernetes.core.helm:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        release_name: "{{ tools_vendors.datadog.helm.release.name }}"
+        release_namespace: "{{ tools_datadog_namespace }}"
+        release_state: absent
+        wait: true
+
+    - name: Delete the Datadog namespace only when exclusively owned and drained
+      ansible.builtin.include_tasks: delete_vendor_namespace_if_safe.yaml
+      vars:
+        vendor_delete_namespace: "{{ tools_datadog_namespace }}"
+        vendor_delete_vendor: datadog
