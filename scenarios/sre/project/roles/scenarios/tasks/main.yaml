@@ -12,7 +12,37 @@
         ansible.builtin.from_yaml
       }}
   vars:
-    ground_truth_path: files/scenario_{{ scenarios_identifier }}/groundtruth.yaml
-    scenario_path: files/scenario_{{ scenarios_identifier }}/scenario.yaml
+    ground_truth_path: |-
+      {{
+        [
+          playbook_dir,
+          '..',
+          '..',
+          '..',
+          "library",
+          "definitions",
+          "scenarios",
+          scenarios_identifier | ansible.builtin.string,
+          "groundtruth.yaml"
+        ] |
+        ansible.builtin.path_join |
+        ansible.builtin.realpath
+      }}
+    scenario_path: |-
+      {{
+        [
+          playbook_dir,
+          '..',
+          '..',
+          '..',
+          "library",
+          "definitions",
+          "scenarios",
+          scenarios_identifier | ansible.builtin.string,
+          "scenario.yaml"
+        ] |
+        ansible.builtin.path_join |
+        ansible.builtin.realpath
+      }}
   tags:
     - always

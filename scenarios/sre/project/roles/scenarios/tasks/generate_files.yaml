@@ -9,11 +9,17 @@
           {
             scenario.id: (
               [
-                role_path,
-                "files",
-                "scenario_" ~ scenario.id
+                playbook_dir,
+                '..',
+                '..',
+                '..',
+                "library",
+                "definitions",
+                "scenarios",
+                scenario.id | ansible.builtin.string
               ] |
-              ansible.builtin.path_join
+              ansible.builtin.path_join |
+              ansible.builtin.realpath
             )
           }
         )
@@ -44,10 +50,11 @@
 - name: Generate scenario specs
   ansible.builtin.copy:
     content: |
+      # yaml-language-server: $schema=../../../../schemas/json/library/definitions/scenario.json
       {{
         lookup('ansible.builtin.template', 'templates/manifests/scenario.j2') |
         ansible.builtin.from_yaml |
-        ansible.builtin.to_nice_yaml(indent=2, width=160)
+        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2, width=160)
       }}
     dest: |-
       {{
@@ -66,10 +73,11 @@
 - name: Generate scenario ground truths
   ansible.builtin.copy:
     content: |
+      # yaml-language-server: $schema=../../../../schemas/json/library/definitions/groundtruth.json
       {{
         lookup('ansible.builtin.template', 'templates/manifests/groundtruth.j2') |
         ansible.builtin.from_yaml |
-        ansible.builtin.to_nice_yaml(indent=2, width=160)
+        ansible.builtin.to_nice_yaml(explicit_start=true, indent=2, width=160)
       }}
     dest: |-
       {{

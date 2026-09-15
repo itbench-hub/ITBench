@@ -53,6 +53,16 @@ def process_library_type(library_type: str, index_dir: Path, schema_dir: Path) -
 
     return ids, items
 
+def collect_alert_ids(index_dir: Path) -> List[str]:
+    alerts: set[str] = set()
+    for index_file in (index_dir / "faults").glob("*.json"):
+        index = json.loads(index_file.read_text(encoding="utf-8"))
+        fault_alerts = index.get("alerts", {})
+        alerts.update(fault_alerts.get("application", []))
+        alerts.update(fault_alerts.get("goldenSignal", []))
+    return sorted(alerts)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate schemas from library indexes")
 
@@ -80,15 +90,24 @@ def main():
         template_ids[library_type] = ids
         template_items[library_type] = items
 
+    template_ids["alerts"] = collect_alert_ids(args.library_index_directory)
+
+    env = Environment(loader=FileSystemLoader(args.templates_directory / "index"))
+
     logger.info("writing scenarios library index JSON schema")
 
-    env = Environment(loader=FileSystemLoader(args.templates_directory))
-    template = env.get_template("scenario.json.j2")
-
-    schema = json.loads(template.render(ids=template_ids, items=template_items))
-
+    schema = json.loads(env.get_template("scenario.json.j2").render(ids=template_ids, items=template_items))
     schema_dir = args.schemas_directory / "library" / "index"
     write_json_schema_file(schema_dir / "scenario.json", schema)
+
+    logger.info("writing scenarios definition JSON schemas")
+
+    definitions_env = Environment(loader=FileSystemLoader(args.templates_directory / "definitions"))
+    definitions_schema_dir = args.schemas_directory / "library" / "definitions"
+
+    for definition_template in ["scenario.json.j2", "groundtruth.json.j2"]:
+        schema = json.loads(definitions_env.get_template(definition_template).render(ids=template_ids))
+        write_json_schema_file(definitions_schema_dir / definition_template.removesuffix(".j2"), schema)
 
 if __name__ == "__main__":
     sys.exit(main())

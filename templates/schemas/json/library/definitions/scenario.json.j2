@@ -1,0 +1,175 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "kubernetesObjectRef": {
+            "properties": {
+                "apiVersion": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        },
+        "injectionItem": {
+            "properties": {
+                "args": {
+                    "type": "object"
+                },
+                "id": {
+                    "enum": {{ ids["faults"] | tojson }},
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ],
+            "type": "object"
+        },
+        "waiterItem": {
+            "properties": {
+                "args": {
+                    "type": "object"
+                },
+                "id": {
+                    "enum": {{ ids["waiters"] | tojson }},
+                    "type": "string"
+                }
+            },
+            "required": [
+                "args",
+                "id"
+            ],
+            "type": "object"
+        }
+    },
+    "properties": {
+        "applications": {
+            "properties": {
+                "bookInfo": {
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "options": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ],
+                    "type": "object"
+                },
+                "opentelemetryDemo": {
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "options": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ],
+                    "type": "object"
+                }
+            },
+            "minProperties": 1,
+            "type": "object"
+        },
+        "faults": {
+            "items": {
+                "properties": {
+                    "injections": {
+                        "items": {
+                            "$ref": "#/$defs/injectionItem"
+                        },
+                        "minItems": 1,
+                        "type": "array"
+                    },
+                    "waitFor": {
+                        "minProperties": 1,
+                        "properties": {
+                            "postInjection": {
+                                "items": {
+                                    "$ref": "#/$defs/waiterItem"
+                                },
+                                "minItems": 1,
+                                "type": "array"
+                            },
+                            "preInjection": {
+                                "items": {
+                                    "$ref": "#/$defs/waiterItem"
+                                },
+                                "minItems": 1,
+                                "type": "array"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "injections"
+                ],
+                "type": "object"
+            },
+            "type": "array"
+        },
+        "tools": {
+            "properties": {
+                "finops": {
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ],
+                    "type": "object"
+                },
+                "sre": {
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ],
+                    "type": "object"
+                }
+            },
+            "minProperties": 1,
+            "type": "object"
+        }
+    },
+    "required": [
+        "applications",
+        "faults",
+        "tools"
+    ],
+    "type": "object"
+}

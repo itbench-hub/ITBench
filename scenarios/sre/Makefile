@@ -25,7 +25,7 @@ generate-library: ## Generates library indexes, schemas, and other related docum
 	$(UV) run scripts/generate_library_index_schemas.py \
 		--library_index_directory=$(abspath ../../library/indexes) \
 		--schemas_directory=$(abspath ../../schemas/json) \
-		--templates_directory=$(abspath ../../templates/schemas/json/library/index)
+		--templates_directory=$(abspath ../../templates/schemas/json/library)
 	$(UV) run scripts/generate_library_readmes.py \
 		--templates_directory=$(abspath ../../templates/documentation/library) \
 		--library_index_directory=$(abspath ../../library/indexes) \
@@ -42,7 +42,7 @@ generate-scenario-index: ## Generate a new scenario index based on user input
 .PHONY: generate-resource-files
 generate-resource-files: ## Generates task files, scenario manifests, and other related files
 	$(UV) run ansible-playbook -i inventory project/manage_resource_files.yaml --tags "generate_files"
-	cd ../../ && $(UV) run ansible-lint $(abspath project/roles/scenarios/files) --fix
+	cd ../../ && $(UV) run ansible-lint $(abspath ../../library/definitions) --fix
 
 .PHONY: validate-library
 validate-library: ## Validates library indexes

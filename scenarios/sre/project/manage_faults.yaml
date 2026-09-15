@@ -35,7 +35,7 @@
         - name: Validate injection index
           ansible.builtin.assert:
             that:
-              - faults_idx < (scenarios_scenario.spec.faults | ansible.builtin.length)
+              - faults_idx < (scenarios_scenario.faults | ansible.builtin.length)
             fail_msg: Invalid fault index. Please ensure that the index is correct.
             success_msg: Valid fault index.
 
@@ -43,7 +43,7 @@
           ansible.builtin.set_fact:
             faults_injection_tasks: |-
               {{
-                scenarios_scenario.spec.faults[faults_idx].injections |
+                scenarios_scenario.faults[faults_idx].injections |
                 ansible.builtin.default([])
               }}
 
@@ -51,12 +51,12 @@
           ansible.builtin.set_fact:
             waiters_pre_injection_tasks: |-
               {{
-                scenarios_scenario.spec.faults[faults_idx].waitFor.preInjection |
+                scenarios_scenario.faults[faults_idx].waitFor.preInjection |
                 ansible.builtin.default([])
               }}
             waiters_post_injection_tasks: |-
               {{
-                scenarios_scenario.spec.faults[faults_idx].waitFor.postInjection |
+                scenarios_scenario.faults[faults_idx].waitFor.postInjection |
                 ansible.builtin.default([])
               }}
 

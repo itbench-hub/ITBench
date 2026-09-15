@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../../schemas/json/library/definitions/groundtruth.json
+---
+alerts:
+- labels: {}
+  name: KubePodNotReady
+entities:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: frontend
+    namespace: otel-demo
+solutions:
+- - steps:
+    - command: kubectl -n otel-demo rollout undo deployment/frontend
+      text: Revert the last change done to the manifest.
+  - steps:
+    - command: kubectl -n otel-demo edit deployment frontend
+      text: Manually edit the manifest and remove the faulty readiness probe in the container rule.

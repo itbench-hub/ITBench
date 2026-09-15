@@ -38,7 +38,7 @@ class TestLoadScenarioSpec(unittest.TestCase):
         result = inject_scenario_faults.load_scenario_spec(private_project_dir, scenario_id)
 
         self.assertEqual(result, spec_data)
-        self.assertEqual(len(result["spec"]["faults"]), 1)
+        self.assertEqual(len(result["faults"]), 1)
 
     @patch("builtins.open", side_effect=FileNotFoundError)
     @patch("sys.exit")
