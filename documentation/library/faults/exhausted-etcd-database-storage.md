@@ -3,7 +3,7 @@
 
 # Exhausted Etcd Database Storage
 
-| [Source](../../../../scenarios/sre/library/indexes/faults/exhausted-etcd-database-storage.json) | [Schema](../../../../schemas/json/faults/exhausted-etcd-database-storage.json) | [Implementation](../../../../scenarios/sre/project/roles/faults/tasks/inject_exhausted_etcd_database_storage.yaml) | Kubernetes | Performance |
+| [Source](../../../library/indexes/faults/exhausted-etcd-database-storage.json) | [Schema](../../../schemas/json/faults/exhausted-etcd-database-storage.json) | [Implementation](../../../scenarios/sre/project/roles/faults/tasks/inject_exhausted_etcd_database_storage.yaml) | Kubernetes | Performance |
 
 This fault creates etcd storage pressure by writing a large number of ConfigMaps, causing increased API server latency and degraded cluster performance. This simulates real-world incidents where etcd storage growth causes progressive degradation of cluster operations.
 
