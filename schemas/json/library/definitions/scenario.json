@@ -1,0 +1,213 @@
+{
+    "$defs": {
+        "injectionItem": {
+            "properties": {
+                "args": {
+                    "type": "object"
+                },
+                "id": {
+                    "enum": [
+                        "scaled-to-zero-kubernetes-workload",
+                        "nonexistent-kubernetes-workload-node",
+                        "ingress-port-blocking-network-policy",
+                        "insufficient-kubernetes-resource-quota",
+                        "nonexistent-kubernetes-workload-persistent-volume-claim",
+                        "scheduled-chaos-mesh-experiment",
+                        "kubernetes-api-server-request-surge",
+                        "unsupported-architecture-kubernetes-workload-container-image",
+                        "deleted-kubernetes-service",
+                        "exhausted-etcd-database-storage",
+                        "valkey-workload-changed-password",
+                        "cordoned-kubernetes-worker-node",
+                        "misconfigured-kubernetes-horizontal-pod-autoscaler",
+                        "crashing-kubernetes-workload-init-container",
+                        "valkey-workload-out-of-memory",
+                        "misconfigured-kubernetes-workload-container-readiness-probe",
+                        "corrupted-kubernetes-secret-credentials",
+                        "unassigned-kubernetes-workload-container-resource-limits",
+                        "unschedulable-kubernetes-workload-pod-anti-affinity-rule",
+                        "modified-kubernetes-workload-container-environment-variable",
+                        "invalid-kubernetes-service-selector",
+                        "disabled-istio-ambient-mode-kubernetes-namespace",
+                        "insufficient-kubernetes-workload-container-resources",
+                        "strict-mutual-tls-istio-service-mesh-enforcement",
+                        "opentelemetry-demo-feature-flag",
+                        "failing-name-resolution-kubernetes-workload-dns-policy",
+                        "modified-target-port-kubernetes-service",
+                        "nonexistent-kubernetes-workload-container-image",
+                        "hanging-kubernetes-workload-init-container",
+                        "priority-kubernetes-workload-priority-preemption",
+                        "traffic-denying-istio-gateway-authorization-policy",
+                        "invalid-kubernetes-workload-container-command"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ],
+            "type": "object"
+        },
+        "kubernetesObjectRef": {
+            "properties": {
+                "apiVersion": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        },
+        "waiterItem": {
+            "properties": {
+                "args": {
+                    "type": "object"
+                },
+                "id": {
+                    "enum": [
+                        "delete-workload-pods",
+                        "pause-execution",
+                        "restart-kubernetes-workload",
+                        "scale-kubernetes-workload"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "args",
+                "id"
+            ],
+            "type": "object"
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "applications": {
+            "minProperties": 1,
+            "properties": {
+                "bookInfo": {
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "options": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ],
+                    "type": "object"
+                },
+                "opentelemetryDemo": {
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "options": {
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ],
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "faults": {
+            "items": {
+                "properties": {
+                    "injections": {
+                        "items": {
+                            "$ref": "#/$defs/injectionItem"
+                        },
+                        "minItems": 1,
+                        "type": "array"
+                    },
+                    "waitFor": {
+                        "minProperties": 1,
+                        "properties": {
+                            "postInjection": {
+                                "items": {
+                                    "$ref": "#/$defs/waiterItem"
+                                },
+                                "minItems": 1,
+                                "type": "array"
+                            },
+                            "preInjection": {
+                                "items": {
+                                    "$ref": "#/$defs/waiterItem"
+                                },
+                                "minItems": 1,
+                                "type": "array"
+                            }
+                        },
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "injections"
+                ],
+                "type": "object"
+            },
+            "type": "array"
+        },
+        "tools": {
+            "minProperties": 1,
+            "properties": {
+                "finops": {
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ],
+                    "type": "object"
+                },
+                "sre": {
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ],
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "required": [
+        "applications",
+        "faults",
+        "tools"
+    ],
+    "type": "object"
+}

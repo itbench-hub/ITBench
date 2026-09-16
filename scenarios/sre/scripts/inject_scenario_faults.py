@@ -20,11 +20,12 @@ logger = logging.getLogger(__name__)
 def load_scenario_spec(private_project_directory: Path, scenario_id: int) -> Dict[str, Any]:
     file_path = (
         private_project_directory
-        / "project"
-        / "roles"
+        / ".."
+        / ".."
+        / "library"
+        / "definitions"
         / "scenarios"
-        / "files"
-        / f"scenario_{scenario_id}"
+        / str(scenario_id)
         / "scenario.yaml"
     )
 
@@ -33,7 +34,7 @@ def load_scenario_spec(private_project_directory: Path, scenario_id: int) -> Dic
     try:
         with open(file_path) as f:
             spec = yaml.safe_load(f)
-        logger.debug(f"Loaded scenario spec with {len(spec["spec"]["faults"])} fault groups")
+        logger.debug(f"Loaded scenario spec with {len(spec["faults"])} fault groups")
         return spec
     except FileNotFoundError:
         logger.error(f"Scenario spec file not found: {file_path}")
@@ -83,7 +84,7 @@ def main() -> None:
     spec = load_scenario_spec(args.private_project_directory, args.scenario_id)
 
     runners = []
-    for faults_index in range(len(spec["spec"]["faults"])):
+    for faults_index in range(len(spec["faults"])):
         runner = inject_fault_group(
             args.private_project_directory,
             args.scenario_id,

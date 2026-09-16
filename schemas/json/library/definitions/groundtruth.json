@@ -1,0 +1,109 @@
+{
+    "$defs": {
+        "kubernetesObjectRef": {
+            "properties": {
+                "apiVersion": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "namespace": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "namespace"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "apiVersion",
+                "kind",
+                "metadata"
+            ],
+            "type": "object"
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "properties": {
+        "alerts": {
+            "items": {
+                "properties": {
+                    "labels": {
+                        "type": "object"
+                    },
+                    "name": {
+                        "enum": [
+                            "HighRequestErrorRate",
+                            "HighRequestLatency",
+                            "KubeContainerWaiting",
+                            "KubeHpaMaxedOut",
+                            "KubePodCrashLooping",
+                            "KubePodNotReady",
+                            "NoRequestsReceived"
+                        ],
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "labels",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "type": "array"
+        },
+        "entities": {
+            "items": {
+                "$ref": "#/$defs/kubernetesObjectRef"
+            },
+            "type": "array"
+        },
+        "solutions": {
+            "items": {
+                "items": {
+                    "properties": {
+                        "steps": {
+                            "items": {
+                                "properties": {
+                                    "command": {
+                                        "type": "string"
+                                    },
+                                    "text": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "text"
+                                ],
+                                "type": "object"
+                            },
+                            "minItems": 1,
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "steps"
+                    ],
+                    "type": "object"
+                },
+                "type": "array"
+            },
+            "type": "array"
+        }
+    },
+    "required": [
+        "alerts",
+        "entities",
+        "solutions"
+    ],
+    "type": "object"
+}
