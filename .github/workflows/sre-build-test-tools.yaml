@@ -14,58 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  awx-ee:
-    strategy:
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-24.04
-          - platform: linux/arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - name: Checkout codebase
-        uses: actions/checkout@v7.0.1
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
-        with:
-          version-file: pyproject.toml
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Create AWX Execution Environment image context
-        run: |
-          uv run ansible-builder create --output-filename Dockerfile
-        working-directory: scenarios/sre/tools/awx-ee
-      - name: Copy requirements to expected location
-        run: |
-          cp _build/requirements.yml requirements.yml
-          cp _build/requirements.txt requirements.txt
-        working-directory: scenarios/sre/tools/awx-ee/context
-      - name: Build AWX Execution Environment image
-        uses: docker/build-push-action@v7.3.0
-        env:
-          DOCKER_BUILD_RECORD_UPLOAD: false
-        with:
-          context: scenarios/sre/tools/awx-ee/context
-          platforms: |
-            ${{ matrix.platform }}
-          push: false
-          tags: |
-            quay.io/it-bench/awx-ee:2.0.0
-            quay.io/it-bench/awx-ee:latest
-
-  opentelemetry-collector:
-    uses: ./.github/workflows/_build-image.yaml
-    with:
-      context: components/opentelemetry/collector
-      image: quay.io/it-bench/opentelemetry-collector
-      tags: |
-        quay.io/it-bench/opentelemetry-collector:2.0.0
-        quay.io/it-bench/opentelemetry-collector:latest
-      push: false
-
   clickhouse-recorder:
     uses: ./.github/workflows/_build-image.yaml
     with:
@@ -86,6 +34,16 @@ jobs:
         quay.io/it-bench/jaeger-recorder:latest
       push: false
 
+  kubernetes-topology-monitor:
+    uses: ./.github/workflows/_build-image.yaml
+    with:
+      context: scenarios/sre/tools/kubernetes-topology-monitor
+      image: quay.io/it-bench/topology-monitor
+      tags: |
+        quay.io/it-bench/topology-monitor:0.0.4
+        quay.io/it-bench/topology-monitor:latest
+      push: false
+
   kubernetes-topology-monitor-recorder:
     uses: ./.github/workflows/_build-image.yaml
     with:
@@ -96,6 +54,16 @@ jobs:
         quay.io/it-bench/kubernetes-topology-monitor-recorder:latest
       push: false
 
+  opentelemetry-collector:
+    uses: ./.github/workflows/_build-image.yaml
+    with:
+      context: components/opentelemetry/collector
+      image: quay.io/it-bench/opentelemetry-collector
+      tags: |
+        quay.io/it-bench/opentelemetry-collector:2.0.0
+        quay.io/it-bench/opentelemetry-collector:latest
+      push: false
+
   prometheus-recorder:
     uses: ./.github/workflows/_build-image.yaml
     with:
@@ -104,14 +72,4 @@ jobs:
       tags: |
         quay.io/it-bench/prometheus-recorder:1.0.0
         quay.io/it-bench/prometheus-recorder:latest
-      push: false
-
-  topology-monitor:
-    uses: ./.github/workflows/_build-image.yaml
-    with:
-      context: scenarios/sre/tools/kubernetes-topology-monitor
-      image: quay.io/it-bench/topology-monitor
-      tags: |
-        quay.io/it-bench/topology-monitor:0.0.4
-        quay.io/it-bench/topology-monitor:latest
       push: false
