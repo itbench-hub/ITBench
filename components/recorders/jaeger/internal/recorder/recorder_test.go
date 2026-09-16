@@ -22,7 +22,7 @@ import (
 
 const (
 	// Same image as the live deployment in install_opentelemetry_collectors.yaml.
-	image = "quay.io/jaegertracing/jaeger:2.21.0"
+	image = "quay.io/jaegertracing/jaeger:2.21.0@sha256:3d0ac795ff98aa04d1be04311d2dac6c25b4bfc8322dc02e53bc5b170c5018c3"
 
 	otlpHTTPPort  = "4318/tcp"
 	grpcQueryPort = "16685/tcp"
