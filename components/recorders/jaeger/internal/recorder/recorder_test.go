@@ -60,6 +60,7 @@ func TestRun(t *testing.T) {
 		t.Fatalf("get grpc endpoint: %v", err)
 	}
 
+	seedTime := time.Now().UTC()
 	if err := seedSpans(otlpEndpoint); err != nil {
 		t.Fatalf("seed spans: %v", err)
 	}
@@ -69,7 +70,11 @@ func TestRun(t *testing.T) {
 	}
 
 	outDir := t.TempDir()
-	if err := recorder.Run(ctx, grpcEndpoint, outDir); err != nil {
+	// Both query timestamps are after seedTime, so seedTime falls in [t - 5m, t] for both
+	t1 := seedTime.Add(2 * time.Second)
+	t2 := seedTime.Add(4 * time.Second)
+
+	if err := recorder.Run(ctx, grpcEndpoint, outDir, t1, t2); err != nil {
 		t.Fatalf("recorder.Run: %v", err)
 	}
 
@@ -77,34 +82,34 @@ func TestRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read output dir: %v", err)
 	}
-	if len(entries) != 1 {
-		t.Fatalf("expected 1 output file, got %d", len(entries))
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 output files for 2 snapshots, got %d", len(entries))
 	}
 
-	data, err := os.ReadFile(filepath.Join(outDir, entries[0].Name()))
-	if err != nil {
-		t.Fatalf("read output file: %v", err)
-	}
-
-	var spans []map[string]any
-	if err := json.Unmarshal(data, &spans); err != nil {
-		t.Fatalf("parse output JSON: %v", err)
-	}
-	if len(spans) == 0 {
-		t.Error("expected at least one span in output, got none")
-	}
-
-	// Verify the seeded operation name is present in at least one span.
-	// model.Span serialises as "operation_name" per its protobuf JSON tag.
-	found := false
-	for _, s := range spans {
-		if s["operation_name"] == testOperation {
-			found = true
-			break
+	for _, entry := range entries {
+		data, err := os.ReadFile(filepath.Join(outDir, entry.Name()))
+		if err != nil {
+			t.Fatalf("read output file: %v", err)
 		}
-	}
-	if !found {
-		t.Errorf("expected span with operation_name=%q in output", testOperation)
+
+		var spans []map[string]any
+		if err := json.Unmarshal(data, &spans); err != nil {
+			t.Fatalf("parse output JSON: %v", err)
+		}
+		if len(spans) == 0 {
+			t.Errorf("expected at least one span in output file %s, got none", entry.Name())
+		}
+
+		found := false
+		for _, s := range spans {
+			if s["operation_name"] == testOperation {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected span with operation_name=%q in output file %s", testOperation, entry.Name())
+		}
 	}
 }
 

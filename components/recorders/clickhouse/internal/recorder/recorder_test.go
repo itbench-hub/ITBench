@@ -71,6 +71,21 @@ func TestRun(t *testing.T) {
 
 	// ── lite logs must only contain WARN/ERROR/FATAL rows ─────────────────
 	assertLiteLogsFiltered(t, outDir)
+
+	// ── test snapshot milestone mode ─────────────────────────────────────
+	snapshotDir := t.TempDir()
+	t1 := time.Date(2024, 1, 1, 0, 0, 0, 500000000, time.UTC)
+	if err := recorder.RunWithAddr(ctx, addr, "default", testPassword, snapshotDir, t1); err != nil {
+		t.Fatalf("recorder.Run with snapshot timestamp: %v", err)
+	}
+
+	snapSubDir := filepath.Join(snapshotDir, "snapshot_at_2024-01-01T00-00-00.500000")
+	for _, f := range []string{
+		"raw/k8s_events_raw.tsv",
+		"lite/k8s_events.tsv",
+	} {
+		assertFile(t, snapSubDir, f)
+	}
 }
 
 // seedDB opens a *sql.DB for DDL/DML seeding — same TCP options as the recorder.
