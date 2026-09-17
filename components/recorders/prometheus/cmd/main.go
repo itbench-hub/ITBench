@@ -4,7 +4,11 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"strconv"
+	"syscall"
+	"time"
 
 	"github.com/itbench-hub/ITBench/components/recorders/prometheus/internal/recorder"
 )
@@ -25,8 +29,37 @@ func main() {
 	}
 	outputDir := filepath.Join(homeDir, "records")
 
-	if err := recorder.Run(context.Background(), endpoint, token, outputDir); err != nil {
-		slog.Error("recorder failed", "err", err)
-		os.Exit(1)
+	intervalSec := 300
+	if val := os.Getenv("INTERVAL_SECONDS"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil && parsed > 0 {
+			intervalSec = parsed
+		} else {
+			slog.Warn("invalid INTERVAL_SECONDS, using default", "value", val, "default", intervalSec)
+		}
+	}
+
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	slog.Info("starting prometheus recorder daemon", "interval_seconds", intervalSec, "output_dir", outputDir)
+
+	if err := recorder.Run(ctx, endpoint, token, outputDir); err != nil {
+		slog.Error("initial recorder run failed", "err", err)
+	}
+
+	ticker := time.NewTicker(time.Duration(intervalSec) * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			slog.Info("shutting down prometheus recorder daemon")
+			return
+		case <-ticker.C:
+			slog.Info("running scheduled scrape")
+			if err := recorder.Run(ctx, endpoint, token, outputDir); err != nil {
+				slog.Error("scheduled recorder run failed", "err", err)
+			}
+		}
 	}
 }
