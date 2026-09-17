@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/jaegertracing/jaeger-idl v0.12.0
 	github.com/testcontainers/testcontainers-go v0.44.0
-	google.golang.org/grpc v1.83.2
+	google.golang.org/grpc v1.84.0
 )
 
 require (
