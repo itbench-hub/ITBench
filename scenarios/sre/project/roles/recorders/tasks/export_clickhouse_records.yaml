@@ -7,7 +7,7 @@
     tools_cluster:
       kubeconfig: "{{ recorders_cluster.kubeconfig }}"
 
-- name: Create PersistentVolumeClaim for clickhouse-recorder
+- name: Create PersistentVolumeClaim for Clickhouse Recorder
   kubernetes.core.k8s:
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
@@ -15,8 +15,10 @@
       kind: PersistentVolumeClaim
       metadata:
         labels:
+          "app.kubernetes.io/component": clickhouse-recorder
           "app.kubernetes.io/managed-by": ITBench
           "app.kubernetes.io/name": "{{ recorders_instances.clickhouse_data_recorder.name }}-records"
+          "app.kubernetes.io/part-of": data-collection
         name: "{{ recorders_instances.clickhouse_data_recorder.name }}-records"
         namespace: "{{ recorders_namespaces.data_recorders }}"
       spec:
@@ -24,24 +26,11 @@
           - ReadWriteOnce
         resources:
           requests:
-            storage: 2Gi
+            storage: 3Gi
         volumeMode: Filesystem
     state: present
 
-- name: Wait for any ongoing jobs to be removed
-  kubernetes.core.k8s_info:
-    api_version: batch/v1
-    kind: Job
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    name: "{{ recorders_instances.clickhouse_data_recorder.name }}"
-    namespace: "{{ recorders_instances.clickhouse_data_recorder.namespace }}"
-  register: recorders_job
-  until:
-    - recorders_job.resources | ansible.builtin.length == 0
-  retries: 6
-  delay: 30
-
-- name: Install Kubernetes Job for clickhouse-recorder
+- name: Install Kubernetes Job for Clickhouse Recorder
   kubernetes.core.k8s:
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
@@ -49,17 +38,20 @@
       kind: Job
       metadata:
         labels:
+          "app.kubernetes.io/component": clickhouse-recorder
           "app.kubernetes.io/managed-by": ITBench
           "app.kubernetes.io/name": "{{ recorders_instances.clickhouse_data_recorder.name }}"
+          "app.kubernetes.io/part-of": data-collection
         name: "{{ recorders_instances.clickhouse_data_recorder.name }}"
         namespace: "{{ recorders_namespaces.data_recorders }}"
       spec:
-        ttlSecondsAfterFinished: 10
         template:
           metadata:
             labels:
+              "app.kubernetes.io/component": clickhouse-recorder
               "app.kubernetes.io/managed-by": ITBench
               "app.kubernetes.io/name": "{{ recorders_instances.clickhouse_data_recorder.name }}"
+              "app.kubernetes.io/part-of": data-collection
           spec:
             affinity:
               nodeAffinity:
@@ -78,12 +70,21 @@
                     value: "{{ tools_clickhouse_username }}"
                   - name: CLICKHOUSE_PASSWORD
                     value: "{{ tools_clickhouse_password }}"
+                  - name: RECORDING_START_TIMESTAMP
+                    valueFrom:
+                      configMapKeyRef:
+                        name: "{{ recorders_instances.clickhouse_data_recorder.name }}-config"
+                        key: start
+                  - name: RECORDING_END_TIMESTAMP
+                    value: "{{ recorders_timestamps.end }}"
+                  - name: RECORDING_INTERVAL_SECONDS
+                    value: "300"
                 resources:
                   requests:
                     cpu: 500m
-                    memory: 1Gi
+                    memory: 512Mi
                   limits:
-                    memory: 15Gi
+                    memory: 1024Mi
                 securityContext:
                   allowPrivilegeEscalation: false
                   capabilities:
@@ -103,3 +104,16 @@
                 persistentVolumeClaim:
                   claimName: "{{ recorders_instances.clickhouse_data_recorder.name }}-records"
     state: present
+    wait: true
+    wait_timeout: 300
+    wait_condition:
+      type: Complete
+      status: "True"
+
+- name: Import copy tasks
+  ansible.builtin.import_tasks:
+    file: copy_recorder_files.yaml
+  vars:
+    export:
+      directory: observability_information_from_clickhouse
+    recorder: "{{ recorders_instances.clickhouse_data_recorder }}"

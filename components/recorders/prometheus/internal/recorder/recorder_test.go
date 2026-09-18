@@ -80,40 +80,50 @@ func TestRun(t *testing.T) {
 		t.Fatalf("alert did not fire: %v", err)
 	}
 
+	// Ensure Prometheus TSDB has scraped/evaluated and recorded ALERTS time-series
+	time.Sleep(2 * time.Second)
+
 	outDir := t.TempDir()
-	if err := recorder.Run(ctx, endpoint, "", outDir); err != nil {
+	now := time.Now().UTC()
+	t1 := now
+	t2 := now.Add(1 * time.Second)
+
+	if err := recorder.Run(ctx, endpoint, "", outDir, t1, t2); err != nil {
 		t.Fatalf("recorder.Run: %v", err)
 	}
 
 	entries, err := os.ReadDir(outDir)
-	if err != nil || len(entries) != 1 {
-		t.Fatalf("expected 1 output file, got %d", len(entries))
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("expected 2 output files for 2 snapshots, got %d", len(entries))
 	}
 
-	data, err := os.ReadFile(filepath.Join(outDir, entries[0].Name()))
-	if err != nil {
-		t.Fatalf("read output: %v", err)
-	}
-
-	var alerts []map[string]any
-	if err := json.Unmarshal(data, &alerts); err != nil {
-		t.Fatalf("parse output JSON: %v", err)
-	}
-	if len(alerts) == 0 {
-		t.Fatal("expected at least one firing alert in output, got none")
-	}
-
-	// Verify the seeded alert is present.
-	found := false
-	for _, a := range alerts {
-		labels, _ := a["Labels"].(map[string]any)
-		if labels["alertname"] == "AlwaysFiring" {
-			found = true
-			break
+	for _, entry := range entries {
+		data, err := os.ReadFile(filepath.Join(outDir, entry.Name()))
+		if err != nil {
+			t.Fatalf("read output: %v", err)
 		}
-	}
-	if !found {
-		t.Errorf("expected AlwaysFiring alert in output, got: %s", string(data))
+
+		var alerts []recorder.AlertSnapshot
+		if err := json.Unmarshal(data, &alerts); err != nil {
+			t.Fatalf("parse output JSON: %v", err)
+		}
+		if len(alerts) == 0 {
+			t.Fatalf("expected at least one firing alert in output file %s, got none", entry.Name())
+		}
+
+		found := false
+		for _, a := range alerts {
+			if a.Labels["alertname"] == "AlwaysFiring" {
+				found = true
+				if a.State != "firing" {
+					t.Errorf("expected state to be firing, got %s", a.State)
+				}
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected AlwaysFiring alert in output file %s, got: %s", entry.Name(), string(data))
+		}
 	}
 }
 
