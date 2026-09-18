@@ -1,0 +1,21 @@
+name: Build and push ITBench component images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - components/**
+
+concurrency:
+  group: release-component-images-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    uses: ./.github/workflows/_build-component-images.yaml
+    with:
+      push: true
+    secrets:
+      QUAY_USERNAME: ${{ secrets.QUAY_USERNAME }}
+      QUAY_ROBOT_TOKEN: ${{ secrets.QUAY_ROBOT_TOKEN }}

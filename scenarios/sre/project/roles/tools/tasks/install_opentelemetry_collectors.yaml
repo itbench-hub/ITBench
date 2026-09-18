@@ -68,7 +68,7 @@
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: istio_access
+              logs_table_name: "istio.access_logs"
             debug: {}
     state: present
 
@@ -100,17 +100,10 @@
           - name: query-http
             port: 16686
         config:
-          service:
-            extensions:
-              - jaeger_storage
-              - jaeger_query
-            pipelines:
-              traces:
-                receivers:
-                  - otlp
-                exporters:
-                  - debug
-                  - jaeger_storage_exporter
+          exporters:
+            debug: {}
+            jaeger_storage_exporter:
+              trace_storage: traces_store
           extensions:
             jaeger_query:
               base_path: /jaeger
@@ -119,9 +112,16 @@
             jaeger_storage:
               backends:
                 traces_store:
-                  opensearch:
-                    server_urls:
-                      - http://opensearch-cluster-master.{{ tools_releases.opensearch.namespace }}.svc.cluster.local:9200
+                  clickhouse:
+                    create_schema: true
+                    database: jaeger
+                    username: "{{ tools_clickhouse_username }}"
+                    password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
+                    endpoint: "{{ tools_clickhouse_endpoint.http }}"
+          processors:
+            batch:
+              timeout: 1s
+              send_batch_size: 8192
           receivers:
             otlp:
               protocols:
@@ -129,10 +129,19 @@
                   endpoint: 0.0.0.0:4317
                 http:
                   endpoint: 0.0.0.0:4318
-          exporters:
-            debug: {}
-            jaeger_storage_exporter:
-              trace_storage: traces_store
+          service:
+            extensions:
+              - jaeger_storage
+              - jaeger_query
+            pipelines:
+              traces:
+                exporters:
+                  - debug
+                  - jaeger_storage_exporter
+                processors:
+                  - batch
+                receivers:
+                  - otlp
     state: present
 
 - name: Create ServiceAccount for Kubernetes Telemetry Collector
@@ -432,12 +441,12 @@
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: kubernetes_events
+              logs_table_name: kubernetes.events
             clickhouse/objects:
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: kubernetes_objects_snapshot
+              logs_table_name: kubernetes.objects_snapshot
             debug: {}
     state: present
 

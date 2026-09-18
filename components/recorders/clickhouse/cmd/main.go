@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/itbench-hub/ITBench/components/recorders/clickhouse/internal/recorder"
@@ -36,20 +36,46 @@ func main() {
 	}
 	outputDir := filepath.Join(homeDir, "records")
 
+	startRaw := os.Getenv("RECORDING_START_TIMESTAMP")
+	if startRaw == "" {
+		slog.Error("RECORDING_START_TIMESTAMP environment variable is not set")
+		os.Exit(1)
+	}
+
+	start, err := time.Parse(time.RFC3339, startRaw)
+	if err != nil {
+		slog.Error("could not parse RECORDING_START_TIMESTAMP", "raw", startRaw, "err", err)
+		os.Exit(1)
+	}
+
+	endRaw := os.Getenv("RECORDING_END_TIMESTAMP")
+	if endRaw == "" {
+		slog.Error("RECORDING_END_TIMESTAMP environment variable is not set")
+		os.Exit(1)
+	}
+
+	end, err := time.Parse(time.RFC3339, endRaw)
+	if err != nil {
+		slog.Error("could not parse RECORDING_END_TIMESTAMP", "raw", endRaw, "err", err)
+		os.Exit(1)
+	}
+
+	intervalRaw := os.Getenv("RECORDING_INTERVAL_SECONDS")
+	if intervalRaw == "" {
+		slog.Error("RECORDING_INTERVAL_SECONDS environment variable is not set")
+		os.Exit(1)
+	}
+
+	intervalSeconds, err := strconv.Atoi(intervalRaw)
+	if err != nil || intervalSeconds <= 0 {
+		slog.Error("RECORDING_INTERVAL_SECONDS must be a positive integer", "raw", intervalRaw, "err", err)
+		os.Exit(1)
+	}
+
 	var timestamps []time.Time
-	if rawTimestamps := os.Getenv("SNAPSHOT_TIMESTAMPS"); rawTimestamps != "" {
-		for _, raw := range strings.Split(rawTimestamps, ",") {
-			raw = strings.TrimSpace(raw)
-			if raw == "" {
-				continue
-			}
-			t, err := time.Parse(time.RFC3339, raw)
-			if err != nil {
-				slog.Warn("could not parse snapshot timestamp", "raw", raw, "err", err)
-				continue
-			}
-			timestamps = append(timestamps, t.UTC())
-		}
+	interval := time.Duration(intervalSeconds) * time.Second
+	for t := start.UTC(); !t.After(end.UTC()); t = t.Add(interval) {
+		timestamps = append(timestamps, t)
 	}
 
 	slog.Info("starting clickhouse burst recorder", "snapshots_count", len(timestamps), "output_dir", outputDir)

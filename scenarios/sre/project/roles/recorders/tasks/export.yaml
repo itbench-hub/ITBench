@@ -1,0 +1,29 @@
+---
+- name: Import tools role for internal endpoints
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_internal_endpoints
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+      platform: "{{ recorders_cluster.platform }}"
+
+- name: Export topology records
+  when:
+    - recorders_export_type in ["full", "topology-only"]
+  block:
+    - name: Import Kubernetes Topology Recorder export tasks
+      ansible.builtin.import_tasks:
+        file: export_kubernetes_topology_monitor_records.yaml
+
+- name: Export telemetry records
+  when:
+    - recorders_export_type in ["full", "telemetry-only"]
+  block:
+    - name: Import Clickhouse Recorder export tasks
+      ansible.builtin.import_tasks:
+        file: export_clickhouse_records.yaml
+
+    - name: Import Prometheus Recorder export tasks
+      ansible.builtin.import_tasks:
+        file: export_prometheus_records.yaml
