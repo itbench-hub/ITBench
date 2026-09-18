@@ -10,30 +10,10 @@ on:
       - '!scenarios/sre/tools/kubernetes-topology-monitor/charts/kubernetes-topology-monitor/**'
 
 concurrency:
-  group: ci-build-test-${{ github.ref }}
+  group: ci-sre-build-test-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  clickhouse-recorder:
-    uses: ./.github/workflows/_build-image.yaml
-    with:
-      context: components/recorders/clickhouse
-      image: quay.io/it-bench/clickhouse-recorder
-      tags: |
-        quay.io/it-bench/clickhouse-recorder:1.0.0
-        quay.io/it-bench/clickhouse-recorder:latest
-      push: false
-
-  jaeger-recorder:
-    uses: ./.github/workflows/_build-image.yaml
-    with:
-      context: components/recorders/jaeger
-      image: quay.io/it-bench/jaeger-recorder
-      tags: |
-        quay.io/it-bench/jaeger-recorder:1.0.0
-        quay.io/it-bench/jaeger-recorder:latest
-      push: false
-
   kubernetes-topology-monitor:
     uses: ./.github/workflows/_build-image.yaml
     with:
@@ -52,24 +32,4 @@ jobs:
       tags: |
         quay.io/it-bench/kubernetes-topology-monitor-recorder:1.0.0
         quay.io/it-bench/kubernetes-topology-monitor-recorder:latest
-      push: false
-
-  opentelemetry-collector:
-    uses: ./.github/workflows/_build-image.yaml
-    with:
-      context: components/opentelemetry/collector
-      image: quay.io/it-bench/opentelemetry-collector
-      tags: |
-        quay.io/it-bench/opentelemetry-collector:2.0.0
-        quay.io/it-bench/opentelemetry-collector:latest
-      push: false
-
-  prometheus-recorder:
-    uses: ./.github/workflows/_build-image.yaml
-    with:
-      context: components/recorders/prometheus
-      image: quay.io/it-bench/prometheus-recorder
-      tags: |
-        quay.io/it-bench/prometheus-recorder:1.0.0
-        quay.io/it-bench/prometheus-recorder:latest
       push: false

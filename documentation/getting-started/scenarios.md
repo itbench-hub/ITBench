@@ -218,7 +218,7 @@ There is a subcategory of this failure which are DockerHub specific. Since Docke
     - Give it a descriptive name
     - Select appropriate permissions (`Public Repo Read` required as to pull public images)
     - Copy the generated token
-3. Create a Kubernetes secret in the following namespaces (`book-info`, `clickhouse`, `clickhouse-operator`,`kube-gateways`, `istio-system`, `opensearch`, `opentelemetry-collectors`, `otel-demo`)
+3. Create a Kubernetes secret in the following namespaces (`book-info`, `clickhouse`, `clickhouse-operator`,`kube-gateways`, `istio-system`, `opentelemetry-collectors`, `otel-demo`)
 ```bash
 kubectl create secret docker-registry dockerhub-secret \
     --docker-server=https://index.docker.io/v1/ \

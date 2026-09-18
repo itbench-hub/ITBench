@@ -1,0 +1,18 @@
+name: Build ITBench component images (test)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - components/**
+
+concurrency:
+  group: test-component-images-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: ./.github/workflows/_build-component-images.yaml
+    with:
+      push: false

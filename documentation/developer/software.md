@@ -59,7 +59,6 @@ For issues and support directly related to the software, it is often best to rea
 | Name | Repository |
 | --- | --- |
 | Altinity Clickhouse | https://github.com/Altinity/ClickHouse |
-| OpenSearch | https://github.com/opensearch-project/OpenSearch |
 
 ## Kubernetes
 

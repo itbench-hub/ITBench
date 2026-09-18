@@ -51,6 +51,9 @@ func RunWithAddr(ctx context.Context, addr, username, password, outputDir string
 	defaultDB := openDB(addr, username, password, "default")
 	defer defaultDB.Close()
 
+	jaegerDB := openDB(addr, username, password, "jaeger")
+	defer jaegerDB.Close()
+
 	promDB := openDB(addr, username, password, "prometheus")
 	defer promDB.Close()
 
@@ -59,13 +62,13 @@ func RunWithAddr(ctx context.Context, addr, username, password, outputDir string
 	}
 
 	if len(timestamps) == 0 {
-		return exportSnapshot(ctx, defaultDB, promDB, outputDir, nil)
+		return exportSnapshot(ctx, defaultDB, jaegerDB, promDB, outputDir, nil)
 	}
 
 	for _, ts := range timestamps {
 		tsVal := ts
 		targetDir := filepath.Join(outputDir, fmt.Sprintf("snapshot_at_%s", ts.UTC().Format("2006-01-02T15-04-05.000000")))
-		if err := exportSnapshot(ctx, defaultDB, promDB, targetDir, &tsVal); err != nil {
+		if err := exportSnapshot(ctx, defaultDB, jaegerDB, promDB, targetDir, &tsVal); err != nil {
 			return err
 		}
 	}
@@ -73,7 +76,7 @@ func RunWithAddr(ctx context.Context, addr, username, password, outputDir string
 	return nil
 }
 
-func exportSnapshot(ctx context.Context, defaultDB, promDB *sql.DB, baseDir string, maxTime *time.Time) error {
+func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, baseDir string, maxTime *time.Time) error {
 	rawDir := filepath.Join(baseDir, "raw")
 	liteDir := filepath.Join(baseDir, "lite")
 	for _, d := range []string{
@@ -97,7 +100,7 @@ func exportSnapshot(ctx context.Context, defaultDB, promDB *sql.DB, baseDir stri
 	// ── k8s events ──────────────────────────────────────────────────────────
 	slog.Info("fetching k8s events (raw)", "dir", rawDir)
 	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_events_raw",
-		fmt.Sprintf(`SELECT * FROM kubernetes_events WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
+		fmt.Sprintf(`SELECT * FROM kubernetes.events WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("k8s events raw", "err", err)
 	}
 
@@ -107,7 +110,7 @@ func exportSnapshot(ctx context.Context, defaultDB, promDB *sql.DB, baseDir stri
 			Timestamp     AS timestamp,
 			Body          AS body,
 			ResourceAttributes['k8s.namespace.name'] AS namespace
-		 FROM kubernetes_events
+		 FROM kubernetes.events
 		 WHERE %s AND ResourceAttributes['k8s.namespace.name'] IN ('chaos-mesh','otel-demo','bookinfo')
 		 ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("k8s events lite", "err", err)
@@ -116,7 +119,7 @@ func exportSnapshot(ctx context.Context, defaultDB, promDB *sql.DB, baseDir stri
 	// ── k8s objects snapshot ─────────────────────────────────────────────────
 	slog.Info("fetching k8s objects (raw)", "dir", rawDir)
 	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_objects_raw",
-		fmt.Sprintf(`SELECT * FROM kubernetes_objects_snapshot WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
+		fmt.Sprintf(`SELECT * FROM kubernetes.objects_snapshot WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("k8s objects raw", "err", err)
 	}
 
@@ -127,7 +130,7 @@ func exportSnapshot(ctx context.Context, defaultDB, promDB *sql.DB, baseDir stri
 			Body          AS body,
 			ResourceAttributes['k8s.namespace.name'] AS namespace,
 			LogAttributes['k8s.resource.name']       AS resource_type
-		 FROM kubernetes_objects_snapshot
+		 FROM kubernetes.objects_snapshot
 		 WHERE %s AND ResourceAttributes['k8s.namespace.name'] IN ('chaos-mesh','otel-demo','bookinfo')
 		 ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("k8s objects lite", "err", err)
@@ -136,7 +139,7 @@ func exportSnapshot(ctx context.Context, defaultDB, promDB *sql.DB, baseDir stri
 	// ── otel logs ────────────────────────────────────────────────────────────
 	slog.Info("fetching otel logs (raw)", "dir", rawDir)
 	if err := exportQuery(ctx, defaultDB, rawDir, "otel_logs_raw",
-		fmt.Sprintf(`SELECT * FROM otel_demo_logs WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
+		fmt.Sprintf(`SELECT * FROM otel_demo.logs WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("otel logs raw", "err", err)
 	}
 
@@ -153,7 +156,7 @@ func exportSnapshot(ctx context.Context, defaultDB, promDB *sql.DB, baseDir stri
 			Body             AS body,
 			ResourceAttributes AS resource_attributes,
 			LogAttributes    AS log_attributes
-		 FROM otel_demo_logs
+		 FROM otel_demo.logs
 		 WHERE %s AND (SeverityText IN ('WARN','ERROR','FATAL') OR SeverityNumber >= 13)
 		 ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("otel logs lite", "err", err)
@@ -161,13 +164,13 @@ func exportSnapshot(ctx context.Context, defaultDB, promDB *sql.DB, baseDir stri
 
 	// ── otel traces ──────────────────────────────────────────────────────────
 	slog.Info("fetching otel traces (raw)", "dir", rawDir)
-	if err := exportQuery(ctx, defaultDB, rawDir, "otel_traces_raw",
-		fmt.Sprintf(`SELECT * FROM otel_demo_traces WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
+	if err := exportQuery(ctx, jaegerDB, rawDir, "otel_traces_raw",
+		fmt.Sprintf(`SELECT * FROM jaeger_spans WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("otel traces raw", "err", err)
 	}
 
 	slog.Info("fetching otel traces (lite)", "dir", liteDir)
-	if err := exportQuery(ctx, defaultDB, liteDir, "otel_traces",
+	if err := exportQuery(ctx, jaegerDB, liteDir, "otel_traces",
 		fmt.Sprintf(`SELECT
 			Timestamp      AS timestamp,
 			TraceId        AS trace_id,
@@ -182,7 +185,7 @@ func exportSnapshot(ctx context.Context, defaultDB, promDB *sql.DB, baseDir stri
 			Duration       AS duration,
 			StatusCode     AS status_code,
 			StatusMessage  AS status_message
-		 FROM otel_demo_traces
+		 FROM jaeger_spans
 		 WHERE %s AND StatusCode = 'Error'
 		 ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("otel traces lite", "err", err)

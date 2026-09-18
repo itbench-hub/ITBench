@@ -14,91 +14,86 @@
     namespace: "{{ recorder.namespace }}"
   register: recorders_persistent_volume_claims
 
-- name: Copy files from volume
-  when:
-    - recorders_persistent_volume_claims.api_found
-    - recorders_persistent_volume_claims.resources | ansible.builtin.length == 1
-  block:
-    - name: Create Deployment to export records from {{ recorder.name }}
-      kubernetes.core.k8s:
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: apps/v1
-          kind: Deployment
+- name: Create Deployment to export records from {{ recorder.name }}
+  kubernetes.core.k8s:
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          "app.kubernetes.io/component": "records-exporter"
+          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
+          "app.kubernetes.io/part-of": data-collection
+        name: "{{ recorder.name }}-exporter"
+        namespace: "{{ recorder.namespace }}"
+      spec:
+        selector:
+          matchLabels:
+            "app.kubernetes.io/component": "records-exporter"
+            "app.kubernetes.io/managed-by": ITBench
+            "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
+            "app.kubernetes.io/part-of": data-collection
+        template:
           metadata:
             labels:
+              "app.kubernetes.io/component": "records-exporter"
               "app.kubernetes.io/managed-by": ITBench
               "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
-              "app.kubernetes.io/part-of": "{{ recorder.name }}"
-            name: "{{ recorder.name }}-exporter"
-            namespace: "{{ recorder.namespace }}"
+              "app.kubernetes.io/part-of": data-collection
           spec:
-            selector:
-              matchLabels:
-                "app.kubernetes.io/managed-by": ITBench
-                "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
-                "app.kubernetes.io/part-of": "{{ recorder.name }}"
-            template:
-              metadata:
-                labels:
-                  "app.kubernetes.io/managed-by": ITBench
-                  "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
-                  "app.kubernetes.io/part-of": "{{ recorder.name }}"
-              spec:
-                containers:
-                  - name: exporter
-                    image: registry.access.redhat.com/ubi10:10.2-1789459392@sha256:6e3f045f5380e8d8dffaea7e01bf926d2db44aff751048697e780d1253687843
-                    command:
-                      - /bin/sh
-                    args:
-                      - -c
-                      - "sleep 600"
-                    resources:
-                      requests:
-                        cpu: 10m
-                        memory: 50Mi
-                      limits:
-                        memory: 100Mi
-                    securityContext:
-                      allowPrivilegeEscalation: false
-                      capabilities:
-                        drop:
-                          - ALL
-                    volumeMounts:
-                      - name: records
-                        mountPath: /opt/app-root/src/records
+            containers:
+              - name: exporter
+                image: registry.access.redhat.com/ubi10:10.2-1789459392@sha256:6e3f045f5380e8d8dffaea7e01bf926d2db44aff751048697e780d1253687843
+                command:
+                  - /bin/sh
+                args:
+                  - -c
+                  - "sleep 600"
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 50Mi
+                  limits:
+                    memory: 100Mi
                 securityContext:
-                  fsGroup: 1001
-                  runAsUser: 1001
-                  runAsNonRoot: true
-                  seccompProfile:
-                    type: RuntimeDefault
-                volumes:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+                volumeMounts:
                   - name: records
-                    persistentVolumeClaim:
-                      claimName: "{{ recorders_persistent_volume_claims.resources[0].metadata.name }}"
-            replicas: 1
-        state: present
-        wait: true
+                    mountPath: /opt/app-root/src/records
+            securityContext:
+              fsGroup: 1001
+              runAsUser: 1001
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+            volumes:
+              - name: records
+                persistentVolumeClaim:
+                  claimName: "{{ recorders_persistent_volume_claims.resources[0].metadata.name }}"
+        replicas: 1
+    state: present
+    wait: true
 
-    - name: Retrieve record exporter pod
-      kubernetes.core.k8s_info:
-        api_version: v1
-        kind: Pod
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-        namespace: "{{ recorder.namespace }}"
-        label_selectors:
-          - app.kubernetes.io/managed-by = ITBench
-          - app.kubernetes.io/name = {{ recorder.name }}-exporter
-          - app.kubernetes.io/part-of = {{ recorder.name }}
-      register: recorders_pods
+- name: Retrieve record exporter pod
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+    namespace: "{{ recorder.namespace }}"
+    label_selectors:
+      - "app.kubernetes.io/component=records-exporter"
+      - "app.kubernetes.io/managed-by=ITBench"
+      - "app.kubernetes.io/name={{ recorder.name }}-exporter"
+      - "app.kubernetes.io/part-of=data-collection"
+  register: recorders_pods
 
-    - name: Validate that exporter pod exists
-      ansible.builtin.fail:
-        msg: Unable to find recorder exporter pod. Please ensure deployment exists.
-      when:
-        - not recorders_pods.api_found or recorders_pods.resources | ansible.builtin.length == 0
-
+- name: Copy files from volume
+  block:
     # NOTE: `kubectl` is used in place of the `kubernetes.core` collection because
     #       the `k8_cp` module has an internal error when using it.
 
@@ -132,7 +127,7 @@
 
 - name: Copy exported data into local directory
   when:
-    - recorders_storage.local is ansible.builtin.defined
+    - recorders_storage_local is ansible.builtin.defined
   block:
     - name: Create local directory for exported data
       ansible.builtin.file:
@@ -140,7 +135,7 @@
         path: |-
           {{
             [
-              recorders_storage.local.directory,
+              recorders_storage_local.directory,
               export.directory
             ] |
             ansible.builtin.path_join
@@ -156,7 +151,7 @@
 
 - name: Copy exported data into S3
   when:
-    - recorders_storage.s3 is ansible.builtin.defined
+    - recorders_storage_s3 is ansible.builtin.defined
   block:
     - name: Retrieve all files in temporary directory for {{ recorder.name }}
       ansible.builtin.find:
@@ -165,19 +160,19 @@
 
     - name: Create AWS S3 bucket
       amazon.aws.s3_bucket:
-        endpoint_url: "{{ recorders_storage.s3.endpoint }}"
-        name: "{{ recorders_storage.s3.bucket }}"
+        endpoint_url: "{{ recorders_storage_s3.endpoint }}"
+        name: "{{ recorders_storage_s3.bucket }}"
         state: present
 
     - name: Upload exported data to S3 bucket
       amazon.aws.s3_object:
-        bucket: "{{ recorders_storage.s3.bucket }}"
-        endpoint_url: "{{ recorders_storage.s3.endpoint }}"
+        bucket: "{{ recorders_storage_s3.bucket }}"
+        endpoint_url: "{{ recorders_storage_s3.endpoint }}"
         mode: put
         object: |-
           {{
             [
-              recorders_storage.s3.directory,
+              recorders_storage_s3.directory,
               export.directory,
               (record.path | ansible.builtin.basename)
             ] |

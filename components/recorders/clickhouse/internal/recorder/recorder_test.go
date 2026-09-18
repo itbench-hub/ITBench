@@ -111,21 +111,25 @@ func seed(ctx context.Context, addr, password string) error {
 	defer db.Close()
 
 	ddl := []string{
-		`CREATE TABLE IF NOT EXISTS kubernetes_events (
+		`CREATE DATABASE IF NOT EXISTS jaeger`,
+		`CREATE DATABASE IF NOT EXISTS kubernetes`,
+		`CREATE DATABASE IF NOT EXISTS otel_demo`,
+
+		`CREATE TABLE IF NOT EXISTS kubernetes.events (
 			Timestamp DateTime64(9),
 			Body String,
 			ResourceAttributes Map(String, String),
 			LogAttributes Map(String, String)
 		) ENGINE = MergeTree() ORDER BY Timestamp`,
 
-		`CREATE TABLE IF NOT EXISTS kubernetes_objects_snapshot (
+		`CREATE TABLE IF NOT EXISTS kubernetes.objects_snapshot (
 			Timestamp DateTime64(9),
 			Body String,
 			ResourceAttributes Map(String, String),
 			LogAttributes Map(String, String)
 		) ENGINE = MergeTree() ORDER BY Timestamp`,
 
-		`CREATE TABLE IF NOT EXISTS otel_demo_logs (
+		`CREATE TABLE IF NOT EXISTS otel_demo.logs (
 			Timestamp DateTime64(9),
 			TraceId String,
 			SpanId String,
@@ -138,7 +142,7 @@ func seed(ctx context.Context, addr, password string) error {
 			LogAttributes Map(String, String)
 		) ENGINE = MergeTree() ORDER BY Timestamp`,
 
-		`CREATE TABLE IF NOT EXISTS otel_demo_traces (
+		`CREATE TABLE IF NOT EXISTS jaeger.jaeger_spans (
 			Timestamp DateTime64(9),
 			TraceId String,
 			SpanId String,
@@ -162,24 +166,24 @@ func seed(ctx context.Context, addr, password string) error {
 	}
 
 	dml := []string{
-		`INSERT INTO kubernetes_events VALUES
+		`INSERT INTO kubernetes.events VALUES
 			('2024-01-01 00:00:00', '{"type":"Normal"}', {'k8s.namespace.name': 'otel-demo'}, {})`,
 
-		`INSERT INTO kubernetes_objects_snapshot VALUES
+		`INSERT INTO kubernetes.objects_snapshot VALUES
 			('2024-01-01 00:00:00', '{"kind":"Pod"}', {'k8s.namespace.name': 'otel-demo'}, {'k8s.resource.name': 'Pod'})`,
 
 		// INFO row — must NOT appear in lite export
-		`INSERT INTO otel_demo_logs VALUES
+		`INSERT INTO otel_demo.logs VALUES
 			('2024-01-01 00:00:00', '', '', 0, 'INFO', 9, 'svc-a', 'info message', {}, {})`,
 		// ERROR row — must appear in lite export
-		`INSERT INTO otel_demo_logs VALUES
+		`INSERT INTO otel_demo.logs VALUES
 			('2024-01-01 00:00:01', '', '', 0, 'ERROR', 17, 'svc-a', 'error message', {}, {})`,
 
 		// OK trace — must NOT appear in lite export
-		`INSERT INTO otel_demo_traces VALUES
+		`INSERT INTO jaeger.jaeger_spans VALUES
 			('2024-01-01 00:00:00', 'tid1', 'sid1', '', '', 'op', 'SERVER', 'svc-a', '', '', 1000000, 'Ok', '')`,
 		// Error trace — must appear in lite export
-		`INSERT INTO otel_demo_traces VALUES
+		`INSERT INTO jaeger.jaeger_spans VALUES
 			('2024-01-01 00:00:01', 'tid2', 'sid2', '', '', 'op', 'SERVER', 'svc-a', '', '', 2000000, 'Error', 'failed')`,
 	}
 
