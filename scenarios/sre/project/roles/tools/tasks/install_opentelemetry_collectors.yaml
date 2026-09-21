@@ -9,7 +9,7 @@
         labels:
           "itbench.io/gateway-access": shared
           "prometheus.itbench.io/monitor": "true"
-        name: "{{ tools_operands.opentelemetry_collector.istio.namespace }}"
+        name: "{{ tools_namespaces.opentelemetry_collector }}"
     state: present
 
 - name: Import variable setting task
@@ -68,7 +68,7 @@
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: istio_access
+              logs_table_name: "istio.access_logs"
             debug: {}
     state: present
 
@@ -100,17 +100,10 @@
           - name: query-http
             port: 16686
         config:
-          service:
-            extensions:
-              - jaeger_storage
-              - jaeger_query
-            pipelines:
-              traces:
-                receivers:
-                  - otlp
-                exporters:
-                  - debug
-                  - jaeger_storage_exporter
+          exporters:
+            debug: {}
+            jaeger_storage_exporter:
+              trace_storage: traces_store
           extensions:
             jaeger_query:
               base_path: /jaeger
@@ -119,9 +112,16 @@
             jaeger_storage:
               backends:
                 traces_store:
-                  opensearch:
-                    server_urls:
-                      - http://opensearch-cluster-master.{{ tools_releases.opensearch.namespace }}.svc.cluster.local:9200
+                  clickhouse:
+                    create_schema: true
+                    database: jaeger
+                    username: "{{ tools_clickhouse_username }}"
+                    password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
+                    endpoint: "{{ tools_clickhouse_endpoint.http }}"
+          processors:
+            batch:
+              timeout: 1s
+              send_batch_size: 8192
           receivers:
             otlp:
               protocols:
@@ -129,134 +129,33 @@
                   endpoint: 0.0.0.0:4317
                 http:
                   endpoint: 0.0.0.0:4318
-          exporters:
-            debug: {}
-            jaeger_storage_exporter:
-              trace_storage: traces_store
-    state: present
-
-- name: Create ServiceAccount for Kubernetes Events Collector
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: v1
-      kind: ServiceAccount
-      metadata:
-        name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
-        namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_events.namespace }}"
-    state: present
-
-- name: Create ClusterRole for Kubernetes Events Collector
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRole
-      metadata:
-        labels:
-          "app.kubernetes.io/component": opentelemetry-collector
-          "app.kubernetes.io/managed-by": ITBench
-        name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
-      rules:
-        - apiGroups:
-            - events.k8s.io
-          resources:
-            - events
-          verbs:
-            - list
-            - watch
-        - apiGroups:
-            - ""
-          resources:
-            - events
-          verbs:
-            - list
-            - watch
-    state: present
-
-- name: Create ClusterRoleBinding for Kubernetes Events Collector
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRoleBinding
-      metadata:
-        labels:
-          "app.kubernetes.io/component": opentelemetry-collector
-          "app.kubernetes.io/managed-by": ITBench
-        name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
-        kind: ClusterRole
-        name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
-      subjects:
-        - kind: ServiceAccount
-          name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
-          namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_events.namespace }}"
-    state: present
-
-- name: Install OpenTelemetry Collector for Kubernetes Events
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: opentelemetry.io/v1beta1
-      kind: OpenTelemetryCollector
-      metadata:
-        name: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
-        namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_events.namespace }}"
-      spec:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                    - key: node-role.itbench.io/sandbox
-                      operator: DoesNotExist
-        image: quay.io/it-bench/opentelemetry-collector:2.0.0@sha256:0389cbe6f81210cc799d52a77282b61339e049a8f4b907ad8556b1ae7bea7ec2
-        mode: deployment
-        observability:
-          metrics:
-            enableMetrics: true
-        serviceAccount: "{{ tools_operands.opentelemetry_collector.kubernetes_events.name }}"
-        config:
           service:
+            extensions:
+              - jaeger_storage
+              - jaeger_query
             pipelines:
-              logs:
+              traces:
                 exporters:
                   - debug
-                  - clickhouse
+                  - jaeger_storage_exporter
+                processors:
+                  - batch
                 receivers:
-                  - k8sobjects
-          receivers:
-            k8sobjects:
-              objects:
-                - name: events
-                  mode: watch
-                  group: events.k8s.io
-                - name: events
-                  mode: watch
-                  group: ""
-          exporters:
-            clickhouse:
-              username: "{{ tools_clickhouse_username }}"
-              password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
-              endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: kubernetes_events
-            debug: {}
+                  - otlp
     state: present
 
-- name: Create ServiceAccount for Kubernetes Objects Snapshot Collector
+- name: Create ServiceAccount for Kubernetes Telemetry Collector
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: ServiceAccount
       metadata:
-        name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
-        namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes.name }}"
+        namespace: "{{ tools_namespaces.opentelemetry_collector }}"
     state: present
 
-- name: Create ClusterRole for Kubernetes Objects Snapshot Collector
+- name: Create ClusterRole for Kubernetes Telemetry Collector
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
@@ -266,7 +165,7 @@
         labels:
           "app.kubernetes.io/component": opentelemetry-collector
           "app.kubernetes.io/managed-by": ITBench
-        name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes.name }}"
       rules:
         - apiGroups:
             - ""
@@ -283,9 +182,19 @@
             - resourcequotas
             - limitranges
             - replicationcontrollers
+            - events
           verbs:
             - get
             - list
+            - watch
+        - apiGroups:
+            - events.k8s.io
+          resources:
+            - events
+          verbs:
+            - get
+            - list
+            - watch
         - apiGroups:
             - apps
           resources:
@@ -353,7 +262,7 @@
             - list
     state: present
 
-- name: Create ClusterRoleBinding for Kubernetes Objects Snapshot Collector
+- name: Create ClusterRoleBinding for Kubernetes Telemetry Collector
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
@@ -363,26 +272,26 @@
         labels:
           "app.kubernetes.io/component": opentelemetry-collector
           "app.kubernetes.io/managed-by": ITBench
-        name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes.name }}"
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
-        name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes.name }}"
       subjects:
         - kind: ServiceAccount
-          name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
-          namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.namespace }}"
+          name: "{{ tools_operands.opentelemetry_collector.kubernetes.name }}"
+          namespace: "{{ tools_namespaces.opentelemetry_collector }}"
     state: present
 
-- name: Install OpenTelemetry Collector for Kubernetes Objects Snapshot
+- name: Install OpenTelemetry Collector for Kubernetes Telemetry
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
-        namespace: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.namespace }}"
+        name: "{{ tools_operands.opentelemetry_collector.kubernetes.name }}"
+        namespace: "{{ tools_namespaces.opentelemetry_collector }}"
       spec:
         affinity:
           nodeAffinity:
@@ -396,18 +305,32 @@
         observability:
           metrics:
             enableMetrics: true
-        serviceAccount: "{{ tools_operands.opentelemetry_collector.kubernetes_objects_snapshot.name }}"
+        serviceAccount: "{{ tools_operands.opentelemetry_collector.kubernetes.name }}"
         config:
           service:
             pipelines:
-              logs:
+              logs/events:
+                receivers:
+                  - k8sobjects/events
                 exporters:
                   - debug
-                  - clickhouse
+                  - clickhouse/events
+              logs/objects:
                 receivers:
-                  - k8sobjects
+                  - k8sobjects/objects
+                exporters:
+                  - debug
+                  - clickhouse/objects
           receivers:
-            k8sobjects:
+            k8sobjects/events:
+              objects:
+                - name: events
+                  mode: watch
+                  group: events.k8s.io
+                - name: events
+                  mode: watch
+                  group: ""
+            k8sobjects/objects:
               objects:
                 - name: pods
                   mode: pull
@@ -514,11 +437,16 @@
                   interval: 5m
                   group: apiextensions.k8s.io
           exporters:
-            clickhouse:
+            clickhouse/events:
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: kubernetes_objects_snapshot
+              logs_table_name: kubernetes.events
+            clickhouse/objects:
+              username: "{{ tools_clickhouse_username }}"
+              password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
+              logs_table_name: kubernetes.objects_snapshot
             debug: {}
     state: present
 

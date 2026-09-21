@@ -17,58 +17,37 @@ argument_specs:
               - openshift
             required: true
             type: str
-      recorders_configuration:
+      recorders_export_phase:
+        choices:
+          - pre-fault-injection
+          - pre-agent-injection
+          - post-agent-execution
+        required: false
+        type: str
+      recorders_export_type:
+        choices:
+          - full
+          - telemetry-only
+          - topology-only
+        required: false
+        type: str
+      recorders_storage_local:
         required: false
         type: dict
         options:
-          phase:
-            choices:
-              - pre-fault-injection
-              - pre-agent-injection
-              - post-agent-execution
+          directory:
             required: true
             type: str
-          tools:
-            required: false
-            type: dict
-            options:
-              finops:
-                required: false
-                type: dict
-                options:
-                  enabled:
-                    default: false
-                    required: false
-                    type: bool
-              sre:
-                required: false
-                type: dict
-                options:
-                  enabled:
-                    default: false
-                    required: false
-                    type: bool
-      recorders_storage:
+      recorders_storage_s3:
         required: false
         type: dict
         options:
-          local:
-            required: false
-            type: dict
-            options:
-              directory:
-                required: true
-                type: str
-          s3:
-            required: false
-            type: dict
-            options:
-              bucket:
-                required: true
-                type: str
-              directory:
-                required: true
-                type: str
-              endpoint:
-                required: true
-                type: str
+          bucket:
+            required: true
+            type: str
+          directory:
+            required: true
+            type: str
+          endpoint:
+            required: true
+            type: str

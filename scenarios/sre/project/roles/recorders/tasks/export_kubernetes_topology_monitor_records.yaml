@@ -1,17 +1,4 @@
 ---
-- name: Wait for any ongoing jobs to be removed
-  kubernetes.core.k8s_info:
-    api_version: batch/v1
-    kind: Job
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-    name: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}"
-    namespace: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.namespace }}"
-  register: recorders_job
-  until:
-    - recorders_job.resources | ansible.builtin.length == 0
-  retries: 8
-  delay: 15
-
 - name: Create PersistentVolumeClaim for kubernetes-topology-monitor-recorder
   kubernetes.core.k8s:
     kubeconfig: "{{ recorders_cluster.kubeconfig }}"
@@ -20,8 +7,10 @@
       kind: PersistentVolumeClaim
       metadata:
         labels:
+          "app.kubernetes.io/component": kubernetes-topology-monitor-recorder
           "app.kubernetes.io/managed-by": ITBench
           "app.kubernetes.io/name": "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}-records"
+          "app.kubernetes.io/part-of": data-collection
         name: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}-records"
         namespace: "{{ recorders_namespaces.data_recorders }}"
       spec:
@@ -41,17 +30,20 @@
       kind: Job
       metadata:
         labels:
+          "app.kubernetes.io/component": kubernetes-topology-monitor-recorder
           "app.kubernetes.io/managed-by": ITBench
           "app.kubernetes.io/name": "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}"
-        name: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}"
+          "app.kubernetes.io/part-of": data-collection
+        name: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name ~ recorders_export_phase }}"
         namespace: "{{ recorders_namespaces.data_recorders }}"
       spec:
-        ttlSecondsAfterFinished: 10
         template:
           metadata:
             labels:
+              "app.kubernetes.io/component": kubernetes-topology-monitor-recorder
               "app.kubernetes.io/managed-by": ITBench
               "app.kubernetes.io/name": "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}"
+              "app.kubernetes.io/part-of": data-collection
           spec:
             affinity:
               nodeAffinity:
@@ -65,7 +57,7 @@
                 image: quay.io/it-bench/kubernetes-topology-monitor-recorder:1.0.0
                 env:
                   - name: FILENAME_ANNOTATION
-                    value: "{{ file_name_prefixes[recorders_configuration.phase] }}"
+                    value: "{{ file_name_prefixes[recorders_export_phase] }}"
                   - name: KUBERNETES_TOPOLOGY_MONITOR_ENDPOINT
                     value: "{{ tools_kubernetes_topology_monitor_endpoint.http }}"
                 resources:
@@ -93,3 +85,21 @@
                 persistentVolumeClaim:
                   claimName: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder.name }}-records"
     state: present
+    wait: true
+    wait_timeout: 300
+    wait_condition:
+      type: Complete
+      status: "True"
+  vars:
+    file_name_prefixes:
+      pre-fault-injection: init
+      pre-agent-injection: post_fault_injection
+      post-agent-execution: end
+
+- name: Import copy tasks
+  ansible.builtin.import_tasks:
+    file: copy_recorder_files.yaml
+  vars:
+    export:
+      directory: topology_information
+    recorder: "{{ recorders_instances.kubernetes_topology_monitor_data_recorder }}"

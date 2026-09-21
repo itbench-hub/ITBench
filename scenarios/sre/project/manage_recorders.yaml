@@ -44,49 +44,33 @@
           when:
             - storage.local is ansible.builtin.defined
   tasks:
-    - name: Import role variables from scenario
+    - name: Set recorders role variables
       tags:
-        - install_recorders
-      when:
-        - scenario_id is ansible.builtin.defined
+        - setup_recording
+        - export_records
+        - teardown_recording
       block:
-        - name: Import scenarios role
-          ansible.builtin.import_role:
-            name: scenarios
-          vars:
-            scenarios_identifier: "{{ scenario_id }}"
-
-        - name: Create recorders installation variable
+        - name: Set recorders_export_phase
           ansible.builtin.set_fact:
-            recorders_configuration:
-              phase: "{{ benchmark_phase | ansible.builtin.default('pre-fault-injection') }}"
-              tools: "{{ scenarios_scenario.tools }}"
+            recorders_export_phase: "{{ benchmark_phase | ansible.builtin.default('pre-fault-injection') }}"
 
-    - name: Create role variables
-      tags:
-        - install_recorders
-      when:
-        - scenario_id is ansible.builtin.undefined
-      block:
-        - name: Create recorders installation variable
+        - name: Set recorders_export_type
           ansible.builtin.set_fact:
-            recorders_configuration:
-              phase: "{{ benchmark_phase | ansible.builtin.default('pre-fault-injection') }}"
-              tools:
-                sre:
-                  enabled: "{{ tools.sre | ansible.builtin.default(false) }}"
-                finops:
-                  enabled: "{{ tools.finops | ansible.builtin.default(false) }}"
+            recorders_export_type: "{{ export_type | ansible.builtin.default('full') }}"
 
-    - name: Create role variables
-      tags:
-        - uninstall_recorders
-      when:
-        - storage is ansible.builtin.defined
-      block:
-        - name: Create recorders uninstallation variable
+        - name: Set recorders_storage_local
           ansible.builtin.set_fact:
-            recorders_storage: "{{ storage }}"
+            recorders_storage_local: "{{ storage.local }}"
+          when:
+            - storage is ansible.builtin.defined
+            - storage.local is ansible.builtin.defined
+
+        - name: Set recorders_storage_s3
+          ansible.builtin.set_fact:
+            recorders_storage_s3: "{{ storage.s3 }}"
+          when:
+            - storage is ansible.builtin.defined
+            - storage.s3 is ansible.builtin.defined
 
     - name: Import recorders role
       ansible.builtin.import_role:
