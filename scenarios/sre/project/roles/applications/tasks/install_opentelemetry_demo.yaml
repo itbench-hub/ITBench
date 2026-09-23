@@ -7,7 +7,6 @@
 
 - name: Create Namespace
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Namespace
@@ -40,7 +39,6 @@
   block:
     - name: Create ServiceAccount for OpenTelemetry Demo
       kubernetes.core.k8s:
-        kubeconfig: "{{ applications_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: ServiceAccount
@@ -51,7 +49,6 @@
 
     - name: Create RoleBinding for access to anyuid SecurityContextConstraint
       kubernetes.core.k8s:
-        kubeconfig: "{{ applications_cluster.kubeconfig }}"
         resource_definition:
           kind: RoleBinding
           apiVersion: rbac.authorization.k8s.io/v1
@@ -72,23 +69,159 @@
   kubernetes.core.helm:
     chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-demo"
     chart_version: "0.40.10"
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     release_name: "{{ applications_releases.opentelemetry_demo.name }}"
     release_namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
     release_state: present
     timeout: 10m0s
-    values: |-
-      {{
-        lookup('ansible.builtin.template', 'templates/helm/otel_demo/values.j2') |
-        ansible.builtin.from_yaml
-      }}
+    values:
+      serviceAccount:
+        create: "{{ if applications_cluster.platform != 'openshift' }}"
+        name: "{{ applications_releases.opentelemetry_demo.name }}"
+      components:
+        accounting:
+          podSecurityContext:
+            runAsNonRoot: true
+            runAsUser: 1654
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+        ad:
+          resources:
+            limits:
+              cpu: 150m
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 256Mi
+        fraud-detection:
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              memory: 256Mi
+        image-provider:
+          podSecurityContext:
+            runAsNonRoot: true
+            runAsUser: 101
+        kafka:
+          resources:
+            limits:
+              memory: 1024Mi
+            requests:
+              memory: 512Mi
+        load-generator:
+          envOverrides:
+            - name: LOCUST_BROWSER_TRAFFIC_ENABLED
+              value: "{{ applications_opentelemetry_demo_load_generator_browser_enabled | ansible.builtin.string }}"
+            - name: LOCUST_SPAWN_RATE
+              value: "{{ applications_opentelemetry_demo_load_generator_spawn_rate | ansible.builtin.string }}"
+            - name: LOCUST_USERS
+              value: "{{ applications_opentelemetry_demo_load_generator_users | ansible.builtin.string }}"
+        product-catalog:
+          resources:
+            limits:
+              memory: 160Mi
+        recommendation:
+          resources:
+            limits:
+              cpu: 200m
+              memory: 512Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+        valkey-cart:
+          podSecurityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 999
+      opentelemetry-collector:
+        config:
+          connectors:
+            spanmetrics:
+              dimensions:
+                - name: namespace
+                  default: "{{ applications_releases.opentelemetry_demo.namespace }}"
+          exporters:
+            clickhouse:
+              username: "{{ tools_clickhouse_username }}"
+              password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
+              logs_table_name: "otel_demo.logs"
+            otlp/jaeger:
+              endpoint: "{{ tools_jaeger_endpoint.collector.grpc }}"
+            prometheus:
+              endpoint: 0.0.0.0:8888
+          service:
+            pipelines:
+              logs:
+                exporters:
+                  - clickhouse
+                  - debug
+              metrics:
+                exporters:
+                  - debug
+                  - prometheus
+              traces:
+                exporters:
+                  - debug
+                  - otlp/jaeger
+                  - spanmetrics
+            telemetry:
+              metrics:
+                level: detailed
+                readers:
+                  - pull:
+                      exporter:
+                        prometheus:
+                          host: 0.0.0.0
+                          port: 8889
+        mode: deployment
+        presets:
+          clusterMetrics:
+            enabled: false
+          hostMetrics:
+            enabled: false
+          kubeletMetrics:
+            enabled: false
+        serviceMonitor:
+          enabled: true
+          metricsEndpoints:
+            - port: metrics
+            - port: telemetry
+        ports:
+          jaeger-compact:
+            enabled: false
+          jaeger-thrift:
+            enabled: false
+          jaeger-grpc:
+            enabled: false
+          metrics:
+            enabled: true
+          telemetry:
+            enabled: true
+            containerPort: 8889
+            servicePort: 8889
+            protocol: TCP
+          zipkin:
+            enabled: false
+      grafana:
+        enabled: false
+      jaeger:
+        enabled: false
+      opensearch:
+        enabled: false
+      prometheus:
+        enabled: false
     wait: true
 
 - name: Retrieve all pods
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Pod
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
   register: applications_otel_demo_pods
 
@@ -96,7 +229,6 @@
   kubernetes.core.k8s_info:
     api_version: "{{ pod.apiVersion }}"
     kind: "{{ pod.kind }}"
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     name: "{{ pod.metadata.name }}"
     namespace: "{{ pod.metadata.namespace }}"
     wait: true
@@ -113,13 +245,11 @@
   kubernetes.core.k8s_info:
     api_version: apps/v1
     kind: Deployment
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
   register: applications_otel_demo_deployments
 
 - name: Create HorizontalPodAutorscalers
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: autoscaling/v2
       kind: HorizontalPodAutoscaler
@@ -167,11 +297,10 @@
     label: deployment/{{ workload.metadata.name }}
     loop_var: workload
   when:
-    - applications_configuration.opentelemetryDemo.options.autoscaling.kubernetes.hpa | ansible.builtin.default(false)
+    - applications_opentelemetry_demo_kubernetes_autoscaling_enabled
 
 - name: Create Common PrometheusRules
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     template:
       path: templates/kubernetes/common/prometheusrules.j2
       variable_end_string: "]]"
@@ -183,7 +312,6 @@
 
 - name: Create OpenTelemetry Demo PrometheusRules
   kubernetes.core.k8s:
-    kubeconfig: "{{ applications_cluster.kubeconfig }}"
     template:
       path: templates/kubernetes/otel_demo/prometheusrules.j2
       variable_end_string: "]]"
