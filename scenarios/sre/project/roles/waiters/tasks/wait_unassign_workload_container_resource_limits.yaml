@@ -1,0 +1,22 @@
+---
+- name: Include waiter argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_waiter_arguments.yaml
+
+- name: Remove resource limits from workload container
+  kubernetes.core.k8s:
+    kubeconfig: "{{ waiters_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: "{{ waiters_kubernetes_object.apiVersion }}"
+      kind: "{{ waiters_kubernetes_object.kind }}"
+      metadata:
+        name: "{{ waiters_kubernetes_object.metadata.name }}"
+        namespace: "{{ waiters_kubernetes_object.metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ waiter_args.container.name }}"
+                resources:
+                  limits:
+    state: patched
