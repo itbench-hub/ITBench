@@ -3,54 +3,48 @@
   hosts:
     - localhost
   tasks:
-    - name: Retrieve Secret
+    - name: Retrieve injector job
       kubernetes.core.k8s_info:
         kubeconfig: "{{ cluster.kubeconfig }}"
-        api_version: v1
-        kind: Secret
-        name: valkey-credentials
+        api_version: batch/v1
+        kind: Job
+        name: valkey-password-management
         namespace: valkey-workload-changed-password-test
-      register: faults_secret
+      register: faults_job
 
-    - name: Validate Secret exists
+    - name: Validate injector job completed successfully
       ansible.builtin.assert:
         that:
-          - faults_secret.resources | ansible.builtin.length == 1
-          - faults_secret.resources[0].data['valkey-password'] is ansible.builtin.defined
-        fail_msg: Secret not found. Fault injection failed.
-        success_msg: Secret found.
+          - faults_job.resources | ansible.builtin.length == 1
+          - faults_job.resources[0].status.succeeded == 1
+        fail_msg: Injector job did not complete successfully. Fault injection failed.
+        success_msg: Injector job completed successfully.
 
-    - name: Retrieve workload
-      kubernetes.core.k8s_info:
+    - name: Create unauthenticated probe job
+      kubernetes.core.k8s:
         kubeconfig: "{{ cluster.kubeconfig }}"
-        api_version: apps/v1
-        kind: Deployment
-        name: compromised-workload
-        namespace: valkey-workload-changed-password-test
-      register: faults_deployment
-
-    - name: Validate container command was updated
-      ansible.builtin.assert:
-        that:
-          - faults_deployment.resources[0].spec.template.spec.containers[0].command is ansible.builtin.defined
-          - faults_deployment.resources[0].spec.template.spec.containers[0].command[0] == 'valkey-server'
-        fail_msg: Container command not updated. Fault injection failed.
-        success_msg: Container command updated.
-
-    - name: Validate container args include password flag
-      ansible.builtin.assert:
-        that:
-          - faults_deployment.resources[0].spec.template.spec.containers[0].args is ansible.builtin.defined
-          - "'--requirepass' in faults_deployment.resources[0].spec.template.spec.containers[0].args"
-        fail_msg: Container args do not include password flag. Fault injection failed.
-        success_msg: Container args include password flag.
-
-    - name: Validate environment variable is configured
-      ansible.builtin.assert:
-        that:
-          - faults_deployment.resources[0].spec.template.spec.containers[0].env is ansible.builtin.defined
-          - faults_deployment.resources[0].spec.template.spec.containers[0].env |
-            ansible.builtin.selectattr('name', '==', 'VALKEY_PASSWORD') |
-            ansible.builtin.length == 1
-        fail_msg: Environment variable not configured. Fault injection failed.
-        success_msg: Environment variable configured.
+        resource_definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            name: valkey-auth-probe
+            namespace: valkey-workload-changed-password-test
+          spec:
+            ttlSecondsAfterFinished: 10
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: probe
+                    image: docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+                    command:
+                      - valkey-cli
+                    args:
+                      - -h
+                      - compromised-workload.valkey-workload-changed-password-test.svc.cluster.local
+                      - PING
+        state: present
+        wait: true
+        wait_condition:
+          type: Failed
+          status: "True"

@@ -40,3 +40,21 @@
                         name: valkey
         state: present
         wait: true
+
+    - name: Create service
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: compromised-workload
+            namespace: valkey-workload-changed-password-test
+          spec:
+            selector:
+              "app.kubernetes.io/name": compromised-workload
+            ports:
+              - port: 6379
+                targetPort: 6379
+                name: valkey
+        state: present
