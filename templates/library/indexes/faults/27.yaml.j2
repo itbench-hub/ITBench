@@ -6,23 +6,15 @@ alerts:
 arguments:
   jsonSchema:
     properties:
-      container:
-        properties:
-          name:
-            type: string
-        required:
-        - name
-        type: object
       kubernetesObject:
         properties:
           apiVersion:
             enum:
-            - apps/v1
+            - v1
             type: string
           kind:
             enum:
-            - Deployment
-            - StatefulSet
+            - Service
             type: string
           metadata:
             properties:
@@ -41,7 +33,6 @@ arguments:
         type: object
     required:
     - kubernetesObject
-    - container
     type: object
 description: This fault changes the password of a Valkey workload.
 expectation: Other workloads will be unable to authorize themselves with the Valkey workload. This usually causes increased latency and errors in applications.

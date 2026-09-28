@@ -3,48 +3,34 @@
   ansible.builtin.include_tasks:
     file: validate_fault_arguments.yaml
 
-- name: Create ConfigMap
+- name: Create fault injection job
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
-      apiVersion: v1
-      kind: ConfigMap
+      apiVersion: batch/v1
+      kind: Job
       metadata:
-        name: valkey-storage-script
-        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
-      data:
-        script: "{{ lookup('ansible.builtin.file', 'files/scripts/valkey_workload_out_of_memory/fill_storage.sh') }}"
-    state: present
-
-- name: Update workload containers
-  kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
-      kind: "{{ faults_kubernetes_object.kind }}"
-      metadata:
-        name: "{{ faults_kubernetes_object.metadata.name }}"
+        name: valkey-memory-manager
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
+        ttlSecondsAfterFinished: 10
         template:
           spec:
+            restartPolicy: Never
             containers:
-              - name: "{{ faults_container.name }}"
+              - name: injector
+                image: docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
                 command:
                   - /bin/sh
                   - -c
-                  - "'/data/scripts/fill_storage.sh'"
-                volumeMounts:
-                  - name: scripts
-                    mountPath: /data/scripts
-            securityContext:
-              fsGroup: 1000
-            volumes:
-              - name: scripts
-                configMap:
-                  name: valkey-storage-script
-                  defaultMode: 0755
-                  items:
-                    - key: script
-                      path: fill_storage.sh
-    state: patched
+                args:
+                  - >-
+                    valkey-cli -h {{ endpoint }} CONFIG SET maxmemory 1 &&
+                    valkey-cli -h {{ endpoint }} CONFIG SET maxmemory-policy noeviction
+    state: present
+    wait: true
+    wait_condition:
+      type: Complete
+      status: "True"
+  vars:
+    endpoint: "{{ faults_kubernetes_object.metadata.name }}.{{ faults_kubernetes_object.metadata.namespace }}.svc.cluster.local"

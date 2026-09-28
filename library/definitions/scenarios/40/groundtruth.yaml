@@ -4,17 +4,17 @@ alerts:
 - labels: {}
   name: KubePodCrashLooping
 entities:
-- apiVersion: apps/v1
-  kind: Deployment
+- apiVersion: v1
+  kind: Service
   metadata:
     name: valkey-cart
     namespace: otel-demo
 solutions:
 - - steps:
-    - command: kubectl -n otel-demo rollout undo deployment/valkey-cart
+    - command: kubectl -n otel-demo rollout undo service/valkey-cart
       text: Revert the last change done to the manifest.
   - steps:
-    - command: kubectl -n otel-demo edit deployment valkey-cart
+    - command: kubectl -n otel-demo edit service valkey-cart
       text: Manually edit the manifest and remove the code change volumes.
     - command: kubectl -n otel-demo delete configmap valkey-storage-script
       text: Delete the injected ConfigMap object.

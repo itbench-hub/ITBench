@@ -45,3 +45,56 @@
                         memory: 64Mi
         state: present
         wait: true
+
+    - name: Create service
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: compromised-workload
+            namespace: valkey-workload-out-of-memory-test
+          spec:
+            selector:
+              "app.kubernetes.io/name": compromised-workload
+            ports:
+              - port: 6379
+                targetPort: 6379
+                name: valkey
+        state: present
+
+    - name: Create load generator deployment
+      kubernetes.core.k8s:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: valkey-load-generator
+            namespace: valkey-workload-out-of-memory-test
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                "app.kubernetes.io/name": valkey-load-generator
+            template:
+              metadata:
+                labels:
+                  "app.kubernetes.io/name": valkey-load-generator
+              spec:
+                containers:
+                  - name: load-generator
+                    image: docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+                    command:
+                      - /bin/sh
+                      - -c
+                    args:
+                      - >-
+                        while true; do
+                        valkey-benchmark
+                        -h compromised-workload.valkey-workload-out-of-memory-test.svc.cluster.local
+                        -n 10000 -d 1024 -t set -q;
+                        done
+        state: present
+        wait: true
