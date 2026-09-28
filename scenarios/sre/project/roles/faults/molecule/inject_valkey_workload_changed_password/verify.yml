@@ -30,7 +30,6 @@
             name: valkey-auth-probe
             namespace: valkey-workload-changed-password-test
           spec:
-            ttlSecondsAfterFinished: 10
             template:
               spec:
                 restartPolicy: Never
@@ -44,7 +43,25 @@
                       - compromised-workload.valkey-workload-changed-password-test.svc.cluster.local
                       - PING
         state: present
-        wait: true
-        wait_condition:
-          type: Failed
-          status: "True"
+
+    - name: Wait for probe job to reach terminal state
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: batch/v1
+        kind: Job
+        name: valkey-auth-probe
+        namespace: valkey-workload-changed-password-test
+      register: faults_probe_job
+      until: >-
+        (faults_probe_job.resources[0].status.succeeded | default(0)) > 0 or
+        (faults_probe_job.resources[0].status.failed | default(0)) > 0
+      retries: 30
+      delay: 5
+
+    - name: Validate probe job was rejected with authentication error
+      ansible.builtin.assert:
+        that:
+          - faults_probe_job.resources[0].status.failed | default(0) > 0
+          - faults_probe_job.resources[0].status.succeeded | default(0) == 0
+        fail_msg: Probe job succeeded unauthenticated. Fault injection failed.
+        success_msg: Probe job was rejected as expected.

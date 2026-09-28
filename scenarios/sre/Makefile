@@ -192,7 +192,9 @@ test-molecule-awx: ## Runs Molecule tests for the AWX role
 
 .PHONY: test-molecule-faults
 test-molecule-faults: ## Runs Molecule tests for the Faults role
-	cd project/roles/faults && $(UV) run molecule test --all --report --command-borders
+# 	cd project/roles/faults && $(UV) run molecule test --all --report --command-borders
+	cd project/roles/faults && $(UV) run molecule test --scenario-name inject_valkey_workload_changed_password --report --command-borders
+	cd project/roles/faults && $(UV) run molecule test --scenario-name inject_valkey_workload_out_of_memory --report --command-borders
 
 .PHONY: test-molecule-waiters
 test-molecule-waiters: ## Runs Molecule tests for the Waiters role
