@@ -3,15 +3,46 @@
   ansible.builtin.include_tasks:
     file: validate_fault_arguments.yaml
 
+- name: Retrieve autoscalers in {{ faults_kubernetes_object.metadata.namespace }}
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+  register: faults_autoscalers
+
+- name: Retrieve autoscaler targeting {{ faults_kubernetes_object.metadata.name }}
+  ansible.builtin.set_fact:
+    faults_autoscaler_matches: |-
+      {{
+        faults_autoscalers.resources |
+        ansible.builtin.selectattr("spec.scaleTargetRef.kind", "==", faults_kubernetes_object.kind) |
+        ansible.builtin.selectattr("spec.scaleTargetRef.name", "==", faults_kubernetes_object.metadata.name)
+      }}
+
+- name: Fail playbook due to `kubernetes horizontal pod autoscaler not found` error
+  ansible.builtin.fail:
+    msg: "{{ object.kind }}/{{ object.name }} is not targeted by exactly one autoscaler. please ensure an autoscaler exists before injecting this fault."
+  vars:
+    object:
+      kind: "{{ faults_kubernetes_object.kind }}"
+      name: "{{ faults_kubernetes_object.metadata.name }}"
+  when:
+    - faults_autoscaler_matches | ansible.builtin.length != 1
+
+- name: Extract autoscaler information from output
+  ansible.builtin.set_fact:
+    faults_autoscaler: "{{ faults_autoscaler_matches | ansible.builtin.first }}"
+
 - name: Update autoscaler metrics
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
-      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
-      kind: "{{ faults_kubernetes_object.kind }}"
+      apiVersion: "{{ faults_autoscaler.apiVersion }}"
+      kind: "{{ faults_autoscaler.kind }}"
       metadata:
-        name: "{{ faults_kubernetes_object.metadata.name }}"
-        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+        name: "{{ faults_autoscaler.metadata.name }}"
+        namespace: "{{ faults_autoscaler.metadata.namespace }}"
       spec:
         metrics:
           - type: Resource
