@@ -1,13 +1,13 @@
 # ITBench
 
-**[Paper](./it_bench_arxiv.pdf) | [Leaderboard](#leaderboard) | [Scenarios](#scenarios) | [Agents](#agents) | [Related Benchmarks](#related-benchmarks) | [How to Cite](#how-to-cite) | [Contributors](./CONTRIBUTORS.md) | [Contacts](#contacts)**
+**[Paper](./it_bench_arxiv.pdf) | [Leaderboard](#leaderboard) | [Scenarios](#scenarios) | [Datasets](#datasets) | [Agents](#agents) | [Related Benchmarks](#related-benchmarks) | [How to Cite](#how-to-cite) | [Contributors](./CONTRIBUTORS.md) | [Contacts](#contacts)**
 
 ---
 
 ## 📢 Announcements
 
 ### Latest Updates
-- **[May 27, 2026]** Artificial Analysis and IBM Research launched **ITBench-AA**, the first in a new series of benchmarks evaluating frontier models on agentic enterprise IT tasks—starting with 59 SRE tasks where all evaluated models score below 50%, with FinOps and CISO tasks to follow. [View the evaluation](https://artificialanalysis.ai/evaluations/itbench-aa).
+- **[May 27, 2026]** Artificial Analysis and IBM Research launched **ITBench-AA**, the first in a new series of benchmarks evaluating frontier models on agentic enterprise IT tasks—starting with 59 SRE tasks where all evaluated models score below 50%, with FinOps and CISO tasks to follow. [View the evaluation](https://artificialanalysis.ai/evaluations/itbench-aa) or [download the dataset](https://huggingface.co/datasets/ArtificialAnalysis/ITBench-AA).
 - **[January 21, 2026]** IBM Research has published the **Enterprise Agents and Benchmarks** collection on Hugging Face, featuring ITBench alongside other enterprise AI agent ecosystems and benchmarks. [View the collection](https://huggingface.co/collections/ibm-research/enterprise-agents-and-benchmarks).
 - **[December 19, 2025]** UC Berkeley's MAST team published a blog post analyzing ITBench SRE agent traces using MAST (Multi-Agent System Failure Taxonomy), revealing structured failure signatures that explain *how* and *why* agents fail. [Read more](https://ucb-mast.notion.site/).
 - **[December 2, 2025]** ITBench is now available on Kaggle! IBM has partnered with Kaggle to launch new AI leaderboards for enterprise tasks, including ITBench. [Read more](https://research.ibm.com/blog/ibm-kaggle-leaderboards-enterprise-ai).
@@ -90,6 +90,16 @@ ITBench incorporates a collection of problems that we call **scenarios**. Each s
 - **FinOps**: Identify and resolve cost overruns and anomalies
 
 For more information about the scenarios and running them, please consult our [documentation](./documentation/getting-started/scenarios.md).
+
+---
+
+## Datasets
+
+ITBench scenarios are also published as datasets on Hugging Face.
+
+| Dataset | Description | Downloads |
+|---------|-------------|-----------|
+| [ITBench-AA](https://huggingface.co/datasets/ArtificialAnalysis/ITBench-AA) | Public SRE scenarios from ITBench, released by Artificial Analysis for the [ITBench-AA evaluation](https://artificialanalysis.ai/evaluations/itbench-aa). Each row is a Kubernetes incident paired with its ground truth. | [![Downloads](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fhuggingface.co%2Fapi%2Fdatasets%2FArtificialAnalysis%2FITBench-AA%3Fexpand%255B%255D%3DdownloadsAllTime&query=%24.downloadsAllTime&label=downloads&logo=huggingface&color=yellow)](https://huggingface.co/datasets/ArtificialAnalysis/ITBench-AA) |
 
 ---
 
