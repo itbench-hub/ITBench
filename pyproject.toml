@@ -1,29 +1,54 @@
+[build-system]
+requires = ["uv_build"]
+build-backend = "uv_build"
+
 [project]
-name = "ITBench"
+name = "itbench"
 version = "1.4.1"
 description = "IT Domain AI Agents Benchmarks"
 readme = "README.md"
-requires-python = ">=3.12,<3.15"
+requires-python = ">=3.13,<3.16"
 dependencies = [
     "ansible-core==2.21.4",
-    "ansible-lint==26.8.0",
+    "ansible-lint==26.9.0",
     "ansible-runner==2.4.3",
     "awxkit==24.6.1",
     "boto3==1.43.99",
+    "click==8.5.0",
+    "jinja2==3.1.6",
     "jsonschema==4.26.0",
     "kubernetes==36.0.3",
-    "molecule==26.8.0",
+    "pydantic==2.13.5",
+    "questionary==2.1.1",
+    "rich==15.0.0",
 ]
+
+[project.scripts]
+itbench = "itbench.cli.main:cli"
 
 [dependency-groups]
 dev = [
-    "commitizen==4.18.1",
+    "commitizen==4.19.1",
     "detect-secrets",
+    "molecule==26.9.0",
     "pre-commit==4.6.2",
+    "pytest==9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "integration: marks tests as integration tests (require a live Kind cluster)",
 ]
 
 [tool.uv]
-required-version = "==0.12.17"
+required-version = "==0.12.22"
 
 [tool.uv.sources]
 detect-secrets = { git = "https://github.com/ibm/detect-secrets.git", rev = "38ba7e335083e0a4db8c53e9be414795b27891e9" } # pragma: allowlist secret

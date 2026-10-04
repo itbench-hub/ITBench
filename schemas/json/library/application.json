@@ -1,0 +1,87 @@
+{
+    "$defs": {
+        "Platform": {
+            "description": "Supported platforms for ITBench applications, faults, and waiters.",
+            "enum": [
+                "Kubernetes",
+                "Localhost",
+                "OpenShift"
+            ],
+            "title": "Platform",
+            "type": "string"
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "A single entry in the application catalog.",
+    "properties": {
+        "aliases": {
+            "description": "Alternate names for the application.",
+            "items": {
+                "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "authors": {
+            "description": "Authors of the application.",
+            "items": {
+                "type": "string"
+            },
+            "title": "Authors",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "description": {
+            "description": "Description of the application.",
+            "title": "Description",
+            "type": "string"
+        },
+        "name": {
+            "description": "Name of the application.",
+            "title": "Name",
+            "type": "string"
+        },
+        "platforms": {
+            "description": "Supported platforms for the application.",
+            "items": {
+                "$ref": "#/$defs/Platform"
+            },
+            "title": "Platforms",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "repository": {
+            "description": "Repository URL of the application.",
+            "title": "Repository",
+            "type": "string"
+        },
+        "resources": {
+            "anyOf": [
+                {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "description": "Related documentation or resource URLs.",
+            "title": "Resources",
+            "uniqueItems": true
+        }
+    },
+    "required": [
+        "authors",
+        "description",
+        "name",
+        "platforms",
+        "repository"
+    ],
+    "title": "Application",
+    "type": "object"
+}

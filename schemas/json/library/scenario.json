@@ -1,0 +1,812 @@
+{
+    "$defs": {
+        "FaultTarget": {
+            "additionalProperties": false,
+            "description": "A concrete Kubernetes object target for a scenario fault injection.",
+            "properties": {
+                "kubernetes": {
+                    "description": "The Kubernetes object to target for this injection.",
+                    "discriminator": {
+                        "mapping": {
+                            "DaemonSet": "#/$defs/KubernetesWorkload",
+                            "Deployment": "#/$defs/KubernetesWorkload",
+                            "Gateway": "#/$defs/KubernetesGateway",
+                            "HorizontalPodAutoscaler": "#/$defs/KubernetesHorizontalPodAutoscaler",
+                            "Namespace": "#/$defs/KubernetesNamespace",
+                            "Secret": "#/$defs/KubernetesSecret",
+                            "Service": "#/$defs/KubernetesService",
+                            "StatefulSet": "#/$defs/KubernetesWorkload"
+                        },
+                        "propertyName": "kind"
+                    },
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/KubernetesGateway"
+                        },
+                        {
+                            "$ref": "#/$defs/KubernetesHorizontalPodAutoscaler"
+                        },
+                        {
+                            "$ref": "#/$defs/KubernetesNamespace"
+                        },
+                        {
+                            "$ref": "#/$defs/KubernetesSecret"
+                        },
+                        {
+                            "$ref": "#/$defs/KubernetesService"
+                        },
+                        {
+                            "$ref": "#/$defs/KubernetesWorkload"
+                        }
+                    ],
+                    "title": "Kubernetes"
+                }
+            },
+            "required": [
+                "kubernetes"
+            ],
+            "title": "FaultTarget",
+            "type": "object"
+        },
+        "KubernetesGateway": {
+            "additionalProperties": false,
+            "description": "Reference to a Kubernetes Gateway (gateway.networking.k8s.io).",
+            "properties": {
+                "apiVersion": {
+                    "const": "gateway.networking.k8s.io/v1",
+                    "default": "gateway.networking.k8s.io/v1",
+                    "description": "API version of the Kubernetes Gateway resource. Always gateway.networking.k8s.io/v1.",
+                    "title": "Apiversion",
+                    "type": "string"
+                },
+                "kind": {
+                    "const": "Gateway",
+                    "default": "Gateway",
+                    "description": "Kind of the Kubernetes resource. Always Gateway.",
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Kubernetes resource.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "Namespace of the Gateway.",
+                    "title": "Namespace",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "title": "KubernetesGateway",
+            "type": "object"
+        },
+        "KubernetesHorizontalPodAutoscaler": {
+            "additionalProperties": false,
+            "description": "Reference to a Kubernetes Horizontal Pod Autoscaler.",
+            "properties": {
+                "apiVersion": {
+                    "const": "autoscaling/v2",
+                    "default": "autoscaling/v2",
+                    "description": "API version of the Kubernetes Horizontal Pod Autoscaler resource. Always autoscaling/v2.",
+                    "title": "Apiversion",
+                    "type": "string"
+                },
+                "kind": {
+                    "const": "HorizontalPodAutoscaler",
+                    "default": "HorizontalPodAutoscaler",
+                    "description": "Kind of the Kubernetes resource. Always HorizontalPodAutoscaler.",
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Kubernetes resource.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "Namespace of the Kubernetes Horizontal Pod Autoscaler.",
+                    "title": "Namespace",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "title": "KubernetesHorizontalPodAutoscaler",
+            "type": "object"
+        },
+        "KubernetesNamespace": {
+            "additionalProperties": false,
+            "description": "Reference to a Kubernetes Namespace.",
+            "properties": {
+                "apiVersion": {
+                    "const": "v1",
+                    "default": "v1",
+                    "description": "API version of the Kubernetes Namespace resource. Always v1.",
+                    "title": "Apiversion",
+                    "type": "string"
+                },
+                "kind": {
+                    "const": "Namespace",
+                    "default": "Namespace",
+                    "description": "Kind of the Kubernetes resource. Always Namespace.",
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Kubernetes resource.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "namespace": {
+                    "default": null,
+                    "description": "Namespaces are cluster-scoped; this field is always None.",
+                    "title": "Namespace",
+                    "type": "null"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "KubernetesNamespace",
+            "type": "object"
+        },
+        "KubernetesSecret": {
+            "additionalProperties": false,
+            "description": "Reference to a Kubernetes Secret.",
+            "properties": {
+                "apiVersion": {
+                    "const": "v1",
+                    "default": "v1",
+                    "description": "API version of the Kubernetes Secret resource. Always v1.",
+                    "title": "Apiversion",
+                    "type": "string"
+                },
+                "kind": {
+                    "const": "Secret",
+                    "default": "Secret",
+                    "description": "Kind of the Kubernetes resource. Always Secret.",
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Kubernetes resource.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "Namespace of the Secret.",
+                    "title": "Namespace",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "title": "KubernetesSecret",
+            "type": "object"
+        },
+        "KubernetesService": {
+            "additionalProperties": false,
+            "description": "Reference to a Kubernetes Service.",
+            "properties": {
+                "apiVersion": {
+                    "const": "v1",
+                    "default": "v1",
+                    "description": "API version of the Kubernetes Service resource. Always v1.",
+                    "title": "Apiversion",
+                    "type": "string"
+                },
+                "kind": {
+                    "const": "Service",
+                    "default": "Service",
+                    "description": "Kind of the Kubernetes resource. Always Service.",
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Kubernetes resource.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "Namespace of the Service.",
+                    "title": "Namespace",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "title": "KubernetesService",
+            "type": "object"
+        },
+        "KubernetesWorkload": {
+            "additionalProperties": false,
+            "description": "Reference to a Kubernetes workload (DaemonSet, Deployment, or StatefulSet).",
+            "properties": {
+                "apiVersion": {
+                    "const": "apps/v1",
+                    "default": "apps/v1",
+                    "description": "API version of the Kubernetes workload resource. Always apps/v1.",
+                    "title": "Apiversion",
+                    "type": "string"
+                },
+                "kind": {
+                    "default": "Deployment",
+                    "description": "Kind of the Kubernetes workload. One of DaemonSet, Deployment, or StatefulSet.",
+                    "enum": [
+                        "DaemonSet",
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Kubernetes resource.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "Namespace of the workload.",
+                    "title": "Namespace",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "title": "KubernetesWorkload",
+            "type": "object"
+        },
+        "Platform": {
+            "description": "Supported platforms for ITBench applications, faults, and waiters.",
+            "enum": [
+                "Kubernetes",
+                "Localhost",
+                "OpenShift"
+            ],
+            "title": "Platform",
+            "type": "string"
+        },
+        "ScenarioApplication": {
+            "additionalProperties": false,
+            "description": "An application enablement entry in a scenario.",
+            "properties": {
+                "enabled": {
+                    "default": true,
+                    "description": "Whether this application is enabled for the scenario.",
+                    "title": "Enabled",
+                    "type": "boolean"
+                },
+                "id": {
+                    "description": "Application slug identifier.",
+                    "title": "Id",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ],
+            "title": "ScenarioApplication",
+            "type": "object"
+        },
+        "ScenarioDomain": {
+            "description": "Supported domains for scenario configurations.",
+            "enum": [
+                "ciso",
+                "finops",
+                "sre"
+            ],
+            "title": "ScenarioDomain",
+            "type": "string"
+        },
+        "ScenarioEnvironment": {
+            "additionalProperties": false,
+            "description": "Environment definition for a scenario.",
+            "properties": {
+                "applications": {
+                    "description": "List of applications configured for the scenario.",
+                    "items": {
+                        "$ref": "#/$defs/ScenarioApplication"
+                    },
+                    "title": "Applications",
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "domains": {
+                    "description": "List of domains enabled for the scenario.",
+                    "items": {
+                        "$ref": "#/$defs/ScenarioDomain"
+                    },
+                    "title": "Domains",
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "title": "ScenarioEnvironment",
+            "type": "object"
+        },
+        "ScenarioFault": {
+            "additionalProperties": false,
+            "description": "A group of fault injections with optional waiters.",
+            "properties": {
+                "injections": {
+                    "description": "One or more fault injections to apply together.",
+                    "items": {
+                        "$ref": "#/$defs/ScenarioFaultInjection"
+                    },
+                    "title": "Injections",
+                    "type": "array"
+                },
+                "waitFor": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/ScenarioInjectionWaiter"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Waiter steps to run before or after this fault block."
+                }
+            },
+            "required": [
+                "injections"
+            ],
+            "title": "ScenarioFault",
+            "type": "object"
+        },
+        "ScenarioFaultInjection": {
+            "additionalProperties": false,
+            "description": "A single fault injection within a fault block.",
+            "properties": {
+                "id": {
+                    "description": "Fault slug identifier.",
+                    "title": "Id",
+                    "type": "string"
+                },
+                "targets": {
+                    "description": "Runtime targets for this injection. Overrides the template targets defined in the fault catalog entry. Leave empty only for targetless faults.",
+                    "items": {
+                        "$ref": "#/$defs/FaultTarget"
+                    },
+                    "title": "Targets",
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "required": [
+                "id"
+            ],
+            "title": "ScenarioFaultInjection",
+            "type": "object"
+        },
+        "ScenarioInjectionWaiter": {
+            "additionalProperties": false,
+            "description": "Pre- and post-injection waiter steps for a fault block.",
+            "properties": {
+                "postInjection": {
+                    "description": "Waiters to run after fault injection.",
+                    "items": {
+                        "discriminator": {
+                            "mapping": {
+                                "delete-workload-pods": "#/$defs/WaiterDeleteWorkloadPods",
+                                "pause-execution": "#/$defs/WaiterPauseExecution",
+                                "restart-kubernetes-workload": "#/$defs/WaiterRestartKubernetesWorkload",
+                                "scale-kubernetes-workload": "#/$defs/WaiterScaleKubernetesWorkload",
+                                "unassign-workload-container-resource-limits": "#/$defs/WaiterUnassignWorkloadContainerResourceLimits"
+                            },
+                            "propertyName": "id"
+                        },
+                        "oneOf": [
+                            {
+                                "$ref": "#/$defs/WaiterDeleteWorkloadPods"
+                            },
+                            {
+                                "$ref": "#/$defs/WaiterPauseExecution"
+                            },
+                            {
+                                "$ref": "#/$defs/WaiterRestartKubernetesWorkload"
+                            },
+                            {
+                                "$ref": "#/$defs/WaiterScaleKubernetesWorkload"
+                            },
+                            {
+                                "$ref": "#/$defs/WaiterUnassignWorkloadContainerResourceLimits"
+                            }
+                        ]
+                    },
+                    "title": "Postinjection",
+                    "type": "array"
+                },
+                "preInjection": {
+                    "description": "Waiters to run before fault injection.",
+                    "items": {
+                        "discriminator": {
+                            "mapping": {
+                                "delete-workload-pods": "#/$defs/WaiterDeleteWorkloadPods",
+                                "pause-execution": "#/$defs/WaiterPauseExecution",
+                                "restart-kubernetes-workload": "#/$defs/WaiterRestartKubernetesWorkload",
+                                "scale-kubernetes-workload": "#/$defs/WaiterScaleKubernetesWorkload",
+                                "unassign-workload-container-resource-limits": "#/$defs/WaiterUnassignWorkloadContainerResourceLimits"
+                            },
+                            "propertyName": "id"
+                        },
+                        "oneOf": [
+                            {
+                                "$ref": "#/$defs/WaiterDeleteWorkloadPods"
+                            },
+                            {
+                                "$ref": "#/$defs/WaiterPauseExecution"
+                            },
+                            {
+                                "$ref": "#/$defs/WaiterRestartKubernetesWorkload"
+                            },
+                            {
+                                "$ref": "#/$defs/WaiterScaleKubernetesWorkload"
+                            },
+                            {
+                                "$ref": "#/$defs/WaiterUnassignWorkloadContainerResourceLimits"
+                            }
+                        ]
+                    },
+                    "title": "Preinjection",
+                    "type": "array"
+                }
+            },
+            "title": "ScenarioInjectionWaiter",
+            "type": "object"
+        },
+        "WaiterDeleteWorkloadPods": {
+            "additionalProperties": false,
+            "description": "Waiter that deletes all pods associated with a Kubernetes workload.",
+            "properties": {
+                "description": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Description of what the waiter does.",
+                    "title": "Description"
+                },
+                "id": {
+                    "const": "delete-workload-pods",
+                    "default": "delete-workload-pods",
+                    "description": "Unique slug identifier for the waiter.",
+                    "title": "Id",
+                    "type": "string"
+                },
+                "name": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Human-readable name of the waiter.",
+                    "title": "Name"
+                },
+                "platforms": {
+                    "default": [
+                        "Kubernetes",
+                        "OpenShift"
+                    ],
+                    "description": "Target platforms this waiter applies to.",
+                    "items": {
+                        "$ref": "#/$defs/Platform"
+                    },
+                    "title": "Platforms",
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "workload": {
+                    "$ref": "#/$defs/KubernetesWorkload",
+                    "description": "Target workload whose pods will be deleted."
+                }
+            },
+            "required": [
+                "workload"
+            ],
+            "title": "WaiterDeleteWorkloadPods",
+            "type": "object"
+        },
+        "WaiterPauseExecution": {
+            "additionalProperties": false,
+            "description": "Waiter that pauses execution for a fixed number of seconds.",
+            "properties": {
+                "description": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Description of what the waiter does.",
+                    "title": "Description"
+                },
+                "id": {
+                    "const": "pause-execution",
+                    "default": "pause-execution",
+                    "description": "Unique slug identifier for the waiter.",
+                    "title": "Id",
+                    "type": "string"
+                },
+                "name": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Human-readable name of the waiter.",
+                    "title": "Name"
+                },
+                "platforms": {
+                    "default": [
+                        "Localhost"
+                    ],
+                    "description": "Target platforms this waiter applies to.",
+                    "items": {
+                        "$ref": "#/$defs/Platform"
+                    },
+                    "title": "Platforms",
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "seconds": {
+                    "default": 30,
+                    "description": "Number of seconds to pause execution.",
+                    "exclusiveMinimum": 0,
+                    "title": "Seconds",
+                    "type": "integer"
+                }
+            },
+            "title": "WaiterPauseExecution",
+            "type": "object"
+        },
+        "WaiterRestartKubernetesWorkload": {
+            "additionalProperties": false,
+            "description": "Waiter that restarts a Kubernetes workload and waits for it to become ready.",
+            "properties": {
+                "description": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Description of what the waiter does.",
+                    "title": "Description"
+                },
+                "id": {
+                    "const": "restart-kubernetes-workload",
+                    "default": "restart-kubernetes-workload",
+                    "description": "Unique slug identifier for the waiter.",
+                    "title": "Id",
+                    "type": "string"
+                },
+                "name": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Human-readable name of the waiter.",
+                    "title": "Name"
+                },
+                "platforms": {
+                    "default": [
+                        "Kubernetes",
+                        "OpenShift"
+                    ],
+                    "description": "Target platforms this waiter applies to.",
+                    "items": {
+                        "$ref": "#/$defs/Platform"
+                    },
+                    "title": "Platforms",
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "workload": {
+                    "$ref": "#/$defs/KubernetesWorkload",
+                    "description": "Target workload to restart."
+                }
+            },
+            "required": [
+                "workload"
+            ],
+            "title": "WaiterRestartKubernetesWorkload",
+            "type": "object"
+        },
+        "WaiterScaleKubernetesWorkload": {
+            "additionalProperties": false,
+            "description": "Waiter that scales a Kubernetes workload to a desired replica count.",
+            "properties": {
+                "description": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Description of what the waiter does.",
+                    "title": "Description"
+                },
+                "id": {
+                    "const": "scale-kubernetes-workload",
+                    "default": "scale-kubernetes-workload",
+                    "description": "Unique slug identifier for the waiter.",
+                    "title": "Id",
+                    "type": "string"
+                },
+                "name": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Human-readable name of the waiter.",
+                    "title": "Name"
+                },
+                "platforms": {
+                    "default": [
+                        "Kubernetes",
+                        "OpenShift"
+                    ],
+                    "description": "Target platforms this waiter applies to.",
+                    "items": {
+                        "$ref": "#/$defs/Platform"
+                    },
+                    "title": "Platforms",
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "replicas": {
+                    "default": 1,
+                    "description": "Desired number of replicas to scale the workload to.",
+                    "exclusiveMinimum": 0,
+                    "title": "Replicas",
+                    "type": "integer"
+                },
+                "workload": {
+                    "$ref": "#/$defs/KubernetesWorkload",
+                    "description": "Target workload to scale."
+                }
+            },
+            "required": [
+                "workload"
+            ],
+            "title": "WaiterScaleKubernetesWorkload",
+            "type": "object"
+        },
+        "WaiterUnassignWorkloadContainerResourceLimits": {
+            "additionalProperties": false,
+            "description": "Waiter that removes the resource limits of a container in a Kubernetes workload.",
+            "properties": {
+                "container": {
+                    "description": "Name of the container whose resource limits will be removed.",
+                    "title": "Container",
+                    "type": "string"
+                },
+                "description": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Description of what the waiter does.",
+                    "title": "Description"
+                },
+                "id": {
+                    "const": "unassign-workload-container-resource-limits",
+                    "default": "unassign-workload-container-resource-limits",
+                    "description": "Unique slug identifier for the waiter.",
+                    "title": "Id",
+                    "type": "string"
+                },
+                "name": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Human-readable name of the waiter.",
+                    "title": "Name"
+                },
+                "platforms": {
+                    "default": [
+                        "Kubernetes",
+                        "OpenShift"
+                    ],
+                    "description": "Target platforms this waiter applies to.",
+                    "items": {
+                        "$ref": "#/$defs/Platform"
+                    },
+                    "title": "Platforms",
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "workload": {
+                    "$ref": "#/$defs/KubernetesWorkload",
+                    "description": "Target workload containing the container."
+                }
+            },
+            "required": [
+                "container",
+                "workload"
+            ],
+            "title": "WaiterUnassignWorkloadContainerResourceLimits",
+            "type": "object"
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "A complete benchmark scenario definition.",
+    "properties": {
+        "environment": {
+            "$ref": "#/$defs/ScenarioEnvironment",
+            "description": "Environment configuration for the scenario."
+        },
+        "faults": {
+            "description": "Ordered list of fault blocks to inject.",
+            "items": {
+                "$ref": "#/$defs/ScenarioFault"
+            },
+            "title": "Faults",
+            "type": "array"
+        }
+    },
+    "required": [
+        "environment",
+        "faults"
+    ],
+    "title": "Scenario",
+    "type": "object"
+}

@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../../schemas/json/library/scenarios/ground_truth.json
+---
+alerts:
+  - name: KubePodNotReady
+    labels: {}
+entities:
+  - apiVersion: apps/v1
+    kind: Deployment
+    name: ad
+    namespace: otel-demo
+  - apiVersion: v1
+    kind: ResourceQuota
+    name: strict-resource-quota
+    namespace: otel-demo
+solutions:
+  - - steps:
+        - text: Manually edit the manifest(s) and increase the values of the resource
+            quota(s).
+          command: kubectl -n otel-demo edit resourcequota memory
+    - steps:
+        - text: Delete the offending resource quota(s) if it is no longer required.
+          command: kubectl -n otel-demo delete resourcequota memory

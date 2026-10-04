@@ -1,0 +1,29 @@
+---
+alerts:
+  - HighRequestLatency
+description: This fault injects a workload which causes a surge in requests to the API server, causing performance degredation.
+expectation: Workloads will be to experience high latency and new workloads may not be able to be scheduled.
+name: Kubernetes API Server Request Surge
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/overview/components/
+  - https://kubernetes.io/docs/concepts/architecture/#kube-apiserver
+tags:
+  - Deployment
+  - Performance
+targets: []
+solution_templates:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.name }} edit deployment workload-scanner
+          text: Manually edit the manifest and lower the request rate.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.name }} delete deployment workload-scanner
+          text: Delete the injected load generator deployment.
+status:
+  retired:
+    reason: >-
+      ITBench does not support faults which compromise the entire cluster. Such
+      faults make it impossible to collect telemetry on the environment and safely remove
+      the effects of the fault.
+    version: v2.0.0

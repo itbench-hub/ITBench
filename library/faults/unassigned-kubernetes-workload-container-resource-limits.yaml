@@ -1,0 +1,30 @@
+---
+alerts: []
+description: This fault removes the resource limits of an indicated workload container.
+expectation: The new pod will run normally. However, without resource limits, the pod will consume resources endless.  This state can be combined with other faults to produce resource usage scenarios.
+name: Unassigned Kubernetes Workload Container Resource Limits
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/containers/images/
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+tags:
+  - Deployment
+  - Performance
+targets: []
+solution_templates:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and replace the invalid container's resource configuration with the correct value(s).
+status:
+  converted:
+    id: unassign-workload-container-resource-limits
+    version: v2.0.0
+  retired:
+    reason: >-
+      ITBench does not support non-generic faults. Such faults are prone to
+      working in specific versions of applications and make it difficult to
+      determine outcomes.
+    version: v2.0.0

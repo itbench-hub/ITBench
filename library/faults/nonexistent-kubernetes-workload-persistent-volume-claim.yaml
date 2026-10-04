@@ -1,0 +1,24 @@
+---
+alerts:
+  - KubePodNotReady
+description: This fault injects a workload with a nonexistent volume.
+expectation: The faulted pod(s) will enter the `Pending` state. The workload will become unable to function.
+name: Nonexistent Kubernetes Workload Persistent Volume Claim
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+tags:
+  - Deployment
+targets:
+  - kubernetes: KubernetesWorkload
+solution_templates:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit persistentvolumeclaim {{ args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and replace the `storageClassName` with the correct value.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and replace the volume claim with an existing persistent volume claim.

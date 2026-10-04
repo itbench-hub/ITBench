@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=../../../schemas/json/library/scenarios/ground_truth.json
+---
+alerts:
+  - name: HighRequestErrorRate
+    labels: {}
+entities:
+  - apiVersion: apps/v1
+    kind: Deployment
+    name: productpage-v1
+    namespace: book-info
+  - apiVersion: security.istio.io/v1
+    kind: PeerAuthentication
+    name: strict-mtls-mode
+    namespace: book-info
+solutions:
+  - - steps:
+        - text: Manually edit the manifest and to add the required Istio ambient mode
+            labels to the workload.
+          command: kubectl -n book-info edit deployment productpage-v1
+    - steps:
+        - text: Manually edit the namespace manifest and to add the required Istio
+            ambient mode labels to the workload.
+          command: kubectl edit namespace book-info

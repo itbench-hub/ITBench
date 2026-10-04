@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../../schemas/json/library/scenarios/ground_truth.json
+---
+alerts:
+  - name: KubePodNotReady
+    labels: {}
+entities:
+  - apiVersion: apps/v1
+    kind: Deployment
+    name: reviews-v3
+    namespace: book-info
+solutions:
+  - - steps:
+        - text: Manually edit the manifest and replace the `storageClassName` with
+            the correct value.
+          command: kubectl -n book-info edit persistentvolumeclaim reviews-v3
+    - steps:
+        - text: Manually edit the manifest and replace the volume claim with an existing
+            persistent volume claim.
+          command: kubectl -n book-info edit deployment reviews-v3

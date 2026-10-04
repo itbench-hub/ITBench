@@ -1,0 +1,26 @@
+---
+alerts:
+  - KubeContainerWaiting
+description: This fault injects an init container that crashes due to a bad script.
+expectation: The faulted pod will enter the `Pending` state. All containers will be in the `Waiting` state.  The hanging init container will be in the `CrashBackOffLoop` state.
+name: Crashing Kubernetes Workload Init Container
+platform: Kubernetes
+resources:
+  - https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+  - https://kubernetes.io/docs/concepts/workloads/
+  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
+  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+tags:
+  - Code
+  - Deployment
+  - Performance
+targets:
+  - kubernetes: KubernetesWorkload
+solution_templates:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit configmap {{ args.kubernetesObject.metadata.name }}-config
+          text: Manually edit the manifest and replace the script with a functioning one.
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and remove the faulty init container.

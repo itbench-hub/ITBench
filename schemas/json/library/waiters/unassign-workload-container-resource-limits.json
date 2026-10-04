@@ -1,0 +1,120 @@
+{
+    "$defs": {
+        "KubernetesWorkload": {
+            "additionalProperties": false,
+            "description": "Reference to a Kubernetes workload (DaemonSet, Deployment, or StatefulSet).",
+            "properties": {
+                "apiVersion": {
+                    "const": "apps/v1",
+                    "default": "apps/v1",
+                    "description": "API version of the Kubernetes workload resource. Always apps/v1.",
+                    "title": "Apiversion",
+                    "type": "string"
+                },
+                "kind": {
+                    "default": "Deployment",
+                    "description": "Kind of the Kubernetes workload. One of DaemonSet, Deployment, or StatefulSet.",
+                    "enum": [
+                        "DaemonSet",
+                        "Deployment",
+                        "StatefulSet"
+                    ],
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Kubernetes resource.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "namespace": {
+                    "description": "Namespace of the workload.",
+                    "title": "Namespace",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "namespace"
+            ],
+            "title": "KubernetesWorkload",
+            "type": "object"
+        },
+        "Platform": {
+            "description": "Supported platforms for ITBench applications, faults, and waiters.",
+            "enum": [
+                "Kubernetes",
+                "Localhost",
+                "OpenShift"
+            ],
+            "title": "Platform",
+            "type": "string"
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "Waiter that removes the resource limits of a container in a Kubernetes workload.",
+    "properties": {
+        "container": {
+            "description": "Name of the container whose resource limits will be removed.",
+            "title": "Container",
+            "type": "string"
+        },
+        "description": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "description": "Description of what the waiter does.",
+            "title": "Description"
+        },
+        "id": {
+            "const": "unassign-workload-container-resource-limits",
+            "default": "unassign-workload-container-resource-limits",
+            "description": "Unique slug identifier for the waiter.",
+            "title": "Id",
+            "type": "string"
+        },
+        "name": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "description": "Human-readable name of the waiter.",
+            "title": "Name"
+        },
+        "platforms": {
+            "default": [
+                "Kubernetes",
+                "OpenShift"
+            ],
+            "description": "Target platforms this waiter applies to.",
+            "items": {
+                "$ref": "#/$defs/Platform"
+            },
+            "title": "Platforms",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "workload": {
+            "$ref": "#/$defs/KubernetesWorkload",
+            "description": "Target workload containing the container."
+        }
+    },
+    "required": [
+        "container",
+        "workload"
+    ],
+    "title": "WaiterUnassignWorkloadContainerResourceLimits",
+    "type": "object"
+}

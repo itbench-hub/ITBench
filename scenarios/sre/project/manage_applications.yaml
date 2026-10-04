@@ -2,6 +2,8 @@
 - name: Manage SRE and FinOps Incident Environment Sample Application Stack
   hosts:
     - localhost
+  environment:
+    K8_AUTH_KUBECONFIG: "{{ cluster.kubeconfig }}"
   pre_tasks:
     - name: Import executables role
       ansible.builtin.import_role:
@@ -18,36 +20,6 @@
         cluster_files:
           kubeconfig: "{{ cluster.kubeconfig }}"
   tasks:
-    - name: Import role variables from scenario
-      tags:
-        - install_applications
-      when:
-        - scenario_id is ansible.builtin.defined
-      block:
-        - name: Import scenarios role
-          ansible.builtin.import_role:
-            name: scenarios
-          vars:
-            scenarios_identifier: "{{ scenario_id }}"
-
-        - name: Create application installation variable
-          ansible.builtin.set_fact:
-            applications_configuration: "{{ scenarios_scenario.applications }}"
-
-    - name: Create role variables
-      tags:
-        - install_applications
-      when:
-        - scenario_id is ansible.builtin.undefined
-      block:
-        - name: Create application installation variable
-          ansible.builtin.set_fact:
-            applications_configuration:
-              bookInfo:
-                enabled: "{{ applications.book_info | ansible.builtin.default(false) }}"
-              opentelemetryDemo:
-                enabled: "{{ applications.otel_demo | ansible.builtin.default(false) }}"
-
     - name: Import applications role
       ansible.builtin.import_role:
         name: applications

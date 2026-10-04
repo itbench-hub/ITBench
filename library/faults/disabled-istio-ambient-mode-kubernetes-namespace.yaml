@@ -1,0 +1,20 @@
+---
+alerts:
+  - NoRequestsReceived
+description: This fault modifies a namespace, disabling it from being included in Istio's Ambient Mode service mesh.
+expectation: No traffic will be routed through the service mesh. This would all the requests to not be processed with the various policies configured in Istio.
+name: Disabled Istio Ambient Mode Kubernetes Namespace
+platform: Kubernetes
+resources:
+  - https://istio.io/latest/docs/ambient/overview/
+  - https://istio.io/latest/docs/ambient/usage/add-workloads/
+tags:
+  - Deployment
+  - Networking
+targets:
+  - kubernetes: KubernetesNamespace
+solution_templates:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.name }} edit namespace {{ args.kubernetesObject.metadata.name }}-deny
+          text: Manually edit the manifest and replace the invalid label with the correct value.
