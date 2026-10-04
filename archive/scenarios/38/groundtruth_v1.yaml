@@ -1,0 +1,62 @@
+---
+alerts:
+  - group_id: otel-demo-namespace-1
+    id: CPUSpend
+    metadata:
+      description: Cost has increased significantly despite having low utilization
+  - group_id: otel-demo-namespace-1
+    id: MemorySpend
+    metadata:
+      description: Memory cost has increased due to HPA misconfiguration
+aliases:
+  - - accounting-horizontal-pod-autoscaler-1
+  - - ad-horizontal-pod-autoscaler-1
+  - - otel-demo-namespace-1
+fault:
+  - category: Other
+    condition: Misconfigured HPA
+    entity:
+      group_id: accounting-horizontal-pod-autoscaler-1
+      kind: HorizontalPodAutoscaler
+      name: accounting-horizontal-pod-autoscaler-1
+    fault_mechanism: custom
+  - category: Other
+    condition: Misconfigured HPA
+    entity:
+      group_id: ad-horizontal-pod-autoscaler-1
+      kind: HorizontalPodAutoscaler
+      name: ad-horizontal-pod-autoscaler-1
+    fault_mechanism: custom
+groups:
+  - id: otel-demo-namespace-1
+    kind: Namespace
+    name: otel-demo
+    namespace: otel-demo
+  - filter:
+      - "*.*"
+    id: accounting-horizontal-pod-autoscaler-1
+    kind: HorizontalPodAutoscaler
+    namespace: otel-demo
+    root_cause: true
+  - filter:
+      - "*.*"
+    id: ad-horizontal-pod-autoscaler-1
+    kind: HorizontalPodAutoscaler
+    namespace: otel-demo
+    root_cause: true
+propagations:
+  - condition: HPA misconfigured to scale up aggressively but not scale down
+    effect: Excessive pod replicas remain running causing increased CPU and memory costs
+    source: accounting-horizontal-pod-autoscaler-1
+    target: otel-demo-namespace-1
+  - condition: HPA misconfigured to scale up aggressively but not scale down
+    effect: Excessive pod replicas remain running causing increased CPU and memory costs
+    source: ad-horizontal-pod-autoscaler-1
+    target: otel-demo-namespace-1
+recommendedActions:
+  - solution:
+      actions:
+        - check current and recent past utilization numbers through promethous
+        - found a temporary spike in application load
+        - detect misconfiguration in auto-scaler for scaling down
+      id: investigate_detect_misconfigured_autoscaler

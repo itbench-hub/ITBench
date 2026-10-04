@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=../../../../schemas/json/library/definitions/scenario.json
+---
+applications:
+  opentelemetryDemo:
+    enabled: true
+    options:
+      autoscaling:
+        kubernetes:
+          hpa: true
+faults:
+- injections:
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: fraud-detection
+          namespace: otel-demo
+    id: misconfigured-kubernetes-horizontal-pod-autoscaler
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: frontend
+          namespace: otel-demo
+    id: misconfigured-kubernetes-horizontal-pod-autoscaler
+  - args:
+      kubernetesObject:
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: image-provider
+          namespace: otel-demo
+    id: misconfigured-kubernetes-horizontal-pod-autoscaler
+tools:
+  finops:
+    enabled: true
