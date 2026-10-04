@@ -1,0 +1,190 @@
+{
+    "$defs": {
+        "FaultAlerts": {
+            "description": "Alerts associated with a fault.",
+            "enum": [
+                "HighRequestErrorRate",
+                "HighRequestLatency",
+                "KubeContainerWaiting",
+                "KubeHpaMaxedOut",
+                "KubePodCrashLooping",
+                "KubePodNotReady",
+                "NoRequestsReceived"
+            ],
+            "title": "FaultAlerts",
+            "type": "string"
+        },
+        "FaultSolution": {
+            "additionalProperties": false,
+            "description": "A single recommended solution comprising ordered remediation steps.",
+            "properties": {
+                "steps": {
+                    "description": "Ordered list of steps to resolve the fault.",
+                    "items": {
+                        "$ref": "#/$defs/FaultSolutionStep"
+                    },
+                    "title": "Steps",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "steps"
+            ],
+            "title": "FaultSolution",
+            "type": "object"
+        },
+        "FaultSolutionStep": {
+            "additionalProperties": false,
+            "description": "Individual step in a solution procedure.",
+            "properties": {
+                "command": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "CLI command to execute for this step.",
+                    "title": "Command"
+                },
+                "text": {
+                    "description": "Human-readable description of the troubleshooting step.",
+                    "title": "Text",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "text"
+            ],
+            "title": "FaultSolutionStep",
+            "type": "object"
+        },
+        "GroundTruthAlert": {
+            "additionalProperties": false,
+            "description": "A single alert entry in a ground truth definition.",
+            "properties": {
+                "labels": {
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Key/value label pairs associated with the alert.",
+                    "title": "Labels",
+                    "type": "object"
+                },
+                "name": {
+                    "$ref": "#/$defs/FaultAlerts",
+                    "description": "Alert identifier."
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "GroundTruthAlert",
+            "type": "object"
+        },
+        "GroundTruthEntity": {
+            "additionalProperties": false,
+            "description": "A Kubernetes object entity involved in a fault.",
+            "properties": {
+                "kubernetes": {
+                    "description": "One or more Kubernetes objects involved in this fault.",
+                    "items": {
+                        "$ref": "#/$defs/KubernetesObject"
+                    },
+                    "title": "Kubernetes",
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "required": [
+                "kubernetes"
+            ],
+            "title": "GroundTruthEntity",
+            "type": "object"
+        },
+        "KubernetesObject": {
+            "additionalProperties": false,
+            "description": "Base model for a Kubernetes object reference.",
+            "properties": {
+                "apiVersion": {
+                    "default": "v1",
+                    "description": "API version of the Kubernetes resource (e.g. v1, apps/v1).",
+                    "title": "Apiversion",
+                    "type": "string"
+                },
+                "kind": {
+                    "description": "Kind of the Kubernetes resource (e.g. Deployment, Service, Node).",
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Kubernetes resource.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "namespace": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Namespace of the resource (if namespaced).",
+                    "title": "Namespace"
+                }
+            },
+            "required": [
+                "kind",
+                "name"
+            ],
+            "title": "KubernetesObject",
+            "type": "object"
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "Ground truth definition for a benchmark scenario.",
+    "properties": {
+        "alerts": {
+            "description": "Alerts expected to fire when the fault is active.",
+            "items": {
+                "$ref": "#/$defs/GroundTruthAlert"
+            },
+            "title": "Alerts",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "entities": {
+            "description": "Kubernetes objects directly involved in the fault.",
+            "items": {
+                "$ref": "#/$defs/GroundTruthEntity"
+            },
+            "title": "Entities",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "solutions": {
+            "description": "One or more alternative solution groups, each comprising an ordered list of remediation steps.",
+            "items": {
+                "items": {
+                    "$ref": "#/$defs/FaultSolution"
+                },
+                "type": "array"
+            },
+            "title": "Solutions",
+            "type": "array"
+        }
+    },
+    "required": [
+        "entities",
+        "solutions"
+    ],
+    "title": "GroundTruth",
+    "type": "object"
+}

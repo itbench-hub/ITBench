@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=../../../schemas/json/library/scenarios/ground_truth.json
+---
+alerts:
+  - name: NoRequestsReceived
+    labels: {}
+entities:
+  - apiVersion: gateway.networking.k8s.io/v1
+    kind: Gateway
+    name: bookinfo-gateway
+    namespace: book-info
+  - apiVersion: security.istio.io/v1
+    kind: AuthorizationPolicy
+    name: bookinfo-gateway-deny
+    namespace: book-info
+solutions:
+  - - steps:
+        - text: Manually edit the manifest and replace the invalid rule with the correct
+            value.
+          command: kubectl -n book-info edit authorizationpolicy bookinfo-gateway-deny
+    - steps:
+        - text: Delete the faulty authorization policy.
+          command: kubectl -n book-info delete authorizationpolicy bookinfo-gateway-deny

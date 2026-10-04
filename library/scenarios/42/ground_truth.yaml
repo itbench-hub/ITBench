@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../../schemas/json/library/scenarios/ground_truth.json
+---
+alerts:
+  - name: KubePodNotReady
+    labels: {}
+entities:
+  - apiVersion: apps/v1
+    kind: Deployment
+    name: kafka
+    namespace: otel-demo
+solutions:
+  - - steps:
+        - text: Manually edit the manifest and remove the node selector value with
+            the correct value(s).
+          command: kubectl -n otel-demo edit deployment kafka
+    - steps:
+        - text: Manually edit the manifest and change the priority of the workload
+            to the new priority.
+          command: kubectl -n otel-demo edit deployment kafka
+        - text: Create a new priority class with a higher value than the workload
+            which caused its preemption.

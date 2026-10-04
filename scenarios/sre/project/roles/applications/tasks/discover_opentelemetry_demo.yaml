@@ -1,0 +1,22 @@
+---
+- name: Clear OpenTelemetry Demo discovery output directory
+  ansible.builtin.file:
+    path: "{{ out_directory }}"
+    state: absent
+
+- name: Render OpenTelemetry Demo Helm templates
+  kubernetes.core.helm_template:
+    chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-demo"
+    chart_version: "0.40.10"
+    output_dir: "{{ out_directory }}"
+    release_name: "{{ applications_releases.opentelemetry_demo.name }}"
+    release_namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+    release_values:
+      grafana:
+        enabled: false
+      jaeger:
+        enabled: false
+      opensearch:
+        enabled: false
+      prometheus:
+        enabled: false

@@ -1,0 +1,73 @@
+{
+    "$defs": {
+        "Platform": {
+            "description": "Supported platforms for ITBench applications, faults, and waiters.",
+            "enum": [
+                "Kubernetes",
+                "Localhost",
+                "OpenShift"
+            ],
+            "title": "Platform",
+            "type": "string"
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "Waiter that pauses execution for a fixed number of seconds.",
+    "properties": {
+        "description": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "description": "Description of what the waiter does.",
+            "title": "Description"
+        },
+        "id": {
+            "const": "pause-execution",
+            "default": "pause-execution",
+            "description": "Unique slug identifier for the waiter.",
+            "title": "Id",
+            "type": "string"
+        },
+        "name": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "description": "Human-readable name of the waiter.",
+            "title": "Name"
+        },
+        "platforms": {
+            "default": [
+                "Localhost"
+            ],
+            "description": "Target platforms this waiter applies to.",
+            "items": {
+                "$ref": "#/$defs/Platform"
+            },
+            "title": "Platforms",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "seconds": {
+            "default": 30,
+            "description": "Number of seconds to pause execution.",
+            "exclusiveMinimum": 0,
+            "title": "Seconds",
+            "type": "integer"
+        }
+    },
+    "title": "WaiterPauseExecution",
+    "type": "object"
+}

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../../schemas/json/library/scenarios/ground_truth.json
+---
+alerts:
+  - name: NoRequestsReceived
+    labels: {}
+  - name: HighRequestErrorRate
+    labels: {}
+entities:
+  - apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+    namespace: otel-demo
+  - apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    name: frontend-ingress
+    namespace: otel-demo
+solutions:
+  - - steps:
+        - text: Retrieve and review the configuration of the network policy(s) in
+            the affected namespace.
+          command: kubectl -n otel-demo get networkpolicy
+        - text: Manually edit the manifest(s) and allow access to workload's ports
+            of the network policy(s).
+          command: kubectl -n otel-demo edit networkpolicy frontend-ingress
+    - steps:
+        - text: Retrieve and review the configuration of the network policy(s) in
+            the affected namespace.
+          command: kubectl -n otel-demo get networkpolicy
+        - text: Delete the offending network policy(s) if it is no longer required.
+          command: kubectl -n otel-demo edit networkpolicy frontend-ingress

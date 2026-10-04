@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../../schemas/json/library/scenarios/ground_truth.json
+---
+alerts:
+  - name: KubePodCrashLooping
+    labels: {}
+entities:
+  - apiVersion: apps/v1
+    kind: Deployment
+    name: valkey-cart
+    namespace: otel-demo
+solutions:
+  - - steps:
+        - text: Manually edit the manifest and remove the code change volumes.
+          command: kubectl -n otel-demo edit deployment valkey-cart
+        - text: Delete the injected ConfigMap object.
+          command: kubectl -n otel-demo delete configmap valkey-storage-script
+    - steps:
+        - text: Manually edit the manifest and change the script.
+          command: kubectl -n otel-demo edit configmap valkey-storage-script

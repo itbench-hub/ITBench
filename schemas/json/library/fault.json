@@ -1,0 +1,303 @@
+{
+    "$defs": {
+        "FaultAlerts": {
+            "description": "Alerts associated with a fault.",
+            "enum": [
+                "HighRequestErrorRate",
+                "HighRequestLatency",
+                "KubeContainerWaiting",
+                "KubeHpaMaxedOut",
+                "KubePodCrashLooping",
+                "KubePodNotReady",
+                "NoRequestsReceived"
+            ],
+            "title": "FaultAlerts",
+            "type": "string"
+        },
+        "FaultConvertedStatus": {
+            "additionalProperties": false,
+            "description": "Conversion metadata for a fault that has been converted into a waiter.",
+            "properties": {
+                "id": {
+                    "description": "Unique slug identifier for the waiter.",
+                    "title": "Id",
+                    "type": "string"
+                },
+                "version": {
+                    "description": "ITBench version in which the fault was converted.",
+                    "title": "Version",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id",
+                "version"
+            ],
+            "title": "FaultConvertedStatus",
+            "type": "object"
+        },
+        "FaultRetiredStatus": {
+            "additionalProperties": false,
+            "description": "Retirement metadata for a fault that has been removed from the active catalog.",
+            "properties": {
+                "reason": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Reason the fault was retired.",
+                    "title": "Reason"
+                },
+                "version": {
+                    "description": "ITBench version in which the fault was retired.",
+                    "title": "Version",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "version"
+            ],
+            "title": "FaultRetiredStatus",
+            "type": "object"
+        },
+        "FaultSolution": {
+            "additionalProperties": false,
+            "description": "A single recommended solution comprising ordered remediation steps.",
+            "properties": {
+                "steps": {
+                    "description": "Ordered list of steps to resolve the fault.",
+                    "items": {
+                        "$ref": "#/$defs/FaultSolutionStep"
+                    },
+                    "title": "Steps",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "steps"
+            ],
+            "title": "FaultSolution",
+            "type": "object"
+        },
+        "FaultSolutionStep": {
+            "additionalProperties": false,
+            "description": "Individual step in a solution procedure.",
+            "properties": {
+                "command": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "CLI command to execute for this step.",
+                    "title": "Command"
+                },
+                "text": {
+                    "description": "Human-readable description of the troubleshooting step.",
+                    "title": "Text",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "text"
+            ],
+            "title": "FaultSolutionStep",
+            "type": "object"
+        },
+        "FaultSolutionTemplates": {
+            "additionalProperties": false,
+            "description": "Solution templates for addressing the fault.",
+            "properties": {
+                "templates": {
+                    "description": "One or more recommended solutions for resolving the fault.",
+                    "items": {
+                        "$ref": "#/$defs/FaultSolution"
+                    },
+                    "title": "Templates",
+                    "type": "array"
+                }
+            },
+            "required": [
+                "templates"
+            ],
+            "title": "FaultSolutionTemplates",
+            "type": "object"
+        },
+        "FaultStatus": {
+            "additionalProperties": false,
+            "description": "Lifecycle status for a fault.",
+            "properties": {
+                "converted": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/FaultConvertedStatus"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Conversion metadata, present only if the fault has been converted to a waiter."
+                },
+                "retired": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/FaultRetiredStatus"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Retirement metadata, present only if the fault has been retired."
+                }
+            },
+            "title": "FaultStatus",
+            "type": "object"
+        },
+        "FaultTags": {
+            "description": "Categories/tags for faults.",
+            "enum": [
+                "Authentication",
+                "Code",
+                "Deployment",
+                "Networking",
+                "Performance"
+            ],
+            "title": "FaultTags",
+            "type": "string"
+        },
+        "FaultTargetReference": {
+            "additionalProperties": false,
+            "description": "A type reference declaring what kind of Kubernetes object a fault targets.\n\nUses the model class name rather than a full object instance \u2014 the concrete\nobject is supplied in the scenario injection's ``targets`` list.",
+            "properties": {
+                "kubernetes": {
+                    "$ref": "#/$defs/KubernetesObjectKind",
+                    "description": "Name of the Kubernetes object model this fault targets (e.g. KubernetesWorkload, KubernetesService)."
+                }
+            },
+            "required": [
+                "kubernetes"
+            ],
+            "title": "FaultTargetReference",
+            "type": "object"
+        },
+        "KubernetesObjectKind": {
+            "description": "Supported Kubernetes object model class names for target references.",
+            "enum": [
+                "KubernetesGateway",
+                "KubernetesHorizontalPodAutoscaler",
+                "KubernetesNamespace",
+                "KubernetesSecret",
+                "KubernetesService",
+                "KubernetesWorkload"
+            ],
+            "title": "KubernetesObjectKind",
+            "type": "string"
+        },
+        "Platform": {
+            "description": "Supported platforms for ITBench applications, faults, and waiters.",
+            "enum": [
+                "Kubernetes",
+                "Localhost",
+                "OpenShift"
+            ],
+            "title": "Platform",
+            "type": "string"
+        }
+    },
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "description": "A single fault catalog entry.",
+    "properties": {
+        "alerts": {
+            "description": "Alerts triggered by this fault.",
+            "items": {
+                "$ref": "#/$defs/FaultAlerts"
+            },
+            "title": "Alerts",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "description": {
+            "description": "Description of what the fault does.",
+            "title": "Description",
+            "type": "string"
+        },
+        "expectation": {
+            "description": "Expected behavior or symptoms observed when the fault is injected.",
+            "title": "Expectation",
+            "type": "string"
+        },
+        "name": {
+            "description": "Name of the fault.",
+            "title": "Name",
+            "type": "string"
+        },
+        "platform": {
+            "$ref": "#/$defs/Platform",
+            "description": "Target platform."
+        },
+        "resources": {
+            "description": "Reference documentation or links.",
+            "items": {
+                "type": "string"
+            },
+            "title": "Resources",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "solution_templates": {
+            "$ref": "#/$defs/FaultSolutionTemplates",
+            "description": "Recommended troubleshooting solutions."
+        },
+        "status": {
+            "anyOf": [
+                {
+                    "$ref": "#/$defs/FaultStatus"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "description": "Lifecycle status of the fault, including retirement metadata if applicable."
+        },
+        "tags": {
+            "description": "Tags categorizing the fault.",
+            "items": {
+                "$ref": "#/$defs/FaultTags"
+            },
+            "title": "Tags",
+            "type": "array",
+            "uniqueItems": true
+        },
+        "targets": {
+            "description": "Kubernetes object types this fault targets, by model class name. Scenario injections must supply a matching concrete object in their own targets list.",
+            "items": {
+                "$ref": "#/$defs/FaultTargetReference"
+            },
+            "title": "Targets",
+            "type": "array",
+            "uniqueItems": true
+        }
+    },
+    "required": [
+        "description",
+        "expectation",
+        "name",
+        "platform",
+        "solution_templates"
+    ],
+    "title": "Fault",
+    "type": "object"
+}
