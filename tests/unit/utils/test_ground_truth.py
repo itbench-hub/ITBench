@@ -231,6 +231,35 @@ def test_generate_ground_truth_companion_entities(tmp_path: Path) -> None:
     assert doc["entities"][1] == {"apiVersion": "v1", "kind": "ResourceQuota", "name": "strict-resource-quota", "namespace": "otel-demo"}
 
 
+def test_generate_ground_truth_horizontal_pod_autoscaler_companion_entity(tmp_path: Path) -> None:
+    from itbench.models.kubernetes import KubernetesHorizontalPodAutoscaler
+
+    fault = _make_fault(name="HPA Fault")
+    hpa = KubernetesHorizontalPodAutoscaler(name="frontend", namespace="otel-demo")
+    scenario = Scenario.model_construct(
+        environment=ScenarioEnvironment(applications=[]),
+        faults=[
+            ScenarioFault(
+                injections=[
+                    ScenarioFaultInjection.model_construct(
+                        id="misconfigured-kubernetes-horizontal-pod-autoscaler",
+                        targets=[FaultTarget(kubernetes=hpa)],
+                    )
+                ]
+            )
+        ],
+    )
+
+    with patch("itbench.utils.ground_truth.FAULT_CATALOG", {"misconfigured-kubernetes-horizontal-pod-autoscaler": fault}):
+        out = generate_ground_truth(scenario, tmp_path)
+
+    doc = yaml.safe_load(out.read_text(encoding="utf-8"))
+    assert doc["entities"] == [
+        {"apiVersion": "autoscaling/v2", "kind": "HorizontalPodAutoscaler", "name": "frontend", "namespace": "otel-demo"},
+        {"apiVersion": "apps/v1", "kind": "Deployment", "name": "frontend", "namespace": "otel-demo"},
+    ]
+
+
 def test_generate_ground_truth_entities_omit_namespace_when_none(tmp_path: Path) -> None:
     from itbench.models.kubernetes import KubernetesNamespace
 

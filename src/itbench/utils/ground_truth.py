@@ -86,7 +86,7 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
                 case "insufficient-kubernetes-resource-quota":
                     entities_out.append({"apiVersion": "v1", "kind": "ResourceQuota", "name": "strict-resource-quota", "namespace": ns})
                 case "misconfigured-kubernetes-horizontal-pod-autoscaler":
-                    entities_out.append({"apiVersion": "autoscaling/v2", "kind": "HorizontalPodAutoscaler", "name": obj.name, "namespace": ns})
+                    entities_out.append({"apiVersion": "apps/v1", "kind": "Deployment", "name": obj.name, "namespace": ns})
                 case "strict-mutual-tls-istio-service-mesh-enforcement":
                     entities_out.append({"apiVersion": "security.istio.io/v1", "kind": "PeerAuthentication", "name": "strict-mtls-mode", "namespace": ns})
                 case "traffic-denying-istio-gateway-authorization-policy":
