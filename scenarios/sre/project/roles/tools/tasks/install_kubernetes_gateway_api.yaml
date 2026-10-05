@@ -1,18 +1,30 @@
 ---
-# NOTE: `kubectl` is used in place of the `kubernetes.core` module because
-#       the server side configuration the yaml files are still downloaded
-#       and rendered on the client side. Depending on the file, sometimes
-#       there are rendering issues.
+- name: Install Kubernetes Gateway API Custom Resource Definitions
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Create temporary directory for install files
+      ansible.builtin.tempfile:
+        prefix: k8s_gateway
+        state: directory
+      register: tools_install_directory
 
-- name: Apply Kubernetes Gateway API Custom Resource Definitions
-  ansible.builtin.command:
-    argv:
-      - kubectl
-      - apply
-      - --server-side
-      - -f
-      - "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
-      - --kubeconfig={{ tools_cluster.kubeconfig | ansible.builtin.expanduser }}
-  register: tools_kubernetes_gateway_crds_apply
-  changed_when:
-    - tools_kubernetes_gateway_crds_apply.rc == 0
+    - name: Download Gateway API files from standard release channel
+      ansible.builtin.get_url:
+        dest: "{{ tools_install_directory.path }}"
+        mode: "0644"
+        url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml"
+
+    - name: Apply Custom Resource Definitions to cluster
+      kubernetes.core.k8s:
+        apply: true
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        server_side_apply:
+          field_manager: ansible
+        src: "{{ [tools_install_directory.path, 'standard-install.yaml'] | ansible.builtin.path_join }}"
+        state: present
+  always:
+    - name: Delete the temporary directory
+      ansible.builtin.file:
+        path: "{{ tools_install_directory.path }}"
+        state: absent
