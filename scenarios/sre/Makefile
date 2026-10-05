@@ -168,10 +168,6 @@ test-molecule-faults: ## Runs Molecule tests for the Faults role
 test-molecule-waiters: ## Runs Molecule tests for the Waiters role
 	cd project/roles/waiters && $(UV) run molecule test --all --report --command-borders
 
-.PHONY: test-network-gateway
-test-network-gateway: ## Run tool gateway network tests
-	cd project/roles/tools && $(UV) run molecule test --scenario-name external_endpoints --report --command-borders
-
 .PHONY: generate-agent-bundle
 generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with
 	ANSIBLE_STDOUT_CALLBACK=ansible.posix.json $(UV) run ansible-playbook -i inventory project/generate_agent_bundle.yaml | jq -r '.plays[].tasks[] | select(.task.name == "Print agent bundle") | .hosts.localhost.msg'
