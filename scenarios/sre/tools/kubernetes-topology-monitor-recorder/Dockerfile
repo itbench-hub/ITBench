@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/python-314-minimal:10.2-1791160361@sha256:1ef40558aa44913478db2b564b4daf9ae67e5ecf72f5b46a433bd21f916ba4d1
+FROM registry.access.redhat.com/ubi10/python-314-minimal:10.2-1791290410@sha256:06f7f76a5a718f240534d62974d1708b2985ecddb245e8c9e69eac792e075293
 
 WORKDIR /app
 
