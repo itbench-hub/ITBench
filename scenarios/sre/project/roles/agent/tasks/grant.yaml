@@ -132,17 +132,20 @@
 - name: Create TokenRequest
   ansible.builtin.command:
     argv:
-      - kubectl
-      - -n
-      - default
-      - create
-      - token
-      - agent
-      - --duration
-      - 18h
-      - -o
-      - json
-      - --kubeconfig={{ agent_cluster.kubeconfig | ansible.builtin.expanduser }}
+      - "{{ ansible_python_interpreter }}"
+      - -c
+      - |
+        import json, sys
+        from kubernetes import config
+        from kubernetes.client import ApiClient, AuthenticationV1TokenRequest, CoreV1Api
+        config.load_kube_config(config_file="{{ agent_cluster.kubeconfig | ansible.builtin.expanduser }}")
+        v1 = CoreV1Api()
+        resp = v1.create_namespaced_service_account_token(
+            name="agent",
+            namespace="default",
+            body=AuthenticationV1TokenRequest(spec={"expirationSeconds": 64800}),
+        )
+        print(json.dumps({"status": {"token": resp.status.token}}))
   register: agent_token_creation_output
   changed_when:
     - agent_token_creation_output.rc == 0

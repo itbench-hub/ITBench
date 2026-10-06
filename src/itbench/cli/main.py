@@ -9,6 +9,7 @@ from itbench.cli.commands.explain import explain_group
 from itbench.cli.commands.generate import generate_group
 from itbench.cli.commands.list import list_group
 from itbench.cli.commands.show import show_group
+from itbench.cli.commands.prepare import prepare_group
 from itbench.cli.commands.undeploy import undeploy_group
 
 
@@ -22,6 +23,7 @@ def cli() -> None: ...
 
 cli.add_command(deploy_group)
 cli.add_command(undeploy_group)
+cli.add_command(prepare_group)
 cli.add_command(create_group)
 cli.add_command(discover_group)
 cli.add_command(explain_group)

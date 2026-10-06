@@ -77,6 +77,8 @@ jobs:
         run: |
           make -C clusters/kind run-service-provider &
           sleep 10
+      - name: Prepare cluster
+        run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
       - name: Deploy tools stack
         run: uv run itbench deploy tools --kubeconfig "$HOME/.kube/config"
       - name: Run CLI integration tests
