@@ -136,15 +136,14 @@
       - -c
       - |
         import json, sys
-        from kubernetes import client, config
+        from kubernetes import config
+        from kubernetes.client import ApiClient, AuthenticationV1TokenRequest, CoreV1Api
         config.load_kube_config(config_file="{{ agent_cluster.kubeconfig | ansible.builtin.expanduser }}")
-        v1 = client.CoreV1Api()
+        v1 = CoreV1Api()
         resp = v1.create_namespaced_service_account_token(
             name="agent",
             namespace="default",
-            body=client.AuthenticationV1TokenRequest(
-                spec=client.AuthenticationV1TokenRequestSpec(expiration_seconds=64800)
-            ),
+            body=AuthenticationV1TokenRequest(spec={"expirationSeconds": 64800}),
         )
         print(json.dumps({"status": {"token": resp.status.token}}))
   register: agent_token_creation_output
