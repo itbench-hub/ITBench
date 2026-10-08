@@ -2,23 +2,72 @@
 - name: Import Kubernetes Gateway API installation tasks
   ansible.builtin.import_tasks:
     file: install_kubernetes_gateway_api.yaml
+  when:
+    - tools_cluster.platform == "kubernetes"
 
-- name: Import Kubernetes Gateway Instance installation tasks
-  ansible.builtin.import_tasks:
-    file: install_kubernetes_gateway_instances.yaml
-  vars:
-    tools_http_route_response_headers:
-      - name: Content-Security-Policy
-        value: "img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; form-action 'none'; frame-ancestors 'none'"
-      - name: Cross-Origin-Resource-Policy
-        value: same-origin
-      - name: Strict-Transport-Security
-        value: max-age=31536000; includeSubDomains; preload
-      - name: Referrer-Policy
-        value: strict-origin-when-cross-origin
-      - name: X-Content-Type-Options
-        value: nosniff
-      - name: X-Frame-Options
-        value: DENY
-      - name: X-XSS-Protection
-        value: "0"
+- name: Create GatewayClass for OpenShift Ingress
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: GatewayClass
+      metadata:
+        name: openshift-default
+      spec:
+        controllerName: openshift.io/gateway-controller/v1
+    state: present
+    wait: true
+    wait_condition:
+      type: Accepted
+      status: "True"
+  when:
+    - tools_cluster.platform == "openshift"
+
+- name: Create Namespaces for Kubernetes Gateways
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        labels:
+          "app.kubernetes.io/component": gateway
+          "prometheus.itbench.io/monitor": "true"
+        name: "{{ gateway.namespace }}"
+    state: present
+  loop:
+    - "{{ tools_kubernetes_gateway_istio }}"
+  loop_control:
+    label: namespace/{{ gateway.namespace }}
+    loop_var: gateway
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Create OpenShift implemented Kubernetes Gateway
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: Gateway
+      metadata:
+        name: "{{ tools_kubernetes_gateway_openshift.name }}"
+        namespace: "{{ tools_kubernetes_gateway_openshift.namespace }}"
+      spec:
+        gatewayClassName: openshift-default
+        listeners:
+          - name: http
+            port: 80
+            protocol: HTTP
+            allowedRoutes:
+              namespaces:
+                from: Selector
+                selector:
+                  matchLabels:
+                    "itbench.io/gateway-access": shared
+    state: present
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Programmed
+  when:
+    - tools_cluster.platform == "openshift"

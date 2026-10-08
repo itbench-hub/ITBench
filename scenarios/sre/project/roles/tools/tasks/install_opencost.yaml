@@ -33,6 +33,29 @@
       }}
     wait: true
 
+- name: Create HTTPRoute for OpenCost
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_releases.opencost.name }}"
+        namespace: "{{ tools_releases.opencost.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_kubernetes_gateway.name }}"
+            namespace: "{{ tools_kubernetes_gateway.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_releases.opencost.name }}"
+                port: 9090
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+    state: present
+
 - name: Create PrometheusRules
   kubernetes.core.k8s:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"

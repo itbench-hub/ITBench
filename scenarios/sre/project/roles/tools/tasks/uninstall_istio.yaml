@@ -1,26 +1,9 @@
 ---
-- name: Disable Host Routing
-  kubernetes.core.k8s_json_patch:
-    api_version: network.operator.openshift.io/v1
-    kind: EgressRouter
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: cluster
-    patch:
-      - op: replace
-        path: /spec/defaultNetwork/ovnKubernetesConfig/gatewayConfig/routingViaHost
-        value: false
-  when:
-    - tools_cluster.platform == "openshift"
-
 - name: Uninstall Istio ZTunnel
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.istio_ztunnel.name }}"
-    release_namespace: |-
-      {{
-        (tools_cluster.platform == 'openshift') |
-        ansible.builtin.ternary(tools_releases.istio_ztunnel.namespace.openshift, tools_releases.istio_ztunnel.namespace.kubernetes)
-      }}
+    release_namespace: "{{ tools_releases.istio_ztunnel.namespace }}"
     release_state: absent
     wait: true
 
@@ -28,11 +11,7 @@
   kubernetes.core.helm:
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
     release_name: "{{ tools_releases.istio_cni.name }}"
-    release_namespace: |-
-      {{
-        (tools_cluster.platform == 'openshift') |
-        ansible.builtin.ternary(tools_releases.istio_cni.namespace.openshift, tools_releases.istio_cni.namespace.kubernetes)
-      }}
+    release_namespace: "{{ tools_releases.istio_cni.namespace }}"
     release_state: absent
     wait: true
 
@@ -52,13 +31,27 @@
     release_state: absent
     wait: true
 
-- name: Delete Istio namespace
+- name: Delete Istio namespace(s)
   kubernetes.core.k8s:
+    api_version: v1
+    delete_all: true
+    kind: Namespace
     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      api_version: v1
-      kind: Namespace
-      metadata:
-        name: "{{ tools_releases.istio_base.namespace }}"
+    label_selectors:
+      - "app.kubernetes.io/component=istio"
+      - "app.kubernetes.io/managed-by=ITBench"
     state: absent
     wait: true
+
+- name: Delete subscription
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: servicemeshoperator3
+        namespace: openshift-operators
+    state: absent
+    wait: true
+  when:
+    - tools_cluster.platform == "openshift"

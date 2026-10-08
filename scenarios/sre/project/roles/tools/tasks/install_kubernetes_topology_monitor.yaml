@@ -39,3 +39,35 @@
   ansible.builtin.file:
     path: "{{ tools_temporary_directory.path }}"
     state: absent
+
+- name: Create HTTPRoute for Kubernetes Topology Monitor
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_releases.kubernetes_topology_monitor.name }}"
+        namespace: "{{ tools_releases.kubernetes_topology_monitor.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_kubernetes_gateway.name }}"
+            namespace: "{{ tools_kubernetes_gateway.namespace }}"
+        rules:
+          - backendRefs:
+              - name: topology-monitor-svc
+                port: 8080
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /topology/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+              - type: URLRewrite
+                urlRewrite:
+                  path:
+                    type: ReplacePrefixMatch
+                    replacePrefixMatch: /
+    state: present

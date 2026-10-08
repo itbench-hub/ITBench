@@ -461,3 +461,30 @@
       reason: Reconciled
       status: "True"
       type: Ready
+
+- name: Create HTTPRoute for Jaeger
+  kubernetes.core.k8s:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}"
+        namespace: "{{ tools_operands.opentelemetry_collector.jaeger.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_kubernetes_gateway.name }}"
+            namespace: "{{ tools_kubernetes_gateway.namespace }}"
+        rules:
+          - backendRefs:
+              - name: "{{ tools_operands.opentelemetry_collector.jaeger.name }}-collector"
+                port: 16686
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /jaeger/
+            filters:
+              - type: ResponseHeaderModifier
+                responseHeaderModifier:
+                  add: "{{ tools_http_route_response_headers }}"
+    state: present

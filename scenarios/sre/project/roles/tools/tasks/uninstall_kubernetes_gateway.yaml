@@ -1,4 +1,42 @@
 ---
-- name: Import Kubernetes Gateway Instance uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_kubernetes_gateway_instances.yaml
+- name: Delete Kubernetes Gateway API instances on OpenShift
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Delete OpenShift implemented Kubernetes Gateway
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: Gateway
+          metadata:
+            name: "{{ tools_kubernetes_gateway_openshift.name }}"
+            namespace: "{{ tools_kubernetes_gateway_openshift.namespace }}"
+        state: absent
+        wait: true
+
+    - name: Delete GatewayClass
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: GatewayClass
+          metadata:
+            name: openshift-default
+          spec:
+            controllerName: openshift.io/gateway-controller/v1
+        state: absent
+        wait: true
+
+- name: Delete Kubernetes Gateway instance namespaces
+  kubernetes.core.k8s:
+    api_version: v1
+    delete_all: true
+    kind: Namespace
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    label_selectors:
+      - "app.kubernetes.io/component=gateway"
+    state: absent
+    wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"

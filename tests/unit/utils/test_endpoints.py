@@ -8,8 +8,7 @@ from itbench.utils.endpoints import (
     ToolEndpoint,
     _build_tool_definitions,
     _resolve_gateway_host,
-    _resolve_k8s_endpoints,
-    _resolve_ocp_endpoints,
+    _resolve_httproute_endpoints,
 )
 
 
@@ -40,10 +39,6 @@ _RELEASES: dict = {
     "tools_namespaces": {
         "opentelemetry_collector": "otel-ns",
         "alinity_clickhouse": "ch-ns",
-        "kubernetes_gateway": "gw-ns",
-    },
-    "tools_kubernetes_gateways": {
-        "istio": {"name": "istio-gw"},
     },
 }
 
@@ -79,16 +74,10 @@ def test_build_tool_definitions_returns_expected_keys() -> None:
     }
 
 
-def test_build_tool_definitions_prometheus_k8s_ref() -> None:
+def test_build_tool_definitions_prometheus_ref() -> None:
     tools = _build_tool_definitions(_RELEASES)
-    assert tools["Prometheus"]["k8s"]["name"] == "prometheus"
-    assert tools["Prometheus"]["k8s"]["namespace"] == "monitoring"
-
-
-def test_build_tool_definitions_prometheus_ocp_ref() -> None:
-    tools = _build_tool_definitions(_RELEASES)
-    assert tools["Prometheus"]["ocp"]["name"] == "prometheus-k8s"
-    assert tools["Prometheus"]["ocp"]["namespace"] == "openshift-monitoring"
+    assert tools["Prometheus"]["name"] == "prometheus"
+    assert tools["Prometheus"]["namespace"] == "monitoring"
 
 
 def test_build_tool_definitions_all_tools_have_paths() -> None:
@@ -96,6 +85,13 @@ def test_build_tool_definitions_all_tools_have_paths() -> None:
     for name, cfg in tools.items():
         assert isinstance(cfg["paths"], list), f"{name} missing paths"
         assert len(cfg["paths"]) > 0, f"{name} has empty paths"
+
+
+def test_build_tool_definitions_all_tools_have_name_and_namespace() -> None:
+    tools = _build_tool_definitions(_RELEASES)
+    for name, cfg in tools.items():
+        assert "name" in cfg, f"{name} missing name"
+        assert "namespace" in cfg, f"{name} missing namespace"
 
 
 def test_resolve_gateway_host_ip_address() -> None:
@@ -140,7 +136,7 @@ def _api_exception(status: int) -> Exception:
     return exc
 
 
-def test_resolve_k8s_endpoints_returns_endpoint_for_found_route() -> None:
+def test_resolve_httproute_endpoints_returns_endpoint_for_found_route() -> None:
     custom = MagicMock()
     custom.get_namespaced_custom_object.return_value = {
         "spec": {
@@ -149,120 +145,53 @@ def test_resolve_k8s_endpoints_returns_endpoint_for_found_route() -> None:
     }
     tools = {
         "Prometheus": {
-            "k8s": {"name": "prometheus", "namespace": "monitoring"},
+            "name": "prometheus",
+            "namespace": "monitoring",
             "paths": ["/alerts"],
         }
     }
-    results = _resolve_k8s_endpoints(custom, "http://1.2.3.4", tools)
+    results = _resolve_httproute_endpoints(custom, "http://1.2.3.4", tools)
 
     assert len(results) == 1
     assert results[0].tool == "Prometheus"
     assert results[0].host == "http://1.2.3.4/prometheus"
 
 
-def test_resolve_k8s_endpoints_skips_404() -> None:
+def test_resolve_httproute_endpoints_skips_404() -> None:
     custom = MagicMock()
     custom.get_namespaced_custom_object.side_effect = _api_exception(404)
     tools = {
         "Prometheus": {
-            "k8s": {"name": "prometheus", "namespace": "monitoring"},
+            "name": "prometheus",
+            "namespace": "monitoring",
             "paths": ["/alerts"],
         }
     }
-    results = _resolve_k8s_endpoints(custom, "http://1.2.3.4", tools)
+    results = _resolve_httproute_endpoints(custom, "http://1.2.3.4", tools)
     assert results == []
 
 
-def test_resolve_k8s_endpoints_reraises_non_404() -> None:
+def test_resolve_httproute_endpoints_reraises_non_404() -> None:
     from kubernetes import client
 
     custom = MagicMock()
     custom.get_namespaced_custom_object.side_effect = _api_exception(500)
     tools = {
         "Prometheus": {
-            "k8s": {"name": "prometheus", "namespace": "monitoring"},
+            "name": "prometheus",
+            "namespace": "monitoring",
             "paths": ["/alerts"],
         }
     }
     with pytest.raises(client.exceptions.ApiException):
-        _resolve_k8s_endpoints(custom, "http://1.2.3.4", tools)
+        _resolve_httproute_endpoints(custom, "http://1.2.3.4", tools)
 
 
-def test_resolve_k8s_endpoints_path_prefix_stripped_of_trailing_slash() -> None:
+def test_resolve_httproute_endpoints_path_prefix_stripped_of_trailing_slash() -> None:
     custom = MagicMock()
     custom.get_namespaced_custom_object.return_value = {
         "spec": {"rules": [{"matches": [{"path": {"value": "/prom/"}}]}]}
     }
-    tools = {"T": {"k8s": {"name": "t", "namespace": "ns"}, "paths": ["/"]}}
-    results = _resolve_k8s_endpoints(custom, "http://gw", tools)
+    tools = {"T": {"name": "t", "namespace": "ns", "paths": ["/"]}}
+    results = _resolve_httproute_endpoints(custom, "http://gw", tools)
     assert results[0].host == "http://gw/prom"
-
-
-def test_resolve_ocp_endpoints_returns_endpoint_for_found_route() -> None:
-    custom = MagicMock()
-    custom.get_namespaced_custom_object.return_value = {
-        "status": {"ingress": [{"host": "prometheus.apps.example.com"}]},
-        "spec": {"path": "/"},
-    }
-    tools = {
-        "Prometheus": {
-            "ocp": {"name": "prometheus-k8s", "namespace": "openshift-monitoring"},
-            "paths": ["/alerts"],
-        }
-    }
-    results = _resolve_ocp_endpoints(custom, tools)
-
-    assert len(results) == 1
-    assert results[0].host == "http://prometheus.apps.example.com"
-
-
-def test_resolve_ocp_endpoints_skips_404() -> None:
-    custom = MagicMock()
-    custom.get_namespaced_custom_object.side_effect = _api_exception(404)
-    tools = {
-        "Prometheus": {
-            "ocp": {"name": "prometheus-k8s", "namespace": "openshift-monitoring"},
-            "paths": ["/alerts"],
-        }
-    }
-    results = _resolve_ocp_endpoints(custom, tools)
-    assert results == []
-
-
-def test_resolve_ocp_endpoints_skips_route_with_no_ingress() -> None:
-    custom = MagicMock()
-    custom.get_namespaced_custom_object.return_value = {"status": {"ingress": []}}
-    tools = {
-        "Prometheus": {
-            "ocp": {"name": "prometheus-k8s", "namespace": "openshift-monitoring"},
-            "paths": ["/alerts"],
-        }
-    }
-    results = _resolve_ocp_endpoints(custom, tools)
-    assert results == []
-
-
-def test_resolve_ocp_endpoints_reraises_non_404() -> None:
-    from kubernetes import client
-
-    custom = MagicMock()
-    custom.get_namespaced_custom_object.side_effect = _api_exception(503)
-    tools = {
-        "Prometheus": {
-            "ocp": {"name": "prometheus-k8s", "namespace": "openshift-monitoring"},
-            "paths": ["/alerts"],
-        }
-    }
-    with pytest.raises(client.exceptions.ApiException):
-        _resolve_ocp_endpoints(custom, tools)
-
-
-def test_resolve_ocp_endpoints_includes_route_path_in_host() -> None:
-    custom = MagicMock()
-    custom.get_namespaced_custom_object.return_value = {
-        "status": {"ingress": [{"host": "apps.example.com"}]},
-        "spec": {"path": "/prometheus"},
-    }
-    tools = {"T": {"ocp": {"name": "t", "namespace": "ns"}, "paths": ["/"]}}
-    results = _resolve_ocp_endpoints(custom, tools)
-    assert results[0].host == "http://apps.example.com/prometheus"
