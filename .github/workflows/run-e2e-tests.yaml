@@ -29,6 +29,14 @@ jobs:
   finops:
     runs-on: ubuntu-26.04
     steps:
+      - name: Change Host Kernel Watcher Limits
+        run: |
+          # Elevate values directly on the shared runner host kernel
+          sudo sysctl fs.inotify.max_user_instances=1024
+          sudo sysctl fs.inotify.max_user_watches=524288
+
+          # Boost process-level descriptor capacity for the shell
+          ulimit -n 65536
       - uses: actions/checkout@v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
@@ -67,6 +75,14 @@ jobs:
   sre:
     runs-on: ubuntu-26.04
     steps:
+      - name: Change Host Kernel Watcher Limits
+        run: |
+          # Elevate values directly on the shared runner host kernel
+          sudo sysctl fs.inotify.max_user_instances=1024
+          sudo sysctl fs.inotify.max_user_watches=524288
+
+          # Boost process-level descriptor capacity for the shell
+          ulimit -n 65536
       - uses: actions/checkout@v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
