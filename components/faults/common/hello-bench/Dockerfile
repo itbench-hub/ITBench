@@ -1,3 +1,3 @@
-FROM registry.access.redhat.com/ubi10-minimal:10.2-1791269426@sha256:843abc6aab53312a9e3fb5edccbdb15c84794fe41e7b01de7447329ac1e086ad
+FROM registry.access.redhat.com/ubi10-minimal:10.2-1791444377@sha256:bcecd3e74c9d03eb1a596c6c8f366775a289d422ac5925ec1539924d762ebf23
 
 CMD ["echo", "'Hello IT Bench!'"]
