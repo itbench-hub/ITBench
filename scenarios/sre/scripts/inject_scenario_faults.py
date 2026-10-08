@@ -22,8 +22,7 @@ def load_scenario_spec(private_project_directory: Path, scenario_id: int) -> Dic
         private_project_directory
         / ".."
         / ".."
-        / "library"
-        / "definitions"
+        / "archive"
         / "scenarios"
         / str(scenario_id)
         / "scenario.yaml"

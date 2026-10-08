@@ -24,15 +24,6 @@
         release_state: present
         wait: true
 
-    - name: Import cluster role
-      ansible.builtin.import_role:
-        name: cluster
-      tags:
-        - always
-      vars:
-        cluster_files:
-          kubeconfig: "{{ cluster.kubeconfig }}"
-
     - name: Import tools role
       ansible.builtin.import_role:
         name: tools
@@ -40,7 +31,6 @@
       vars:
         tools_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
-          platform: "{{ cluster_platform }}"
 
     - name: Create test namespace
       kubernetes.core.k8s:
