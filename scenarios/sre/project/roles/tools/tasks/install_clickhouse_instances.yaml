@@ -57,7 +57,6 @@
           CREATE TABLE IF NOT EXISTS prometheus.metrics
           ENGINE = TimeSeries;
     state: present
-  register: tools_clickhouse_prometheus_config_map
 
 - name: Create Clickhouse Installation
   kubernetes.core.k8s:
@@ -161,7 +160,7 @@
                 volumes:
                   - name: initdb-volume
                     configMap:
-                      name: "{{ tools_clickhouse_prometheus_config_map.result.metadata.name }}"
+                      name: clickhouse-init-prometheus
                       defaultMode: 0555
           serviceTemplates:
             - name: service-template

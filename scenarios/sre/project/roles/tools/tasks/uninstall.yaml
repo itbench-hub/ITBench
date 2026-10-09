@@ -43,6 +43,17 @@
   when:
     - tools_cluster.platform == "kubernetes"
 
+- name: Uninstall Prometheus Operator Custom Resource Definitions
+  kubernetes.core.helm:
+    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    release_name: "{{ tools_releases.prometheus_operator_crds.name }}"
+    release_namespace: "{{ tools_releases.prometheus_operator_crds.namespace }}"
+    release_state: absent
+    timeout: 10m0s
+    wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"
+
 - name: Import Custom Resource Definition removal tasks
   ansible.builtin.import_tasks:
     file: remove_custom_resource_definitions.yaml
