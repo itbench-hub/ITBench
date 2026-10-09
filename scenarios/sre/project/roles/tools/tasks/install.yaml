@@ -1,12 +1,28 @@
 ---
 - name: Import Kubernetes Gateway API installation tasks
   ansible.builtin.import_tasks:
+    file: install_kubernetes_gateway_api.yaml
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Import Prometheus Operator CRD installation tasks
+  ansible.builtin.import_tasks:
+    file: install_prometheus_operator_crds.yaml
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Import Kubernetes Gateway installation tasks
+  ansible.builtin.import_tasks:
     file: install_kubernetes_gateway.yaml
 
 - name: Install SRE and FinOps Tools
   when:
     - ((tools_configuration.finops.enabled | ansible.builtin.default(false)) or (tools_configuration.sre.enabled | ansible.builtin.default(false)))
   block:
+    - name: Import Clickhouse installation tasks
+      ansible.builtin.import_tasks:
+        file: install_clickhouse.yaml
+
     - name: Import Prometheus installation tasks
       ansible.builtin.import_tasks:
         file: install_prometheus.yaml
@@ -14,22 +30,6 @@
     - name: Import Prometheus endpoint variable setting tasks
       ansible.builtin.import_tasks:
         file: set_internal_endpoints_prometheus.yaml
-
-    - name: Import Clickhouse installation tasks
-      ansible.builtin.import_tasks:
-        file: install_clickhouse.yaml
-
-    - name: Import Clickhouse credential variable setting tasks
-      ansible.builtin.import_tasks:
-        file: set_credentials_clickhouse.yaml
-
-    - name: Import Clickhouse endpoint variable setting tasks
-      ansible.builtin.import_tasks:
-        file: set_internal_endpoints_clickhouse.yaml
-
-    - name: Import Prometheus remote write configuration update tasks
-      ansible.builtin.import_tasks:
-        file: configure_prometheus_remote_write.yaml
 
     - name: Import OpenTelemetry installation tasks
       ansible.builtin.import_tasks:

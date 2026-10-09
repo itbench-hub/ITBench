@@ -1,4 +1,12 @@
 ---
+- name: Import Clickhouse credential variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_credentials_clickhouse.yaml
+
+- name: Import Clickhouse endpoint variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_internal_endpoints_clickhouse.yaml
+
 - name: Install Prometheus and Prometheus Operator on Kubernetes
   when:
     - tools_cluster.platform == "kubernetes"
@@ -16,6 +24,25 @@
             name: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
         state: present
 
+    # Note: Since Prometheus only configures the authentication for Remote Write
+    #       via Kubernetes Secret, the Clickhouse credential has to be replicated
+    #       in the Prometheus namespace.
+
+    - name: Redeploy Clickhouse credential to Prometheus namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: clickhouse-remote-write-credentials
+            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
+          type: Opaque
+          stringData:
+            password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
+            username: "{{ tools_clickhouse_username }}"
+        state: present
+
     - name: Install Prometheus Operator and Prometheus
       kubernetes.core.helm:
         chart_ref: "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack"
@@ -29,6 +56,8 @@
           alertmanager:
             enabled: false
           grafana:
+            enabled: false
+          crds:
             enabled: false
           kube-state-metrics:
             affinity:
@@ -77,6 +106,18 @@
               serviceMonitorSelectorNilUsesHelmValues: false
               enableOTLPReceiver: true
               routePrefix: /prometheus
+              remoteWrite:
+                - url: "http://{{ tools_clickhouse_endpoint.prometheus }}/write"
+                  basicAuth:
+                    password:
+                      name: clickhouse-remote-write-credentials
+                      key: password
+                    username:
+                      name: clickhouse-remote-write-credentials
+                      key: username
+                  queueConfig:
+                    maxSamplesPerSend: 5000
+                    batchSendDeadline: 10s
           customRules:
             KubeContainerWaiting:
               for: 5m
@@ -128,10 +169,29 @@
                       add: "{{ tools_http_route_response_headers }}"
         state: present
 
-- name: Enabled OpenShift User Worklord Monitoring (Prometheus)
+- name: Enabled OpenShift User Workload Monitoring (Prometheus)
   when:
     - tools_cluster.platform == "openshift"
   block:
+    # Note: Since Prometheus only configures the authentication for Remote Write
+    #       via Kubernetes Secret, the Clickhouse credential has to be replicated
+    #       in the Prometheus namespace.
+
+    - name: Redeploy Clickhouse credential to Prometheus namespace
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: clickhouse-remote-write-credentials
+            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.openshift }}"
+          type: Opaque
+          stringData:
+            password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
+            username: "{{ tools_clickhouse_username }}"
+        state: present
+
     - name: Create Cluster Monitoring ConfigMap
       kubernetes.core.k8s:
         kubeconfig: "{{ tools_cluster.kubeconfig }}"
@@ -159,6 +219,19 @@
             config.yaml: |
               alertmanager:
                 enabled: false
+              prometheus:
+                remoteWrite:
+                  - url: "http://{{ tools_clickhouse_endpoint.prometheus }}/write"
+                    basicAuth:
+                      password:
+                        name: clickhouse-remote-write-credentials
+                        key: password
+                      username:
+                        name: clickhouse-remote-write-credentials
+                        key: username
+                    queueConfig:
+                      maxSamplesPerSend: 5000
+                      batchSendDeadline: 10s
         state: present
 
     - name: Wait for Prometheus workload pods to start
