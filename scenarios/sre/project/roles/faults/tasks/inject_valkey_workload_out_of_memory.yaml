@@ -10,7 +10,7 @@
       apiVersion: batch/v1
       kind: Job
       metadata:
-        name: "{{ faults_kubernetes_object.metadata.name }}-oom-config"
+        name: "{{ faults_kubernetes_object.metadata.name }}-init"
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
         ttlSecondsAfterFinished: 30
@@ -34,12 +34,3 @@
       type: Complete
       status: "True"
     wait_timeout: 60
-
-- name: Delete valkey-cli config Job
-  kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    api_version: batch/v1
-    kind: Job
-    name: "{{ faults_kubernetes_object.metadata.name }}-oom-config"
-    namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
-    state: absent
