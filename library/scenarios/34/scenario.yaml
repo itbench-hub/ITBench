@@ -10,7 +10,15 @@ faults:
       - id: valkey-workload-changed-password
         targets:
           - kubernetes:
-              apiVersion: apps/v1
-              kind: Deployment
-              name: valkey-cart
+              apiVersion: v1
+              kind: Secret
+              name: valkey-credentials
               namespace: otel-demo
+    waitFor:
+      postInjection:
+        - id: delete-workload-pods
+          workload:
+            apiVersion: apps/v1
+            kind: Deployment
+            name: valkey-cart
+            namespace: otel-demo

@@ -3,48 +3,43 @@
   ansible.builtin.include_tasks:
     file: validate_fault_arguments.yaml
 
-- name: Create ConfigMap
+- name: Create Valkey Configuration Job
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
-      apiVersion: v1
-      kind: ConfigMap
+      apiVersion: batch/v1
+      kind: Job
       metadata:
-        name: valkey-storage-script
-        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
-      data:
-        script: "{{ lookup('ansible.builtin.file', 'files/scripts/valkey_workload_out_of_memory/fill_storage.sh') }}"
-    state: present
-
-- name: Update workload containers
-  kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
-      kind: "{{ faults_kubernetes_object.kind }}"
-      metadata:
-        name: "{{ faults_kubernetes_object.metadata.name }}"
+        name: "{{ faults_kubernetes_object.metadata.name }}-oom-config"
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
+        ttlSecondsAfterFinished: 30
         template:
           spec:
+            restartPolicy: Never
             containers:
-              - name: "{{ faults_container.name }}"
+              - name: valkey-cli
+                image: docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
                 command:
                   - /bin/sh
                   - -c
-                  - "'/data/scripts/fill_storage.sh'"
-                volumeMounts:
-                  - name: scripts
-                    mountPath: /data/scripts
-            securityContext:
-              fsGroup: 1000
-            volumes:
-              - name: scripts
-                configMap:
-                  name: valkey-storage-script
-                  defaultMode: 0755
-                  items:
-                    - key: script
-                      path: fill_storage.sh
-    state: patched
+                  - >-
+                    valkey-cli -h {{ faults_kubernetes_object.metadata.name }}
+                    CONFIG SET maxmemory 1mb &&
+                    valkey-cli -h {{ faults_kubernetes_object.metadata.name }}
+                    CONFIG SET maxmemory-policy noeviction
+    state: present
+    wait: true
+    wait_condition:
+      type: Complete
+      status: "True"
+    wait_timeout: 60
+
+- name: Delete valkey-cli config Job
+  kubernetes.core.k8s:
+    kubeconfig: "{{ faults_cluster.kubeconfig }}"
+    api_version: batch/v1
+    kind: Job
+    name: "{{ faults_kubernetes_object.metadata.name }}-oom-config"
+    namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+    state: absent

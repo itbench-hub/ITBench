@@ -3,6 +3,10 @@
   ansible.builtin.include_tasks:
     file: validate_fault_arguments.yaml
 
+- name: Select a container randomly from workload
+  ansible.builtin.set_fact:
+    faults_container: "{{ faults_kubernetes_object.spec.template.spec.containers | ansible.builtin.random }}"
+
 - name: Create PersistentVolumeClaim
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
@@ -10,7 +14,7 @@
       apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        name: "{{ faults_kubernetes_object.metadata.name }}"
+        name: "{{ faults_kubernetes_object.metadata.name }}-data-storage"
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
         accessModes:
@@ -43,5 +47,5 @@
             volumes:
               - name: database
                 persistentVolumeClaim:
-                  claimName: "{{ faults_kubernetes_object.metadata.name }}"
+                  claimName: "{{ faults_kubernetes_object.metadata.name }}-data-storage"
     state: patched

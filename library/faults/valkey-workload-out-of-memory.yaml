@@ -1,27 +1,24 @@
 ---
 alerts:
-  - KubePodCrashLooping
-description: This fault adds a code change to a Valkey workload. This modifies the container to also contain a process which will consume memory.
-expectation: The faulted pod(s) will enter the `CrashLoopBackOff` state and container will enter the `Terminated` state.  The workload will become unable to function.
+  - HighRequestErrorRate
+description: This fault configures a Valkey instance to use a 1MB memory limit with the noeviction policy by running a short-lived Kubernetes Job. Under normal traffic, Valkey memory fills up and rejects all subsequent writes.
+expectation: Valkey will return `OOM command not allowed` errors on write operations, causing failures in dependent workloads such as cartservice.
 name: Valkey Workload Out of Memory
 platform: Kubernetes
 resources:
   - https://valkey.io/
   - https://kubernetes.io/docs/concepts/workloads/
-  - https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/
-  - https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/
+  - https://kubernetes.io/docs/concepts/services-networking/service/
+  - https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
 tags:
-  - Deployment
-  - Code
+  - Networking
+  - Configuration
 targets:
-  - kubernetes: KubernetesWorkload
+  - kubernetes: KubernetesService
 solution_templates:
   templates:
     - steps:
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
-          text: Manually edit the manifest and remove the code change volumes.
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete configmap valkey-storage-script
-          text: Delete the injected ConfigMap object.
-    - steps:
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit configmap valkey-storage-script
-          text: Manually edit the manifest and change the script.
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} run valkey-fix --rm -it --image=docker.io/valkey/valkey:9.1.2-alpine3.24 --restart=Never -- valkey-cli -h {{ args.kubernetesObject.metadata.name }} CONFIG SET maxmemory 0
+          text: Run a temporary pod to reset the Valkey maxmemory limit back to unlimited (0).
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} run valkey-fix --rm -it --image=docker.io/valkey/valkey:9.1.2-alpine3.24 --restart=Never -- valkey-cli -h {{ args.kubernetesObject.metadata.name }} CONFIG SET maxmemory-policy noeviction
+          text: Optionally reset the eviction policy to its original value.

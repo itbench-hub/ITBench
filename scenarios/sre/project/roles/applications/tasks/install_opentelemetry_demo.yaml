@@ -16,6 +16,18 @@
         name: "{{ applications_releases.opentelemetry_demo.namespace }}"
     state: present
 
+- name: Create valkey-credentials Secret
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: valkey-credentials
+        namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+      stringData:
+        valkey-password: "" # pragma: allowlist secret
+    state: present
+
 - name: Import tools role for variable setting tasks
   ansible.builtin.import_role:
     name: tools
@@ -138,6 +150,17 @@
             runAsGroup: 1000
             runAsNonRoot: true
             runAsUser: 999
+          command:
+            - valkey-server
+          args:
+            - --requirepass
+            - $(VALKEY_PASSWORD)
+          envOverrides:
+            - name: VALKEY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: valkey-credentials
+                  key: valkey-password
       opentelemetry-collector:
         config:
           connectors:

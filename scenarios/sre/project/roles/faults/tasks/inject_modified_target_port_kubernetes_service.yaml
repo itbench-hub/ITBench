@@ -3,6 +3,30 @@
   ansible.builtin.include_tasks:
     file: validate_fault_arguments.yaml
 
+- name: Build list of modified with shifted target ports
+  ansible.builtin.set_fact:
+    faults_modified_ports: >-
+      {{
+        (
+          faults_modified_ports | default([])
+        ) +
+        [
+          port | ansible.builtin.combine({
+            "targetPort": ansible.builtin.ternary(
+              port.targetPort is ansible.builtin.number,
+              port.targetPort + modifier,
+              "http-" ~ modifier
+            )
+          })
+        ]
+      }}
+  loop: "{{ faults_kubernetes_object.spec.ports }}"
+  loop_control:
+    label: port/{{ port.port }}
+    loop_var: port
+  vars:
+    modifier: "{{ range(1, 11) | ansible.builtin.list | ansible.builtin.random }}"
+
 - name: Update service ports
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
@@ -13,7 +37,5 @@
         name: "{{ faults_kubernetes_object.metadata.name }}"
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
-        ports:
-          - port: "{{ faults_port.port }}"
-            targetPort: 9999
+        ports: "{{ faults_modified_ports }}"
     state: patched
