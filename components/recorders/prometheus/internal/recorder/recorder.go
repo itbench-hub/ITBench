@@ -57,12 +57,15 @@ func Run(ctx context.Context, endpoint, token, outputDir string, timestamps ...t
 }
 
 func queryAndWriteSnapshot(ctx context.Context, api prometheusv1.API, ts time.Time, outputDir string) error {
-	val, warnings, err := api.Query(ctx, `ALERTS{alertstate="firing"}`, ts)
+	val, warnings, infos, err := api.Query(ctx, `ALERTS{alertstate="firing"}`, ts)
 	if err != nil {
 		return fmt.Errorf("query alerts at %s: %w", ts.Format(time.RFC3339), err)
 	}
 	if len(warnings) > 0 {
 		slog.Warn("query warnings", "warnings", warnings)
+	}
+	if len(infos) > 0 {
+		slog.Info("query infos", "infos", infos)
 	}
 
 	var firing []AlertSnapshot
