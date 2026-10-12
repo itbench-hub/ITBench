@@ -12,11 +12,7 @@
         ) +
         [
           port | ansible.builtin.combine({
-            "targetPort": ansible.builtin.ternary(
-              port.targetPort is ansible.builtin.number,
-              port.targetPort + modifier,
-              "http-" ~ modifier
-            )
+            "targetPort": port.targetPort + modifier if (port.targetPort is ansible.builtin.number) else "http-" ~ modifier
           })
         ]
       }}

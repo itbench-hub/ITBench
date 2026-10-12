@@ -24,7 +24,14 @@
         template:
           spec:
             nodeSelector:
-              "kubernetes.io/hostname": "{{ faults_node.metadata.name[:insert_index] ~ 'o' ~ faults_node.metadata.name[insert_index:] }}"
+              "kubernetes.io/hostname": |-
+                {{
+                  [
+                    faults_node.metadata.name[:(insert_index | ansible.builtin.int)],
+                    faults_node.metadata.name[(insert_index | ansible.builtin.int):]
+                  ] |
+                  ansible.builtin.join("o")
+                }}
     state: patched
   vars:
     insert_index: |-

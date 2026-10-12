@@ -14,7 +14,14 @@
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
         selector:
-          "app.kubernetes.io/name": "{{ faults_kubernetes_object.metadata.name[:insert_index] ~ 'o' ~ faults_kubernetes_object.metadata.name[insert_index:] }}"
+          "app.kubernetes.io/name": |-
+            {{
+              [
+                faults_kubernetes_object.metadata.name[:(insert_index | ansible.builtin.int)],
+                faults_kubernetes_object.metadata.name[(insert_index | ansible.builtin.int):]
+              ] |
+              ansible.builtin.join("o")
+            }}
     state: patched
   vars:
     insert_index: |-

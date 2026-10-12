@@ -92,11 +92,12 @@
                       - ALL
                 volumeMounts:
                   - name: records
-                    mountPath: /root/records
+                    mountPath: /opt/app-root/src/records
             restartPolicy: Never
             securityContext:
-              fsGroup: 0
-              runAsNonRoot: false
+              fsGroup: 1001
+              runAsUser: 1001
+              runAsNonRoot: true
               seccompProfile:
                 type: RuntimeDefault
             volumes:
@@ -105,7 +106,7 @@
                   claimName: "{{ recorders_instances.clickhouse_data_recorder.name }}-records"
     state: present
     wait: true
-    wait_timeout: 300
+    wait_timeout: 600
     wait_condition:
       type: Complete
       status: "True"

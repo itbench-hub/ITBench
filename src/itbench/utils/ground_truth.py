@@ -86,9 +86,9 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
                 case "insufficient-kubernetes-resource-quota":
                     entities_out.append({"apiVersion": "v1", "kind": "ResourceQuota", "name": "strict-resource-quota", "namespace": ns})
                 case "strict-mutual-tls-istio-service-mesh-enforcement":
-                    entities_out.append({"apiVersion": "security.istio.io/v1", "kind": "PeerAuthentication", "name": "strict-mtls-mode", "namespace": ns})
+                    entities_out.append({"apiVersion": "security.istio.io/v1", "kind": "PeerAuthentication", "name": "application", "namespace": ns})
                 case "traffic-denying-istio-gateway-authorization-policy":
-                    entities_out.append({"apiVersion": "security.istio.io/v1", "kind": "AuthorizationPolicy", "name": f"{obj.name}-deny", "namespace": ns})
+                    entities_out.append({"apiVersion": "security.istio.io/v1", "kind": "AuthorizationPolicy", "name": f"{obj.name}-policy", "namespace": ns})
 
     solutions_out: list[list[dict]] = []
     for injection, targets in injections:
