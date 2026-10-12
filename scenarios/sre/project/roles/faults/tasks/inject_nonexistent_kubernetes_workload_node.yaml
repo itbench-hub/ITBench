@@ -3,6 +3,14 @@
   ansible.builtin.include_tasks:
     file: validate_fault_arguments.yaml
 
+- name: Include worker nodes validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_worker_nodes.yaml
+
+- name: Select an available worker node randomly
+  ansible.builtin.set_fact:
+    faults_node: "{{ faults_worker_nodes.resources | ansible.builtin.random }}"
+
 - name: Update workload node selector
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
@@ -16,5 +24,19 @@
         template:
           spec:
             nodeSelector:
-              "kubernetes.io/hostname": invalid-node-{{ 1000 | ansible.builtin.random }}
+              "kubernetes.io/hostname": |-
+                {{
+                  [
+                    faults_node.metadata.name[:(insert_index | ansible.builtin.int)],
+                    faults_node.metadata.name[(insert_index | ansible.builtin.int):]
+                  ] |
+                  ansible.builtin.join("o")
+                }}
     state: patched
+  vars:
+    insert_index: |-
+      {{
+        range(1, (faults_node.metadata.name | ansible.builtin.length)) |
+        ansible.builtin.list |
+        ansible.builtin.random
+      }}

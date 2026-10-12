@@ -24,15 +24,6 @@
         fail_msg: Storage has not been configured. Please assign either local or s3 bucket storage.
         success_msg: Storage is configured.
   tasks:
-    - name: Import tools role for variable setting tasks
-      ansible.builtin.import_role:
-        name: tools
-        tasks_from: set_external_endpoints
-      vars:
-        tools_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
-          platform: "{{ cluster_platform }}"
-
     - name: Copy restricted kubeconfig into temporary directory from S3 bucket
       amazon.aws.s3_object:
         endpoint_url: "{{ storage.s3.endpoint }}"
@@ -61,7 +52,7 @@
         msg: |
           {{
             {
-              "prometheus_url": tools_prometheus_endpoint.host,
+              "prometheus_url": prometheus_endpoint,
               "kubeconfig": lookup("ansible.builtin.file", "/tmp/kubeconfig")
             }
           }}

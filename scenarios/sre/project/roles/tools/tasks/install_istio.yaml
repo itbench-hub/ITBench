@@ -42,9 +42,9 @@
             nodeAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
                 nodeSelectorTerms:
-                - matchExpressions:
-                  - key: node-role.itbench.io/sandbox
-                    operator: DoesNotExist
+                  - matchExpressions:
+                      - key: node-role.itbench.io/sandbox
+                        operator: DoesNotExist
           meshConfig:
             enablePrometheusMerge: false
             enableTracing: true
@@ -52,11 +52,31 @@
               - name: jaeger
                 opentelemetry:
                   port: 4317
-                  service: "{{ tools_operands.opentelemetry_collector.jaeger.name }}-collector.{{ tools_operands.opentelemetry_collector.jaeger.namespace }}.svc.cluster.local"
+                  service: |-
+                    {{
+                      [
+                        tools_operands.opentelemetry_collector.jaeger.name ~ "-collector",
+                        tools_operands.opentelemetry_collector.jaeger.namespace,
+                        "svc",
+                        "cluster",
+                        "local"
+                      ] |
+                      ansible.builtin.join(".")
+                    }}
               - name: opentelemetry
                 envoyOtelAls:
                   port: 4317
-                  service: "{{ tools_operands.opentelemetry_collector.istio.name }}-collector.{{ tools_operands.opentelemetry_collector.istio.namespace }}.svc.cluster.local"
+                  service: |-
+                    {{
+                      [
+                        tools_operands.opentelemetry_collector.istio.name ~ "-collector",
+                        tools_operands.opentelemetry_collector.istio.namespace,
+                        "svc",
+                        "cluster",
+                        "local"
+                      ] |
+                      ansible.builtin.join(".")
+                    }}
           profile: ambient
         wait: true
 
@@ -76,7 +96,7 @@
             tracing:
               - providers:
                   - name: jaeger
-                randomSamplingPercentage: 0
+                randomSamplingPercentage: 10
         state: present
 
     - name: Create ServiceMonitor for Control Plane
@@ -119,7 +139,7 @@
           kind: PodMonitor
           metadata:
             name: "{{ tools_releases.istio_cni.name }}"
-            namespace: "{{ tools_releases.istio_cni.namespace}}"
+            namespace: "{{ tools_releases.istio_cni.namespace }}"
           spec:
             selector:
               matchLabels:
@@ -307,8 +327,8 @@
                 trustedZtunnelNamespace: ztunnel
               meshConfig:
                 discoverySelectors:
-                - matchLabels:
-                    istio-discovery: enabled
+                  - matchLabels:
+                      istio-discovery: enabled
         state: present
 
     - name: Install IstioCNI

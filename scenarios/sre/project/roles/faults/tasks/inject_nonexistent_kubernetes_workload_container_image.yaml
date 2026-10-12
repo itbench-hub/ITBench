@@ -3,6 +3,10 @@
   ansible.builtin.include_tasks:
     file: validate_fault_arguments.yaml
 
+- name: Select a container randomly from workload
+  ansible.builtin.set_fact:
+    faults_container: "{{ faults_kubernetes_object.spec.template.spec.containers | ansible.builtin.random }}"
+
 - name: Update workload containers
   kubernetes.core.k8s:
     kubeconfig: "{{ faults_cluster.kubeconfig }}"
@@ -17,5 +21,5 @@
           spec:
             containers:
               - name: "{{ faults_container.name }}"
-                image: quay.io/it-bench/hello-bench-invalid:1.0.0
+                image: quay.io/it-bench/hello-bench-amd64:1.0.0rc1
     state: patched

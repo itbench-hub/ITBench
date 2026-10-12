@@ -17,8 +17,5 @@ targets:
 solution_templates:
   templates:
     - steps:
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny
-          text: Manually edit the manifest and replace the invalid rule with the correct value.
-    - steps:
-        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} delete authorizationpolicy {{ args.kubernetesObject.metadata.name }}-deny
-          text: Delete the faulty authorization policy.
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and restore the dnsPolicy to the correct value (e.g. ClusterFirst).

@@ -8,7 +8,7 @@
         kubeconfig: "{{ cluster.kubeconfig }}"
         api_version: v1
         kind: PersistentVolumeClaim
-        name: compromised-workload
+        name: compromised-workload-data-storage
         namespace: nonexistent-kubernetes-workload-persistent-volume-claim-test
       register: faults_persistent_volume_claim
 
@@ -19,12 +19,12 @@
         fail_msg: PersistentVolumeClaim was not created. Fault injection failed.
         success_msg: PersistentVolumeClaim was created.
 
-    - name: Validate that PVC uses invalid storage class
+    - name: Validate that PVC uses nonexistent storage class
       ansible.builtin.assert:
         that:
-          - faults_persistent_volume_claim.resources[0].spec.storageClassName == "invalid-class-name"
-        fail_msg: PVC does not use invalid storage class. Fault injection failed.
-        success_msg: PVC uses invalid storage class.
+          - faults_persistent_volume_claim.resources[0].spec.storageClassName == "aws-gp2"
+        fail_msg: PVC does not use expected storage class. Fault injection failed.
+        success_msg: PVC uses expected storage class.
 
     - name: Retrieve workload
       kubernetes.core.k8s_info:

@@ -20,12 +20,21 @@
         fail_msg: Node selector was not added. Fault injection failed.
         success_msg: Node selector was added.
 
+    - name: Retrieve cluster nodes
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ cluster.kubeconfig }}"
+        api_version: v1
+        kind: Node
+      register: faults_nodes
+
     - name: Validate that node selector points to nonexistent node
       ansible.builtin.assert:
         that:
-          - faults_deployment.resources[0].spec.template.spec.nodeSelector["kubernetes.io/hostname"] is ansible.builtin.match("invalid-node-.*")
+          - faults_deployment.resources[0].spec.template.spec.nodeSelector["kubernetes.io/hostname"] not in nodes
         fail_msg: Node selector does not point to nonexistent node. Fault injection failed.
         success_msg: Node selector points to nonexistent node.
+      vars:
+        nodes: "{{ faults_nodes.resources | map(attribute='metadata.name') }}"
 
     - name: Validate that workload cannot schedule pods
       ansible.builtin.assert:
