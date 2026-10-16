@@ -39,15 +39,8 @@ func openDB(addr, username, password, database string) *sql.DB {
 	})
 }
 
-// Run connects to ClickHouse at host:9000 (TCP) and writes TSV exports to outputDir.
-// host must be a bare hostname or IP — no scheme, no port.
-func Run(ctx context.Context, host, username, password, outputDir string, timestamps ...time.Time) error {
-	return RunWithAddr(ctx, host+":9000", username, password, outputDir, timestamps...)
-}
-
-// RunWithAddr is like Run but accepts a pre-built addr (host:port).
-// This is useful in tests where testcontainers maps port 9000 to a random host port.
-func RunWithAddr(ctx context.Context, addr, username, password, outputDir string, timestamps ...time.Time) error {
+// Run connects to ClickHouse at addr (host:port) via native TCP and writes TSV exports to outputDir.
+func Run(ctx context.Context, addr, username, password, outputDir string, timestamps ...time.Time) error {
 	defaultDB := openDB(addr, username, password, "default")
 	defer defaultDB.Close()
 
@@ -62,13 +55,14 @@ func RunWithAddr(ctx context.Context, addr, username, password, outputDir string
 	}
 
 	if len(timestamps) == 0 {
-		return exportSnapshot(ctx, defaultDB, jaegerDB, promDB, outputDir, nil)
+		return exportSnapshot(ctx, defaultDB, jaegerDB, promDB, outputDir, nil, nil)
 	}
 
+	startTime := timestamps[0]
 	for _, ts := range timestamps {
 		tsVal := ts
 		targetDir := filepath.Join(outputDir, fmt.Sprintf("snapshot_at_%s", ts.UTC().Format("2006-01-02T15-04-05.000000")))
-		if err := exportSnapshot(ctx, defaultDB, jaegerDB, promDB, targetDir, &tsVal); err != nil {
+		if err := exportSnapshot(ctx, defaultDB, jaegerDB, promDB, targetDir, &tsVal, &startTime); err != nil {
 			return err
 		}
 	}
@@ -76,7 +70,7 @@ func RunWithAddr(ctx context.Context, addr, username, password, outputDir string
 	return nil
 }
 
-func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, baseDir string, maxTime *time.Time) error {
+func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, baseDir string, maxTime *time.Time, minTime *time.Time) error {
 	rawDir := filepath.Join(baseDir, "raw")
 	liteDir := filepath.Join(baseDir, "lite")
 	for _, d := range []string{
@@ -91,10 +85,22 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 
 	timeFilter := "1=1"
 	promTimeFilter := "1=1"
+	tracesTimeFilter := "1=1"
 	if maxTime != nil {
 		formattedTime := maxTime.UTC().Format("2006-01-02 15:04:05.000000000")
 		timeFilter = fmt.Sprintf("Timestamp <= '%s'", formattedTime)
 		promTimeFilter = fmt.Sprintf("d.timestamp <= '%s'", formattedTime)
+		tracesTimeFilter = fmt.Sprintf("start_time <= '%s'", formattedTime)
+	}
+
+	topologyTimeFilter := "1=1"
+	if minTime != nil {
+		formattedMinTime := minTime.UTC().Format("2006-01-02 15:04:05.000000000")
+		topologyTimeFilter = fmt.Sprintf("Timestamp >= '%s'", formattedMinTime)
+	}
+	if maxTime != nil {
+		formattedTime := maxTime.UTC().Format("2006-01-02 15:04:05.000000000")
+		topologyTimeFilter += fmt.Sprintf(" AND Timestamp <= '%s'", formattedTime)
 	}
 
 	// ── k8s events ──────────────────────────────────────────────────────────
@@ -114,6 +120,20 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 		 WHERE %s AND ResourceAttributes['k8s.namespace.name'] IN ('chaos-mesh','otel-demo','bookinfo')
 		 ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("k8s events lite", "err", err)
+	}
+
+	// ── k8s topology objects ─────────────────────────────────────────────────
+	slog.Info("fetching k8s topology objects (raw)", "dir", rawDir)
+	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_topology_objects_raw",
+		fmt.Sprintf(`SELECT * FROM kubernetes.topology WHERE %s ORDER BY Timestamp ASC`, topologyTimeFilter)); err != nil {
+		slog.Warn("k8s topology objects raw (table may not exist)", "err", err)
+	}
+
+	// ── k8s topology graph ───────────────────────────────────────────────────
+	slog.Info("fetching k8s topology graph (raw)", "dir", rawDir)
+	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_topology_graph_raw",
+		fmt.Sprintf(`SELECT * FROM kubernetes.topology_graph WHERE %s ORDER BY Timestamp ASC, Seq ASC`, topologyTimeFilter)); err != nil {
+		slog.Warn("k8s topology graph raw (table may not exist)", "err", err)
 	}
 
 	// ── k8s objects snapshot ─────────────────────────────────────────────────
@@ -139,7 +159,7 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 	// ── otel logs ────────────────────────────────────────────────────────────
 	slog.Info("fetching otel logs (raw)", "dir", rawDir)
 	if err := exportQuery(ctx, defaultDB, rawDir, "otel_logs_raw",
-		fmt.Sprintf(`SELECT * FROM otel_demo.logs WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
+		fmt.Sprintf(`SELECT * FROM opentelemetry_demo.logs WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("otel logs raw", "err", err)
 	}
 
@@ -156,7 +176,7 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 			Body             AS body,
 			ResourceAttributes AS resource_attributes,
 			LogAttributes    AS log_attributes
-		 FROM otel_demo.logs
+		 FROM opentelemetry_demo.logs
 		 WHERE %s AND (SeverityText IN ('WARN','ERROR','FATAL') OR SeverityNumber >= 13)
 		 ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("otel logs lite", "err", err)
@@ -165,29 +185,29 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 	// ── otel traces ──────────────────────────────────────────────────────────
 	slog.Info("fetching otel traces (raw)", "dir", rawDir)
 	if err := exportQuery(ctx, jaegerDB, rawDir, "otel_traces_raw",
-		fmt.Sprintf(`SELECT * FROM jaeger_spans WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
+		fmt.Sprintf(`SELECT * FROM spans WHERE %s ORDER BY start_time ASC`, tracesTimeFilter)); err != nil {
 		slog.Error("otel traces raw", "err", err)
 	}
 
 	slog.Info("fetching otel traces (lite)", "dir", liteDir)
 	if err := exportQuery(ctx, jaegerDB, liteDir, "otel_traces",
 		fmt.Sprintf(`SELECT
-			Timestamp      AS timestamp,
-			TraceId        AS trace_id,
-			SpanId         AS span_id,
-			ParentSpanId   AS parent_span_id,
-			TraceState     AS trace_state,
-			SpanName       AS span_name,
-			SpanKind       AS span_kind,
-			ServiceName    AS service_name,
-			ScopeName      AS scope_name,
-			ScopeVersion   AS scope_version,
-			Duration       AS duration,
-			StatusCode     AS status_code,
-			StatusMessage  AS status_message
-		 FROM jaeger_spans
-		 WHERE %s AND StatusCode = 'Error'
-		 ORDER BY Timestamp ASC`, timeFilter)); err != nil {
+			start_time     AS timestamp,
+			trace_id       AS trace_id,
+			id             AS span_id,
+			parent_span_id AS parent_span_id,
+			trace_state    AS trace_state,
+			name           AS span_name,
+			kind           AS span_kind,
+			service_name   AS service_name,
+			scope_name     AS scope_name,
+			scope_version  AS scope_version,
+			duration       AS duration,
+			status_code    AS status_code,
+			status_message AS status_message
+		 FROM spans
+		 WHERE %s AND (status_code = 'Error' OR status_code = 'STATUS_CODE_ERROR')
+		 ORDER BY start_time ASC`, tracesTimeFilter)); err != nil {
 		slog.Error("otel traces lite", "err", err)
 	}
 

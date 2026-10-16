@@ -41,17 +41,15 @@ func TestRun(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	// recorder.Run appends :9000 to the host, so we pass addr directly as the
-	// host argument by stripping the port — testcontainers maps 9000 to a
-	// random port, so we need to override the addr in Run via a test-only helper.
 	outDir := t.TempDir()
-	if err := recorder.RunWithAddr(ctx, addr, "default", testPassword, outDir); err != nil {
+	if err := recorder.Run(ctx, addr, "default", testPassword, outDir); err != nil {
 		t.Fatalf("recorder.Run: %v", err)
 	}
 
 	// ── raw files must exist ──────────────────────────────────────────────
 	for _, f := range []string{
 		"raw/k8s_events_raw.tsv",
+		"raw/k8s_topology_objects_raw.tsv",
 		"raw/k8s_objects_raw.tsv",
 		"raw/otel_logs_raw.tsv",
 		"raw/otel_traces_raw.tsv",
@@ -75,7 +73,7 @@ func TestRun(t *testing.T) {
 	// ── test snapshot milestone mode ─────────────────────────────────────
 	snapshotDir := t.TempDir()
 	t1 := time.Date(2024, 1, 1, 0, 0, 0, 500000000, time.UTC)
-	if err := recorder.RunWithAddr(ctx, addr, "default", testPassword, snapshotDir, t1); err != nil {
+	if err := recorder.Run(ctx, addr, "default", testPassword, snapshotDir, t1); err != nil {
 		t.Fatalf("recorder.Run with snapshot timestamp: %v", err)
 	}
 
@@ -129,7 +127,16 @@ func seed(ctx context.Context, addr, password string) error {
 			LogAttributes Map(String, String)
 		) ENGINE = MergeTree() ORDER BY Timestamp`,
 
-		`CREATE TABLE IF NOT EXISTS otel_demo.logs (
+		`CREATE TABLE IF NOT EXISTS kubernetes.topology (
+			Timestamp DateTime64(9),
+			Body String,
+			ResourceAttributes Map(String, String),
+			LogAttributes Map(String, String)
+		) ENGINE = MergeTree() ORDER BY Timestamp`,
+
+		`CREATE DATABASE IF NOT EXISTS opentelemetry_demo`,
+
+		`CREATE TABLE IF NOT EXISTS opentelemetry_demo.logs (
 			Timestamp DateTime64(9),
 			TraceId String,
 			SpanId String,
@@ -142,21 +149,21 @@ func seed(ctx context.Context, addr, password string) error {
 			LogAttributes Map(String, String)
 		) ENGINE = MergeTree() ORDER BY Timestamp`,
 
-		`CREATE TABLE IF NOT EXISTS jaeger.jaeger_spans (
-			Timestamp DateTime64(9),
-			TraceId String,
-			SpanId String,
-			ParentSpanId String,
-			TraceState String,
-			SpanName String,
-			SpanKind String,
-			ServiceName String,
-			ScopeName String,
-			ScopeVersion String,
-			Duration UInt64,
-			StatusCode String,
-			StatusMessage String
-		) ENGINE = MergeTree() ORDER BY Timestamp`,
+		`CREATE TABLE IF NOT EXISTS jaeger.spans (
+			id String,
+			trace_id String,
+			trace_state String,
+			parent_span_id String,
+			name String,
+			kind String,
+			start_time DateTime64(9),
+			status_code String,
+			status_message String,
+			duration Int64,
+			service_name String,
+			scope_name String,
+			scope_version String
+		) ENGINE = MergeTree() ORDER BY start_time`,
 	}
 
 	for _, stmt := range ddl {
@@ -172,19 +179,22 @@ func seed(ctx context.Context, addr, password string) error {
 		`INSERT INTO kubernetes.objects_snapshot VALUES
 			('2024-01-01 00:00:00', '{"kind":"Pod"}', {'k8s.namespace.name': 'otel-demo'}, {'k8s.resource.name': 'Pod'})`,
 
+		`INSERT INTO kubernetes.topology VALUES
+			('2024-01-01 00:00:00', '{"object":{"kind":"Pod"},"type":"ADDED"}', {'k8s.namespace.name': 'otel-demo'}, {'k8s.resource.name': 'pods'})`,
+
 		// INFO row — must NOT appear in lite export
-		`INSERT INTO otel_demo.logs VALUES
+		`INSERT INTO opentelemetry_demo.logs VALUES
 			('2024-01-01 00:00:00', '', '', 0, 'INFO', 9, 'svc-a', 'info message', {}, {})`,
 		// ERROR row — must appear in lite export
-		`INSERT INTO otel_demo.logs VALUES
+		`INSERT INTO opentelemetry_demo.logs VALUES
 			('2024-01-01 00:00:01', '', '', 0, 'ERROR', 17, 'svc-a', 'error message', {}, {})`,
 
 		// OK trace — must NOT appear in lite export
-		`INSERT INTO jaeger.jaeger_spans VALUES
-			('2024-01-01 00:00:00', 'tid1', 'sid1', '', '', 'op', 'SERVER', 'svc-a', '', '', 1000000, 'Ok', '')`,
+		`INSERT INTO jaeger.spans VALUES
+			('sid1', 'tid1', '', '', 'op', 'SERVER', '2024-01-01 00:00:00', 'STATUS_CODE_OK', '', 1000000, 'svc-a', '', '')`,
 		// Error trace — must appear in lite export
-		`INSERT INTO jaeger.jaeger_spans VALUES
-			('2024-01-01 00:00:01', 'tid2', 'sid2', '', '', 'op', 'SERVER', 'svc-a', '', '', 2000000, 'Error', 'failed')`,
+		`INSERT INTO jaeger.spans VALUES
+			('sid2', 'tid2', '', '', 'op', 'SERVER', '2024-01-01 00:00:01', 'STATUS_CODE_ERROR', 'failed', 2000000, 'svc-a', '', '')`,
 	}
 
 	for _, stmt := range dml {

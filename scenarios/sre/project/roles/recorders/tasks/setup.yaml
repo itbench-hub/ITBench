@@ -1,7 +1,22 @@
 ---
+- name: Import Clickhouse credential setting tasks
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_credentials_clickhouse
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+
+- name: Import Clickhouse endpoint setting tasks
+  ansible.builtin.import_role:
+    name: tools
+    tasks_from: set_internal_endpoints_clickhouse
+  vars:
+    tools_cluster:
+      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+
 - name: Create namespace for data collection recorders
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Namespace
@@ -16,38 +31,422 @@
         name: "{{ recorders_namespaces.data_recorders }}"
     state: present
 
-- name: Create ConfigMap for Prometheus data collection
+- name: Create ServiceAccount for topology collector
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
-      kind: ConfigMap
+      kind: ServiceAccount
       metadata:
         labels:
-          "app.kubernetes.io/component": prometheus-recorder
-          "app.kubernetes.io/managed-by": ITBench
-          "app.kubernetes.io/name": "{{ recorders_instances.prometheus_data_recorder.name }}-config"
-          "app.kubernetes.io/part-of": data-collection
-        name: "{{ recorders_instances.prometheus_data_recorder.name }}-config"
-        namespace: "{{ recorders_namespaces.data_recorders }}"
-      stringData:
-        start: "{{ recorders_timestamps.start }}"
+          "itbench.io/telemetry-collector": topology
+        name: "{{ recorders_instances.topology_collector.name }}"
+        namespace: "{{ recorders_instances.topology_collector.namespace }}"
     state: present
 
-- name: Create ConfigMap for Clickhouse data collection
+- name: Create ClusterRole for topology collector
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
-      apiVersion: v1
-      kind: ConfigMap
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
       metadata:
         labels:
-          "app.kubernetes.io/component": clickhouse-recorder
-          "app.kubernetes.io/managed-by": ITBench
-          "app.kubernetes.io/name": "{{ recorders_instances.clickhouse_data_recorder.name }}-config"
-          "app.kubernetes.io/part-of": data-collection
-        name: "{{ recorders_instances.clickhouse_data_recorder.name }}-config"
-        namespace: "{{ recorders_namespaces.data_recorders }}"
-      stringData:
-        start: "{{ recorders_timestamps.start }}"
+          "itbench.io/telemetry-collector": topology
+        name: "{{ recorders_instances.topology_collector.name }}"
+      rules:
+        - apiGroups: [""]
+          resources:
+            - pods
+            - services
+            - endpoints
+            - persistentvolumeclaims
+            - configmaps
+            - serviceaccounts
+            - secrets
+            - namespaces
+            - nodes
+            - persistentvolumes
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["rbac.authorization.k8s.io"]
+          resources:
+            - roles
+            - rolebindings
+            - clusterroles
+            - clusterrolebindings
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["apps"]
+          resources:
+            - deployments
+            - daemonsets
+            - statefulsets
+            - replicasets
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["batch"]
+          resources:
+            - jobs
+            - cronjobs
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["autoscaling"]
+          resources:
+            - horizontalpodautoscalers
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["networking.k8s.io"]
+          resources:
+            - ingresses
+            - networkpolicies
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["discovery.k8s.io"]
+          resources:
+            - endpointslices
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["storage.k8s.io"]
+          resources:
+            - storageclasses
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["networking.istio.io"]
+          resources:
+            - virtualservices
+            - destinationrules
+            - serviceentries
+            - gateways
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["security.istio.io"]
+          resources:
+            - authorizationpolicies
+            - peerauthentications
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["gateway.networking.k8s.io"]
+          resources:
+            - httproutes
+            - gateways
+          verbs: ["get", "list", "watch"]
     state: present
+
+- name: Create ClusterRoleBinding for topology collector
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        labels:
+          "itbench.io/telemetry-collector": topology
+        name: "{{ recorders_instances.topology_collector.name }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: "{{ recorders_instances.topology_collector.name }}"
+      subjects:
+        - kind: ServiceAccount
+          name: "{{ recorders_instances.topology_collector.name }}"
+          namespace: "{{ recorders_instances.topology_collector.namespace }}"
+    state: present
+
+- name: Retrieve Namespaces with record labels
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    label_selectors:
+      - "itbench.io/record=true"
+  register: recorders_recordable_namespaces
+
+- name: Deploy topology collector
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
+      metadata:
+        labels:
+          "itbench.io/telemetry-collector": topology
+        name: "{{ recorders_instances.topology_collector.name }}"
+        namespace: "{{ recorders_instances.topology_collector.namespace }}"
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: node-role.itbench.io/sandbox
+                      operator: DoesNotExist
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0@sha256:b5250d8bb2aa08869bdd1e04e4d01f79cce40a29041412e5fcde6bc1770f9f05
+        mode: deployment
+        serviceAccount: "{{ recorders_instances.topology_collector.name }}"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        podSecurityContext:
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        config:
+          receivers:
+            k8sobjects/topology-namespaced:
+              include_initial_state: true
+              kube_api_qps: 20
+              kube_api_burst: 40
+              objects:
+                - name: pods
+                  mode: watch
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: services
+                  mode: watch
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: endpoints
+                  mode: watch
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: endpointslices
+                  mode: watch
+                  group: discovery.k8s.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: persistentvolumeclaims
+                  mode: watch
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: configmaps
+                  mode: watch
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: serviceaccounts
+                  mode: watch
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                # Secret data is stripped by the transform/strip-secrets processor.
+                - name: secrets
+                  mode: watch
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: roles
+                  mode: watch
+                  group: rbac.authorization.k8s.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: rolebindings
+                  mode: watch
+                  group: rbac.authorization.k8s.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: deployments
+                  mode: watch
+                  group: apps
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: daemonsets
+                  mode: watch
+                  group: apps
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: statefulsets
+                  mode: watch
+                  group: apps
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: replicasets
+                  mode: watch
+                  group: apps
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: jobs
+                  mode: watch
+                  group: batch
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: cronjobs
+                  mode: watch
+                  group: batch
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: horizontalpodautoscalers
+                  mode: watch
+                  group: autoscaling
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: ingresses
+                  mode: watch
+                  group: networking.k8s.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: networkpolicies
+                  mode: watch
+                  group: networking.k8s.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+            # Cluster-scoped objects are mostly static, so without
+            # include_initial_state they would never emit an event.
+            k8sobjects/topology-cluster:
+              include_initial_state: true
+              kube_api_qps: 10
+              kube_api_burst: 20
+              objects:
+                - name: namespaces
+                  mode: watch
+                  exclude_watch_type: [BOOKMARK]
+                - name: nodes
+                  mode: watch
+                  exclude_watch_type: [BOOKMARK]
+                - name: persistentvolumes
+                  mode: watch
+                  exclude_watch_type: [BOOKMARK]
+                - name: storageclasses
+                  mode: watch
+                  group: storage.k8s.io
+                  exclude_watch_type: [BOOKMARK]
+                - name: clusterroles
+                  mode: watch
+                  group: rbac.authorization.k8s.io
+                  exclude_watch_type: [BOOKMARK]
+                - name: clusterrolebindings
+                  mode: watch
+                  group: rbac.authorization.k8s.io
+                  exclude_watch_type: [BOOKMARK]
+            # CRD-backed kinds (Istio, Gateway API) live in their own receiver
+            # so that they are kept apart from the core kinds above.
+            k8sobjects/topology-crd:
+              include_initial_state: true
+              kube_api_qps: 10
+              kube_api_burst: 20
+              objects:
+                - name: virtualservices
+                  mode: watch
+                  group: networking.istio.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: destinationrules
+                  mode: watch
+                  group: networking.istio.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: serviceentries
+                  mode: watch
+                  group: networking.istio.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: gateways
+                  mode: watch
+                  group: networking.istio.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: authorizationpolicies
+                  mode: watch
+                  group: security.istio.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: peerauthentications
+                  mode: watch
+                  group: security.istio.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                # The Gateway API CRDs are always installed, so these are not optional.
+                - name: httproutes
+                  mode: watch
+                  group: gateway.networking.k8s.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+                - name: gateways
+                  mode: watch
+                  group: gateway.networking.k8s.io
+                  namespaces: "{{ topology_required_namespaces }}"
+                  exclude_watch_type: [BOOKMARK]
+          processors:
+            # Only record that a Secret exists, never its contents. The
+            # last-applied-configuration annotation is also removed because
+            # kubectl apply copies the full manifest, including data, into it.
+            transform/strip-secrets:
+              error_mode: ignore
+              log_statements:
+                - context: log
+                  conditions:
+                    - body["object"]["kind"] == "Secret"
+                  statements:
+                    - delete_key(body["object"], "data")
+                    - delete_key(body["object"], "stringData")
+                    - delete_key(body["object"]["metadata"]["annotations"], "kubectl.kubernetes.io/last-applied-configuration")
+          exporters:
+            clickhouse/topology:
+              database: kubernetes
+              username: "{{ tools_clickhouse_username }}"
+              password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
+              logs_table_name: topology
+          service:
+            pipelines:
+              logs/topology:
+                receivers:
+                  - k8sobjects/topology-namespaced
+                  - k8sobjects/topology-cluster
+                  - k8sobjects/topology-crd
+                processors:
+                  - transform/strip-secrets
+                exporters:
+                  - clickhouse/topology
+    state: present
+    wait: true
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready
+  vars:
+    topology_required_namespaces: "{{ recorders_recordable_namespaces.resources | map(attribute='metadata.name') }}"
+
+- name: Deploy topology writer
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          "itbench.io/telemetry-writer": topology
+        name: "{{ recorders_instances.topology_writer.name }}"
+        namespace: "{{ recorders_instances.topology_writer.namespace }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            "itbench.io/telemetry-writer": topology
+        template:
+          metadata:
+            labels:
+              "itbench.io/telemetry-writer": topology
+          spec:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.itbench.io/sandbox
+                          operator: DoesNotExist
+            containers:
+              - name: writer
+                image: quay.io/it-bench/topology-writer:1.0.0
+                imagePullPolicy: IfNotPresent
+                env:
+                  - name: CLICKHOUSE_HOST
+                    value: "{{ tools_clickhouse_endpoint.tcp }}"
+                  - name: CLICKHOUSE_USERNAME
+                    value: "{{ tools_clickhouse_username }}"
+                  - name: CLICKHOUSE_PASSWORD
+                    value: "{{ tools_clickhouse_password }}"
+                  - name: RECORDING_START_TIMESTAMP
+                    value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (recorders_duration_minutes * 60)) }}"
+                  - name: POLL_INTERVAL_SECONDS
+                    value: "2"
+                resources:
+                  requests:
+                    cpu: 50m
+                    memory: 64Mi
+                  limits:
+                    memory: 256Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+            securityContext:
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+    state: present
+    wait: true

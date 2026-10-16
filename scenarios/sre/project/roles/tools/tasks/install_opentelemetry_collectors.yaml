@@ -65,10 +65,11 @@
                   endpoint: 0.0.0.0:4318
           exporters:
             clickhouse:
+              database: istio
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: "istio.access_logs"
+              logs_table_name: "access_logs"
             debug: {}
     state: present
 
@@ -113,11 +114,13 @@
               backends:
                 traces_store:
                   clickhouse:
+                    addresses:
+                      - "{{ tools_clickhouse_endpoint.tcp }}"
+                    auth:
+                      basic:
+                        username: "{{ tools_clickhouse_username }}"
+                        password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
                     create_schema: true
-                    database: jaeger
-                    username: "{{ tools_clickhouse_username }}"
-                    password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
-                    endpoint: "{{ tools_clickhouse_endpoint.http }}"
           processors:
             batch:
               timeout: 1s
@@ -438,15 +441,17 @@
                   group: apiextensions.k8s.io
           exporters:
             clickhouse/events:
+              database: kubernetes
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: kubernetes.events
+              logs_table_name: events
             clickhouse/objects:
+              database: kubernetes
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: kubernetes.objects_snapshot
+              logs_table_name: objects_snapshot
             debug: {}
     state: present
 

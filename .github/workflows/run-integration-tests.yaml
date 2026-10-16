@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - components/recorders/**
+      - components/telemetry/**
       - clusters/kind/go.*
       - scenarios/sre/project/roles/tools/**
       - src/**
@@ -48,6 +49,22 @@ jobs:
       - name: Test
         run: go test -count=1 ./...
         working-directory: components/recorders/prometheus
+
+  topology-writer:
+    name: Topology Writer Integration Tests
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: components/telemetry/topology/go.mod
+          cache-dependency-path: components/telemetry/topology/go.sum
+      - name: Vet
+        run: go vet ./...
+        working-directory: components/telemetry/topology
+      - name: Test
+        run: go test -count=1 ./...
+        working-directory: components/telemetry/topology
 
   itbench-cli:
     name: ITBench CLI Integration Tests

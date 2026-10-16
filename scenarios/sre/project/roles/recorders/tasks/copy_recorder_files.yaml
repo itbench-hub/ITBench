@@ -9,7 +9,6 @@
   block:
     - name: Create Pod to export records from {{ recorder.name }}
       kubernetes.core.k8s:
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Pod
@@ -62,7 +61,6 @@
 
     - name: Copy records from pod
       kubernetes.core.k8s_cp:
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
         local_path: "{{ recorders_export_directory.path }}"
         namespace: "{{ recorder.namespace }}"
         pod: "{{ recorder.name }}-exporter"
