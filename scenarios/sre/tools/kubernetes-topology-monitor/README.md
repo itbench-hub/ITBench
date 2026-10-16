@@ -1,1 +1,0 @@
-# Kubernetes Topology Mapper
