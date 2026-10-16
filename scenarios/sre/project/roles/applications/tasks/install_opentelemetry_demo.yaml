@@ -12,7 +12,8 @@
       kind: Namespace
       metadata:
         labels:
-          prometheus.itbench.io/monitor: "true"
+          "itbench.io/record": "true"
+          "prometheus.itbench.io/monitor": "true"
         name: "{{ applications_releases.opentelemetry_demo.namespace }}"
     state: present
 
@@ -152,7 +153,6 @@
             runAsUser: 999
           command:
             - valkey-server
-          args:
             - --requirepass
             - $(VALKEY_PASSWORD)
           envOverrides:
@@ -170,10 +170,11 @@
                   default: "{{ applications_releases.opentelemetry_demo.namespace }}"
           exporters:
             clickhouse:
+              database: opentelemetry_demo
               username: "{{ tools_clickhouse_username }}"
               password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: "otel_demo.logs"
+              logs_table_name: "logs"
             otlp/jaeger:
               endpoint: "{{ tools_jaeger_endpoint.collector.grpc }}"
             prometheus:

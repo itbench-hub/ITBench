@@ -23,10 +23,6 @@ _RELEASES: dict = {
             "namespace": {"kubernetes": "monitoring"},
         },
         "opencost": {"name": "opencost", "namespace": "opencost"},
-        "kubernetes_topology_monitor": {
-            "name": "ktm",
-            "namespace": "ktm-ns",
-        },
     },
     "tools_operands": {
         "opentelemetry_collector": {
@@ -70,7 +66,6 @@ def test_build_tool_definitions_returns_expected_keys() -> None:
         "Jaeger",
         "ClickHouse",
         "OpenCost",
-        "Kubernetes Topology Monitor",
     }
 
 

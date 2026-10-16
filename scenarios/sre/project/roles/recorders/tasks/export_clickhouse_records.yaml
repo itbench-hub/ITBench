@@ -9,7 +9,6 @@
 
 - name: Create PersistentVolumeClaim for Clickhouse Recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: PersistentVolumeClaim
@@ -32,7 +31,6 @@
 
 - name: Install Kubernetes Job for Clickhouse Recorder
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: batch/v1
       kind: Job
@@ -71,12 +69,9 @@
                   - name: CLICKHOUSE_PASSWORD
                     value: "{{ tools_clickhouse_password }}"
                   - name: RECORDING_START_TIMESTAMP
-                    valueFrom:
-                      configMapKeyRef:
-                        name: "{{ recorders_instances.clickhouse_data_recorder.name }}-config"
-                        key: start
+                    value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (recorders_duration_minutes * 60)) }}"
                   - name: RECORDING_END_TIMESTAMP
-                    value: "{{ recorders_timestamps.end }}"
+                    value: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
                   - name: RECORDING_INTERVAL_SECONDS
                     value: "300"
                 resources:

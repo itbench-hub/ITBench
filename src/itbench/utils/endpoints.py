@@ -102,11 +102,6 @@ def _build_tool_definitions(releases: dict[str, Any]) -> dict[str, dict[str, Any
             "namespace": r["opencost"]["namespace"],
             "paths": ["/"],
         },
-        "Kubernetes Topology Monitor": {
-            "name": r["kubernetes_topology_monitor"]["name"],
-            "namespace": r["kubernetes_topology_monitor"]["namespace"],
-            "paths": ["/healthz"],
-        },
     }
 
 

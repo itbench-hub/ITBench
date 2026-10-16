@@ -1,7 +1,22 @@
 ---
+- name: Delete ClusterRoleBindings for topology collector
+  kubernetes.core.k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    label_selectors:
+      - "itbench.io/record-type=topology"
+    state: absent
+
+- name: Delete ClusterRoles for topology collector
+  kubernetes.core.k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    label_selectors:
+      - "itbench.io/record-type=topology"
+    state: absent
+
 - name: Delete the namespace
   kubernetes.core.k8s:
-    kubeconfig: "{{ recorders_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: Namespace
