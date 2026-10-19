@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	image        = "docker.io/clickhouse/clickhouse-server:26.9.21@sha256:fd4652f708ecfc2239d08c828f5a51dfcc92a1e4a57269b1837c4dbe2dbe33a2"
+	image        = "docker.io/clickhouse/clickhouse-server:26.9.22@sha256:3358498f63c33d60ec1fa3abe9918e63c6b1d86dbad20e5613590a2899d5d872"
 	testPassword = "testpassword" // pragma: allowlist secret
 )
 
