@@ -156,6 +156,10 @@ func (w *TopologyWriter) PollOnce(ctx context.Context) (int, error) {
 		eventCount++
 	}
 
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("iterating topology rows: %w", err)
+	}
+
 	if eventCount == 0 {
 		return 0, nil
 	}

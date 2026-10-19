@@ -63,22 +63,19 @@ endif
 .PHONY: deploy-recorders
 deploy-recorders: ## Deploys the data recorders to cluster
 ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "setup_recording" \
+	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "setup_recording"
+	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install"
 endif
 
 .PHONY: undeploy-recorders
 undeploy-recorders: ## Undeploys the data recorders to cluster
 ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export_records" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "teardown_recording" \
+	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export,uninstall" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export_records"
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "teardown_recording"
+	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export,uninstall"
 endif
 
 .PHONY: inject-scenario-faults

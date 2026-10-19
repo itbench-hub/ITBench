@@ -8,17 +8,15 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 )
 
 const batchSize = 10_000
 
-// openDB opens a *sql.DB via the clickhouse-go/v2 native TCP driver.
-// addr must be host:port.
 func openDB(addr, username, password, database string) *sql.DB {
 	return clickhouse.OpenDB(&clickhouse.Options{
 		Protocol: clickhouse.Native,
@@ -39,8 +37,8 @@ func openDB(addr, username, password, database string) *sql.DB {
 	})
 }
 
-// Run connects to ClickHouse at addr (host:port) via native TCP and writes TSV exports to outputDir.
-func Run(ctx context.Context, addr, username, password, outputDir string, timestamps ...time.Time) error {
+// Run exports the recorded data into outputDir. Namespaced data is restricted to the given namespaces.
+func Run(ctx context.Context, addr, username, password, outputDir string, namespaces []string, timestamps ...time.Time) error {
 	defaultDB := openDB(addr, username, password, "default")
 	defer defaultDB.Close()
 
@@ -51,18 +49,17 @@ func Run(ctx context.Context, addr, username, password, outputDir string, timest
 	defer promDB.Close()
 
 	if err := defaultDB.PingContext(ctx); err != nil {
-		return fmt.Errorf("ping default db: %w", err)
+		return fmt.Errorf("ping clickhouse: %w", err)
 	}
 
 	if len(timestamps) == 0 {
-		return exportSnapshot(ctx, defaultDB, jaegerDB, promDB, outputDir, nil, nil)
+		return exportSnapshot(ctx, defaultDB, jaegerDB, promDB, outputDir, namespaces, nil, nil)
 	}
 
 	startTime := timestamps[0]
 	for _, ts := range timestamps {
-		tsVal := ts
 		targetDir := filepath.Join(outputDir, fmt.Sprintf("snapshot_at_%s", ts.UTC().Format("2006-01-02T15-04-05.000000")))
-		if err := exportSnapshot(ctx, defaultDB, jaegerDB, promDB, targetDir, &tsVal, &startTime); err != nil {
+		if err := exportSnapshot(ctx, defaultDB, jaegerDB, promDB, targetDir, namespaces, &ts, &startTime); err != nil {
 			return err
 		}
 	}
@@ -70,7 +67,18 @@ func Run(ctx context.Context, addr, username, password, outputDir string, timest
 	return nil
 }
 
-func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, baseDir string, maxTime *time.Time, minTime *time.Time) error {
+// quoteList converts values into a SQL list of single-quoted strings, e.g. 'a','b'.
+func quoteList(values []string) string {
+	quoted := make([]string, 0, len(values))
+	for _, v := range values {
+		quoted = append(quoted, "'"+strings.ReplaceAll(v, "'", "''")+"'")
+	}
+	return strings.Join(quoted, ",")
+}
+
+func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, baseDir string, namespaces []string, maxTime, minTime *time.Time) error {
+	namespaceList := quoteList(namespaces)
+
 	rawDir := filepath.Join(baseDir, "raw")
 	liteDir := filepath.Join(baseDir, "lite")
 	for _, d := range []string{
@@ -87,63 +95,58 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 	promTimeFilter := "1=1"
 	tracesTimeFilter := "1=1"
 	if maxTime != nil {
-		formattedTime := maxTime.UTC().Format("2006-01-02 15:04:05.000000000")
-		timeFilter = fmt.Sprintf("Timestamp <= '%s'", formattedTime)
-		promTimeFilter = fmt.Sprintf("d.timestamp <= '%s'", formattedTime)
-		tracesTimeFilter = fmt.Sprintf("start_time <= '%s'", formattedTime)
+		t := maxTime.UTC().Format("2006-01-02 15:04:05.000000000")
+		timeFilter = fmt.Sprintf("Timestamp <= '%s'", t)
+		// promTimeFilter is used against the bare data table (no alias), so no qualifier.
+		promTimeFilter = fmt.Sprintf("timestamp <= '%s'", t)
+		tracesTimeFilter = fmt.Sprintf("start_time <= '%s'", t)
 	}
 
 	topologyTimeFilter := "1=1"
 	if minTime != nil {
-		formattedMinTime := minTime.UTC().Format("2006-01-02 15:04:05.000000000")
-		topologyTimeFilter = fmt.Sprintf("Timestamp >= '%s'", formattedMinTime)
+		topologyTimeFilter = fmt.Sprintf("Timestamp >= '%s'", minTime.UTC().Format("2006-01-02 15:04:05.000000000"))
 	}
 	if maxTime != nil {
-		formattedTime := maxTime.UTC().Format("2006-01-02 15:04:05.000000000")
-		topologyTimeFilter += fmt.Sprintf(" AND Timestamp <= '%s'", formattedTime)
+		topologyTimeFilter += fmt.Sprintf(" AND Timestamp <= '%s'", maxTime.UTC().Format("2006-01-02 15:04:05.000000000"))
 	}
 
-	// ── k8s events ──────────────────────────────────────────────────────────
-	slog.Info("fetching k8s events (raw)", "dir", rawDir)
+	slog.Info("fetching k8s events (raw)")
 	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_events_raw",
 		fmt.Sprintf(`SELECT * FROM kubernetes.events WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("k8s events raw", "err", err)
 	}
 
-	slog.Info("fetching k8s events (lite)", "dir", liteDir)
+	slog.Info("fetching k8s events (lite)")
 	if err := exportQuery(ctx, defaultDB, liteDir, "k8s_events",
 		fmt.Sprintf(`SELECT
 			Timestamp     AS timestamp,
 			Body          AS body,
 			ResourceAttributes['k8s.namespace.name'] AS namespace
 		 FROM kubernetes.events
-		 WHERE %s AND ResourceAttributes['k8s.namespace.name'] IN ('chaos-mesh','otel-demo','bookinfo')
-		 ORDER BY Timestamp ASC`, timeFilter)); err != nil {
+		 WHERE %s AND ResourceAttributes['k8s.namespace.name'] IN (%s)
+		 ORDER BY Timestamp ASC`, timeFilter, namespaceList)); err != nil {
 		slog.Error("k8s events lite", "err", err)
 	}
 
-	// ── k8s topology objects ─────────────────────────────────────────────────
-	slog.Info("fetching k8s topology objects (raw)", "dir", rawDir)
+	slog.Info("fetching k8s topology objects (raw)")
 	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_topology_objects_raw",
 		fmt.Sprintf(`SELECT * FROM kubernetes.topology WHERE %s ORDER BY Timestamp ASC`, topologyTimeFilter)); err != nil {
 		slog.Warn("k8s topology objects raw (table may not exist)", "err", err)
 	}
 
-	// ── k8s topology graph ───────────────────────────────────────────────────
-	slog.Info("fetching k8s topology graph (raw)", "dir", rawDir)
+	slog.Info("fetching k8s topology graph (raw)")
 	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_topology_graph_raw",
 		fmt.Sprintf(`SELECT * FROM kubernetes.topology_graph WHERE %s ORDER BY Timestamp ASC, Seq ASC`, topologyTimeFilter)); err != nil {
 		slog.Warn("k8s topology graph raw (table may not exist)", "err", err)
 	}
 
-	// ── k8s objects snapshot ─────────────────────────────────────────────────
-	slog.Info("fetching k8s objects (raw)", "dir", rawDir)
+	slog.Info("fetching k8s objects (raw)")
 	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_objects_raw",
 		fmt.Sprintf(`SELECT * FROM kubernetes.objects_snapshot WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("k8s objects raw", "err", err)
 	}
 
-	slog.Info("fetching k8s objects (lite)", "dir", liteDir)
+	slog.Info("fetching k8s objects (lite)")
 	if err := exportQuery(ctx, defaultDB, liteDir, "k8s_objects",
 		fmt.Sprintf(`SELECT
 			Timestamp     AS timestamp,
@@ -151,19 +154,18 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 			ResourceAttributes['k8s.namespace.name'] AS namespace,
 			LogAttributes['k8s.resource.name']       AS resource_type
 		 FROM kubernetes.objects_snapshot
-		 WHERE %s AND ResourceAttributes['k8s.namespace.name'] IN ('chaos-mesh','otel-demo','bookinfo')
-		 ORDER BY Timestamp ASC`, timeFilter)); err != nil {
+		 WHERE %s AND ResourceAttributes['k8s.namespace.name'] IN (%s)
+		 ORDER BY Timestamp ASC`, timeFilter, namespaceList)); err != nil {
 		slog.Error("k8s objects lite", "err", err)
 	}
 
-	// ── otel logs ────────────────────────────────────────────────────────────
-	slog.Info("fetching otel logs (raw)", "dir", rawDir)
+	slog.Info("fetching otel logs (raw)")
 	if err := exportQuery(ctx, defaultDB, rawDir, "otel_logs_raw",
 		fmt.Sprintf(`SELECT * FROM opentelemetry_demo.logs WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
 		slog.Error("otel logs raw", "err", err)
 	}
 
-	slog.Info("fetching otel logs (lite)", "dir", liteDir)
+	slog.Info("fetching otel logs (lite)")
 	if err := exportQuery(ctx, defaultDB, liteDir, "otel_logs",
 		fmt.Sprintf(`SELECT
 			Timestamp        AS timestamp,
@@ -182,15 +184,14 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 		slog.Error("otel logs lite", "err", err)
 	}
 
-	// ── otel traces ──────────────────────────────────────────────────────────
-	slog.Info("fetching otel traces (raw)", "dir", rawDir)
-	if err := exportQuery(ctx, jaegerDB, rawDir, "otel_traces_raw",
+	slog.Info("fetching jaeger spans (raw)")
+	if err := exportQuery(ctx, jaegerDB, rawDir, "jaeger_spans_raw",
 		fmt.Sprintf(`SELECT * FROM spans WHERE %s ORDER BY start_time ASC`, tracesTimeFilter)); err != nil {
-		slog.Error("otel traces raw", "err", err)
+		slog.Error("jaeger spans raw", "err", err)
 	}
 
-	slog.Info("fetching otel traces (lite)", "dir", liteDir)
-	if err := exportQuery(ctx, jaegerDB, liteDir, "otel_traces",
+	slog.Info("fetching jaeger spans (lite)")
+	if err := exportQuery(ctx, jaegerDB, liteDir, "jaeger_spans",
 		fmt.Sprintf(`SELECT
 			start_time     AS timestamp,
 			trace_id       AS trace_id,
@@ -208,15 +209,14 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 		 FROM spans
 		 WHERE %s AND (status_code = 'Error' OR status_code = 'STATUS_CODE_ERROR')
 		 ORDER BY start_time ASC`, tracesTimeFilter)); err != nil {
-		slog.Error("otel traces lite", "err", err)
+		slog.Error("jaeger spans lite", "err", err)
 	}
 
-	// ── prometheus metrics ───────────────────────────────────────────────────
 	tableIDs, err := discoverMetricTables(ctx, promDB)
 	if err != nil {
 		slog.Warn("could not discover prometheus metric tables", "err", err)
 	} else if tableIDs.data != "" && tableIDs.tags != "" {
-		if err := exportMetrics(ctx, promDB, rawDir, liteDir, tableIDs, promTimeFilter); err != nil {
+		if err := exportMetrics(ctx, promDB, rawDir, liteDir, tableIDs, namespaces, promTimeFilter); err != nil {
 			slog.Error("metrics export", "err", err)
 		}
 	}
@@ -224,11 +224,10 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 	return nil
 }
 
-// metricTableIDs holds the discovered inner-id table names for the prometheus DB.
+// metricTableIDs holds the inner-id table names backing the Prometheus materialized view.
 type metricTableIDs struct {
-	data    string
-	tags    string
-	metrics string
+	data string
+	tags string
 }
 
 func discoverMetricTables(ctx context.Context, db *sql.DB) (metricTableIDs, error) {
@@ -250,297 +249,377 @@ func discoverMetricTables(ctx context.Context, db *sql.DB) (metricTableIDs, erro
 			ids.data = name
 		case strings.Contains(name, ".inner_id.tags."):
 			ids.tags = name
-		case strings.Contains(name, ".inner_id.metrics."):
-			ids.metrics = name
 		}
 	}
 	return ids, rows.Err()
 }
 
-// exportMetrics writes per-pod and per-service metric TSV files.
-func exportMetrics(ctx context.Context, db *sql.DB, rawDir, liteDir string, ids metricTableIDs, promTimeFilter string) error {
-	// Raw: all metrics, otel-demo namespace
-	for _, ns := range []string{"otel-demo", "bookinfo"} {
-		if err := exportPodMetrics(ctx, db, rawDir, ids, ns, false, promTimeFilter); err != nil {
-			slog.Error("pod metrics raw", "namespace", ns, "err", err)
-		}
-		if err := exportServiceMetrics(ctx, db, rawDir, ids, ns, false, promTimeFilter); err != nil {
-			slog.Error("service metrics raw", "namespace", ns, "err", err)
-		}
-	}
-	// Lite: CPU/memory only
-	for _, ns := range []string{"otel-demo", "bookinfo"} {
-		if err := exportPodMetrics(ctx, db, liteDir, ids, ns, true, promTimeFilter); err != nil {
-			slog.Error("pod metrics lite", "namespace", ns, "err", err)
-		}
-		if err := exportServiceMetrics(ctx, db, liteDir, ids, ns, true, promTimeFilter); err != nil {
-			slog.Error("service metrics lite", "namespace", ns, "err", err)
-		}
-	}
-	return nil
+// tagMeta holds the denormalised metadata for one metric series (unique label-set).
+type tagMeta struct {
+	metricName string
+	tags       map[string]string
 }
 
-func exportPodMetrics(ctx context.Context, db *sql.DB, baseDir string, ids metricTableIDs, namespace string, lite bool, promTimeFilter string) error {
-	metricFilter := ""
-	if lite {
-		metricFilter = `AND (t.metric_name LIKE '%cpu%' OR t.metric_name LIKE '%memory%' OR t.metric_name LIKE '%mem%')`
-	}
-	query := fmt.Sprintf(`
-		SELECT
-			t.metric_name,
-			d.timestamp,
-			d.value,
-			t.tags['pod']       AS pod_name,
-			t.tags['namespace'] AS namespace,
-			t.tags
-		FROM %q AS d
-		JOIN %q AS t ON d.id = t.id
-		WHERE t.tags['namespace'] = '%s'
-		  AND t.tags['pod'] != ''
-		  AND %s
-		  %s
-		ORDER BY d.timestamp ASC`,
-		ids.data, ids.tags, namespace, promTimeFilter, metricFilter,
-	)
-
-	colNames, rows, err := queryAll(ctx, db, query)
+// fetchTagMap loads the tags inner table into memory, filtered by whereClause.
+// This is cheap: the tags table has one row per unique label-set, not per data point.
+func fetchTagMap(ctx context.Context, db *sql.DB, tagsTable, whereClause string) (map[string]tagMeta, error) {
+	query := fmt.Sprintf(`SELECT id, metric_name, tags FROM %q WHERE %s`, tagsTable, whereClause)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("fetch tags: %w", err)
 	}
-	if len(rows) == 0 {
-		return nil
-	}
+	defer rows.Close()
 
-	// Group by pod and write one file per pod.
-	podCol := slices.Index(colNames, "pod_name")
-	if podCol < 0 {
-		return fmt.Errorf("pod_name column not found")
-	}
-
-	tagsCol := slices.Index(colNames, "tags")
-
-	// Build headers — clone to avoid mutating colNames.
-	headers := slices.Clone(colNames)
-	if lite && tagsCol >= 0 {
-		headers = slices.Delete(headers, tagsCol, tagsCol+1)
-	}
-
-	byPod := map[string][][]string{}
-	for _, row := range rows {
-		pod := row[podCol]
-		if lite && tagsCol >= 0 {
-			// Clone row before mutating to avoid corrupting the backing array.
-			row = slices.Delete(slices.Clone(row), tagsCol, tagsCol+1)
+	result := map[string]tagMeta{}
+	for rows.Next() {
+		var id, metricName string
+		var tags map[string]string
+		if err := rows.Scan(&id, &metricName, &tags); err != nil {
+			return nil, fmt.Errorf("scan tag: %w", err)
 		}
-		byPod[pod] = append(byPod[pod], row)
+		result[id] = tagMeta{metricName: metricName, tags: tags}
 	}
-
-	subdir := filepath.Join(baseDir, "metrics_pod")
-	for pod, podRows := range byPod {
-		suffix := ""
-		if !lite {
-			suffix = "_raw"
-		}
-		safePod := strings.NewReplacer("/", "_", " ", "_").Replace(pod)
-		fname := fmt.Sprintf("pod_%s%s.tsv", safePod, suffix)
-		if err := writeTSV(filepath.Join(subdir, fname), headers, podRows); err != nil {
-			slog.Error("write pod tsv", "pod", pod, "err", err)
-		}
-	}
-	return nil
+	return result, rows.Err()
 }
 
-func exportServiceMetrics(ctx context.Context, db *sql.DB, baseDir string, ids metricTableIDs, namespace string, lite bool, promTimeFilter string) error {
-	queries := []struct {
-		q          string
-		metricType string
-	}{
-		{
-			fmt.Sprintf(`
-			SELECT t.metric_name, d.timestamp, d.value,
-			       t.tags['service_name'] AS service_name, t.tags['namespace'] AS namespace,
-			       t.tags['le'] AS bucket_le, t.tags
-			FROM %q AS d JOIN %q AS t ON d.id = t.id
-			WHERE t.metric_name = 'traces_span_metrics_duration_milliseconds_bucket'
-			  AND t.tags['namespace'] = '%s'
-			  AND t.tags['service_name'] NOT IN ('flagd','load-generator')
-			  AND %s
-			ORDER BY d.timestamp ASC`, ids.data, ids.tags, namespace, promTimeFilter),
-			"duration_p95",
-		},
-		{
-			fmt.Sprintf(`
-			SELECT t.metric_name, d.timestamp, d.value,
-			       t.tags['service_name'] AS service_name, t.tags['namespace'] AS namespace,
-			       t.tags['status_code'] AS status_code, t.tags
-			FROM %q AS d JOIN %q AS t ON d.id = t.id
-			WHERE t.metric_name = 'traces_span_metrics_calls_total'
-			  AND t.tags['namespace'] = '%s'
-			  AND t.tags['service_name'] NOT IN ('flagd','load-generator')
-			  AND t.tags['status_code'] = 'STATUS_CODE_ERROR'
-			  AND %s
-			ORDER BY d.timestamp ASC`, ids.data, ids.tags, namespace, promTimeFilter),
-			"error_rate",
-		},
-		{
-			fmt.Sprintf(`
-			SELECT t.metric_name, d.timestamp, d.value,
-			       t.tags['destination_canonical_service'] AS service_name,
-			       t.tags['destination_workload_namespace'] AS namespace,
-			       t.tags['le'] AS bucket_le, t.tags
-			FROM %q AS d JOIN %q AS t ON d.id = t.id
-			WHERE t.metric_name = 'istio_request_duration_milliseconds_bucket'
-			  AND t.tags['destination_workload_namespace'] = '%s'
-			  AND t.tags['destination_canonical_service'] NOT IN ('load-generator')
-			  AND %s
-			ORDER BY d.timestamp ASC`, ids.data, ids.tags, namespace, promTimeFilter),
-			"duration_p95",
-		},
-		{
-			fmt.Sprintf(`
-			SELECT t.metric_name, d.timestamp, d.value,
-			       t.tags['destination_canonical_service'] AS service_name,
-			       t.tags['destination_workload_namespace'] AS namespace,
-			       t.tags['response_code'] AS status_code, t.tags
-			FROM %q AS d JOIN %q AS t ON d.id = t.id
-			WHERE t.metric_name = 'istio_requests_total'
-			  AND t.tags['destination_workload_namespace'] = '%s'
-			  AND t.tags['destination_canonical_service'] NOT IN ('load-generator')
-			  AND t.tags['response_code'] NOT LIKE '2%%'
-			  AND %s
-			ORDER BY d.timestamp ASC`, ids.data, ids.tags, namespace, promTimeFilter),
-			"error_rate",
-		},
-	}
+// lazyTSV opens and writes a header to a TSV file on the first write call.
+type lazyTSV struct {
+	path    string
+	headers []string
+	f       *os.File
+	w       *csv.Writer
+}
 
-	// Collect all rows across all service metric queries.
-	type serviceRow struct {
-		cols []string
-		rows [][]string
-	}
-	bySvc := map[string]*serviceRow{}
-
-	for _, q := range queries {
-		colNames, rows, err := queryAll(ctx, db, q.q)
+func (l *lazyTSV) write(row []string) error {
+	if l.f == nil {
+		f, err := os.Create(l.path)
 		if err != nil {
-			slog.Warn("service metric query failed", "metric_type", q.metricType, "err", err)
-			continue
+			return fmt.Errorf("create %s: %w", l.path, err)
 		}
-		svcCol := slices.Index(colNames, "service_name")
-		if svcCol < 0 {
-			continue
+		w := csv.NewWriter(f)
+		w.Comma = '\t'
+		w.UseCRLF = false
+		if err := w.Write(l.headers); err != nil {
+			f.Close()
+			return err
 		}
-		tagsCol := slices.Index(colNames, "tags")
-		for _, row := range rows {
-			svc := row[svcCol]
-			if _, ok := bySvc[svc]; !ok {
-				// Note: cols is taken from the first query that produces rows for
-				// this service. Rows from subsequent queries may have different
-				// columns — this matches the Python pd.concat behaviour where
-				// missing columns are filled with NaN.
-				bySvc[svc] = &serviceRow{cols: colNames}
-			}
-			r := slices.Clone(row)
-			if lite && tagsCol >= 0 {
-				r = slices.Delete(r, tagsCol, tagsCol+1)
-			}
-			bySvc[svc].rows = append(bySvc[svc].rows, r)
-		}
+		l.f = f
+		l.w = w
 	}
-
-	subdir := filepath.Join(baseDir, "metrics_service")
-	for svc, sr := range bySvc {
-		// Build headers — clone to avoid mutating sr.cols.
-		headers := slices.Clone(sr.cols)
-		if lite {
-			tagsCol := slices.Index(sr.cols, "tags")
-			if tagsCol >= 0 {
-				headers = slices.Delete(headers, tagsCol, tagsCol+1)
-			}
-		}
-		suffix := ""
-		if !lite {
-			suffix = "_raw"
-		}
-		fname := fmt.Sprintf("service_%s%s.tsv", svc, suffix)
-		if err := writeTSV(filepath.Join(subdir, fname), headers, sr.rows); err != nil {
-			slog.Error("write service tsv", "service", svc, "err", err)
-		}
-	}
-	return nil
+	return l.w.Write(row)
 }
 
-// exportQuery runs a SQL query and writes all rows to a TSV file under dir.
-// Uses LIMIT/OFFSET batching for large result sets.
-func exportQuery(ctx context.Context, db *sql.DB, dir, prefix, query string) error {
-	colNames, rows, err := queryAll(ctx, db, query)
-	if err != nil {
-		return err
+func (l *lazyTSV) close() {
+	if l.f == nil {
+		return
 	}
-	if len(rows) == 0 {
-		slog.Info("no rows", "prefix", prefix)
-		return nil
+	l.w.Flush()
+	if err := l.w.Error(); err != nil {
+		slog.Error("flush tsv", "path", l.path, "err", err)
 	}
-	return writeTSV(filepath.Join(dir, prefix+".tsv"), colNames, rows)
+	l.f.Close()
 }
 
-// queryAll executes query with LIMIT/OFFSET batching and returns all rows as strings.
-func queryAll(ctx context.Context, db *sql.DB, query string) ([]string, [][]string, error) {
-	// Strip any existing LIMIT/OFFSET so we can add our own.
-	base := stripLimitOffset(query)
-
-	var (
-		colNames []string
-		allRows  [][]string
-		offset   int
+// streamDataByIDs pages through the data table for a given set of series IDs
+// and calls handle for each row. Avoids a server-side JOIN with the tags table.
+func streamDataByIDs(ctx context.Context, db *sql.DB, dataTable, idList, timeFilter string, handle func(id, ts, val string) error) error {
+	base := fmt.Sprintf(
+		`SELECT id, timestamp, value FROM %q WHERE id IN (%s) AND %s ORDER BY timestamp ASC`,
+		dataTable, idList, timeFilter,
 	)
-
-	for {
+	for offset := 0; ; offset += batchSize {
 		paged := fmt.Sprintf("%s LIMIT %d OFFSET %d", base, batchSize, offset)
 		rows, err := db.QueryContext(ctx, paged)
 		if err != nil {
-			return nil, nil, fmt.Errorf("query: %w", err)
+			return fmt.Errorf("query data: %w", err)
+		}
+		var n int
+		for rows.Next() {
+			var id, ts, val string
+			if err := rows.Scan(&id, &ts, &val); err != nil {
+				rows.Close()
+				return fmt.Errorf("scan data: %w", err)
+			}
+			if err := handle(id, ts, val); err != nil {
+				rows.Close()
+				return err
+			}
+			n++
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		if n < batchSize {
+			break
+		}
+	}
+	return nil
+}
+
+// buildIDList converts tag map keys into a SQL IN list of single-quoted strings.
+func buildIDList(m map[string]tagMeta) string {
+	ids := make([]string, 0, len(m))
+	for id := range m {
+		ids = append(ids, "'"+strings.ReplaceAll(id, "'", "''")+"'")
+	}
+	return strings.Join(ids, ",")
+}
+
+func exportMetrics(ctx context.Context, db *sql.DB, rawDir, liteDir string, ids metricTableIDs, namespaces []string, promTimeFilter string) error {
+	for _, ns := range namespaces {
+		if err := exportPodMetrics(ctx, db, rawDir, liteDir, ids, ns, promTimeFilter); err != nil {
+			slog.Error("pod metrics export", "namespace", ns, "err", err)
+		}
+		if err := exportServiceMetrics(ctx, db, rawDir, liteDir, ids, ns, promTimeFilter); err != nil {
+			slog.Error("service metrics export", "namespace", ns, "err", err)
+		}
+	}
+	return nil
+}
+
+func exportPodMetrics(ctx context.Context, db *sql.DB, rawDir, liteDir string, ids metricTableIDs, namespace, promTimeFilter string) error {
+	tagMap, err := fetchTagMap(ctx, db, ids.tags,
+		fmt.Sprintf(`tags['namespace'] = '%s' AND tags['pod'] != ''`, namespace))
+	if err != nil {
+		return err
+	}
+	if len(tagMap) == 0 {
+		return nil
+	}
+
+	rawWriters := map[string]*lazyTSV{}
+	liteWriters := map[string]*lazyTSV{}
+	defer func() {
+		for _, l := range rawWriters {
+			l.close()
+		}
+		for _, l := range liteWriters {
+			l.close()
+		}
+	}()
+
+	rawHeaders := []string{"metric_name", "timestamp", "value", "pod_name", "namespace", "tags"}
+	liteHeaders := []string{"metric_name", "timestamp", "value", "pod_name", "namespace"}
+	safeReplacer := strings.NewReplacer("/", "_", " ", "_")
+
+	return streamDataByIDs(ctx, db, ids.data, buildIDList(tagMap), promTimeFilter, func(id, ts, val string) error {
+		meta, ok := tagMap[id]
+		if !ok {
+			return nil
+		}
+		pod := meta.tags["pod"]
+		safePod := safeReplacer.Replace(pod)
+
+		if _, ok := rawWriters[pod]; !ok {
+			rawWriters[pod] = &lazyTSV{
+				path:    filepath.Join(rawDir, "metrics_pod", fmt.Sprintf("pod_%s_raw.tsv", safePod)),
+				headers: rawHeaders,
+			}
+		}
+		if err := rawWriters[pod].write([]string{
+			meta.metricName, ts, val, pod, meta.tags["namespace"], fmt.Sprintf("%v", meta.tags),
+		}); err != nil {
+			return err
+		}
+
+		if strings.Contains(meta.metricName, "cpu") ||
+			strings.Contains(meta.metricName, "memory") ||
+			strings.Contains(meta.metricName, "mem") {
+			if _, ok := liteWriters[pod]; !ok {
+				liteWriters[pod] = &lazyTSV{
+					path:    filepath.Join(liteDir, "metrics_pod", fmt.Sprintf("pod_%s.tsv", safePod)),
+					headers: liteHeaders,
+				}
+			}
+			if err := liteWriters[pod].write([]string{
+				meta.metricName, ts, val, pod, meta.tags["namespace"],
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func exportServiceMetrics(ctx context.Context, db *sql.DB, rawDir, liteDir string, ids metricTableIDs, namespace, promTimeFilter string) error {
+	type svcQueryDef struct {
+		metricName  string
+		nsTagKey    string
+		svcTagKey   string
+		extraFilter string
+	}
+	queryDefs := []svcQueryDef{
+		{
+			metricName:  "traces_span_metrics_duration_milliseconds_bucket",
+			nsTagKey:    "namespace",
+			svcTagKey:   "service_name",
+			extraFilter: `tags['service_name'] NOT IN ('flagd','load-generator')`,
+		},
+		{
+			metricName:  "traces_span_metrics_calls_total",
+			nsTagKey:    "namespace",
+			svcTagKey:   "service_name",
+			extraFilter: `tags['service_name'] NOT IN ('flagd','load-generator') AND tags['status_code'] = 'STATUS_CODE_ERROR'`,
+		},
+		{
+			metricName:  "istio_request_duration_milliseconds_bucket",
+			nsTagKey:    "destination_workload_namespace",
+			svcTagKey:   "destination_canonical_service",
+			extraFilter: `tags['destination_canonical_service'] NOT IN ('load-generator')`,
+		},
+		{
+			metricName:  "istio_requests_total",
+			nsTagKey:    "destination_workload_namespace",
+			svcTagKey:   "destination_canonical_service",
+			extraFilter: `tags['destination_canonical_service'] NOT IN ('load-generator') AND tags['response_code'] NOT LIKE '2%'`,
+		},
+	}
+
+	rawHeaders := []string{"metric_name", "timestamp", "value", "service_name", "namespace", "tags"}
+	liteHeaders := []string{"metric_name", "timestamp", "value", "service_name", "namespace"}
+
+	rawWriters := map[string]*lazyTSV{}
+	liteWriters := map[string]*lazyTSV{}
+	defer func() {
+		for _, l := range rawWriters {
+			l.close()
+		}
+		for _, l := range liteWriters {
+			l.close()
+		}
+	}()
+
+	for _, qd := range queryDefs {
+		tagMap, err := fetchTagMap(ctx, db, ids.tags, fmt.Sprintf(
+			`metric_name = '%s' AND tags['%s'] = '%s' AND %s`,
+			qd.metricName, qd.nsTagKey, namespace, qd.extraFilter,
+		))
+		if err != nil {
+			slog.Warn("fetch service tags failed", "metric", qd.metricName, "err", err)
+			continue
+		}
+		if len(tagMap) == 0 {
+			continue
+		}
+
+		err = streamDataByIDs(ctx, db, ids.data, buildIDList(tagMap), promTimeFilter, func(id, ts, val string) error {
+			meta, ok := tagMap[id]
+			if !ok {
+				return nil
+			}
+			svc := meta.tags[qd.svcTagKey]
+
+			if _, ok := rawWriters[svc]; !ok {
+				rawWriters[svc] = &lazyTSV{
+					path:    filepath.Join(rawDir, "metrics_service", fmt.Sprintf("service_%s_raw.tsv", svc)),
+					headers: rawHeaders,
+				}
+			}
+			if err := rawWriters[svc].write([]string{
+				meta.metricName, ts, val, svc, meta.tags[qd.nsTagKey], fmt.Sprintf("%v", meta.tags),
+			}); err != nil {
+				return err
+			}
+
+			if _, ok := liteWriters[svc]; !ok {
+				liteWriters[svc] = &lazyTSV{
+					path:    filepath.Join(liteDir, "metrics_service", fmt.Sprintf("service_%s.tsv", svc)),
+					headers: liteHeaders,
+				}
+			}
+			return liteWriters[svc].write([]string{
+				meta.metricName, ts, val, svc, meta.tags[qd.nsTagKey],
+			})
+		})
+		if err != nil {
+			slog.Error("stream service data failed", "metric", qd.metricName, "err", err)
+		}
+	}
+	return nil
+}
+
+// exportQuery streams a SQL query page-by-page directly into a TSV file,
+// so the full result set is never held in memory.
+func exportQuery(ctx context.Context, db *sql.DB, dir, prefix, query string) error {
+	path := filepath.Join(dir, prefix+".tsv")
+	base := stripLimitOffset(query)
+
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", path, err)
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+	w.Comma = '\t'
+	w.UseCRLF = false
+
+	var (
+		colNames []string
+		total    int
+	)
+
+	for offset := 0; ; offset += batchSize {
+		paged := fmt.Sprintf("%s LIMIT %d OFFSET %d", base, batchSize, offset)
+		rows, err := db.QueryContext(ctx, paged)
+		if err != nil {
+			return fmt.Errorf("query: %w", err)
 		}
 
 		if colNames == nil {
 			cols, err := rows.Columns()
 			if err != nil {
 				rows.Close()
-				return nil, nil, fmt.Errorf("columns: %w", err)
+				return fmt.Errorf("columns: %w", err)
 			}
 			colNames = cols
+			if err := w.Write(colNames); err != nil {
+				rows.Close()
+				return err
+			}
 		}
 
-		batch, err := scanRows(rows, len(colNames))
+		n, err := streamRows(rows, len(colNames), w)
 		rows.Close()
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 
-		allRows = append(allRows, batch...)
-		if len(batch) < batchSize {
+		total += n
+		if n < batchSize {
 			break
 		}
-		offset += batchSize
 	}
 
-	return colNames, allRows, nil
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return err
+	}
+
+	if total == 0 {
+		_ = os.Remove(path)
+		slog.Info("no rows", "prefix", prefix)
+		return nil
+	}
+
+	slog.Info("wrote", "file", path, "rows", total)
+	return nil
 }
 
-// scanRows scans all rows from an open *sql.Rows into string slices.
-func scanRows(rows *sql.Rows, ncols int) ([][]string, error) {
+func streamRows(rows *sql.Rows, ncols int, w *csv.Writer) (int, error) {
 	vals := make([]any, ncols)
 	ptrs := make([]any, ncols)
 	for i := range vals {
 		ptrs[i] = &vals[i]
 	}
+	row := make([]string, ncols)
 
-	result := make([][]string, 0, batchSize)
+	var n int
 	for rows.Next() {
 		if err := rows.Scan(ptrs...); err != nil {
-			return nil, fmt.Errorf("scan: %w", err)
+			return n, fmt.Errorf("scan: %w", err)
 		}
-		row := make([]string, ncols)
 		for i, v := range vals {
 			if v == nil {
 				row[i] = ""
@@ -555,53 +634,23 @@ func scanRows(rows *sql.Rows, ncols int) ([][]string, error) {
 				row[i] = fmt.Sprintf("%v", val)
 			}
 		}
-		result = append(result, row)
-	}
-	return result, rows.Err()
-}
-
-// writeTSV writes headers + rows to path using tab-separated values.
-func writeTSV(path string, headers []string, rows [][]string) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("create %s: %w", path, err)
-	}
-	defer f.Close()
-
-	w := csv.NewWriter(f)
-	w.Comma = '\t'
-	w.UseCRLF = false
-
-	if err := w.Write(headers); err != nil {
-		return err
-	}
-	for _, row := range rows {
 		if err := w.Write(row); err != nil {
-			return err
+			return n, err
 		}
+		n++
 	}
-	w.Flush()
-	slog.Info("wrote", "file", path, "rows", len(rows))
-	return w.Error()
+	return n, rows.Err()
 }
 
-// stripLimitOffset removes trailing LIMIT n / OFFSET n clauses (case-insensitive).
+// stripLimitOffset removes a trailing LIMIT [n] OFFSET [n] or LIMIT [n] clause.
+// Only strips clauses where the argument is a plain integer, so subquery limits are safe.
 func stripLimitOffset(q string) string {
-	// Work on the query trimmed of trailing whitespace.
 	upper := strings.ToUpper(strings.TrimRight(q, " \t\n\r"))
 	for _, kw := range []string{"OFFSET", "LIMIT"} {
 		if idx := strings.LastIndex(upper, kw); idx >= 0 {
-			// Only strip if the token after the keyword is purely numeric.
 			rest := strings.TrimSpace(upper[idx+len(kw):])
-			isNumeric := true
-			for _, c := range rest {
-				if c < '0' || c > '9' {
-					isNumeric = false
-					break
-				}
-			}
-			if isNumeric {
-				q = q[:idx]
+			if rest != "" && strings.IndexFunc(rest, func(r rune) bool { return !unicode.IsDigit(r) }) == -1 {
+				q = strings.TrimRight(q[:idx], " \t\n\r")
 				upper = upper[:idx]
 			}
 		}

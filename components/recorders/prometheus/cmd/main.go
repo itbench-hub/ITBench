@@ -4,12 +4,15 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/itbench-hub/ITBench/components/recorders/prometheus/internal/recorder"
 )
+
+// serviceAccountTokenPath is where Kubernetes mounts the pod's ServiceAccount token.
+const serviceAccountTokenPath = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
 func main() {
 	endpoint := os.Getenv("PROMETHEUS_ENDPOINT")
@@ -18,14 +21,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	token := os.Getenv("PROMETHEUS_TOKEN")
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		slog.Error("could not determine home directory", "err", err)
-		os.Exit(1)
+	var token string
+	if raw, err := os.ReadFile(serviceAccountTokenPath); err == nil {
+		token = strings.TrimSpace(string(raw))
+		slog.Info("using mounted service account token for Prometheus")
 	}
-	outputDir := filepath.Join(homeDir, "records")
+
+	outputDir := os.Getenv("OUTPUT_DIR")
+	if outputDir == "" {
+		outputDir = "/records"
+	}
 
 	startRaw := os.Getenv("RECORDING_START_TIMESTAMP")
 	if startRaw == "" {

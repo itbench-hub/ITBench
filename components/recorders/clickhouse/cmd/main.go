@@ -4,8 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/itbench-hub/ITBench/components/recorders/clickhouse/internal/recorder"
@@ -29,12 +29,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		slog.Error("could not determine home directory", "err", err)
+	outputDir := os.Getenv("OUTPUT_DIR")
+	if outputDir == "" {
+		outputDir = "/records"
+	}
+
+	// NAMESPACES is a comma-separated list, e.g. "otel-demo,book-info".
+	var namespaces []string
+	for _, ns := range strings.Split(os.Getenv("NAMESPACES"), ",") {
+		if ns = strings.TrimSpace(ns); ns != "" {
+			namespaces = append(namespaces, ns)
+		}
+	}
+	if len(namespaces) == 0 {
+		slog.Error("NAMESPACES environment variable is not set or contains no namespaces")
 		os.Exit(1)
 	}
-	outputDir := filepath.Join(homeDir, "records")
 
 	startRaw := os.Getenv("RECORDING_START_TIMESTAMP")
 	if startRaw == "" {
@@ -78,9 +88,9 @@ func main() {
 		timestamps = append(timestamps, t)
 	}
 
-	slog.Info("starting clickhouse burst recorder", "snapshots_count", len(timestamps), "output_dir", outputDir)
+	slog.Info("starting clickhouse burst recorder", "snapshots_count", len(timestamps), "output_dir", outputDir, "namespaces", namespaces)
 
-	if err := recorder.Run(context.Background(), host, username, password, outputDir, timestamps...); err != nil {
+	if err := recorder.Run(context.Background(), host, username, password, outputDir, namespaces, timestamps...); err != nil {
 		slog.Error("recorder failed", "err", err)
 		os.Exit(1)
 	}

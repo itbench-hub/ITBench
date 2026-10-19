@@ -1,71 +1,66 @@
 ---
-- name: Create temporary directory for records from {{ recorder.name }}
-  ansible.builtin.tempfile:
-    prefix: "{{ export.directory }}"
-    state: directory
-  register: recorders_export_directory
-
 - name: Copy files from volume
   block:
-    - name: Create Pod to export records from {{ recorder.name }}
+    - name: Create Pod to export records from {{ recorders_instance_name }}
       kubernetes.core.k8s:
         resource_definition:
           apiVersion: v1
           kind: Pod
           metadata:
             labels:
-              "app.kubernetes.io/component": "records-exporter"
-              "app.kubernetes.io/managed-by": ITBench
-              "app.kubernetes.io/name": "{{ recorder.name }}-exporter"
-              "app.kubernetes.io/part-of": data-collection
-            name: "{{ recorder.name }}-exporter"
-            namespace: "{{ recorder.namespace }}"
+              "app.kubernetes.io/component": data-exporter
+              "app.kubernetes.io/managed-by": ansible
+              "app.kubernetes.io/name": "{{ recorders_instance_name }}-exporter"
+              "app.kubernetes.io/part-of": itbench
+            name: "{{ recorders_instance_name }}-exporter"
+            namespace: "{{ recorders_namespace }}"
           spec:
             containers:
-              - name: exporter
-                image: registry.access.redhat.com/ubi10/ubi@sha256:7495bfa53ae7a81a58aeface0bb4858d12741832c542c29dc690d67b183b73b0
-                command:
-                  - /bin/sh
-                args:
+              - args:
                   - -c
                   - "sleep 600"
+                command:
+                  - /bin/sh
+                image: registry.access.redhat.com/ubi10/ubi@sha256:7495bfa53ae7a81a58aeface0bb4858d12741832c542c29dc690d67b183b73b0
+                name: exporter
                 resources:
+                  limits:
+                    memory: 100Mi
                   requests:
                     cpu: 10m
                     memory: 50Mi
-                  limits:
-                    memory: 100Mi
                 securityContext:
                   allowPrivilegeEscalation: false
                   capabilities:
                     drop:
                       - ALL
                 volumeMounts:
-                  - name: records
-                    mountPath: /opt/app-root/src/records
+                  - mountPath: /opt/app-root/src/records
+                    name: records
             securityContext:
               fsGroup: 1001
-              runAsUser: 1001
               runAsNonRoot: true
+              runAsUser: 1001
               seccompProfile:
                 type: RuntimeDefault
             volumes:
               - name: records
                 persistentVolumeClaim:
-                  claimName: "{{ recorder.name }}-records"
+                  claimName: "{{ recorders_instance_name }}-records"
         state: present
         wait: true
         wait_condition:
-          type: Ready
           status: "True"
+          type: Ready
 
     - name: Copy records from pod
       kubernetes.core.k8s_cp:
         local_path: "{{ recorders_export_directory.path }}"
-        namespace: "{{ recorder.namespace }}"
-        pod: "{{ recorder.name }}-exporter"
+        namespace: "{{ recorders_namespace }}"
+        pod: "{{ recorders_instance_name }}-exporter"
         remote_path: /opt/app-root/src/records
         state: from_pod
+
   always:
     - name: Delete Pod
       kubernetes.core.k8s:
@@ -74,8 +69,8 @@
           apiVersion: v1
           kind: Pod
           metadata:
-            name: "{{ recorder.name }}-exporter"
-            namespace: "{{ recorder.namespace }}"
+            name: "{{ recorders_instance_name }}-exporter"
+            namespace: "{{ recorders_namespace }}"
         state: absent
         wait: true
 
@@ -90,7 +85,7 @@
           {{
             [
               recorders_storage_local.directory,
-              export.directory
+              recorders_instance_name
             ] |
             ansible.builtin.path_join
           }}
@@ -107,7 +102,7 @@
   when:
     - recorders_storage_s3 is ansible.builtin.defined
   block:
-    - name: Retrieve all files in temporary directory for {{ recorder.name }}
+    - name: Retrieve all files in temporary directory for {{ recorders_instance_name }}
       ansible.builtin.find:
         path: "{{ recorders_export_directory.path }}"
       register: recorders_exported_files
@@ -127,7 +122,7 @@
           {{
             [
               recorders_storage_s3.directory,
-              export.directory,
+              recorders_instance_name,
               (record.path | ansible.builtin.basename)
             ] |
             ansible.builtin.path_join
@@ -137,8 +132,3 @@
       loop_control:
         label: file/{{ record.path | ansible.builtin.basename }}
         loop_var: record
-
-- name: Delete temporary directory for records from {{ recorder.name }}
-  ansible.builtin.file:
-    path: "{{ recorders_export_directory.path }}"
-    state: absent

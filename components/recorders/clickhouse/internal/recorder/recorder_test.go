@@ -42,7 +42,8 @@ func TestRun(t *testing.T) {
 	}
 
 	outDir := t.TempDir()
-	if err := recorder.Run(ctx, addr, "default", testPassword, outDir); err != nil {
+	namespaces := []string{"otel-demo", "book-info"}
+	if err := recorder.Run(ctx, addr, "default", testPassword, outDir, namespaces); err != nil {
 		t.Fatalf("recorder.Run: %v", err)
 	}
 
@@ -73,7 +74,7 @@ func TestRun(t *testing.T) {
 	// ── test snapshot milestone mode ─────────────────────────────────────
 	snapshotDir := t.TempDir()
 	t1 := time.Date(2024, 1, 1, 0, 0, 0, 500000000, time.UTC)
-	if err := recorder.Run(ctx, addr, "default", testPassword, snapshotDir, t1); err != nil {
+	if err := recorder.Run(ctx, addr, "default", testPassword, snapshotDir, namespaces, t1); err != nil {
 		t.Fatalf("recorder.Run with snapshot timestamp: %v", err)
 	}
 

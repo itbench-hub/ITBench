@@ -8,22 +8,14 @@
       kubeconfig: "{{ recorders_cluster.kubeconfig }}"
       platform: "{{ recorders_cluster.platform }}"
 
-- name: Export Clickhouse records
+- name: Import Clickhouse Recorder export tasks
+  ansible.builtin.import_tasks:
+    file: export_clickhouse_records.yaml
   when:
-    - recorders_export_type in ["full", "telemetry-only", "topology-only"]
-  block:
-    - name: Import Clickhouse Recorder export tasks
-      ansible.builtin.import_tasks:
-        file: export_clickhouse_records.yaml
-      when:
-        - tools_clickhouse_endpoint.tcp is defined
+    - tools_clickhouse_endpoint.tcp is defined
 
-- name: Export Prometheus records
+- name: Import Prometheus Recorder export tasks
+  ansible.builtin.import_tasks:
+    file: export_prometheus_records.yaml
   when:
-    - recorders_export_type in ["full", "telemetry-only"]
-  block:
-    - name: Import Prometheus Recorder export tasks
-      ansible.builtin.import_tasks:
-        file: export_prometheus_records.yaml
-      when:
-        - tools_prometheus_endpoint.http is defined
+    - tools_prometheus_endpoint.http is defined

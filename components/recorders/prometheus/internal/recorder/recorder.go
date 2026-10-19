@@ -120,6 +120,6 @@ func newRoundTripper(token string) http.RoundTripper {
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	req = req.Clone(req.Context())
-	req.Header.Set("Authorization", rt.token)
+	req.Header.Set("Authorization", "Bearer "+rt.token)
 	return rt.inner.RoundTrip(req)
 }
