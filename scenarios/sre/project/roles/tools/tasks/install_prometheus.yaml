@@ -247,3 +247,104 @@
           type: Ready
           status: "True"
         wait_timeout: 300
+
+    # Note: OpenShift's built-in Prometheus does not include the community alert
+    #       rules bundled with kube-prometheus-stack (used on Kubernetes). These
+    #       rules are required for scenario evaluation consistency across platforms.
+    #       The label openshift.io/prometheus-rule-evaluation-scope: leaf-prometheus
+    #       is required for PrometheusRule objects to be picked up by the user
+    #       workload Prometheus instance in OpenShift.
+    - name: Install community Prometheus alert rules on OpenShift
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: monitoring.coreos.com/v1
+          kind: PrometheusRule
+          metadata:
+            name: itbench-community-rules
+            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.openshift }}"
+            labels:
+              openshift.io/prometheus-rule-evaluation-scope: leaf-prometheus
+          spec:
+            groups:
+              - name: kubernetes-resources
+                rules:
+                  - alert: KubePodNotReady
+                    expr: |
+                      sum by (namespace, pod) (
+                        max by (namespace, pod, phase) (
+                          kube_pod_status_phase{phase=~"Pending|Unknown|Failed"}
+                        ) * on(namespace, pod) group_left(owner_kind)
+                        topk by(namespace, pod) (
+                          1,
+                          max by(namespace, pod, owner_kind) (
+                            kube_pod_owner{owner_kind!="Job"}
+                          )
+                        )
+                      ) > 0
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      description: >-
+                        Pod {{ $labels.namespace }}/{{ $labels.pod }} has been
+                        in a non-ready state for more than 5 minutes.
+                  - alert: KubePodCrashLooping
+                    expr: |
+                      max_over_time(
+                        kube_pod_container_status_waiting_reason{
+                          reason="CrashLoopBackOff"
+                        }[5m]
+                      ) >= 1
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      description: >-
+                        Pod {{ $labels.namespace }}/{{ $labels.pod }}
+                        ({{ $labels.container }}) is in CrashLoopBackOff.
+                  - alert: KubeContainerWaiting
+                    expr: |
+                      sum by (namespace, pod, container) (
+                        kube_pod_container_status_waiting_reason{
+                          reason!~"ContainerCreating|PodInitializing|Completed"
+                        }
+                      ) > 0
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      description: >-
+                        Pod {{ $labels.namespace }}/{{ $labels.pod }}
+                        ({{ $labels.container }}) has been in a waiting state
+                        for more than 5 minutes.
+                  - alert: KubeDeploymentRolloutStuck
+                    expr: |
+                      kube_deployment_status_condition{
+                        condition="Progressing",
+                        status="false"
+                      } != 0
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      description: >-
+                        Rollout of Deployment {{ $labels.namespace }}/{{ $labels.deployment }}
+                        is not progressing.
+                  - alert: KubeHpaMaxedOut
+                    expr: |
+                      kube_horizontalpodautoscaler_status_current_replicas{
+                        job="kube-state-metrics"
+                      }
+                        ==
+                      kube_horizontalpodautoscaler_spec_max_replicas{
+                        job="kube-state-metrics"
+                      }
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      description: >-
+                        HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }}
+                        has been running at max replicas for longer than 5 minutes.
+        state: present
