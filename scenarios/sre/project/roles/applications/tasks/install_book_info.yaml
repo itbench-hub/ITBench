@@ -20,16 +20,17 @@
       metadata:
         labels:
           "istio.io/dataplane-mode": ambient
+          "itbench.io/layer": application
           "itbench.io/record": "true"
           "prometheus.itbench.io/monitor": "true"
-        name: "{{ applications_releases.book_info.namespace }}"
+        name: "{{ applications_book_info_namespace }}"
     state: present
 
 - name: Create BookInfo Kubernetes objects
   kubernetes.core.k8s:
-    namespace: "{{ applications_releases.book_info.namespace }}"
-    state: present
+    namespace: "{{ applications_book_info_namespace }}"
     src: "{{ applications_temporary_directory.path }}/{{ manifest_file_path }}"
+    state: present
   loop:
     - samples/bookinfo/platform/kube/bookinfo.yaml
     - samples/bookinfo/platform/kube/bookinfo-versions.yaml
@@ -43,7 +44,7 @@
     api_version: gateway.networking.k8s.io/v1
     kind: Gateway
     name: bookinfo-gateway
-    namespace: "{{ applications_releases.book_info.namespace }}"
+    namespace: "{{ applications_book_info_namespace }}"
     wait: true
     wait_condition:
       reason: Programmed
@@ -62,96 +63,43 @@
         kind: PodMonitor
         metadata:
           name: bookinfo-gateway
-          namespace: "{{ applications_releases.book_info.namespace }}"
+          namespace: "{{ applications_book_info_namespace }}"
         spec:
-          selector:
-            matchLabels:
-              gateway.networking.k8s.io/gateway-name: bookinfo-gateway
           podMetricsEndpoints:
             - interval: 30s
               port: metrics
+          selector:
+            matchLabels:
+              gateway.networking.k8s.io/gateway-name: bookinfo-gateway
       - apiVersion: monitoring.coreos.com/v1
         kind: PodMonitor
         metadata:
           name: productpage-v1
-          namespace: "{{ applications_releases.book_info.namespace }}"
+          namespace: "{{ applications_book_info_namespace }}"
         spec:
+          fallbackScrapeProtocol: PrometheusText1.0.0
+          podMetricsEndpoints:
+            - interval: 30s
+              portNumber: 9080
           selector:
             matchLabels:
               app: productpage
               version: v1
-          podMetricsEndpoints:
-            - interval: 30s
-              portNumber: 9080
-          fallbackScrapeProtocol: PrometheusText1.0.0
     state: present
-
-- name: Retrieve all deployments
-  kubernetes.core.k8s_info:
-    api_version: apps/v1
-    kind: Deployment
-    namespace: "{{ applications_releases.book_info.namespace }}"
-  register: applications_book_info_deployments
-
-- name: Create HorizontalPodAutorscalers
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: autoscaling/v2
-      kind: HorizontalPodAutoscaler
-      metadata:
-        name: "{{ workload.metadata.name }}"
-        namespace: "{{ workload.metadata.namespace }}"
-      spec:
-        scaleTargetRef:
-          apiVersion: "{{ workload.apiVersion }}"
-          kind: "{{ workload.kind }}"
-          name: "{{ workload.metadata.name }}"
-        minReplicas: 1
-        maxReplicas: 10
-        metrics:
-          - type: Resource
-            resource:
-              name: cpu
-              target:
-                type: Utilization
-                averageUtilization: 60
-          - type: Resource
-            resource:
-              name: memory
-              target:
-                type: Utilization
-                averageUtilization: 70
-        behavior:
-          scaleDown:
-            policies:
-              - type: Percent
-                value: 50
-                periodSeconds: 60
-              - type: Pods
-                value: 2
-                periodSeconds: 60
-            selectPolicy: Min
-    state: present
-  loop: "{{ applications_book_info_deployments.resources }}"
-  loop_control:
-    label: deployment/{{ workload.metadata.name }}
-    loop_var: workload
-  when:
-    - applications_book_info_kubernetes_autoscaling_enabled
 
 - name: Retrieve Kubernetes Gateway address
+  delay: 15
   kubernetes.core.k8s_info:
     api_version: gateway.networking.k8s.io/v1
     kind: Gateway
     name: bookinfo-gateway
-    namespace: "{{ applications_releases.book_info.namespace }}"
+    namespace: "{{ applications_book_info_namespace }}"
   register: applications_gateway
+  retries: 20
   until:
     - applications_gateway.resources | ansible.builtin.length == 1
     - applications_gateway.resources[0].status.addresses is ansible.builtin.defined
     - applications_gateway.resources[0].status.addresses | ansible.builtin.length > 0
-  delay: 15
-  retries: 20
 
 - name: Extract gateway address information
   ansible.builtin.set_fact:
@@ -170,49 +118,49 @@
       metadata:
         labels:
           "app.kubernetes.io/component": load-generator
-          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/managed-by": ansible
           "app.kubernetes.io/part-of": bookinfo
         name: load-generator-product-page
-        namespace: "{{ applications_releases.book_info.namespace }}"
+        namespace: "{{ applications_book_info_namespace }}"
       spec:
         replicas: 3
         selector:
           matchLabels:
             "app.kubernetes.io/component": load-generator
-            "app.kubernetes.io/managed-by": ITBench
+            "app.kubernetes.io/managed-by": ansible
             "app.kubernetes.io/part-of": bookinfo
         template:
           metadata:
             labels:
               "app.kubernetes.io/component": load-generator
-              "app.kubernetes.io/managed-by": ITBench
+              "app.kubernetes.io/managed-by": ansible
               "app.kubernetes.io/part-of": bookinfo
           spec:
             containers:
-              - name: generator
-                image: registry.access.redhat.com/ubi10/ubi-minimal@sha256:ab67cd02caf8706e34a695a1432ebe965934f6128ec352a6c3f4048b43a4fb5e
-                command:
-                  - /bin/sh
-                args:
+              - args:
                   - -c
                   - "while true; do curl {{ applications_book_info_gateway_endpoints.http ~ '/productpage' }}; sleep 5; done"
+                command:
+                  - /bin/sh
+                image: registry.access.redhat.com/ubi10/ubi-minimal@sha256:ab67cd02caf8706e34a695a1432ebe965934f6128ec352a6c3f4048b43a4fb5e
+                name: generator
     state: present
 
 - name: Create Common PrometheusRules
   kubernetes.core.k8s:
+    state: present
     template:
       path: templates/kubernetes/common/prometheusrules.j2
       variable_end_string: "]]"
       variable_start_string: "[["
-    state: present
   vars:
-    application_namespace: "{{ applications_releases.book_info.namespace }}"
+    application_namespace: "{{ applications_book_info_namespace }}"
     group_name: bookinfo
 
 - name: Create Book Info PrometheusRules
   kubernetes.core.k8s:
+    state: present
     template:
       path: templates/kubernetes/book_info/prometheusrules.j2
       variable_end_string: "]]"
       variable_start_string: "[["
-    state: present
