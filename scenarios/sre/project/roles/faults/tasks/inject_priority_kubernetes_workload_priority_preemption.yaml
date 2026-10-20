@@ -13,39 +13,38 @@
 
 - name: Create PriorityClass (high priority)
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: scheduling.k8s.io/v1
       kind: PriorityClass
       metadata:
         labels:
-          "app.kubernetes.io/component": workload
-          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/managed-by": ansible
+          "app.kubernetes.io/part-of": itbench
+          "itbench.io/layer": application
         name: application-critical
-      value: 10000
-      globalDefault: false
       description: High priority class for application workloads
+      globalDefault: false
+      value: 10000
     state: present
 
 - name: Create PriorityClass (lower priority)
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: scheduling.k8s.io/v1
       kind: PriorityClass
       metadata:
         labels:
-          "app.kubernetes.io/component": workload
-          "app.kubernetes.io/managed-by": ITBench
+          "app.kubernetes.io/managed-by": ansible
+          "app.kubernetes.io/part-of": itbench
+          "itbench.io/layer": application
         name: application-non-critical
-      value: 1
-      globalDefault: false
       description: Lower priority class for application workloads
+      globalDefault: false
+      value: 1
     state: present
 
 - name: Patch workload with priority class and assign to node
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
       kind: "{{ faults_kubernetes_object.kind }}"
@@ -61,49 +60,44 @@
     state: patched
 
 - name: Wait for workload to update
+  delay: 15
   kubernetes.core.k8s_info:
     api_version: "{{ faults_kubernetes_object.apiVersion }}"
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     kind: "{{ faults_kubernetes_object.kind }}"
     name: "{{ faults_kubernetes_object.metadata.name }}"
     namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
   register: faults_patched_workload
+  retries: 20
   until:
     - faults_patched_workload.api_found
     - faults_patched_workload.resources | ansible.builtin.length == 1
     - faults_patched_workload.resources[0].status.availableReplicas == faults_patched_workload.resources[0].status.replicas
-  delay: 15
-  retries: 20
 
 - name: Create priority workload
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: apps/v1
       kind: Deployment
       metadata:
-        labels:
-          "app.kubernetes.io/name": critical-data-collector
+        labels: "{{ labels }}"
         name: critical-data-collector
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
         replicas: "{{ replicas + 1 }}"
         selector:
-          matchLabels:
-            "app.kubernetes.io/name": critical-data-collector
+          matchLabels: "{{ labels }}"
         template:
           metadata:
-            labels:
-              "app.kubernetes.io/name": critical-data-collector
+            labels: "{{ labels }}"
           spec:
             containers:
-              - name: worker
-                image: registry.access.redhat.com/ubi10/ubi-minimal@sha256:ab67cd02caf8706e34a695a1432ebe965934f6128ec352a6c3f4048b43a4fb5e
-                command:
-                  - /bin/sh
-                args:
+              - args:
                   - -c
                   - "sleep infinity"
+                command:
+                  - /bin/sh
+                image: registry.access.redhat.com/ubi10/ubi-minimal@sha256:ab67cd02caf8706e34a695a1432ebe965934f6128ec352a6c3f4048b43a4fb5e
+                name: worker
                 resources:
                   requests:
                     cpu: "{{ ((((faults_node.status.allocatable.cpu | int) - 1) / replicas) * 1000) }}m"
@@ -114,4 +108,10 @@
     state: present
     wait: true
   vars:
+    labels: >-
+      {{
+        faults_kubernetes_object.metadata.labels |
+        ansible.builtin.default({}) |
+        ansible.builtin.combine({"app.kubernetes.io/name": "critical-data-collector"})
+      }}
     replicas: 20

@@ -5,38 +5,40 @@
 
 - name: Create DaemonSet
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: apps/v1
       kind: DaemonSet
       metadata:
-        labels:
-          "app.kubernetes.io/name": application-operator
+        labels: "{{ labels }}"
         name: application-operator
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
         selector:
-          matchLabels:
-            "app.kubernetes.io/name": application-operator
+          matchLabels: "{{ labels }}"
         template:
           metadata:
-            labels:
-              "app.kubernetes.io/name": application-operator
+            labels: "{{ labels }}"
           spec:
             containers:
-              - name: worker
-                image: registry.access.redhat.com/ubi10/ubi-minimal@sha256:ab67cd02caf8706e34a695a1432ebe965934f6128ec352a6c3f4048b43a4fb5e
-                command:
-                  - /bin/sh
-                args:
+              - args:
                   - -c
                   - "sleep infinity"
+                command:
+                  - /bin/sh
+                image: registry.access.redhat.com/ubi10/ubi-minimal@sha256:ab67cd02caf8706e34a695a1432ebe965934f6128ec352a6c3f4048b43a4fb5e
+                name: worker
     state: present
     wait: true
+  vars:
+    labels: >-
+      {{
+        faults_kubernetes_object.metadata.labels |
+        ansible.builtin.default({}) |
+        ansible.builtin.combine({"app.kubernetes.io/name": "application-operator"})
+      }}
 
 - name: Update workload containers
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
       kind: "{{ faults_kubernetes_object.kind }}"

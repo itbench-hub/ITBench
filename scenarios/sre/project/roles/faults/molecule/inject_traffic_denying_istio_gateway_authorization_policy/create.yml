@@ -8,7 +8,6 @@
         chart_ref: "oci://ghcr.io/istio/release/charts/base"
         chart_version: "1.31.2"
         create_namespace: true
-        kubeconfig: "{{ cluster.kubeconfig }}"
         release_name: istio-base
         release_namespace: istio-system
         release_state: present
@@ -18,7 +17,6 @@
       kubernetes.core.helm:
         chart_ref: "oci://ghcr.io/istio/release/charts/istiod"
         chart_version: "1.31.2"
-        kubeconfig: "{{ cluster.kubeconfig }}"
         release_name: istiod
         release_namespace: istio-system
         release_state: present
@@ -34,7 +32,6 @@
 
     - name: Create test namespace
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Namespace
@@ -44,7 +41,6 @@
 
     - name: Create Gateway
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: gateway.networking.k8s.io/v1
           kind: Gateway
@@ -69,7 +65,6 @@
 
     - name: Create test deployment
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: apps/v1
           kind: Deployment
@@ -99,7 +94,6 @@
 
     - name: Create test service
       kubernetes.core.k8s:
-        kubeconfig: "{{ cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Service

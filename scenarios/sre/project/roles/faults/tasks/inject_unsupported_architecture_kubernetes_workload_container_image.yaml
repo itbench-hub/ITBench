@@ -17,7 +17,6 @@
 
 - name: Update workload containers
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
       kind: "{{ faults_kubernetes_object.kind }}"
@@ -28,8 +27,8 @@
         template:
           spec:
             containers:
-              - name: "{{ faults_container.name }}"
-                image: quay.io/it-bench/hello-bench-arm64:2.0.0@sha256:20c6ce98bea7470d39364356ec0a8482fa7356ac92e132256539417688da615a
+              - image: quay.io/it-bench/hello-bench-arm64:2.0.0@sha256:20c6ce98bea7470d39364356ec0a8482fa7356ac92e132256539417688da615a
+                name: "{{ faults_container.name }}"
             nodeSelector:
               "kubernetes.io/hostname": "{{ faults_node.metadata.name }}"
     state: patched
@@ -38,7 +37,6 @@
 
 - name: Update workload containers
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
       kind: "{{ faults_kubernetes_object.kind }}"
@@ -49,8 +47,8 @@
         template:
           spec:
             containers:
-              - name: "{{ faults_container.name }}"
-                image: quay.io/it-bench/hello-bench-amd64:2.0.0@sha256:e2b537a99596d9ecf07987a7d8e189e100926e72462826dd429408378bee21d4
+              - image: quay.io/it-bench/hello-bench-amd64:2.0.0@sha256:e2b537a99596d9ecf07987a7d8e189e100926e72462826dd429408378bee21d4
+                name: "{{ faults_container.name }}"
             nodeSelector:
               "kubernetes.io/hostname": "{{ faults_node.metadata.name }}"
     state: patched

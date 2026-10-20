@@ -5,7 +5,6 @@
 
 - name: Create Valkey Configuration Job
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: batch/v1
       kind: Job
@@ -13,14 +12,10 @@
         name: "{{ faults_kubernetes_object.metadata.name }}-init"
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
-        ttlSecondsAfterFinished: 30
         template:
           spec:
-            restartPolicy: Never
             containers:
-              - name: valkey-cli
-                image: docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
-                command:
+              - command:
                   - /bin/sh
                   - -c
                   - >-
@@ -28,9 +23,22 @@
                     CONFIG SET maxmemory 1mb &&
                     valkey-cli -h {{ faults_kubernetes_object.metadata.name }}
                     CONFIG SET maxmemory-policy noeviction
+                image: docker.io/valkey/valkey:9.1.2-alpine3.24@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+                name: valkey-cli
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+            restartPolicy: Never
+            securityContext:
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+        ttlSecondsAfterFinished: 30
     state: present
     wait: true
     wait_condition:
-      type: Complete
       status: "True"
+      type: Complete
     wait_timeout: 60

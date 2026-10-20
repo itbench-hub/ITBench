@@ -3,13 +3,8 @@
   ansible.builtin.include_tasks:
     file: validate_fault_arguments.yaml
 
-- name: Select a container randomly from workload
-  ansible.builtin.set_fact:
-    faults_container: "{{ faults_kubernetes_object.spec.template.spec.containers | ansible.builtin.random }}"
-
 - name: Update workload containers
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
       kind: "{{ faults_kubernetes_object.kind }}"
@@ -20,7 +15,7 @@
         template:
           spec:
             containers:
-              - name: "{{ faults_container.name }}"
+              - name: "{{ container.name }}"
                 resources:
                   limits:
                     cpu: 5m
@@ -29,3 +24,5 @@
                     cpu: 5m
                     memory: 5Mi
     state: patched
+  vars:
+    container: "{{ faults_kubernetes_object.spec.template.spec.containers | ansible.builtin.random }}"

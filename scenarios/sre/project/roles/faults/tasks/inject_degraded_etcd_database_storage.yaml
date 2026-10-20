@@ -5,34 +5,19 @@
 
 - name: Create ConfigMaps to pressure etcd storage
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: ConfigMap
       metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ansible
+          "app.kubernetes.io/part-of": itbench
+          "itbench.io/layer": application
         name: "application-config-{{ item }}"
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
-        labels:
-          app.kubernetes.io/component: configuration
-          app.kubernetes.io/managed-by: ITBench
       data:
         payload: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_lowercase,digits length=102400') }}"
     state: present
   loop: "{{ range(1, 51) | list }}"
   loop_control:
     label: "application-config-{{ item }}"
-
-- name: Verify ConfigMaps were created
-  kubernetes.core.k8s_info:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    api_version: v1
-    kind: ConfigMap
-    namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
-    label_selectors:
-      - app.kubernetes.io/component=configuration
-      - app.kubernetes.io/managed-by=ITBench
-  register: faults_etcd_fill_result
-  until:
-    - faults_etcd_fill_result.resources | length >= 50
-  retries: 5
-  delay: 10
