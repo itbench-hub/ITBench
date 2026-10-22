@@ -15,7 +15,7 @@
           "itbench.io/environment": application
           "itbench.io/record": "true"
           "prometheus.itbench.io/monitor": "true"
-        name: "{{ applications_opentelemetry_demo_namespace }}"
+        name: "{{ applications_namespace_opentelemetry_demo }}"
     state: present
 
 - name: Enable Istio service mesh for application
@@ -26,7 +26,7 @@
       metadata:
         labels:
           "istio.io/dataplane-mode": ambient
-        name: "{{ applications_opentelemetry_demo_namespace }}"
+        name: "{{ applications_namespace_opentelemetry_demo }}"
     state: patched
   when:
     - applications_opentelemetry_demo_service_mesh_enabled
@@ -42,7 +42,7 @@
           "app.kubernetes.io/name": valkey-credentials
           "app.kubernetes.io/part-of": opentelemetry-demo
         name: valkey-credentials
-        namespace: "{{ applications_opentelemetry_demo_namespace }}"
+        namespace: "{{ applications_namespace_opentelemetry_demo }}"
       stringData:
         PASSWORD: "" # pragma: allowlist secret
     state: present
@@ -72,10 +72,10 @@
       metadata:
         labels:
           "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": "{{ applications_opentelemetry_demo_helm_release_name }}"
+          "app.kubernetes.io/name": otel-demo
           "app.kubernetes.io/part-of": opentelemetry-demo
-        name: "{{ applications_opentelemetry_demo_helm_release_name }}"
-        namespace: "{{ applications_opentelemetry_demo_namespace }}"
+        name: otel-demo
+        namespace: "{{ applications_namespace_opentelemetry_demo }}"
     state: present
 
 - name: Create RoleBinding for access to anyuid SecurityContextConstraint
@@ -84,16 +84,16 @@
       apiVersion: rbac.authorization.k8s.io/v1
       kind: RoleBinding
       metadata:
-        name: "{{ applications_opentelemetry_demo_helm_release_name }}"
-        namespace: "{{ applications_opentelemetry_demo_namespace }}"
+        name: otel-demo-scc
+        namespace: "{{ applications_namespace_opentelemetry_demo }}"
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
         name: system:openshift:scc:anyuid
       subjects:
         - kind: ServiceAccount
-          name: "{{ applications_opentelemetry_demo_helm_release_name }}"
-          namespace: "{{ applications_opentelemetry_demo_namespace }}"
+          name: otel-demo
+          namespace: "{{ applications_namespace_opentelemetry_demo }}"
     state: present
   when:
     - applications_cluster.platform == "openshift"
@@ -102,8 +102,8 @@
   kubernetes.core.helm:
     chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-demo"
     chart_version: "0.42.4"
-    release_name: "{{ applications_opentelemetry_demo_helm_release_name }}"
-    release_namespace: "{{ applications_opentelemetry_demo_namespace }}"
+    release_name: otel-demo
+    release_namespace: "{{ applications_namespace_opentelemetry_demo }}"
     release_state: present
     release_values:
       components:
@@ -137,7 +137,7 @@
           connectors:
             span_metrics:
               dimensions:
-                - default: "{{ applications_opentelemetry_demo_namespace }}"
+                - default: "{{ applications_namespace_opentelemetry_demo }}"
                   name: namespace
           exporters:
             clickhouse:
@@ -215,7 +215,7 @@
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Pod
-    namespace: "{{ applications_opentelemetry_demo_namespace }}"
+    namespace: "{{ applications_namespace_opentelemetry_demo }}"
   register: applications_otel_demo_pods
 
 - name: Wait for pods to reach ready state
@@ -238,7 +238,7 @@
   kubernetes.core.k8s_info:
     api_version: apps/v1
     kind: Deployment
-    namespace: "{{ applications_opentelemetry_demo_namespace }}"
+    namespace: "{{ applications_namespace_opentelemetry_demo }}"
   register: applications_otel_demo_deployments
 
 - name: Create HorizontalPodAutorscalers
@@ -304,7 +304,7 @@
       variable_end_string: "]]"
       variable_start_string: "[["
   vars:
-    application_namespace: "{{ applications_opentelemetry_demo_namespace }}"
+    application_namespace: "{{ applications_namespace_opentelemetry_demo }}"
     group_name: opentelemetrydemo
 
 - name: Create OpenTelemetry Demo PrometheusRules

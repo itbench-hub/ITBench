@@ -1,10 +1,29 @@
 ---
+- name: Retrieve Helm-owned Secrets in Namespace for OpenTelemetry Demo
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    label_selectors:
+      - "owner=helm"
+    namespace: "{{ applications_namespace_opentelemetry_demo }}"
+  register: applications_helm_secrets_opentelemetry_demo
+
 - name: Uninstall OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
-    release_name: "{{ applications_opentelemetry_demo_helm_release_name }}"
-    release_namespace: "{{ applications_opentelemetry_demo_namespace }}"
+    release_name: "{{ release_name }}"
+    release_namespace: "{{ applications_namespace_opentelemetry_demo }}"
     release_state: absent
     wait: true
+  loop: >-
+    {{
+      applications_helm_secrets_opentelemetry_demo.resources |
+      map("metadata.labels.name") |
+      ansible.builtin.unique |
+      ansible.builtin.list
+    }}
+  loop_control:
+    label: release/{{ release_name }}
+    loop_var: release_name
 
 - name: Delete all application namespaces
   kubernetes.core.k8s:

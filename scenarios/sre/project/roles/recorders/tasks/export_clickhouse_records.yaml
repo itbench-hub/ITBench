@@ -38,9 +38,9 @@
         labels:
           "app.kubernetes.io/component": data-recorder
           "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": "{{ recorders_instance_clickhouse_name }}"
+          "app.kubernetes.io/name": itbench-clickhouse-recorder
           "app.kubernetes.io/part-of": itbench
-        name: "{{ recorders_instance_clickhouse_name }}"
+        name: itbench-clickhouse-recorder
         namespace: "{{ recorders_namespace }}"
       spec:
         template:
@@ -48,7 +48,7 @@
             labels:
               "app.kubernetes.io/component": data-recorder
               "app.kubernetes.io/managed-by": ansible
-              "app.kubernetes.io/name": "{{ recorders_instance_clickhouse_name }}"
+              "app.kubernetes.io/name": itbench-clickhouse-recorder
               "app.kubernetes.io/part-of": itbench
           spec:
             affinity:
@@ -126,7 +126,7 @@
       ansible.builtin.import_tasks:
         file: copy_recorder_files.yaml
       vars:
-        recorders_instance_name: "{{ recorders_instance_clickhouse_name }}"
+        recorders_instance_name: itbench-clickhouse-recorder
 
   always:
     - name: Delete temporary directory for Clickhouse records

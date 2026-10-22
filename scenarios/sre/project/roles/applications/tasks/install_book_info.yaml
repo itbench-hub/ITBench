@@ -23,12 +23,12 @@
           "itbench.io/layer": application
           "itbench.io/record": "true"
           "prometheus.itbench.io/monitor": "true"
-        name: "{{ applications_book_info_namespace }}"
+        name: "{{ applications_namespace_book_info }}"
     state: present
 
 - name: Create BookInfo Kubernetes objects
   kubernetes.core.k8s:
-    namespace: "{{ applications_book_info_namespace }}"
+    namespace: "{{ applications_namespace_book_info }}"
     src: "{{ applications_temporary_directory.path }}/{{ manifest_file_path }}"
     state: present
   loop:
@@ -44,7 +44,7 @@
     api_version: gateway.networking.k8s.io/v1
     kind: Gateway
     name: bookinfo-gateway
-    namespace: "{{ applications_book_info_namespace }}"
+    namespace: "{{ applications_namespace_book_info }}"
     wait: true
     wait_condition:
       reason: Programmed
@@ -63,7 +63,7 @@
         kind: PodMonitor
         metadata:
           name: bookinfo-gateway
-          namespace: "{{ applications_book_info_namespace }}"
+          namespace: "{{ applications_namespace_book_info }}"
         spec:
           podMetricsEndpoints:
             - interval: 30s
@@ -75,7 +75,7 @@
         kind: PodMonitor
         metadata:
           name: productpage-v1
-          namespace: "{{ applications_book_info_namespace }}"
+          namespace: "{{ applications_namespace_book_info }}"
         spec:
           fallbackScrapeProtocol: PrometheusText1.0.0
           podMetricsEndpoints:
@@ -93,7 +93,7 @@
     api_version: gateway.networking.k8s.io/v1
     kind: Gateway
     name: bookinfo-gateway
-    namespace: "{{ applications_book_info_namespace }}"
+    namespace: "{{ applications_namespace_book_info }}"
   register: applications_gateway
   retries: 20
   until:
@@ -121,7 +121,7 @@
           "app.kubernetes.io/managed-by": ansible
           "app.kubernetes.io/part-of": bookinfo
         name: load-generator-product-page
-        namespace: "{{ applications_book_info_namespace }}"
+        namespace: "{{ applications_namespace_book_info }}"
       spec:
         replicas: 3
         selector:
@@ -154,7 +154,7 @@
       variable_end_string: "]]"
       variable_start_string: "[["
   vars:
-    application_namespace: "{{ applications_book_info_namespace }}"
+    application_namespace: "{{ applications_namespace_book_info }}"
     group_name: bookinfo
 
 - name: Create Book Info PrometheusRules

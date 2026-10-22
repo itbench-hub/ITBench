@@ -4,7 +4,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: otel-demo-alerting-rules
-  namespace: [[ applications_opentelemetry_demo_namespace ]]
+  namespace: [[ applications_namespace_opentelemetry_demo ]]
 spec:
   groups:
     - name: opentelemetrydemo.frontend.goldensignal
@@ -17,7 +17,7 @@ spec:
                 rate(
                   traces_span_metrics_duration_milliseconds_bucket{
                     service_name=~"frontend|frontend-proxy",
-                    namespace="[[ applications_opentelemetry_demo_namespace ]]"
+                    namespace="[[ applications_namespace_opentelemetry_demo ]]"
                   }[2m]
                 )
               ) by(le, service_name, namespace)
@@ -35,7 +35,7 @@ spec:
                 traces_span_metrics_calls_total{
                   service_name=~"frontend|frontend-proxy",
                   status_code="STATUS_CODE_ERROR",
-                  namespace="[[ applications_opentelemetry_demo_namespace ]]"
+                  namespace="[[ applications_namespace_opentelemetry_demo ]]"
                 }[2m]
               )
             ) by (service_name, namespace)
@@ -55,7 +55,7 @@ spec:
                 rate(
                   traces_span_metrics_duration_milliseconds_bucket{
                     service_name!~"flagd|load-generator|frontend*",
-                    namespace="[[ applications_opentelemetry_demo_namespace ]]"
+                    namespace="[[ applications_namespace_opentelemetry_demo ]]"
                   }[2m]
                 )
               ) by(le, service_name, namespace)
@@ -73,7 +73,7 @@ spec:
                 traces_span_metrics_calls_total{
                   service_name!~"flagd|load-generator|frontend|frontend-proxy",
                   status_code="STATUS_CODE_ERROR",
-                  namespace="[[ applications_opentelemetry_demo_namespace ]]"
+                  namespace="[[ applications_namespace_opentelemetry_demo ]]"
                 }[2m]
               )
             ) by (service_name, namespace)
@@ -88,7 +88,7 @@ spec:
         - alert: KafkaConsumerGroupInactive
           expr: |
             kafka_consumer_group_members{
-              namespace="[[ applications_opentelemetry_demo_namespace ]]"
+              namespace="[[ applications_namespace_opentelemetry_demo ]]"
             } == 0
           for: 2m
           labels:
@@ -100,7 +100,7 @@ spec:
             sum by (job) (
               rate(
                 kafka_consumer_connection_close_rate{
-                  namespace="[[ applications_opentelemetry_demo_namespace ]]"
+                  namespace="[[ applications_namespace_opentelemetry_demo ]]"
                 }[2m]
               )
             ) > 0
@@ -112,7 +112,7 @@ spec:
         - alert: HighKafkaConsumerLag
           expr: |
             kafka_consumer_group_lag_sum_ratio{
-              namespace="[[ applications_opentelemetry_demo_namespace ]]"
+              namespace="[[ applications_namespace_opentelemetry_demo ]]"
             } > 100
           for: 5m
           labels:
@@ -128,7 +128,7 @@ spec:
                 traces_span_metrics_calls_total{
                   service_name!~"flagd|load-generator|chatbot|mcp",
                   status_code=~"STATUS_CODE_UNSET|STATUS_CODE_OK",
-                  namespace="[[ applications_opentelemetry_demo_namespace ]]"
+                  namespace="[[ applications_namespace_opentelemetry_demo ]]"
                 }[5m]
               )
             ) by (service_name, namespace)
@@ -148,7 +148,7 @@ spec:
                   service_name="accounting",
                   span_name="postgresql",
                   span_kind="SPAN_KIND_CLIENT",
-                  namespace="[[ applications_opentelemetry_demo_namespace ]]"
+                  namespace="[[ applications_namespace_opentelemetry_demo ]]"
                 }[5m]
               )
             ) == 0
