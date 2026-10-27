@@ -1,10 +1,9 @@
 """Endpoint discovery utilities for ITBench tools stack.
 
 Resolves external URLs for each installed tool by querying the Kubernetes API
-directly — replacing the Ansible ``set_external_endpoints`` task family.
+directly via HTTPRoute resources attached to the managed Gateway.
 
-Supports both Kubernetes (HTTPRoute via Istio Gateway) and OpenShift
-(HTTPRoute via OpenShift Gateway).
+Supports both Kubernetes (NGINX Gateway Fabric) and OpenShift (OpenShift Gateway).
 """
 
 from dataclasses import dataclass, field
@@ -16,7 +15,7 @@ import yaml
 from kubernetes import client, config  # type: ignore[import-untyped]
 
 
-_RELEASES_FILE = (
+_VARS_DIR = (
     Path(__file__).parents[3]
     / "scenarios"
     / "sre"
@@ -25,32 +24,16 @@ _RELEASES_FILE = (
     / "tools"
     / "vars"
     / "main"
-    / "releases.yaml"
-)
-
-_GATEWAY_FILE = (
-    Path(__file__).parents[3]
-    / "scenarios"
-    / "sre"
-    / "project"
-    / "roles"
-    / "tools"
-    / "vars"
-    / "main"
-    / "gateway.yaml"
 )
 
 
-def _load_releases() -> dict[str, Any]:
-    """Load the tools role releases vars."""
-    with _RELEASES_FILE.open(encoding="utf-8") as fh:
-        return yaml.safe_load(fh)
-
-
-def _load_gateway_vars() -> dict[str, Any]:
-    """Load the tools role gateway vars."""
-    with _GATEWAY_FILE.open(encoding="utf-8") as fh:
-        return yaml.safe_load(fh)
+def _load_vars() -> dict[str, Any]:
+    """Merge all YAML files under the tools role vars/main/ directory."""
+    merged: dict[str, Any] = {}
+    for path in sorted(_VARS_DIR.glob("*.yaml")):
+        with path.open(encoding="utf-8") as fh:
+            merged.update(yaml.safe_load(fh) or {})
+    return merged
 
 
 @dataclass
@@ -69,37 +52,35 @@ class ToolEndpoint:
         return [f"{self.host.rstrip('/')}{p}" for p in self.paths]
 
 
-def _build_tool_definitions(releases: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """Build tool lookup table from releases vars.
+def _build_tool_definitions(vars: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Build tool lookup table from role vars.
 
     Returns a dict keyed by human-readable tool name, each with:
       - ``name``: HTTPRoute resource name
       - ``namespace``: HTTPRoute resource namespace
       - ``paths``: list of significant URL paths
     """
-    r = releases["tools_releases"]
-    operands = releases["tools_operands"]
-    namespaces = releases["tools_namespaces"]
+    obs_ns = vars["tools_namespace_itbench_observability"]
 
     return {
         "Prometheus": {
-            "name": r["kube_prometheus_stack"]["name"],
-            "namespace": r["kube_prometheus_stack"]["namespace"]["kubernetes"],
-            "paths": ["/alerts", "/query"],
+            "name": vars["tools_helm_release_kube_prometheus_stack"],
+            "namespace": obs_ns,
+            "paths": ["/observability/prometheus/alerts", "/observability/prometheus/query"],
         },
         "Jaeger": {
-            "name": operands["opentelemetry_collector"]["jaeger"]["name"],
-            "namespace": namespaces["opentelemetry_collector"],
-            "paths": ["/"],
+            "name": "jaeger",
+            "namespace": obs_ns,
+            "paths": ["/observability/jaeger/"],
         },
         "ClickHouse": {
-            "name": operands["alinity_clickhouse"]["main"]["name"],
-            "namespace": namespaces["alinity_clickhouse"],
-            "paths": ["/play"],
+            "name": "clickhouse",
+            "namespace": obs_ns,
+            "paths": ["/observability/clickhouse/play"],
         },
         "OpenCost": {
-            "name": r["opencost"]["name"],
-            "namespace": r["opencost"]["namespace"],
+            "name": vars["tools_helm_release_opencost"],
+            "namespace": obs_ns,
             "paths": ["/"],
         },
     }
@@ -116,19 +97,19 @@ def discover_endpoints(kubeconfig: str, platform: str) -> list[ToolEndpoint]:
         List of :class:`ToolEndpoint` for each tool that was found.
         Tools whose HTTPRoutes are not present are silently skipped.
     """
-    releases = _load_releases()
-    gateway_vars = _load_gateway_vars()
-    tools = _build_tool_definitions(releases)
+    vars = _load_vars()
+    tools = _build_tool_definitions(vars)
 
     config.load_kube_config(config_file=kubeconfig)
     custom = client.CustomObjectsApi()
 
+    gateway_name = vars["tools_gateway"]
     if platform == "openshift":
-        gw = gateway_vars["tools_kubernetes_gateway_openshift"]
+        gateway_namespace = vars["tools_namespace_kubernetes_gateway_openshift"]
     else:
-        gw = gateway_vars["tools_kubernetes_gateway_istio"]
+        gateway_namespace = vars["tools_namespace_itbench_kubernetes_gateway"]
 
-    gateway_host = _resolve_gateway_host(custom, name=gw["name"], namespace=gw["namespace"])
+    gateway_host = _resolve_gateway_host(custom, name=gateway_name, namespace=gateway_namespace)
     return _resolve_httproute_endpoints(custom, gateway_host, tools)
 
 
@@ -166,7 +147,7 @@ def _resolve_httproute_endpoints(
 
     for tool_name, cfg in tools.items():
         try:
-            route = custom.get_namespaced_custom_object(
+            custom.get_namespaced_custom_object(
                 group="gateway.networking.k8s.io",
                 version="v1",
                 namespace=cfg["namespace"],
@@ -178,15 +159,6 @@ def _resolve_httproute_endpoints(
                 continue
             raise
 
-        path_prefix = (
-            route.get("spec", {})
-            .get("rules", [{}])[0]
-            .get("matches", [{}])[0]
-            .get("path", {})
-            .get("value", "")
-            .rstrip("/")
-        )
-        host = f"{gateway_host}{path_prefix}"
-        endpoints.append(ToolEndpoint(tool=tool_name, host=host, paths=cfg["paths"]))
+        endpoints.append(ToolEndpoint(tool=tool_name, host=gateway_host, paths=cfg["paths"]))
 
     return endpoints

@@ -204,7 +204,7 @@ def create_scenario_command(scenarios_dir: Path) -> None:
     console.print(f"[green]Generated ground truth → {gt_path}[/green]")
 
     if questionary.confirm(
-        "\nDo you want to add custom application settings (extra_vars)?", default=False
+        "\nDo you want to add custom extra variables (extra_variables)?", default=False
     ).ask():
         console.print("[dim]Enter Ansible variable overrides as key: value pairs.[/dim]")
         extra_vars: dict = {}
@@ -231,9 +231,9 @@ def create_scenario_command(scenarios_dir: Path) -> None:
                 is_adding_vars = False
 
         if extra_vars:
-            ev_path = scenario_dir / "extra_vars.yaml"
+            ev_path = scenario_dir / "extra_variables.yaml"
             ev_path.write_text(
-                yaml.dump(extra_vars, sort_keys=False, explicit_start=True, allow_unicode=True),
+                yaml.dump(extra_vars, sort_keys=True, explicit_start=True, allow_unicode=True),
                 encoding="utf-8",
             )
             console.print(f"[green]Written extra vars → {ev_path}[/green]")

@@ -120,7 +120,7 @@ def test_create_scenario_command_success(tmp_path: Path) -> None:
         assert "sre" in data["environment"]["domains"]
         assert len(data["faults"]) == 1
 
-        extra_vars_file = scenarios_dir / "1" / "extra_vars.yaml"
+        extra_vars_file = scenarios_dir / "1" / "extra_variables.yaml"
         assert extra_vars_file.exists()
         ev_data = yaml.safe_load(extra_vars_file.read_text(encoding="utf-8"))
         assert ev_data["replicas"] == 3
