@@ -25,7 +25,7 @@
           "app.kubernetes.io/managed-by": ansible
           "app.kubernetes.io/name": "{{ recorders_instance_prometheus_name }}-recorder"
           "app.kubernetes.io/part-of": itbench
-          "itbench.io/recorder": ""
+          "itbench.io/layer": data
         name: "{{ recorders_instance_prometheus_name }}-recorder"
       roleRef:
         apiGroup: rbac.authorization.k8s.io
@@ -95,7 +95,7 @@
                   - name: OUTPUT_DIR
                     value: /records
                   - name: PROMETHEUS_ENDPOINT
-                    value: "{{ tools_prometheus_endpoint.http }}"
+                    value: "{{ tools_thanos_endpoint.http if recorders_cluster.platform == 'openshift' else tools_prometheus_endpoint.http }}"
                   - name: RECORDING_START_TIMESTAMP
                     value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (recorders_duration_minutes * 60)) }}"
                   - name: RECORDING_END_TIMESTAMP
@@ -150,7 +150,6 @@
         file: copy_recorder_files.yaml
       vars:
         recorders_instance_name: itbench-prometheus-alert-recorder
-
   always:
     - name: Delete temporary directory for Prometheus records
       ansible.builtin.file:

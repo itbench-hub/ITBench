@@ -1,51 +1,30 @@
 ---
-- name: Uninstall Prometheus Operator and Prometheus on Kubernetes
+- name: Uninstall Prometheus Operator and Prometheus Helm release
+  kubernetes.core.helm:
+    release_name: "{{ tools_helm_release_kube_prometheus_stack }}"
+    release_namespace: "{{ tools_namespace_itbench_observability }}"
+    release_state: absent
+    timeout: "600s"
+    wait: true
   when:
     - tools_cluster.platform == "kubernetes"
-  block:
-    - name: Uninstall Prometheus Operator and Prometheus
-      kubernetes.core.helm:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_releases.kube_prometheus_stack.name }}"
-        release_namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
-        release_state: absent
-        wait: true
-        timeout: "600s"
 
-    - name: Delete Namespace for Prometheus
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          api_version: v1
-          kind: Namespace
-          metadata:
-            name: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
-        state: absent
-        wait: true
-        wait_timeout: 600
-
-- name: Disable OpenShift User Workload Monitoring
+- name: Uninstall Prometheus on OpenShift
   when:
     - tools_cluster.platform == "openshift"
   block:
     - name: Delete User Workload ConfigMap
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: user-workload-monitoring-config
-            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.openshift }}"
+        api_version: v1
+        kind: ConfigMap
+        name: user-workload-monitoring-config
+        namespace: "{{ tools_namespace_openshift_user_workload_monitoring }}"
         state: absent
 
     - name: Delete Cluster Monitoring ConfigMap
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: cluster-monitoring-config
-            namespace: openshift-monitoring
+        api_version: v1
+        kind: ConfigMap
+        name: cluster-monitoring-config
+        namespace: "{{ tools_namespace_openshift_monitoring }}"
         state: absent

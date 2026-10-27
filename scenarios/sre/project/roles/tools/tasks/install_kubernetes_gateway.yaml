@@ -1,67 +1,106 @@
 ---
-- name: Create GatewayClass for OpenShift Ingress
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: gateway.networking.k8s.io/v1
-      kind: GatewayClass
-      metadata:
-        name: openshift-default
-      spec:
-        controllerName: openshift.io/gateway-controller/v1
-    state: present
-    wait: true
-    wait_condition:
-      type: Accepted
-      status: "True"
-  when:
-    - tools_cluster.platform == "openshift"
-
-- name: Create Namespaces for Kubernetes Gateways
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        labels:
-          "app.kubernetes.io/component": gateway
-          "prometheus.itbench.io/monitor": "true"
-        name: "{{ gateway.namespace }}"
-    state: present
-  loop:
-    - "{{ tools_kubernetes_gateway_istio }}"
-  loop_control:
-    label: namespace/{{ gateway.namespace }}
-    loop_var: gateway
+- name: Install Gateway on Kubernetes
   when:
     - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Create Namespaces for NGINX Gateway Fabric and Kubernetes Gateway
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            labels:
+              "itbench.io/layer": networking
+              "itbench.io/monitor": "true"
+            name: "{{ itbench_namespace.name }}"
+        state: present
+      loop:
+        - name: "{{ tools_namespace_kubernetes_gateway_nginx }}"
+        - name: "{{ tools_namespace_itbench_kubernetes_gateway }}"
+      loop_control:
+        label: namespace/{{ itbench_namespace.name }}
+        loop_var: itbench_namespace
 
-- name: Create OpenShift implemented Kubernetes Gateway
-  kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    resource_definition:
-      apiVersion: gateway.networking.k8s.io/v1
-      kind: Gateway
-      metadata:
-        name: "{{ tools_kubernetes_gateway_openshift.name }}"
-        namespace: "{{ tools_kubernetes_gateway_openshift.namespace }}"
-      spec:
-        gatewayClassName: openshift-default
-        listeners:
-          - name: http
-            port: 80
-            protocol: HTTP
-            allowedRoutes:
-              namespaces:
-                from: Selector
-                selector:
-                  matchLabels:
-                    "itbench.io/gateway-access": shared
-    state: present
-    wait: true
-    wait_condition:
-      status: "True"
-      type: Programmed
+    - name: Install NGINX Gateway Fabric
+      kubernetes.core.helm:
+        chart_ref: "oci://ghcr.io/nginx/charts/nginx-gateway-fabric"
+        chart_version: "2.8.0"
+        release_name: "{{ tools_helm_release_nginx_gateway_fabric }}"
+        release_namespace: "{{ tools_namespace_kubernetes_gateway_nginx }}"
+        release_state: present
+        release_values:
+          certGenerator:
+            enable: true
+          gateways:
+            - labels:
+                "itbench.io/layer": networking
+              name: "{{ tools_gateway }}"
+              namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
+              spec:
+                gatewayClassName: nginx
+                listeners:
+                  - allowedRoutes:
+                      namespaces:
+                        from: Selector
+                        selector:
+                          matchLabels:
+                            "itbench.io/gateway-access": shared
+                    name: http
+                    port: 8080
+                    protocol: HTTP
+          nginx:
+            serviceMonitor:
+              enable: "{{ tools_observability_enabled }}"
+            metrics:
+              serviceMonitor:
+                enable: "{{ tools_observability_enabled }}"
+        wait: true
+
+- name: Install Gateway on OpenShift
   when:
     - tools_cluster.platform == "openshift"
+  block:
+    - name: Create GatewayClass for OpenShift Ingress
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: GatewayClass
+          metadata:
+            labels:
+              "itbench.io/layer": networking
+            name: openshift-default
+          spec:
+            controllerName: openshift.io/gateway-controller/v1
+        state: present
+        wait: true
+        wait_condition:
+          status: "True"
+          type: Accepted
+
+    - name: Create OpenShift implemented Kubernetes Gateway
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: Gateway
+          metadata:
+            labels:
+              "itbench.io/layer": networking
+            name: "{{ tools_gateway }}"
+            namespace: "{{ tools_namespace_kubernetes_gateway_openshift }}"
+          spec:
+            gatewayClassName: openshift-default
+            listeners:
+              - allowedRoutes:
+                  namespaces:
+                    from: Selector
+                    selector:
+                      matchLabels:
+                        "itbench.io/gateway-access": shared
+                name: http
+                port: 8080
+                protocol: HTTP
+        state: present
+        wait: true
+        wait_condition:
+          status: "True"
+          type: Programmed

@@ -1,15 +1,43 @@
 ---
-- name: Create Namespace for OpenCost
+- name: Create ServiceAccount for OpenCost
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        labels:
+          "app.kubernetes.io/component": opencost
+          "app.kubernetes.io/managed-by": ansible
+          "app.kubernetes.io/name": opencost
+          "app.kubernetes.io/part-of": opencost
+        name: opencost
+        namespace: "{{ tools_namespace_itbench_observability }}"
     state: present
-    template: templates/kubernetes/opencost/namespace.j2
 
-- name: Import Prometheus credential variable setting tasks
-  ansible.builtin.import_tasks:
-    file: set_credentials_prometheus.yaml
+- name: Create ClusterRoleBinding for Prometheus recorder
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        labels:
+          "app.kubernetes.io/component": opencost
+          "app.kubernetes.io/managed-by": ansible
+          "app.kubernetes.io/name": opencost
+          "app.kubernetes.io/part-of": opencost
+          "itbench.io/layer": infrastructure
+        name: opencost
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: monitoring-alertmanager-api-reader
+      subjects:
+        - kind: ServiceAccount
+          name: opencost
+          namespace: "{{ tools_namespace_itbench_observability }}"
+    state: present
   when:
-    - tools_prometheus_bearer_token is ansible.builtin.undefined
+    - tools_cluster.platform == "openshift"
 
 - name: Import Prometheus endpoint variable setting tasks
   ansible.builtin.import_tasks:
@@ -21,43 +49,72 @@
   kubernetes.core.helm:
     chart_ref: "oci://ghcr.io/opencost/charts/opencost"
     chart_version: "2.5.33"
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_releases.opencost.name }}"
-    release_namespace: "{{ tools_releases.opencost.namespace }}"
+    release_name: "{{ tools_helm_release_opencost }}"
+    release_namespace: "{{ tools_namespace_itbench_observability }}"
     release_state: present
     timeout: 10m0s
-    values: |-
-      {{
-        lookup('ansible.builtin.template', 'templates/helm/opencost/values.j2') |
-        ansible.builtin.from_yaml
-      }}
+    values:
+      opencost:
+        customPricing:
+          costModel:
+            CPU: 10.00
+            GPU: 50.00
+            RAM: 5.00
+            description: Modified pricing configuration.
+            internetNetworkEgress: 1.00
+            regionNetworkEgress: 1.00
+            spotCPU: 7.50
+            spotRAM: 2.50
+            storage: 2.50
+            zoneNetworkEgress: 1.00
+          createConfigmap: true
+          enabled: true
+          provider: custom
+        exporter:
+          extraEnv:
+            USE_CUSTOM_PROVIDER: true
+        metrics:
+          serviceMonitor:
+            enabled: true
+        platforms:
+          openshift:
+            enabled: "{{ tools_cluster.platform == 'openshift' }}"
+        prometheus:
+          bearer_token: "{{ tools_prometheus_bearer_token | default(omit) }}"
+          external:
+            enabled: true
+            url: "{{ tools_prometheus_endpoint.http }}"
+          insecureSkipVerify: "{{ tools_cluster.platform == 'openshift' }}"
+          internal:
+            enabled: false
+      serviceAccount:
+        create: false
+        name: opencost
     wait: true
 
 - name: Create HTTPRoute for OpenCost
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ tools_releases.opencost.name }}"
-        namespace: "{{ tools_releases.opencost.namespace }}"
+        name: "{{ tools_helm_release_opencost }}"
+        namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
         parentRefs:
-          - name: "{{ tools_kubernetes_gateway.name }}"
-            namespace: "{{ tools_kubernetes_gateway.namespace }}"
+          - name: "{{ tools_gateway }}"
+            namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
         rules:
           - backendRefs:
-              - name: "{{ tools_releases.opencost.name }}"
+              - name: "{{ tools_helm_release_opencost }}"
                 port: 9090
             filters:
-              - type: ResponseHeaderModifier
-                responseHeaderModifier:
-                  add: "{{ tools_http_route_response_headers }}"
+              - responseHeaderModifier:
+                  add: "{{ tools_response_headers_http }}"
+                type: ResponseHeaderModifier
     state: present
 
 - name: Create PrometheusRules
   kubernetes.core.k8s:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
     state: present
     template: templates/kubernetes/opencost/prometheusrules.j2

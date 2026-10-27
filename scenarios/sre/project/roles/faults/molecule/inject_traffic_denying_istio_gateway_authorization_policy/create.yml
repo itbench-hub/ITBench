@@ -3,32 +3,23 @@
   hosts:
     - localhost
   tasks:
-    - name: Install Istio Base (CRDs)
-      kubernetes.core.helm:
-        chart_ref: "oci://ghcr.io/istio/release/charts/base"
-        chart_version: "1.31.2"
-        create_namespace: true
-        release_name: istio-base
-        release_namespace: istio-system
-        release_state: present
-        wait: true
-
-    - name: Install Istio Istiod (Control Plane)
-      kubernetes.core.helm:
-        chart_ref: "oci://ghcr.io/istio/release/charts/istiod"
-        chart_version: "1.31.2"
-        release_name: istiod
-        release_namespace: istio-system
-        release_state: present
-        wait: true
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
 
     - name: Import tools role
       ansible.builtin.import_role:
         name: tools
-        tasks_from: install_kubernetes_gateway_api.yaml
+        tasks_from: install.yaml
       vars:
         tools_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+        tools_service_mesh_enabled: true
 
     - name: Create test namespace
       kubernetes.core.k8s:

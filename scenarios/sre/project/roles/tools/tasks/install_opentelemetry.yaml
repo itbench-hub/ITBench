@@ -1,8 +1,542 @@
 ---
-- name: Import OpenTelemetry Operator installation tasks
-  ansible.builtin.import_tasks:
-    file: install_opentelemetry_operator.yaml
+- name: Install OpenTelemetry Operator on Kubernetes
+  kubernetes.core.helm:
+    chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-operator"
+    chart_version: "0.126.0"
+    release_name: "{{ tools_helm_release_opentelemetry_operator }}"
+    release_namespace: "{{ tools_namespace_itbench_observability }}"
+    release_state: present
+    release_values:
+      admissionWebhooks:
+        autoGenerateCert:
+          enabled: true
+        certManager:
+          enabled: false
+      manager:
+        serviceMonitor:
+          enabled: true
+    timeout: 10m0s
+    wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"
 
-- name: Import OpenTelemetry Collectors installation tasks
+- name: Install OpenTelemetry Operator on OpenShift
+  vars:
+    operator_namespace: openshift-opentelemetry-operator
+    subscription: opentelemetry-product
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Create the project for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: project.openshift.io/v1
+          kind: Project
+          metadata:
+            labels:
+              "itbench.io/layer": observability
+              "itbench.io/monitor": "true"
+            name: "{{ operator_namespace }}"
+          state: present
+
+    - name: Create the operator group for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: operators.coreos.com/v1
+          kind: OperatorGroup
+          metadata:
+            name: openshift-opentelemetry-operator
+            namespace: "{{ operator_namespace }}"
+          spec:
+            upgradeStrategy: Default
+        state: present
+
+    - name: Create the subscription for RH build of OpenTelemetry Operator
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            labels:
+              "itbench.io/layer": observability
+            name: "{{ subscription }}"
+            namespace: "{{ operator_namespace }}"
+          spec:
+            channel: stable
+            installPlanApproval: Automatic
+            name: "{{ subscription }}"
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+        state: present
+        wait: true
+        wait_condition:
+          status: "False"
+          type: CatalogSourcesUnhealthy
+        wait_timeout: 300
+
+- name: Import Clickhouse endpoint variable setting tasks
   ansible.builtin.import_tasks:
-    file: install_opentelemetry_collectors.yaml
+    file: set_internal_endpoints_clickhouse.yaml
+
+- name: Install OpenTelemetry Collector for Istio
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
+      metadata:
+        name: istio
+        namespace: "{{ tools_namespace_itbench_observability }}"
+      spec:
+        config:
+          exporters:
+            clickhouse:
+              database: istio
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
+              logs_table_name: "access_logs"
+              password: ${env:CLICKHOUSE_USER} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_PASSWORD}
+            debug: {}
+          receivers:
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4317
+                http:
+                  endpoint: 0.0.0.0:4318
+          service:
+            pipelines:
+              logs:
+                exporters:
+                  - debug
+                  - clickhouse
+                receivers:
+                  - otlp
+        envFrom:
+          - secretRef:
+              name: user-default-credentials
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0@sha256:6f38985d3000d56cac17c5ad8c4f777ac74cebdf3592196f39b0f78b0ab1f7f7
+        mode: deployment
+        observability:
+          metrics:
+            enableMetrics: true
+    state: present
+
+- name: Install OpenTelemetry Collector for Jaeger
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
+      metadata:
+        name: jaeger
+        namespace: "{{ tools_namespace_itbench_observability }}"
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: node-role.itbench.io/sandbox
+                      operator: DoesNotExist
+        config:
+          exporters:
+            debug: {}
+            jaeger_storage_exporter:
+              trace_storage: traces_store
+          extensions:
+            jaeger_query:
+              base_path: /jaeger
+              storage:
+                traces: traces_store
+            jaeger_storage:
+              backends:
+                traces_store:
+                  clickhouse:
+                    addresses:
+                      - "{{ tools_clickhouse_endpoint.tcp }}"
+                    auth:
+                      basic:
+                        password: ${env:CLICKHOUSE_USER} # pragma: allowlist secret
+                        username: ${env:CLICKHOUSE_PASSWORD}
+                    create_schema: true
+          processors:
+            batch:
+              send_batch_size: 8192
+              timeout: 1s
+          receivers:
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4317
+                http:
+                  endpoint: 0.0.0.0:4318
+          service:
+            extensions:
+              - jaeger_storage
+              - jaeger_query
+            pipelines:
+              traces:
+                exporters:
+                  - debug
+                  - jaeger_storage_exporter
+                processors:
+                  - batch
+                receivers:
+                  - otlp
+        envFrom:
+          - secretRef:
+              name: user-default-credentials
+        image: quay.io/jaegertracing/jaeger:2.22.0@sha256:836b967b5abcf1f7758066aa6b348619267a2f1459f72d472840570f9bd88a17
+        mode: deployment
+        observability:
+          metrics:
+            enableMetrics: true
+        ports:
+          - name: query-grpc
+            port: 16685
+          - name: query-http
+            port: 16686
+    state: present
+
+- name: Create ServiceAccount for Kubernetes Telemetry Collector
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: kubernetes
+        namespace: "{{ tools_namespace_itbench_observability }}"
+    state: present
+
+- name: Create ClusterRole for Kubernetes Telemetry Collector
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          "app.kubernetes.io/component": opentelemetry-collector
+          "app.kubernetes.io/managed-by": ITBench
+        name: kubernetes
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - pods
+            - services
+            - endpoints
+            - persistentvolumeclaims
+            - persistentvolumes
+            - configmaps
+            - serviceaccounts
+            - nodes
+            - namespaces
+            - resourcequotas
+            - limitranges
+            - replicationcontrollers
+            - events
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - events.k8s.io
+          resources:
+            - events
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - apps
+          resources:
+            - deployments
+            - daemonsets
+            - statefulsets
+            - replicasets
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - batch
+          resources:
+            - jobs
+            - cronjobs
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - networking.k8s.io
+          resources:
+            - ingresses
+            - networkpolicies
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - rbac.authorization.k8s.io
+          resources:
+            - roles
+            - rolebindings
+            - clusterroles
+            - clusterrolebindings
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - storage.k8s.io
+          resources:
+            - storageclasses
+            - volumeattachments
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - autoscaling
+          resources:
+            - horizontalpodautoscalers
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - policy
+          resources:
+            - poddisruptionbudgets
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - apiextensions.k8s.io
+          resources:
+            - customresourcedefinitions
+          verbs:
+            - get
+            - list
+    state: present
+
+- name: Create ClusterRoleBinding for Kubernetes Telemetry Collector
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        labels:
+          "app.kubernetes.io/component": opentelemetry-collector
+          "app.kubernetes.io/managed-by": ITBench
+        name: kubernetes
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: kubernetes
+      subjects:
+        - kind: ServiceAccount
+          name: kubernetes
+          namespace: "{{ tools_namespace_itbench_observability }}"
+    state: present
+
+- name: Install OpenTelemetry Collector for Kubernetes Telemetry
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
+      metadata:
+        name: kubernetes
+        namespace: "{{ tools_namespace_itbench_observability }}"
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: node-role.itbench.io/sandbox
+                      operator: DoesNotExist
+        config:
+          exporters:
+            clickhouse/events:
+              database: kubernetes
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
+              logs_table_name: events
+              password: ${env:CLICKHOUSE_USER} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_PASSWORD}
+            clickhouse/objects:
+              database: kubernetes
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
+              logs_table_name: objects_snapshot
+              password: ${env:CLICKHOUSE_USER} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_PASSWORD}
+            debug: {}
+          receivers:
+            k8sobjects/events:
+              objects:
+                - group: events.k8s.io
+                  mode: watch
+                  name: events
+                - group: ""
+                  mode: watch
+                  name: events
+            k8sobjects/objects:
+              objects:
+                - interval: 5m
+                  mode: pull
+                  name: pods
+                - interval: 5m
+                  mode: pull
+                  name: services
+                - interval: 5m
+                  mode: pull
+                  name: endpoints
+                - interval: 5m
+                  mode: pull
+                  name: configmaps
+                - interval: 5m
+                  mode: pull
+                  name: serviceaccounts
+                - interval: 5m
+                  mode: pull
+                  name: namespaces
+                - interval: 5m
+                  mode: pull
+                  name: nodes
+                - interval: 5m
+                  mode: pull
+                  name: persistentvolumeclaims
+                - interval: 5m
+                  mode: pull
+                  name: persistentvolumes
+                - interval: 5m
+                  mode: pull
+                  name: resourcequotas
+                - interval: 5m
+                  mode: pull
+                  name: limitranges
+                - interval: 5m
+                  mode: pull
+                  name: replicationcontrollers
+                - group: apps
+                  interval: 5m
+                  mode: pull
+                  name: deployments
+                - group: apps
+                  interval: 5m
+                  mode: pull
+                  name: daemonsets
+                - group: apps
+                  interval: 5m
+                  mode: pull
+                  name: statefulsets
+                - group: apps
+                  interval: 5m
+                  mode: pull
+                  name: replicasets
+                - group: batch
+                  interval: 5m
+                  mode: pull
+                  name: jobs
+                - group: batch
+                  interval: 5m
+                  mode: pull
+                  name: cronjobs
+                - group: networking.k8s.io
+                  interval: 5m
+                  mode: pull
+                  name: ingresses
+                - group: networking.k8s.io
+                  interval: 5m
+                  mode: pull
+                  name: networkpolicies
+                - group: rbac.authorization.k8s.io
+                  interval: 5m
+                  mode: pull
+                  name: roles
+                - group: rbac.authorization.k8s.io
+                  interval: 5m
+                  mode: pull
+                  name: rolebindings
+                - group: rbac.authorization.k8s.io
+                  interval: 5m
+                  mode: pull
+                  name: clusterroles
+                - group: rbac.authorization.k8s.io
+                  interval: 5m
+                  mode: pull
+                  name: clusterrolebindings
+                - group: storage.k8s.io
+                  interval: 5m
+                  mode: pull
+                  name: storageclasses
+                - group: storage.k8s.io
+                  interval: 5m
+                  mode: pull
+                  name: volumeattachments
+                - group: autoscaling
+                  interval: 5m
+                  mode: pull
+                  name: horizontalpodautoscalers
+                - group: policy
+                  interval: 5m
+                  mode: pull
+                  name: poddisruptionbudgets
+                - group: apiextensions.k8s.io
+                  interval: 5m
+                  mode: pull
+                  name: customresourcedefinitions
+          service:
+            pipelines:
+              logs/events:
+                exporters:
+                  - debug
+                  - clickhouse/events
+                receivers:
+                  - k8sobjects/events
+              logs/objects:
+                exporters:
+                  - debug
+                  - clickhouse/objects
+                receivers:
+                  - k8sobjects/objects
+        envFrom:
+          - secretRef:
+              name: user-default-credentials
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0@sha256:6f38985d3000d56cac17c5ad8c4f777ac74cebdf3592196f39b0f78b0ab1f7f7
+        mode: deployment
+        observability:
+          metrics:
+            enableMetrics: true
+        serviceAccount: kubernetes
+    state: present
+
+- name: Wait for all OpenTelemetry Collectors to stabilize
+  kubernetes.core.k8s_info:
+    api_version: opentelemetry.io/v1beta1
+    kind: OpenTelemetryCollector
+    namespace: "{{ tools_namespace_itbench_observability }}"
+    wait: true
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready
+
+- name: Create HTTPRoute for Jaeger
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: jaeger
+        namespace: "{{ tools_namespace_itbench_observability }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_gateway }}"
+            namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
+        rules:
+          - backendRefs:
+              - name: jaeger-collector
+                port: 16686
+            filters:
+              - responseHeaderModifier:
+                  add: "{{ tools_response_headers_http }}"
+                type: ResponseHeaderModifier
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /observability/jaeger/
+    state: present

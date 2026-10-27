@@ -152,7 +152,7 @@ def _resolve_gateway_host(
             "Ensure the tools stack is fully deployed."
         )
     addr = addresses[0]
-    suffix = ":80" if addr.get("type") == "IPAddress" else ""
+    suffix = ":8080" if addr.get("type") == "IPAddress" else ""
     return f"http://{addr['value']}{suffix}"
 
 

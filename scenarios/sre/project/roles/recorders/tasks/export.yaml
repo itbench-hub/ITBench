@@ -8,41 +8,6 @@
       kubeconfig: "{{ recorders_cluster.kubeconfig }}"
       platform: "{{ recorders_cluster.platform }}"
 
-- name: Retrieve Service for Prometheus
-  kubernetes.core.k8s_info:
-    api_version: v1
-    kind: Service
-    name: prometheus-k8s
-    namespace: openshift-monitoring
-  register: tools_thanos_service
-
-- name: Validate that Prometheus service exists
-  ansible.builtin.assert:
-    fail_msg: Prometheus service not found. Please verify that Prometheus was successfully installed.
-    success_msg: Prometheus service found.
-    that:
-      - tools_thanos_service.api_found
-      - tools_thanos_service.resources | ansible.builtin.length == 1
-
-- name: Create Prometheus in-cluster endpoints
-  ansible.builtin.set_fact:
-    tools_prometheus_endpoint:
-      http: |-
-        {{
-          "https://" +
-          (
-            [
-              tools_thanos_service.resources[0].metadata.name,
-              tools_thanos_service.resources[0].metadata.namespace,
-              "svc",
-              "cluster",
-              "local"
-            ] |
-            ansible.builtin.join(".")
-          ) +
-          ":9091"
-        }}
-
 - name: Import Clickhouse Recorder export tasks
   ansible.builtin.import_tasks:
     file: export_clickhouse_records.yaml

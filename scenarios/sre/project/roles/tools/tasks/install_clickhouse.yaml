@@ -1,8 +1,295 @@
 ---
-- name: Import Clickhouse Operator installation tasks
-  ansible.builtin.import_tasks:
-    file: install_clickhouse_operator.yaml
+- name: Install Alinity Clickhouse Operator
+  kubernetes.core.helm:
+    chart_ref: "oci://ghcr.io/altinity/clickhouse-operator-helm-chart/altinity-clickhouse-operator"
+    chart_version: "0.27.4"
+    release_name: "{{ tools_helm_release_alinity_clickhouse_operator }}"
+    release_namespace: "{{ tools_namespace_itbench_observability }}"
+    release_state: present
+    release_values:
+      serviceMonitor:
+        enabled: true
+    timeout: 10m0s
+    wait: true
 
-- name: Import Clickhouse Instance installation tasks
-  ansible.builtin.import_tasks:
-    file: install_clickhouse_instances.yaml
+- name: Create Secret for Clickhouse installation default user
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: user-default-credentials
+        namespace: "{{ tools_namespace_itbench_observability }}"
+      stringData:
+        password: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_letters,digits length=32') }}" # pragma: allowlist secret
+        user: default
+      type: Opaque
+    state: present
+
+- name: Create Clickhouse Installation
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: clickhouse.altinity.com/v1
+      kind: ClickHouseInstallation
+      metadata:
+        labels:
+          "app.kubernetes.io/name": clickhouse
+          app.kubernetes.io/version: 26.3.33.10001
+        name: main
+        namespace: "{{ tools_namespace_itbench_observability }}"
+      spec:
+        configuration:
+          clusters:
+            - layout:
+                replicasCount: 1
+                shardsCount: 1
+              name: main
+          profiles:
+            default/allow_experimental_time_series_table: 1
+            default/http_connection_timeout: 30
+          settings:
+            prometheus/asynchronous_metrics: "true"
+            prometheus/endpoint: "/metrics"
+            prometheus/errors: "true"
+            prometheus/events: "true"
+            prometheus/handlers/metrics_exporter/handler/type: "expose_metrics"
+            prometheus/handlers/metrics_exporter/url: "/metrics"
+            prometheus/handlers/remote_write_rule/handler/database: "prometheus"
+            prometheus/handlers/remote_write_rule/handler/table: "metrics"
+            prometheus/handlers/remote_write_rule/handler/type: "remote_write"
+            prometheus/handlers/remote_write_rule/url: "/write"
+            prometheus/metrics: "true"
+            prometheus/port: 9363
+          users:
+            default/access_management: 1
+            default/named_collection_control: 1
+            default/networks/ip: 0.0.0.0/0
+            default/password:
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: user-default-credentials
+            default/show_named_collections: 1
+            default/show_named_collections_secrets: 1
+        defaults:
+          templates:
+            dataVolumeClaimTemplate: data-volume-template
+            podTemplate: pod-template
+            serviceTemplate: service-template
+        templates:
+          podTemplates:
+            - metadata:
+                labels:
+                  "app.kubernetes.io/name": clickhouse
+                  app.kubernetes.io/version: 26.3.33.10001
+              name: pod-template
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                        - matchExpressions:
+                            - key: node-role.itbench.io/sandbox
+                              operator: DoesNotExist
+                containers:
+                  - image: altinity/clickhouse-server:26.3.33.10001.altinitystable@sha256:5bd62b50208bae1d065de7685b0b0a1812f267d1a179aabb15f97c78aed47d1a
+                    imagePullPolicy: IfNotPresent
+                    name: clickhouse
+                    ports:
+                      - containerPort: 8123
+                        name: http
+                      - containerPort: 9000
+                        name: tcp
+                      - containerPort: 9363
+                        name: prometheus
+                    resources:
+                      limits:
+                        memory: 6Gi
+                      requests:
+                        cpu: 100m
+                        memory: 2Gi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop:
+                          - ALL
+                securityContext:
+                  fsGroup: 101
+                  runAsGroup: 101
+                  runAsNonRoot: true
+                  runAsUser: 101
+                  seccompProfile:
+                    type: RuntimeDefault
+          serviceTemplates:
+            - metadata:
+                labels:
+                  "app.kubernetes.io/name": clickhouse
+                  app.kubernetes.io/version: 26.3.33.10001
+              name: service-template
+              spec:
+                ports:
+                  - name: http
+                    port: 8123
+                    targetPort: 8123
+                  - name: tcp
+                    port: 9000
+                    targetPort: 9000
+                  - name: prometheus
+                    port: 9363
+                    targetPort: 9363
+                selector:
+                  "app.kubernetes.io/name": clickhouse
+                type: ClusterIP
+          volumeClaimTemplates:
+            - name: data-volume-template
+              reclaimPolicy: Retain
+              spec:
+                accessModes:
+                  - ReadWriteOnce
+                resources:
+                  requests:
+                    storage: 10Gi
+    state: present
+
+- name: Wait for Clickhouse installation to complete
+  delay: 30
+  kubernetes.core.k8s_info:
+    api_version: clickhouse.altinity.com/v1
+    kind: ClickHouseInstallation
+    name: main
+    namespace: "{{ tools_namespace_itbench_observability }}"
+  register: tools_chi
+  retries: 10
+  until:
+    - tools_chi.resources[0].status is ansible.builtin.defined
+    - tools_chi.resources[0].status.status is ansible.builtin.defined
+    - tools_chi.resources[0].status.status == 'Completed'
+
+- name: Create Job for Clickhouse database initialization
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        labels:
+          "app.kubernetes.io/name": clickhouse-init
+        name: clickhouse-init
+        namespace: "{{ tools_namespace_itbench_observability }}"
+      spec:
+        backoffLimit: 5
+        template:
+          metadata:
+            labels:
+              "app.kubernetes.io/name": clickhouse-init
+          spec:
+            affinity:
+              nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.itbench.io/sandbox
+                          operator: DoesNotExist
+            containers:
+              - args:
+                  - >-
+                    clickhouse-client
+                    --host "$CLICKHOUSE_HOST"
+                    --user "$CLICKHOUSE_USER"
+                    --password "$CLICKHOUSE_PASSWORD"
+                    --multiquery
+                    --query "
+                      CREATE DATABASE IF NOT EXISTS prometheus;
+                      CREATE TABLE IF NOT EXISTS prometheus.metrics ENGINE = TimeSeries;
+                      CREATE DATABASE IF NOT EXISTS jaeger;
+                    "
+                command:
+                  - /bin/sh
+                  - -c
+                env:
+                  - name: CLICKHOUSE_HOST
+                    value: clickhouse-main
+                  - name: CLICKHOUSE_USER
+                    valueFrom:
+                      secretKeyRef:
+                        key: user
+                        name: user-default-credentials
+                  - name: CLICKHOUSE_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        key: password
+                        name: user-default-credentials
+                image: altinity/clickhouse-server:26.3.33.10001.altinitystable@sha256:5bd62b50208bae1d065de7685b0b0a1812f267d1a179aabb15f97c78aed47d1a
+                imagePullPolicy: IfNotPresent
+                name: init
+                resources:
+                  limits:
+                    memory: 256Mi
+                  requests:
+                    cpu: 50m
+                    memory: 128Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+            restartPolicy: Never
+            securityContext:
+              runAsGroup: 101
+              runAsNonRoot: true
+              runAsUser: 101
+              seccompProfile:
+                type: RuntimeDefault
+    state: present
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Complete
+    wait_timeout: 600
+
+- name: Create ServiceMonitor for Clickhouse Installation
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: main
+        namespace: "{{ tools_namespace_itbench_observability }}"
+      spec:
+        endpoints:
+          - interval: 30s
+            port: prometheus
+        selector:
+          matchLabels:
+            "app.kubernetes.io/name": clickhouse
+    state: present
+
+- name: Create HTTPRoute for Clickhouse
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: clickhouse
+        namespace: "{{ tools_namespace_itbench_observability }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_gateway }}"
+            namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
+        rules:
+          - backendRefs:
+              - name: clickhouse-main
+                port: 8123
+            filters:
+              - responseHeaderModifier:
+                  add: "{{ tools_response_headers_http }}"
+                type: ResponseHeaderModifier
+              - type: URLRewrite
+                urlRewrite:
+                  path:
+                    replacePrefixMatch: /
+                    type: ReplacePrefixMatch
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /observability/clickhouse/
+    state: present

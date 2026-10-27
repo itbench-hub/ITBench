@@ -1,8 +1,24 @@
 ---
-- name: Import Clickhouse Instance uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_clickhouse_instances.yaml
+- name: Check for existence of ClickHouseInstallation resource
+  kubernetes.core.k8s_info:
+    api_version: clickhouse.altinity.com/v1
+    kind: ClickHouseInstallation
+  register: tools_clickhouse_installation_resource
 
-- name: Import Clickhouse Operator uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_clickhouse_operator.yaml
+- name: Delete Clickhouse Installations
+  kubernetes.core.k8s:
+    api_version: clickhouse.altinity.com/v1
+    delete_all: true
+    kind: ClickHouseInstallation
+    namespace: "{{ tools_namespace_itbench_observability }}"
+    state: absent
+    wait: true
+  when:
+    - tools_clickhouse_installation_resource.api_found
+
+- name: Uninstall Clickhouse Operator Helm release
+  kubernetes.core.helm:
+    release_name: "{{ tools_helm_release_alinity_clickhouse_operator }}"
+    release_namespace: "{{ tools_namespace_itbench_observability }}"
+    release_state: absent
+    wait: true

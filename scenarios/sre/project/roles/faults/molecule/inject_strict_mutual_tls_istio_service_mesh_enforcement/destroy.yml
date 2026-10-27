@@ -3,31 +3,6 @@
   hosts:
     - localhost
   tasks:
-    - name: Delete test namespace
-      kubernetes.core.k8s:
-        resource_definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: strict-mtls-test
-        state: absent
-        wait: true
-
-    - name: Uninstall Istio Base (CRDs)
-      kubernetes.core.helm:
-        release_name: istio-base
-        release_namespace: istio-system
-        release_state: absent
-        wait: true
-
-    - name: Delete Istio namespace
-      kubernetes.core.k8s:
-        resource_definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            name: istio-system
-
     - name: Import cluster role
       ansible.builtin.import_role:
         name: cluster
@@ -38,7 +13,7 @@
     - name: Import tools role
       ansible.builtin.import_role:
         name: tools
-        tasks_from: remove_custom_resource_definitions.yaml
+        tasks_from: uninstall.yaml
       vars:
         tools_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
