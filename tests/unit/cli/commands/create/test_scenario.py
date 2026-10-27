@@ -71,7 +71,10 @@ def test_create_scenario_command_success(tmp_path: Path) -> None:
     runner = CliRunner()
     scenarios_dir = tmp_path / "scenarios"
     first_app_id = next(iter(APPLICATION_CATALOG.keys()))
-    first_fault_id = next(iter(FAULT_CATALOG.keys()))
+    # TODO: Pick a fault that is guaranteed to have targets so the confirm sequence is deterministic.
+    fault_id_with_targets = next(
+        fid for fid, f in FAULT_CATALOG.items() if f.targets
+    )
 
     with (
         patch("questionary.checkbox") as mock_checkbox,
@@ -83,23 +86,23 @@ def test_create_scenario_command_success(tmp_path: Path) -> None:
     ):
         mock_checkbox.return_value.ask.return_value = [first_app_id]
         mock_select.side_effect = [
-            MagicMock(ask=MagicMock(return_value="sre")),  # tools domain
-            MagicMock(ask=MagicMock(return_value="Deployment")),  # target kind
+            MagicMock(ask=MagicMock(return_value="sre")),        # domain
+            MagicMock(ask=MagicMock(return_value="Deployment")), # target kind
         ]
         mock_autocomplete.side_effect = [
-            MagicMock(ask=MagicMock(return_value=first_fault_id)),  # fault injection 1
+            MagicMock(ask=MagicMock(return_value=fault_id_with_targets)),
         ]
         mock_text.side_effect = [
             MagicMock(ask=MagicMock(return_value="app-deployment")),  # target name
-            MagicMock(ask=MagicMock(return_value="default")),  # target namespace
-            MagicMock(ask=MagicMock(return_value="replicas")),  # extra var key
-            MagicMock(ask=MagicMock(return_value="3")),  # extra var value
+            MagicMock(ask=MagicMock(return_value="default")),         # target namespace
+            MagicMock(ask=MagicMock(return_value="replicas")),        # extra var key
+            MagicMock(ask=MagicMock(return_value="3")),               # extra var value
         ]
         mock_confirm.side_effect = [
             MagicMock(ask=MagicMock(return_value=False)),  # no extra target for this injection
             MagicMock(ask=MagicMock(return_value=False)),  # no extra injection in block
             MagicMock(ask=MagicMock(return_value=False)),  # no extra fault blocks
-            MagicMock(ask=MagicMock(return_value=True)),  # add extra_vars
+            MagicMock(ask=MagicMock(return_value=True)),   # yes, add extra_variables
             MagicMock(ask=MagicMock(return_value=False)),  # no extra variable
         ]
         mock_gt.return_value = scenarios_dir / "1" / "ground_truth.yaml"

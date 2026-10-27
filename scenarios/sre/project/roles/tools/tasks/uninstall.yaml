@@ -51,6 +51,10 @@
     release_state: absent
     wait: true
 
+- name: Import Custom Resource Definition removal tasks
+  ansible.builtin.import_tasks:
+    file: uninstall_custom_resource_definitions.yaml
+
 - name: Delete all OpenShift Operators
   when:
     - tools_cluster.platform == "openshift"
@@ -60,28 +64,16 @@
         api_version: operators.coreos.com/v1alpha1
         kind: Subscription
         label_selectors:
-          - "itbench.io/layer={{ layer.name }}"
-      loop:
-        - name: infrastructure
-        - name: networking
-        - name: observability
-      loop_control:
-        label: layer/{{ layer.name }}
-        loop_var: layer
+          - "itbench.io/ansible-role=tools"
       register: tools_openshift_subscriptions
 
     - name: Delete all ITBench related OpenShift Subscriptions
       kubernetes.core.k8s:
-        resource_definition: >-
-          {{
-            tools_openshift_subscriptions.results |
-            map(attribute='resources') |
-            ansible.builtin.flatten(1)
-          }}
+        resource_definition: "{{ tools_openshift_subscriptions.resources }}"
         state: absent
         wait: true
       when:
-        - tools_openshift_subscriptions.results | ansible.builtin.length > 0
+        - tools_openshift_subscriptions.resources | ansible.builtin.length > 0
 
     - name: Delete all ITBench related OpenShift ClusterServiceVersions
       kubernetes.core.k8s:
@@ -95,21 +87,28 @@
         wait: true
       loop: >-
         {{
-          tools_openshift_subscriptions.results |
-          map(attribute='resources') |
-          ansible.builtin.flatten(1) |
+          tools_openshift_subscriptions.resources |
           ansible.builtin.selectattr("status.currentCSV", "ansible.builtin.defined")
         }}
       loop_control:
         label: clusterserviceversion/{{ subscription.status.currentCSV }}
         loop_var: subscription
 
-- name: Delete ClusterRoleBindings for recorders
+- name: Delete ITBench related ClusterRoleBindings
   kubernetes.core.k8s:
     api_version: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
     label_selectors:
-      - "itbench.io/layer=infrastructure"
+      - "itbench.io/ansible-role=tools"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related ClusterRoles
+  kubernetes.core.k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    label_selectors:
+      - "itbench.io/ansible-role=tools"
     state: absent
     wait: true
 
@@ -119,18 +118,6 @@
     delete_all: true
     kind: Namespace
     label_selectors:
-      - "itbench.io/layer={{ layer.name }}"
+      - "itbench.io/ansible-role=tools"
     state: absent
     wait: true
-  loop:
-    - name: infrastructure
-    - name: governance
-    - name: networking
-    - name: observability
-  loop_control:
-    label: layer/{{ layer.name }}
-    loop_var: layer
-
-- name: Import Custom Resource Definition removal tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_custom_resource_definitions.yaml

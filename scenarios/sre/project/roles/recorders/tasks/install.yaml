@@ -22,6 +22,8 @@
       kind: Namespace
       metadata:
         labels:
+          "itbench.io/ansible-role": recorders
+          "itbench.io/inject": "false"
           "itbench.io/layer": data
         name: "{{ recorders_namespace }}"
     state: present
@@ -32,11 +34,6 @@
       apiVersion: v1
       kind: Secret
       metadata:
-        labels:
-          "app.kubernetes.io/component": data-collector
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": clickhouse-credentials
-          "app.kubernetes.io/part-of": itbench
         name: clickhouse-credentials
         namespace: "{{ recorders_namespace }}"
       type: Opaque
@@ -51,11 +48,6 @@
       apiVersion: v1
       kind: ServiceAccount
       metadata:
-        labels:
-          "app.kubernetes.io/component": data-collector
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": kubernetes-topology
-          "app.kubernetes.io/part-of": itbench
         name: kubernetes-topology
         namespace: "{{ recorders_namespace }}"
     state: present
@@ -67,10 +59,7 @@
       kind: ClusterRole
       metadata:
         labels:
-          "app.kubernetes.io/component": data-collector
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": kubernetes-topology
-          "app.kubernetes.io/part-of": itbench
+          "itbench.io/ansible-role": recorders
           "itbench.io/layer": data
         name: kubernetes-topology
       rules:
@@ -148,10 +137,7 @@
       kind: ClusterRoleBinding
       metadata:
         labels:
-          "app.kubernetes.io/component": data-collector
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": kubernetes-topology
-          "app.kubernetes.io/part-of": itbench
+          "itbench.io/ansible-role": recorders
           "itbench.io/layer": data
         name: kubernetes-topology
       roleRef:
@@ -178,11 +164,6 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        labels:
-          "app.kubernetes.io/component": data-collector
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": kubernetes-topology
-          "app.kubernetes.io/part-of": itbench
         name: kubernetes-topology
         namespace: "{{ recorders_namespace }}"
       spec:
@@ -451,13 +432,6 @@
               "app.kubernetes.io/name": itbench-topology-writer
               "app.kubernetes.io/part-of": itbench
           spec:
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.itbench.io/sandbox
-                          operator: DoesNotExist
             containers:
               - env:
                   - name: CLICKHOUSE_HOST

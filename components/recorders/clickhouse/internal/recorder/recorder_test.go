@@ -53,7 +53,7 @@ func TestRun(t *testing.T) {
 		"raw/k8s_topology_objects_raw.tsv",
 		"raw/k8s_objects_raw.tsv",
 		"raw/otel_logs_raw.tsv",
-		"raw/otel_traces_raw.tsv",
+		"raw/jaeger_spans_raw.tsv",
 	} {
 		assertFile(t, outDir, f)
 	}
@@ -63,7 +63,7 @@ func TestRun(t *testing.T) {
 		"lite/k8s_events.tsv",
 		"lite/k8s_objects.tsv",
 		"lite/otel_logs.tsv",
-		"lite/otel_traces.tsv",
+		"lite/jaeger_spans.tsv",
 	} {
 		assertFile(t, outDir, f)
 	}

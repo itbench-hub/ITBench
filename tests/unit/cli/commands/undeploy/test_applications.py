@@ -19,7 +19,7 @@ def test_undeploy_applications_success() -> None:
     assert "undeployed successfully" in result.output
     _, kwargs = mock_run.call_args
     assert kwargs["playbook"] == "manage_applications.yaml"
-    assert "uninstall_applications" in kwargs["tags"]
+    assert "uninstall" in kwargs["tags"]
     assert kwargs["extra_vars"]["cluster"]["kubeconfig"] == "/kube.conf"
 
 

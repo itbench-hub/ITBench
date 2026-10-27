@@ -39,13 +39,9 @@
   ansible.builtin.import_tasks:
     file: install_kyverno.yaml
 
-- name: Install infrastructure tools
-  when:
-    - tools_infrastructure_enabled
-  block:
-    - name: Import cert-manager installation tasks
-      ansible.builtin.import_tasks:
-        file: install_cert_manager.yaml
+- name: Import cert-manager installation tasks
+  ansible.builtin.import_tasks:
+    file: install_cert_manager.yaml
 
 - name: Install Kubernetes Metrics Server
   kubernetes.core.helm:
@@ -59,7 +55,7 @@
       apiService:
         insecureSkipTLSVerify: false
       tls:
-        type: "{{ 'cert-manager' if tools_infrastructure_enabled else 'helm' }}"
+        type: cert-manager
     timeout: 10m0s
     wait: true
   when:

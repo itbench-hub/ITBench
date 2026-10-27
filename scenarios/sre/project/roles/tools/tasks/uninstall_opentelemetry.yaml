@@ -16,31 +16,11 @@
   when:
     - tools_opentelemetry_collector_resource.api_found
 
-- name: Delete all OpenTelemetry Collector related ClusterRoleBinding
-  kubernetes.core.k8s:
-    api_version: rbac.authorization.k8s.io/v1
-    delete_all: true
-    kind: ClusterRoleBinding
-    label_selectors:
-      - "app.kubernetes.io/component=opentelemetry-collector"
-      - "app.kubernetes.io/managed-by=ITBench"
-    state: absent
-    wait: true
-
-- name: Delete all OpenTelemetry Collector related ClusterRole
-  kubernetes.core.k8s:
-    api_version: rbac.authorization.k8s.io/v1
-    delete_all: true
-    kind: ClusterRole
-    label_selectors:
-      - "app.kubernetes.io/component=opentelemetry-collector"
-      - "app.kubernetes.io/managed-by=ITBench"
-    state: absent
-    wait: true
-
 - name: Uninstall OpenTelemetry Operator on Kubernetes
   kubernetes.core.helm:
     release_name: "{{ tools_helm_release_opentelemetry_operator }}"
     release_namespace: "{{ tools_namespace_itbench_observability }}"
     release_state: absent
     wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"

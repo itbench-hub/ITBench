@@ -21,7 +21,7 @@ def discover_workloads(app_id: str | None = None) -> dict[str, list[KubernetesOb
     """Run the discovery playbook and return workloads grouped by application id."""
     run_playbook(
         playbook="discover_applications.yaml",
-        tags=["discover_applications"],
+        tags=["discover"],
     )
     return _parse_discovery_dir(app_id=app_id)
 

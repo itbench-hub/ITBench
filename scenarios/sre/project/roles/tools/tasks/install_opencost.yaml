@@ -1,49 +1,27 @@
 ---
-- name: Create ServiceAccount for OpenCost
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: v1
-      kind: ServiceAccount
-      metadata:
-        labels:
-          "app.kubernetes.io/component": opencost
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": opencost
-          "app.kubernetes.io/part-of": opencost
-        name: opencost
-        namespace: "{{ tools_namespace_itbench_observability }}"
-    state: present
+- name: Import Prometheus endpoint variable setting tasks
+  ansible.builtin.import_tasks:
+    file: set_internal_endpoints_prometheus.yaml
 
-- name: Create ClusterRoleBinding for Prometheus recorder
+- name: Create ClusterRoleBinding for OpenCost
   kubernetes.core.k8s:
     resource_definition:
       apiVersion: rbac.authorization.k8s.io/v1
       kind: ClusterRoleBinding
       metadata:
         labels:
-          "app.kubernetes.io/component": opencost
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": opencost
-          "app.kubernetes.io/part-of": opencost
+          "itbench.io/ansible-role": tools
           "itbench.io/layer": infrastructure
-        name: opencost
+        name: opencost-prometheus
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
-        name: monitoring-alertmanager-api-reader
+        name: "{{ 'monitoring-alertmanager-api-reader' if tools_cluster.platform == 'openshift' else 'monitoring-prometheus-api-reader' }}"
       subjects:
         - kind: ServiceAccount
           name: opencost
           namespace: "{{ tools_namespace_itbench_observability }}"
     state: present
-  when:
-    - tools_cluster.platform == "openshift"
-
-- name: Import Prometheus endpoint variable setting tasks
-  ansible.builtin.import_tasks:
-    file: set_internal_endpoints_prometheus.yaml
-  when:
-    - tools_prometheus_endpoint.http is ansible.builtin.undefined
 
 - name: Install OpenCost
   kubernetes.core.helm:
@@ -52,8 +30,7 @@
     release_name: "{{ tools_helm_release_opencost }}"
     release_namespace: "{{ tools_namespace_itbench_observability }}"
     release_state: present
-    timeout: 10m0s
-    values:
+    release_values:
       opencost:
         customPricing:
           costModel:
@@ -80,16 +57,37 @@
           openshift:
             enabled: "{{ tools_cluster.platform == 'openshift' }}"
         prometheus:
-          bearer_token: "{{ tools_prometheus_bearer_token | default(omit) }}"
-          external:
-            enabled: true
-            url: "{{ tools_prometheus_endpoint.http }}"
-          insecureSkipVerify: "{{ tools_cluster.platform == 'openshift' }}"
+          insecureSkipVerify: true
           internal:
-            enabled: false
-      serviceAccount:
-        create: false
-        name: opencost
+            enabled: true
+            namespaceName: >-
+              {{
+                (tools_cluster.platform == "openshift") |
+                ansible.builtin.ternary(
+                  tools_namespace_openshift_monitoring,
+                  tools_namespace_itbench_observability
+                )
+              }}
+            path: "{{ '' if tools_cluster.platform == 'openshift' else '/observability/prometheus' }}"
+            port: 8443
+            scheme: https
+            serviceName: >-
+              {{
+                (tools_cluster.platform == "openshift") |
+                ansible.builtin.ternary(
+                  "prometheus-k8s",
+                  tools_helm_release_kube_prometheus_stack ~ "-prometheus"
+                )
+              }}
+          kubeRBACProxy: true
+        thanos:
+          enabled: "{{ tools_cluster.platform == 'openshift' }}"
+          internal:
+            namespaceName: "{{ tools_namespace_openshift_monitoring }}"
+            port: 9091
+            scheme: https
+            serviceName: thanos-querier
+    timeout: 10m0s
     wait: true
 
 - name: Create HTTPRoute for OpenCost

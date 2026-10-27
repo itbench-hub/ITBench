@@ -1,82 +1,90 @@
 ---
-- name: Check for existence of ZTunnel resource
-  kubernetes.core.k8s_info:
-    api_version: sailoperator.io/v1alpha1
-    kind: ZTunnel
-  register: tools_ztunnel_resource
-
-- name: Delete ITBench infrastructure ZTunnels
-  kubernetes.core.k8s:
-    api_version: sailoperator.io/v1alpha1
-    delete_all: true
-    kind: ZTunnel
-    label_selectors:
-      - "itbench.io/layer=networking"
-    state: absent
-    wait: true
+- name: Uninstall Istio resources on OpenShift
   when:
-    - tools_ztunnel_resource.api_found
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Check for existence of ZTunnel resource
+      kubernetes.core.k8s_info:
+        api_version: sailoperator.io/v1alpha1
+        kind: ZTunnel
+      register: tools_ztunnel_resource
 
-- name: Check for existence of IstioCNI resource
-  kubernetes.core.k8s_info:
-    api_version: sailoperator.io/v1
-    kind: IstioCNI
-  register: tools_istiocni_resource
+    - name: Delete ITBench infrastructure ZTunnels
+      kubernetes.core.k8s:
+        api_version: sailoperator.io/v1alpha1
+        delete_all: true
+        kind: ZTunnel
+        label_selectors:
+          - "itbench.io/ansible-role=tools"
+        state: absent
+        wait: true
+      when:
+        - tools_ztunnel_resource.api_found
 
-- name: Delete ITBench infrastructure IstioCNIs
-  kubernetes.core.k8s:
-    api_version: sailoperator.io/v1
-    delete_all: true
-    kind: IstioCNI
-    label_selectors:
-      - "itbench.io/layer=networking"
-    state: absent
-    wait: true
+    - name: Check for existence of IstioCNI resource
+      kubernetes.core.k8s_info:
+        api_version: sailoperator.io/v1
+        kind: IstioCNI
+      register: tools_istiocni_resource
+
+    - name: Delete ITBench infrastructure IstioCNIs
+      kubernetes.core.k8s:
+        api_version: sailoperator.io/v1
+        delete_all: true
+        kind: IstioCNI
+        label_selectors:
+          - "itbench.io/ansible-role=tools"
+        state: absent
+        wait: true
+      when:
+        - tools_istiocni_resource.api_found
+
+    - name: Check for existence of Istio resource
+      kubernetes.core.k8s_info:
+        api_version: sailoperator.io/v1
+        kind: Istio
+      register: tools_istio_resource
+
+    - name: Delete ITBench infrastructure Istios
+      kubernetes.core.k8s:
+        api_version: sailoperator.io/v1
+        delete_all: true
+        kind: Istio
+        label_selectors:
+          - "itbench.io/ansible-role=tools"
+        state: absent
+        wait: true
+      when:
+        - tools_istio_resource.api_found
+
+- name: Uninstall Istio resources on Kubernetes
   when:
-    - tools_istiocni_resource.api_found
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Uninstall Istio ZTunnel Helm release
+      kubernetes.core.helm:
+        release_name: "{{ tools_helm_release_istio_ztunnel }}"
+        release_namespace: "{{ tools_namespace_istio_ztunnel }}"
+        release_state: absent
+        wait: true
 
-- name: Check for existence of Istio resource
-  kubernetes.core.k8s_info:
-    api_version: sailoperator.io/v1
-    kind: Istio
-  register: tools_istio_resource
+    - name: Uninstall Istio CNI Node Agent Helm release
+      kubernetes.core.helm:
+        release_name: "{{ tools_helm_release_istio_cni }}"
+        release_namespace: "{{ tools_namespace_istio_cni }}"
+        release_state: absent
+        wait: true
 
-- name: Delete ITBench infrastructure Istios
-  kubernetes.core.k8s:
-    api_version: sailoperator.io/v1
-    delete_all: true
-    kind: Istio
-    label_selectors:
-      - "itbench.io/layer=networking"
-    state: absent
-    wait: true
-  when:
-    - tools_istio_resource.api_found
+    - name: Uninstall Istiod Control Plane Helm release
+      kubernetes.core.helm:
+        release_name: "{{ tools_helm_release_istio_istiod }}"
+        release_namespace: "{{ tools_namespace_istio_istiod }}"
+        release_state: absent
+        wait: true
 
-- name: Uninstall Istio ZTunnel Helm release
-  kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_istio_ztunnel }}"
-    release_namespace: "{{ tools_namespace_istio_ztunnel }}"
-    release_state: absent
-    wait: true
-
-- name: Uninstall Istio CNI Node Agent Helm release
-  kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_istio_cni }}"
-    release_namespace: "{{ tools_namespace_istio_cni }}"
-    release_state: absent
-    wait: true
-
-- name: Uninstall Istiod Control Plane Helm release
-  kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_istio_istiod }}"
-    release_namespace: "{{ tools_namespace_istio_istiod }}"
-    release_state: absent
-    wait: true
-
-- name: Uninstall Istio Base (CRDs) Helm release
-  kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_istio_base }}"
-    release_namespace: "{{ tools_namespace_istio }}"
-    release_state: absent
-    wait: true
+    - name: Uninstall Istio Base (CRDs) Helm release
+      kubernetes.core.helm:
+        release_name: "{{ tools_helm_release_istio_base }}"
+        release_namespace: "{{ tools_namespace_istio }}"
+        release_state: absent
+        wait: true

@@ -1,6 +1,7 @@
 """Deploy tools command for ITBench."""
 
 import json
+import sys
 import uuid
 
 from pathlib import Path
@@ -15,7 +16,7 @@ from itbench.utils.runner import run_playbook
 
 console = Console()
 
-_LIBRARY_ROOT = Path(__file__).parents[6] / "library"
+_LIBRARY_ROOT = Path(__file__).parents[5] / "library"
 
 _DEFAULTS_DIR = (
     Path(__file__).parents[5]
@@ -54,8 +55,16 @@ def _extra_vars_from_scenario(scenario_path: Path) -> dict:
 
 
 def _extra_vars_from_wizard() -> dict:
-    """Interactively build extra_vars via Questionary prompts, pre-filled from role defaults."""
+    """Interactively build extra_vars via Questionary prompts, pre-filled from role defaults.
+
+    When stdin is not a TTY (e.g. CI), skips prompts and returns the role defaults as-is so
+    the playbook's own variable precedence applies.
+    """
     defaults = _load_role_defaults()
+
+    if not sys.stdin.isatty():
+        return dict(defaults)
+
     extra_vars = dict(defaults)
 
     extra_vars["tools_gateway_enabled"] = bool(
@@ -130,7 +139,7 @@ def deploy_tools(scenario_id: str | None, kubeconfig: str) -> None:
             run_playbook(
                 playbook="manage_tools.yaml",
                 extra_vars=extra_vars,
-                tags=["install_tools"],
+                tags=["install"],
                 run_id=run_id,
             )
         except RuntimeError as exc:

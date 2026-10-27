@@ -21,8 +21,8 @@
         name: user-default-credentials
         namespace: "{{ tools_namespace_itbench_observability }}"
       stringData:
-        password: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_letters,digits length=32') }}" # pragma: allowlist secret
-        user: default
+        CLICKHOUSE_PASSWORD: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_letters,digits length=32') }}" # pragma: allowlist secret
+        CLICKHOUSE_USER: default
       type: Opaque
     state: present
 
@@ -67,7 +67,7 @@
             default/password:
               valueFrom:
                 secretKeyRef:
-                  key: password
+                  key: CLICKHOUSE_PASSWORD
                   name: user-default-credentials
             default/show_named_collections: 1
             default/show_named_collections_secrets: 1
@@ -182,13 +182,6 @@
             labels:
               "app.kubernetes.io/name": clickhouse-init
           spec:
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.itbench.io/sandbox
-                          operator: DoesNotExist
             containers:
               - args:
                   - >-
@@ -211,12 +204,12 @@
                   - name: CLICKHOUSE_USER
                     valueFrom:
                       secretKeyRef:
-                        key: user
+                        key: CLICKHOUSE_USER
                         name: user-default-credentials
                   - name: CLICKHOUSE_PASSWORD
                     valueFrom:
                       secretKeyRef:
-                        key: password
+                        key: CLICKHOUSE_PASSWORD
                         name: user-default-credentials
                 image: altinity/clickhouse-server:26.3.33.10001.altinitystable@sha256:5bd62b50208bae1d065de7685b0b0a1812f267d1a179aabb15f97c78aed47d1a
                 imagePullPolicy: IfNotPresent

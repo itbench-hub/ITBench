@@ -76,8 +76,10 @@ def test_extra_vars_from_wizard_builds_vars() -> None:
 
     with (
         patch("itbench.cli.commands.deploy.tools._load_role_defaults", return_value=defaults),
+        patch("itbench.cli.commands.deploy.tools.sys.stdin") as mock_stdin,
         patch("questionary.confirm") as mock_confirm,
     ):
+        mock_stdin.isatty.return_value = True
         mock_confirm.side_effect = [
             MagicMock(ask=MagicMock(return_value=True)),   # gateway
             MagicMock(ask=MagicMock(return_value=True)),   # observability
@@ -93,11 +95,33 @@ def test_extra_vars_from_wizard_builds_vars() -> None:
     assert result["tools_infrastructure_enabled"] is False
 
 
+def test_extra_vars_from_wizard_non_tty_returns_defaults() -> None:
+    defaults = {
+        "tools_gateway_enabled": False,
+        "tools_observability_enabled": False,
+        "tools_service_mesh_enabled": False,
+        "tools_infrastructure_enabled": False,
+    }
+
+    with (
+        patch("itbench.cli.commands.deploy.tools._load_role_defaults", return_value=defaults),
+        patch("itbench.cli.commands.deploy.tools.sys.stdin") as mock_stdin,
+        patch("questionary.confirm") as mock_confirm,
+    ):
+        mock_stdin.isatty.return_value = False
+
+        result = _extra_vars_from_wizard()
+
+    mock_confirm.assert_not_called()
+    assert result == defaults
+
+
 # ---------------------------------------------------------------------------
 # deploy_tools command
 # ---------------------------------------------------------------------------
 
 def test_deploy_tools_success_no_scenario(tmp_path: Path) -> None:
+    """Without --scenario and non-TTY stdin, wizard skips prompts and uses role defaults."""
     runner = CliRunner()
     defaults = {
         "tools_gateway_enabled": False,
@@ -108,17 +132,9 @@ def test_deploy_tools_success_no_scenario(tmp_path: Path) -> None:
 
     with (
         patch("itbench.cli.commands.deploy.tools._load_role_defaults", return_value=defaults),
-        patch("questionary.confirm") as mock_confirm,
         patch("itbench.cli.commands.deploy.tools.run_playbook") as mock_run,
     ):
-        mock_confirm.side_effect = [
-            MagicMock(ask=MagicMock(return_value=False)),
-            MagicMock(ask=MagicMock(return_value=False)),
-            MagicMock(ask=MagicMock(return_value=False)),
-            MagicMock(ask=MagicMock(return_value=False)),
-        ]
         mock_run.return_value = MagicMock()
-
         result = runner.invoke(deploy_tools, ["--kubeconfig", "/kube.conf"])
 
     assert result.exit_code == 0
@@ -126,7 +142,7 @@ def test_deploy_tools_success_no_scenario(tmp_path: Path) -> None:
     mock_run.assert_called_once()
     _, kwargs = mock_run.call_args
     assert kwargs["playbook"] == "manage_tools.yaml"
-    assert "install_tools" in kwargs["tags"]
+    assert "install" in kwargs["tags"]
 
 
 def test_deploy_tools_with_scenario_id(tmp_path: Path) -> None:
@@ -172,10 +188,8 @@ def test_deploy_tools_playbook_failure(tmp_path: Path) -> None:
 
     with (
         patch("itbench.cli.commands.deploy.tools._load_role_defaults", return_value=defaults),
-        patch("questionary.confirm") as mock_confirm,
         patch("itbench.cli.commands.deploy.tools.run_playbook", side_effect=RuntimeError("bad")),
     ):
-        mock_confirm.side_effect = [MagicMock(ask=MagicMock(return_value=False))] * 4
         result = runner.invoke(deploy_tools, ["--kubeconfig", "/kube.conf"])
 
     assert result.exit_code == 1

@@ -5,11 +5,6 @@
       apiVersion: v1
       kind: ServiceAccount
       metadata:
-        labels:
-          "app.kubernetes.io/component": data-recorder
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": itbench-prometheus-alert-recorder
-          "app.kubernetes.io/part-of": itbench
         name: itbench-prometheus-alert-recorder
         namespace: "{{ recorders_namespace }}"
     state: present
@@ -21,23 +16,18 @@
       kind: ClusterRoleBinding
       metadata:
         labels:
-          "app.kubernetes.io/component": data-recorder
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": "{{ recorders_instance_prometheus_name }}-recorder"
-          "app.kubernetes.io/part-of": itbench
+          "itbench.io/ansible-role": recorders
           "itbench.io/layer": data
         name: "{{ recorders_instance_prometheus_name }}-recorder"
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
-        name: monitoring-alertmanager-api-reader
+        name: "{{ 'monitoring-alertmanager-api-reader' if recorders_cluster.platform == 'openshift' else 'monitoring-prometheus-api-reader' }}"
       subjects:
         - kind: ServiceAccount
           name: itbench-prometheus-alert-recorder
           namespace: "{{ recorders_namespace }}"
     state: present
-  when:
-    - recorders_cluster.platform == "openshift"
 
 - name: Create PersistentVolumeClaim for Prometheus Recorder
   kubernetes.core.k8s:
@@ -45,11 +35,6 @@
       apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        labels:
-          "app.kubernetes.io/component": data-recorder
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": "{{ recorders_instance_prometheus_name }}-records"
-          "app.kubernetes.io/part-of": itbench
         name: "{{ recorders_instance_prometheus_name }}-records"
         namespace: "{{ recorders_namespace }}"
       spec:
@@ -67,29 +52,11 @@
       apiVersion: batch/v1
       kind: Job
       metadata:
-        labels:
-          "app.kubernetes.io/component": data-recorder
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": itbench-prometheus-alert-recorder
-          "app.kubernetes.io/part-of": itbench
         name: itbench-prometheus-alert-recorder
         namespace: "{{ recorders_namespace }}"
       spec:
         template:
-          metadata:
-            labels:
-              "app.kubernetes.io/component": data-recorder
-              "app.kubernetes.io/managed-by": ansible
-              "app.kubernetes.io/name": itbench-prometheus-alert-recorder
-              "app.kubernetes.io/part-of": itbench
           spec:
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.itbench.io/sandbox
-                          operator: DoesNotExist
             containers:
               - env:
                   - name: OUTPUT_DIR

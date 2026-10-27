@@ -15,7 +15,7 @@ from itbench.utils.runner import run_playbook
 
 console = Console()
 
-_LIBRARY_ROOT = Path(__file__).parents[6] / "library"
+_LIBRARY_ROOT = Path(__file__).parents[5] / "library"
 
 _DEFAULTS_DIR = (
     Path(__file__).parents[5]
@@ -138,7 +138,7 @@ def deploy_applications(scenario_id: str | None, kubeconfig: str) -> None:
             run_playbook(
                 playbook="manage_applications.yaml",
                 extra_vars=extra_vars,
-                tags=["install_applications"],
+                tags=["install"],
                 run_id=run_id,
             )
         except RuntimeError as exc:

@@ -12,9 +12,11 @@
       kind: Namespace
       metadata:
         labels:
+          "itbench.io/ansible-role": applications
+          "itbench.io/inject": "true"
           "itbench.io/layer": application
+          "itbench.io/monitor": "true"
           "itbench.io/record": "true"
-          "prometheus.itbench.io/monitor": "true"
         name: "{{ applications_namespace_opentelemetry_demo }}"
     state: present
 
@@ -64,20 +66,6 @@
       kubeconfig: "{{ applications_cluster.kubeconfig }}"
       platform: "{{ applications_cluster.platform }}"
 
-- name: Create ServiceAccount for OpenTelemetry Demo
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: v1
-      kind: ServiceAccount
-      metadata:
-        labels:
-          "app.kubernetes.io/managed-by": ansible
-          "app.kubernetes.io/name": otel-demo
-          "app.kubernetes.io/part-of": opentelemetry-demo
-        name: otel-demo
-        namespace: "{{ applications_namespace_opentelemetry_demo }}"
-    state: present
-
 - name: Create RoleBinding for access to anyuid SecurityContextConstraint
   kubernetes.core.k8s:
     resource_definition:
@@ -92,7 +80,7 @@
         name: system:openshift:scc:anyuid
       subjects:
         - kind: ServiceAccount
-          name: otel-demo
+          name: "{{ applications_helm_release_opentelemetry_demo }}"
           namespace: "{{ applications_namespace_opentelemetry_demo }}"
     state: present
   when:
@@ -205,9 +193,6 @@
             - port: telemetry
       prometheus:
         enabled: false
-      serviceAccount:
-        create: false
-        name: "{{ applications_opentelemetry_demo_service_account.result.metadata.name }}"
     timeout: 10m0s
     wait: true
 
