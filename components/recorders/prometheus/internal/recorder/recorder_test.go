@@ -20,7 +20,8 @@ import (
 const image = "quay.io/prometheus/prometheus:v3.15.1@sha256:fa3302279710be2f21a8301ec17a8b4f2301fd829bd113839b3b6b02b6f191a2"
 
 // prometheusConfig is a minimal Prometheus configuration that defines one
-// alerting rule which fires immediately (expr: 1 == 1).
+// alerting rule which fires immediately (expr: 1 == 1), and scrapes itself with
+// pod and namespace labels so that the metrics export has a pod series to find.
 const prometheusConfig = `
 global:
   scrape_interval: 1s
@@ -28,6 +29,14 @@ global:
 
 rule_files:
   - /etc/prometheus/rules.yml
+
+scrape_configs:
+  - job_name: self
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          namespace: test-ns
+          pod: test-pod
 `
 
 const prometheusRules = `
@@ -80,24 +89,39 @@ func TestRun(t *testing.T) {
 		t.Fatalf("alert did not fire: %v", err)
 	}
 
-	// Ensure Prometheus TSDB has scraped/evaluated and recorded ALERTS time-series
-	time.Sleep(2 * time.Second)
-
 	outDir := t.TempDir()
 	now := time.Now().UTC()
 	t1 := now
-	t2 := now.Add(1 * time.Second)
+	t2 := now.Add(3 * time.Second)
 
-	if err := recorder.Run(ctx, endpoint, "", outDir, t1, t2); err != nil {
+	// Wait until both snapshot timestamps are in the past, so that the ALERTS series
+	// and the scraped samples between them have been recorded.
+	time.Sleep(time.Until(t2) + 2*time.Second)
+
+	namespaces := []string{"test-ns"}
+	if err := recorder.Run(ctx, endpoint, "", outDir, namespaces, t1, t2); err != nil {
 		t.Fatalf("recorder.Run: %v", err)
 	}
 
+	// The metrics of a snapshot are written to the snapshot_at_<timestamp> directory.
+	// The first snapshot is the recording start, so only the second one has a window.
+	assertFileNotEmpty(t, filepath.Join(outDir, "snapshot_at_"+t2.Format("2006-01-02T15-04-05.000000"), "raw", "metrics_pod", "pod_test-pod_raw.tsv"))
+
 	entries, err := os.ReadDir(outDir)
-	if err != nil || len(entries) != 2 {
-		t.Fatalf("expected 2 output files for 2 snapshots, got %d", len(entries))
+	if err != nil {
+		t.Fatalf("read output dir: %v", err)
+	}
+	var alertFiles []os.DirEntry
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			alertFiles = append(alertFiles, entry)
+		}
+	}
+	if len(alertFiles) != 2 {
+		t.Fatalf("expected 2 alert files for 2 snapshots, got %d", len(alertFiles))
 	}
 
-	for _, entry := range entries {
+	for _, entry := range alertFiles {
 		data, err := os.ReadFile(filepath.Join(outDir, entry.Name()))
 		if err != nil {
 			t.Fatalf("read output: %v", err)
@@ -161,6 +185,18 @@ func waitForFiringAlert(ctx context.Context, endpoint, alertName string, timeout
 		time.Sleep(500 * time.Millisecond)
 	}
 	return fmt.Errorf("alert %q did not reach firing state within %s", alertName, timeout)
+}
+
+func assertFileNotEmpty(t *testing.T, path string) {
+	t.Helper()
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Errorf("expected file %s: %v", path, err)
+		return
+	}
+	if info.Size() == 0 {
+		t.Errorf("file %s is empty", path)
+	}
 }
 
 func writeTempFile(t *testing.T, name, content string) string {

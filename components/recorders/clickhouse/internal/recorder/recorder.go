@@ -45,21 +45,18 @@ func Run(ctx context.Context, addr, username, password, outputDir string, namesp
 	jaegerDB := openDB(addr, username, password, "jaeger")
 	defer jaegerDB.Close()
 
-	promDB := openDB(addr, username, password, "prometheus")
-	defer promDB.Close()
-
 	if err := defaultDB.PingContext(ctx); err != nil {
 		return fmt.Errorf("ping clickhouse: %w", err)
 	}
 
 	if len(timestamps) == 0 {
-		return exportSnapshot(ctx, defaultDB, jaegerDB, promDB, outputDir, namespaces, nil, nil)
+		return exportSnapshot(ctx, defaultDB, jaegerDB, outputDir, namespaces, nil, nil)
 	}
 
 	startTime := timestamps[0]
 	for _, ts := range timestamps {
 		targetDir := filepath.Join(outputDir, fmt.Sprintf("snapshot_at_%s", ts.UTC().Format("2006-01-02T15-04-05.000000")))
-		if err := exportSnapshot(ctx, defaultDB, jaegerDB, promDB, targetDir, namespaces, &ts, &startTime); err != nil {
+		if err := exportSnapshot(ctx, defaultDB, jaegerDB, targetDir, namespaces, &ts, &startTime); err != nil {
 			return err
 		}
 	}
@@ -76,29 +73,22 @@ func quoteList(values []string) string {
 	return strings.Join(quoted, ",")
 }
 
-func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, baseDir string, namespaces []string, maxTime, minTime *time.Time) error {
+func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir string, namespaces []string, maxTime, minTime *time.Time) error {
 	namespaceList := quoteList(namespaces)
 
 	rawDir := filepath.Join(baseDir, "raw")
 	liteDir := filepath.Join(baseDir, "lite")
-	for _, d := range []string{
-		rawDir, liteDir,
-		filepath.Join(rawDir, "metrics_pod"), filepath.Join(rawDir, "metrics_service"),
-		filepath.Join(liteDir, "metrics_pod"), filepath.Join(liteDir, "metrics_service"),
-	} {
+	for _, d := range []string{rawDir, liteDir} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			return fmt.Errorf("mkdir %s: %w", d, err)
 		}
 	}
 
 	timeFilter := "1=1"
-	promTimeFilter := "1=1"
 	tracesTimeFilter := "1=1"
 	if maxTime != nil {
 		t := maxTime.UTC().Format("2006-01-02 15:04:05.000000000")
 		timeFilter = fmt.Sprintf("Timestamp <= '%s'", t)
-		// promTimeFilter is used against the bare data table (no alias), so no qualifier.
-		promTimeFilter = fmt.Sprintf("timestamp <= '%s'", t)
 		tracesTimeFilter = fmt.Sprintf("start_time <= '%s'", t)
 	}
 
@@ -212,330 +202,6 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB, promDB *sql.DB, ba
 		slog.Error("jaeger spans lite", "err", err)
 	}
 
-	tableIDs, err := discoverMetricTables(ctx, promDB)
-	if err != nil {
-		slog.Warn("could not discover prometheus metric tables", "err", err)
-	} else if tableIDs.data != "" && tableIDs.tags != "" {
-		if err := exportMetrics(ctx, promDB, rawDir, liteDir, tableIDs, namespaces, promTimeFilter); err != nil {
-			slog.Error("metrics export", "err", err)
-		}
-	}
-
-	return nil
-}
-
-// metricTableIDs holds the inner-id table names backing the Prometheus materialized view.
-type metricTableIDs struct {
-	data string
-	tags string
-}
-
-func discoverMetricTables(ctx context.Context, db *sql.DB) (metricTableIDs, error) {
-	rows, err := db.QueryContext(ctx,
-		`SELECT name FROM system.tables WHERE database = 'prometheus' AND name LIKE '.inner_id%'`)
-	if err != nil {
-		return metricTableIDs{}, fmt.Errorf("query system.tables: %w", err)
-	}
-	defer rows.Close()
-
-	var ids metricTableIDs
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return ids, err
-		}
-		switch {
-		case strings.Contains(name, ".inner_id.data."):
-			ids.data = name
-		case strings.Contains(name, ".inner_id.tags."):
-			ids.tags = name
-		}
-	}
-	return ids, rows.Err()
-}
-
-// tagMeta holds the denormalised metadata for one metric series (unique label-set).
-type tagMeta struct {
-	metricName string
-	tags       map[string]string
-}
-
-// fetchTagMap loads the tags inner table into memory, filtered by whereClause.
-// This is cheap: the tags table has one row per unique label-set, not per data point.
-func fetchTagMap(ctx context.Context, db *sql.DB, tagsTable, whereClause string) (map[string]tagMeta, error) {
-	query := fmt.Sprintf(`SELECT id, metric_name, tags FROM %q WHERE %s`, tagsTable, whereClause)
-	rows, err := db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("fetch tags: %w", err)
-	}
-	defer rows.Close()
-
-	result := map[string]tagMeta{}
-	for rows.Next() {
-		var id, metricName string
-		var tags map[string]string
-		if err := rows.Scan(&id, &metricName, &tags); err != nil {
-			return nil, fmt.Errorf("scan tag: %w", err)
-		}
-		result[id] = tagMeta{metricName: metricName, tags: tags}
-	}
-	return result, rows.Err()
-}
-
-// lazyTSV opens and writes a header to a TSV file on the first write call.
-type lazyTSV struct {
-	path    string
-	headers []string
-	f       *os.File
-	w       *csv.Writer
-}
-
-func (l *lazyTSV) write(row []string) error {
-	if l.f == nil {
-		f, err := os.Create(l.path)
-		if err != nil {
-			return fmt.Errorf("create %s: %w", l.path, err)
-		}
-		w := csv.NewWriter(f)
-		w.Comma = '\t'
-		w.UseCRLF = false
-		if err := w.Write(l.headers); err != nil {
-			f.Close()
-			return err
-		}
-		l.f = f
-		l.w = w
-	}
-	return l.w.Write(row)
-}
-
-func (l *lazyTSV) close() {
-	if l.f == nil {
-		return
-	}
-	l.w.Flush()
-	if err := l.w.Error(); err != nil {
-		slog.Error("flush tsv", "path", l.path, "err", err)
-	}
-	l.f.Close()
-}
-
-// streamDataByIDs pages through the data table for a given set of series IDs
-// and calls handle for each row. Avoids a server-side JOIN with the tags table.
-func streamDataByIDs(ctx context.Context, db *sql.DB, dataTable, idList, timeFilter string, handle func(id, ts, val string) error) error {
-	base := fmt.Sprintf(
-		`SELECT id, timestamp, value FROM %q WHERE id IN (%s) AND %s ORDER BY timestamp ASC`,
-		dataTable, idList, timeFilter,
-	)
-	for offset := 0; ; offset += batchSize {
-		paged := fmt.Sprintf("%s LIMIT %d OFFSET %d", base, batchSize, offset)
-		rows, err := db.QueryContext(ctx, paged)
-		if err != nil {
-			return fmt.Errorf("query data: %w", err)
-		}
-		var n int
-		for rows.Next() {
-			var id, ts, val string
-			if err := rows.Scan(&id, &ts, &val); err != nil {
-				rows.Close()
-				return fmt.Errorf("scan data: %w", err)
-			}
-			if err := handle(id, ts, val); err != nil {
-				rows.Close()
-				return err
-			}
-			n++
-		}
-		rows.Close()
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		if n < batchSize {
-			break
-		}
-	}
-	return nil
-}
-
-// buildIDList converts tag map keys into a SQL IN list of single-quoted strings.
-func buildIDList(m map[string]tagMeta) string {
-	ids := make([]string, 0, len(m))
-	for id := range m {
-		ids = append(ids, "'"+strings.ReplaceAll(id, "'", "''")+"'")
-	}
-	return strings.Join(ids, ",")
-}
-
-func exportMetrics(ctx context.Context, db *sql.DB, rawDir, liteDir string, ids metricTableIDs, namespaces []string, promTimeFilter string) error {
-	for _, ns := range namespaces {
-		if err := exportPodMetrics(ctx, db, rawDir, liteDir, ids, ns, promTimeFilter); err != nil {
-			slog.Error("pod metrics export", "namespace", ns, "err", err)
-		}
-		if err := exportServiceMetrics(ctx, db, rawDir, liteDir, ids, ns, promTimeFilter); err != nil {
-			slog.Error("service metrics export", "namespace", ns, "err", err)
-		}
-	}
-	return nil
-}
-
-func exportPodMetrics(ctx context.Context, db *sql.DB, rawDir, liteDir string, ids metricTableIDs, namespace, promTimeFilter string) error {
-	tagMap, err := fetchTagMap(ctx, db, ids.tags,
-		fmt.Sprintf(`tags['namespace'] = '%s' AND tags['pod'] != ''`, namespace))
-	if err != nil {
-		return err
-	}
-	if len(tagMap) == 0 {
-		return nil
-	}
-
-	rawWriters := map[string]*lazyTSV{}
-	liteWriters := map[string]*lazyTSV{}
-	defer func() {
-		for _, l := range rawWriters {
-			l.close()
-		}
-		for _, l := range liteWriters {
-			l.close()
-		}
-	}()
-
-	rawHeaders := []string{"metric_name", "timestamp", "value", "pod_name", "namespace", "tags"}
-	liteHeaders := []string{"metric_name", "timestamp", "value", "pod_name", "namespace"}
-	safeReplacer := strings.NewReplacer("/", "_", " ", "_")
-
-	return streamDataByIDs(ctx, db, ids.data, buildIDList(tagMap), promTimeFilter, func(id, ts, val string) error {
-		meta, ok := tagMap[id]
-		if !ok {
-			return nil
-		}
-		pod := meta.tags["pod"]
-		safePod := safeReplacer.Replace(pod)
-
-		if _, ok := rawWriters[pod]; !ok {
-			rawWriters[pod] = &lazyTSV{
-				path:    filepath.Join(rawDir, "metrics_pod", fmt.Sprintf("pod_%s_raw.tsv", safePod)),
-				headers: rawHeaders,
-			}
-		}
-		if err := rawWriters[pod].write([]string{
-			meta.metricName, ts, val, pod, meta.tags["namespace"], fmt.Sprintf("%v", meta.tags),
-		}); err != nil {
-			return err
-		}
-
-		if strings.Contains(meta.metricName, "cpu") ||
-			strings.Contains(meta.metricName, "memory") ||
-			strings.Contains(meta.metricName, "mem") {
-			if _, ok := liteWriters[pod]; !ok {
-				liteWriters[pod] = &lazyTSV{
-					path:    filepath.Join(liteDir, "metrics_pod", fmt.Sprintf("pod_%s.tsv", safePod)),
-					headers: liteHeaders,
-				}
-			}
-			if err := liteWriters[pod].write([]string{
-				meta.metricName, ts, val, pod, meta.tags["namespace"],
-			}); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-func exportServiceMetrics(ctx context.Context, db *sql.DB, rawDir, liteDir string, ids metricTableIDs, namespace, promTimeFilter string) error {
-	type svcQueryDef struct {
-		metricName  string
-		nsTagKey    string
-		svcTagKey   string
-		extraFilter string
-	}
-	queryDefs := []svcQueryDef{
-		{
-			metricName:  "traces_span_metrics_duration_milliseconds_bucket",
-			nsTagKey:    "namespace",
-			svcTagKey:   "service_name",
-			extraFilter: `tags['service_name'] NOT IN ('flagd','load-generator')`,
-		},
-		{
-			metricName:  "traces_span_metrics_calls_total",
-			nsTagKey:    "namespace",
-			svcTagKey:   "service_name",
-			extraFilter: `tags['service_name'] NOT IN ('flagd','load-generator') AND tags['status_code'] = 'STATUS_CODE_ERROR'`,
-		},
-		{
-			metricName:  "istio_request_duration_milliseconds_bucket",
-			nsTagKey:    "destination_workload_namespace",
-			svcTagKey:   "destination_canonical_service",
-			extraFilter: `tags['destination_canonical_service'] NOT IN ('load-generator')`,
-		},
-		{
-			metricName:  "istio_requests_total",
-			nsTagKey:    "destination_workload_namespace",
-			svcTagKey:   "destination_canonical_service",
-			extraFilter: `tags['destination_canonical_service'] NOT IN ('load-generator') AND tags['response_code'] NOT LIKE '2%'`,
-		},
-	}
-
-	rawHeaders := []string{"metric_name", "timestamp", "value", "service_name", "namespace", "tags"}
-	liteHeaders := []string{"metric_name", "timestamp", "value", "service_name", "namespace"}
-
-	rawWriters := map[string]*lazyTSV{}
-	liteWriters := map[string]*lazyTSV{}
-	defer func() {
-		for _, l := range rawWriters {
-			l.close()
-		}
-		for _, l := range liteWriters {
-			l.close()
-		}
-	}()
-
-	for _, qd := range queryDefs {
-		tagMap, err := fetchTagMap(ctx, db, ids.tags, fmt.Sprintf(
-			`metric_name = '%s' AND tags['%s'] = '%s' AND %s`,
-			qd.metricName, qd.nsTagKey, namespace, qd.extraFilter,
-		))
-		if err != nil {
-			slog.Warn("fetch service tags failed", "metric", qd.metricName, "err", err)
-			continue
-		}
-		if len(tagMap) == 0 {
-			continue
-		}
-
-		err = streamDataByIDs(ctx, db, ids.data, buildIDList(tagMap), promTimeFilter, func(id, ts, val string) error {
-			meta, ok := tagMap[id]
-			if !ok {
-				return nil
-			}
-			svc := meta.tags[qd.svcTagKey]
-
-			if _, ok := rawWriters[svc]; !ok {
-				rawWriters[svc] = &lazyTSV{
-					path:    filepath.Join(rawDir, "metrics_service", fmt.Sprintf("service_%s_raw.tsv", svc)),
-					headers: rawHeaders,
-				}
-			}
-			if err := rawWriters[svc].write([]string{
-				meta.metricName, ts, val, svc, meta.tags[qd.nsTagKey], fmt.Sprintf("%v", meta.tags),
-			}); err != nil {
-				return err
-			}
-
-			if _, ok := liteWriters[svc]; !ok {
-				liteWriters[svc] = &lazyTSV{
-					path:    filepath.Join(liteDir, "metrics_service", fmt.Sprintf("service_%s.tsv", svc)),
-					headers: liteHeaders,
-				}
-			}
-			return liteWriters[svc].write([]string{
-				meta.metricName, ts, val, svc, meta.tags[qd.nsTagKey],
-			})
-		})
-		if err != nil {
-			slog.Error("stream service data failed", "metric", qd.metricName, "err", err)
-		}
-	}
 	return nil
 }
 

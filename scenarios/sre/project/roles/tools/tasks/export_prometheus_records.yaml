@@ -8,7 +8,7 @@
         labels:
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
-        name: itbench-prometheus-alert-recorder
+        name: itbench-prometheus-recorder
         namespace: "{{ tools_namespace_itbench_observability }}"
     state: present
 
@@ -21,14 +21,14 @@
         labels:
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
-        name: itbench-prometheus-alert-recorder
+        name: itbench-prometheus-recorder
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
         name: "{{ 'monitoring-alertmanager-api-reader' if tools_cluster.platform == 'openshift' else 'monitoring-prometheus-api-reader' }}"
       subjects:
         - kind: ServiceAccount
-          name: itbench-prometheus-alert-recorder
+          name: itbench-prometheus-recorder
           namespace: "{{ tools_namespace_itbench_observability }}"
     state: present
 
@@ -41,7 +41,7 @@
         labels:
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
-        name: itbench-prometheus-alert-recorder-records
+        name: itbench-prometheus-recorder-records
         namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
         accessModes:
@@ -61,7 +61,7 @@
         labels:
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
-        name: itbench-prometheus-alert-recorder
+        name: itbench-prometheus-recorder
         namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
         template:
@@ -76,6 +76,13 @@
                     value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (tools_benchmark_duration_minutes * 60)) }}"
                   - name: RECORDING_END_TIMESTAMP
                     value: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+                  - name: NAMESPACES
+                    value: >-
+                      {{
+                        tools_recordable_namespaces.resources |
+                        map(attribute='metadata.name') |
+                        ansible.builtin.join(',')
+                      }}
                   - name: RECORDING_INTERVAL_SECONDS
                     value: "60"
                 image: quay.io/it-bench/prometheus-recorder:1.0.0@sha256:57b130b1c89f0f000235aba279cfda0d064aec03d225ef6d5a6a0ad06eb0aad4
@@ -101,11 +108,11 @@
               runAsUser: 1001
               seccompProfile:
                 type: RuntimeDefault
-            serviceAccountName: itbench-prometheus-alert-recorder
+            serviceAccountName: itbench-prometheus-recorder
             volumes:
               - name: records
                 persistentVolumeClaim:
-                  claimName: itbench-prometheus-alert-recorder-records
+                  claimName: itbench-prometheus-recorder-records
     state: present
     wait: true
     wait_condition:
@@ -125,7 +132,7 @@
       ansible.builtin.import_tasks:
         file: copy_recorder_files.yaml
       vars:
-        tools_recorder_instance_name: itbench-prometheus-alert-recorder
+        tools_recorder_instance_name: itbench-prometheus-recorder
   always:
     - name: Delete temporary directory for Prometheus records
       ansible.builtin.file:
