@@ -70,12 +70,12 @@ else
 endif
 
 .PHONY: undeploy-recorders
-undeploy-recorders: ## Undeploys the data recorders to cluster
+undeploy-recorders: ## Exports the data recorder records
 ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export,uninstall" \
+	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export,uninstall"
+	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export"
 endif
 
 .PHONY: inject-scenario-faults

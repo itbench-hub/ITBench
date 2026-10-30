@@ -22,7 +22,7 @@ ITBench uses an in-cluster event-driven pipeline to build live topology graphs i
                                │ 2. Live Graph Derivation
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Topology Writer (Go service in itbench-recorders)          │
+│  Topology Writer (Go service in itbench-observability)      │
 │         │ (polls new events, maintains state, derives       │
 │         │  15 edge types, writes deltas)                    │
 │         ▼                                                   │
@@ -44,10 +44,10 @@ ITBench uses an in-cluster event-driven pipeline to build live topology graphs i
 ### 1. In-Cluster Collection
 
 During the `install` stage of the scenario lifecycle:
-- The `recorders` Ansible role discovers all namespaces labeled with `itbench.io/record=true` (such as `bookinfo` and `otel-demo`).
-- A dedicated, short-lived `OpenTelemetryCollector` instance is deployed into the `itbench-recorders` namespace with RBAC permissions to watch resources.
-- The collector streams Kubernetes resource events into the `kubernetes.topology` table.
-- A `topology-writer` deployment in `itbench-recorders` polls `kubernetes.topology`, derives the topology graph, and writes delta rows into `kubernetes.topology_graph`.
+- The `tools` Ansible role (with `tools_recorders_enabled`) discovers all namespaces labeled with `itbench.io/record=true` (such as `bookinfo` and `otel-demo`).
+- A dedicated, short-lived `OpenTelemetryCollector` instance is deployed into the `itbench-observability` namespace with RBAC permissions to watch resources.
+- The collector streams Kubernetes resource events through the OTLP gateway into the `kubernetes.topology` table.
+- A `topology-writer` deployment in `itbench-observability` polls `kubernetes.topology`, derives the topology graph, and writes delta rows into `kubernetes.topology_graph`.
 
 ### 2. Export Phase
 
@@ -58,7 +58,7 @@ During the `export` stage:
 ### 3. Teardown Phase
 
 During the `uninstall` stage:
-- The collector, writer, and `itbench-recorders` namespace are removed from the cluster.
+- The recorder resources are removed together with the rest of the tools when the `tools` role is uninstalled.
 
 ---
 

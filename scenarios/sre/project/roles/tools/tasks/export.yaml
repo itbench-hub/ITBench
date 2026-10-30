@@ -1,12 +1,15 @@
 ---
-- name: Import tools role for internal endpoints
-  ansible.builtin.import_role:
-    name: tools
-    tasks_from: set_internal_endpoints
-  vars:
-    tools_cluster:
-      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-      platform: "{{ recorders_cluster.platform }}"
+- name: Import internal endpoint setting tasks
+  ansible.builtin.import_tasks:
+    file: set_internal_endpoints.yaml
+
+- name: Retrieve Namespaces with record labels
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    label_selectors:
+      - "itbench.io/record=true"
+  register: tools_recordable_namespaces
 
 - name: Import Clickhouse Recorder export tasks
   ansible.builtin.import_tasks:

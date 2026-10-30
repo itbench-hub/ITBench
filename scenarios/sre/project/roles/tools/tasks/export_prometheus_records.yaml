@@ -5,8 +5,11 @@
       apiVersion: v1
       kind: ServiceAccount
       metadata:
-        name: itbench-prometheus-alert-recorder
-        namespace: "{{ recorders_namespace }}"
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": data
+        name: itbench-prometheus-recorder
+        namespace: "{{ tools_namespace_itbench_observability }}"
     state: present
 
 - name: Create ClusterRoleBinding for Prometheus recorder
@@ -16,17 +19,17 @@
       kind: ClusterRoleBinding
       metadata:
         labels:
-          "itbench.io/ansible-role": recorders
+          "itbench.io/ansible-role": tools
           "itbench.io/layer": data
-        name: "{{ recorders_instance_prometheus_name }}-recorder"
+        name: itbench-prometheus-recorder
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
-        name: "{{ 'monitoring-alertmanager-api-reader' if recorders_cluster.platform == 'openshift' else 'monitoring-prometheus-api-reader' }}"
+        name: "{{ 'monitoring-alertmanager-api-reader' if tools_cluster.platform == 'openshift' else 'monitoring-prometheus-api-reader' }}"
       subjects:
         - kind: ServiceAccount
-          name: itbench-prometheus-alert-recorder
-          namespace: "{{ recorders_namespace }}"
+          name: itbench-prometheus-recorder
+          namespace: "{{ tools_namespace_itbench_observability }}"
     state: present
 
 - name: Create PersistentVolumeClaim for Prometheus Recorder
@@ -35,8 +38,11 @@
       apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        name: "{{ recorders_instance_prometheus_name }}-records"
-        namespace: "{{ recorders_namespace }}"
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": data
+        name: itbench-prometheus-recorder-records
+        namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
         accessModes:
           - ReadWriteOnce
@@ -52,8 +58,11 @@
       apiVersion: batch/v1
       kind: Job
       metadata:
-        name: itbench-prometheus-alert-recorder
-        namespace: "{{ recorders_namespace }}"
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": data
+        name: itbench-prometheus-recorder
+        namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
         template:
           spec:
@@ -62,11 +71,18 @@
                   - name: OUTPUT_DIR
                     value: /records
                   - name: PROMETHEUS_ENDPOINT
-                    value: "{{ tools_thanos_endpoint.http if recorders_cluster.platform == 'openshift' else tools_prometheus_endpoint.http }}"
+                    value: "{{ tools_thanos_endpoint.http if tools_cluster.platform == 'openshift' else tools_prometheus_endpoint.http }}"
                   - name: RECORDING_START_TIMESTAMP
-                    value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (recorders_duration_minutes * 60)) }}"
+                    value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (tools_benchmark_duration_minutes * 60)) }}"
                   - name: RECORDING_END_TIMESTAMP
                     value: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+                  - name: NAMESPACES
+                    value: >-
+                      {{
+                        tools_recordable_namespaces.resources |
+                        map(attribute='metadata.name') |
+                        ansible.builtin.join(',')
+                      }}
                   - name: RECORDING_INTERVAL_SECONDS
                     value: "60"
                 image: quay.io/it-bench/prometheus-recorder:1.0.0@sha256:57b130b1c89f0f000235aba279cfda0d064aec03d225ef6d5a6a0ad06eb0aad4
@@ -92,11 +108,11 @@
               runAsUser: 1001
               seccompProfile:
                 type: RuntimeDefault
-            serviceAccountName: itbench-prometheus-alert-recorder
+            serviceAccountName: itbench-prometheus-recorder
             volumes:
               - name: records
                 persistentVolumeClaim:
-                  claimName: "{{ recorders_instance_prometheus_name }}-records"
+                  claimName: itbench-prometheus-recorder-records
     state: present
     wait: true
     wait_condition:
@@ -110,15 +126,15 @@
       ansible.builtin.tempfile:
         prefix: prometheus
         state: directory
-      register: recorders_export_directory
+      register: tools_export_directory
 
     - name: Import copy tasks
       ansible.builtin.import_tasks:
         file: copy_recorder_files.yaml
       vars:
-        recorders_instance_name: itbench-prometheus-alert-recorder
+        tools_recorder_instance_name: itbench-prometheus-recorder
   always:
     - name: Delete temporary directory for Prometheus records
       ansible.builtin.file:
-        path: "{{ recorders_export_directory.path }}"
+        path: "{{ tools_export_directory.path }}"
         state: absent

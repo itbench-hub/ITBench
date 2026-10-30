@@ -14,7 +14,7 @@ import (
 
 func main() {
 	host := os.Getenv("CLICKHOUSE_HOST")
-	username := os.Getenv("CLICKHOUSE_USERNAME")
+	username := os.Getenv("CLICKHOUSE_USER")
 	password := os.Getenv("CLICKHOUSE_PASSWORD")
 
 	if host == "" {
@@ -22,7 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 	if username == "" {
-		slog.Error("CLICKHOUSE_USERNAME environment variable is not set")
+		slog.Error("CLICKHOUSE_USER environment variable is not set")
 		os.Exit(1)
 	}
 	if password == "" {

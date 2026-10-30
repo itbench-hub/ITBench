@@ -74,9 +74,21 @@ func main() {
 		timestamps = append(timestamps, t)
 	}
 
-	slog.Info("starting prometheus burst recorder", "snapshots_count", len(timestamps), "output_dir", outputDir)
+	// NAMESPACES is a comma-separated list, e.g. "otel-demo,book-info".
+	var namespaces []string
+	for _, ns := range strings.Split(os.Getenv("NAMESPACES"), ",") {
+		if ns = strings.TrimSpace(ns); ns != "" {
+			namespaces = append(namespaces, ns)
+		}
+	}
+	if len(namespaces) == 0 {
+		slog.Error("NAMESPACES environment variable is not set or contains no namespaces")
+		os.Exit(1)
+	}
 
-	if err := recorder.Run(context.Background(), endpoint, token, outputDir, timestamps...); err != nil {
+	slog.Info("starting prometheus burst recorder", "snapshots_count", len(timestamps), "output_dir", outputDir, "namespaces", namespaces)
+
+	if err := recorder.Run(context.Background(), endpoint, token, outputDir, namespaces, timestamps...); err != nil {
 		slog.Error("recorder failed", "err", err)
 		os.Exit(1)
 	}

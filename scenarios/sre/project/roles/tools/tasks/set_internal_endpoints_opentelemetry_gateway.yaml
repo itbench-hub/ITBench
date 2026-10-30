@@ -1,0 +1,95 @@
+---
+- name: Retrieve Service for OTLP gateway
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: itbench-otel-gateway-collector
+    namespace: "{{ tools_namespace_itbench_observability }}"
+  register: tools_gateway_service
+
+- name: Validate that OTLP gateway service exists
+  ansible.builtin.assert:
+    fail_msg: OTLP gateway service not found. Please verify that the OTLP gateway was successfully installed.
+    success_msg: OTLP gateway service found.
+    that:
+      - tools_gateway_service.api_found
+      - tools_gateway_service.resources | ansible.builtin.length == 1
+
+- name: Create OTLP gateway in-cluster endpoints
+  ansible.builtin.set_fact:
+    tools_otel_gateway_endpoint:
+      istio:
+        grpc: |-
+          {{
+            (
+              [
+                tools_gateway_service.resources[0].metadata.name,
+                tools_gateway_service.resources[0].metadata.namespace,
+                "svc",
+                "cluster",
+                "local"
+              ] |
+              ansible.builtin.join(".")
+            ) +
+            ":4317"
+          }}
+      kubernetes_events:
+        grpc: |-
+          {{
+            (
+              [
+                tools_gateway_service.resources[0].metadata.name,
+                tools_gateway_service.resources[0].metadata.namespace,
+                "svc",
+                "cluster",
+                "local"
+              ] |
+              ansible.builtin.join(".")
+            ) +
+            ":4322"
+          }}
+      kubernetes_infrastructure:
+        grpc: |-
+          {{
+            (
+              [
+                tools_gateway_service.resources[0].metadata.name,
+                tools_gateway_service.resources[0].metadata.namespace,
+                "svc",
+                "cluster",
+                "local"
+              ] |
+              ansible.builtin.join(".")
+            ) +
+            ":4323"
+          }}
+      kubernetes_topology:
+        grpc: |-
+          {{
+            (
+              [
+                tools_gateway_service.resources[0].metadata.name,
+                tools_gateway_service.resources[0].metadata.namespace,
+                "svc",
+                "cluster",
+                "local"
+              ] |
+              ansible.builtin.join(".")
+            ) +
+            ":4321"
+          }}
+      opentelemetry_demo:
+        grpc: |-
+          {{
+            (
+              [
+                tools_gateway_service.resources[0].metadata.name,
+                tools_gateway_service.resources[0].metadata.namespace,
+                "svc",
+                "cluster",
+                "local"
+              ] |
+              ansible.builtin.join(".")
+            ) +
+            ":4320"
+          }}
