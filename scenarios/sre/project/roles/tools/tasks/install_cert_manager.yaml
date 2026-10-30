@@ -1,118 +1,74 @@
 ---
 - name: Install cert-manager on Kubernetes
+  kubernetes.core.helm:
+    chart_ref: "oci://quay.io/jetstack/charts/cert-manager"
+    chart_version: "v1.21.2"
+    release_name: "{{ tools_helm_release_cert_manager }}"
+    release_namespace: "{{ tools_namespace_itbench }}"
+    release_state: present
+    release_values:
+      crds:
+        enabled: true
+      prometheus:
+        enabled: true
+        servicemonitor:
+          enabled: true
+    timeout: 10m0s
+    wait: true
   when:
     - tools_cluster.platform == "kubernetes"
-  block:
-    - name: Create Namespace for cert-manager
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: v1
-          kind: Namespace
-          metadata:
-            labels:
-              "prometheus.itbench.io/monitor": "true"
-            name: "{{ tools_releases.cert_manager.namespace }}"
-        state: present
 
-    - name: Install cert-manager
-      kubernetes.core.helm:
-        chart_ref: "oci://quay.io/jetstack/charts/cert-manager"
-        chart_version: "v1.21.2"
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_releases.cert_manager.name }}"
-        release_namespace: "{{ tools_releases.cert_manager.namespace }}"
-        release_state: present
-        timeout: 10m0s
-        values:
-          crds:
-            enabled: true
-          affinity:
-            nodeAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                nodeSelectorTerms:
-                  - matchExpressions:
-                      - key: node-role.itbench.io/sandbox
-                        operator: DoesNotExist
-          webhook:
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.itbench.io/sandbox
-                          operator: DoesNotExist
-          cainjector:
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.itbench.io/sandbox
-                          operator: DoesNotExist
-          startupapicheck:
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.itbench.io/sandbox
-                          operator: DoesNotExist
-          prometheus:
-            enabled: true
-            servicemonitor:
-              enabled: true
-        wait: true
-
-- name: Install RedHat cert-manager Operator on OpenShift
+- name: Install cert-manager Operator on OpenShift
+  vars:
+    operator_namespace: cert-manager-operator
+    subscription: openshift-cert-manager-operator
   when:
     - tools_cluster.platform == "openshift"
   block:
-    - name: Create the project for RH cert-manager Operator
+    - name: Create Project for cert-manager Operator for Red Hat OpenShift
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: project.openshift.io/v1
           kind: Project
           metadata:
-            name: cert-manager-operator
             labels:
-              kubernetes.io/metadata.name: cert-manager-operator
-              openshift.io/cluster-monitoring: "true"
+              "itbench.io/ansible-role": tools
+              "itbench.io/inject": false
+              "itbench.io/layer": infrastructure
+              "itbench.io/monitor": "true"
+            name: "{{ operator_namespace }}"
         state: present
 
     - name: Create the operator group for RH cert-manager Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: operators.coreos.com/v1
           kind: OperatorGroup
           metadata:
             name: openshift-cert-manager-operator
-            namespace: cert-manager-operator
-          spec:
-            targetNamespaces:
-              - cert-manager-operator
+            namespace: "{{ operator_namespace }}"
         state: present
 
     - name: Create the subscription for RH cert-manager Operator
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: operators.coreos.com/v1alpha1
           kind: Subscription
           metadata:
-            name: openshift-cert-manager-operator
-            namespace: cert-manager-operator
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": infrastructure
+            name: "{{ subscription }}"
+            namespace: "{{ operator_namespace }}"
           spec:
-            channel: stable-v1
+            channel: stable
             installPlanApproval: Automatic
-            name: openshift-cert-manager-operator
+            name: "{{ subscription }}"
             source: redhat-operators
             sourceNamespace: openshift-marketplace
         state: present
         wait: true
         wait_condition:
-          type: CatalogSourcesUnhealthy
           status: "False"
+          type: CatalogSourcesUnhealthy
         wait_timeout: 300

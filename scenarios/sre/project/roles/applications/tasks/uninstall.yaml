@@ -1,8 +1,17 @@
 ---
-- name: Import Istio's BookInfo uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_book_info.yaml
+- name: Uninstall OpenTelemetry Demo (Astronomy Shop)
+  kubernetes.core.helm:
+    release_name: "{{ applications_helm_release_opentelemetry_demo }}"
+    release_namespace: "{{ applications_namespace_opentelemetry_demo }}"
+    release_state: absent
+    wait: true
 
-- name: Import OpenTelemetry Demo uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_opentelemetry_demo.yaml
+- name: Delete all application namespaces
+  kubernetes.core.k8s:
+    api_version: v1
+    delete_all: true
+    kind: Namespace
+    label_selectors:
+      - "itbench.io/layer=application"
+    state: absent
+    wait: true

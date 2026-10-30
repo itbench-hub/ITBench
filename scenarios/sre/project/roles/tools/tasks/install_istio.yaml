@@ -1,31 +1,30 @@
 ---
-- name: Install Istio on Kubernetes
+- name: Install Istio Service Mesh on Kubernetes
   when:
-    tools_cluster.platform == "kubernetes"
+    - tools_cluster.platform == "kubernetes"
   block:
     - name: Create Namespace for Istio
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        state: present
         resource_definition:
           apiVersion: v1
           kind: Namespace
           metadata:
             labels:
-              "app.kubernetes.io/component": istio
-              "app.kubernetes.io/managed-by": ITBench
-              "prometheus.itbench.io/monitor": "true"
-            name: "{{ tools_releases.istio_base.namespace }}"
+              "itbench.io/ansible-role": tools
+              "itbench.io/inject": "false"
+              "itbench.io/layer": networking
+              "itbench.io/monitor": "true"
+            name: "{{ tools_namespace_istio }}"
+        state: present
 
     - name: Install Istio Base (CRDs)
       kubernetes.core.helm:
         chart_ref: "oci://ghcr.io/istio/release/charts/base"
         chart_version: "1.31.2"
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_releases.istio_base.name }}"
-        release_namespace: "{{ tools_releases.istio_base.namespace }}"
+        release_name: "{{ tools_helm_release_istio_base }}"
+        release_namespace: "{{ tools_namespace_istio }}"
         release_state: present
-        values:
+        release_values:
           profile: ambient
         wait: true
 
@@ -33,18 +32,10 @@
       kubernetes.core.helm:
         chart_ref: "oci://ghcr.io/istio/release/charts/istiod"
         chart_version: "1.31.2"
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_releases.istio_istiod.name }}"
-        release_namespace: "{{ tools_releases.istio_istiod.namespace }}"
+        release_name: "{{ tools_helm_release_istio_istiod }}"
+        release_namespace: "{{ tools_namespace_istio_istiod }}"
         release_state: present
-        values:
-          affinity:
-            nodeAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                nodeSelectorTerms:
-                  - matchExpressions:
-                      - key: node-role.itbench.io/sandbox
-                        operator: DoesNotExist
+        release_values:
           meshConfig:
             enablePrometheusMerge: false
             enableTracing: true
@@ -52,310 +43,221 @@
               - name: jaeger
                 opentelemetry:
                   port: 4317
-                  service: |-
-                    {{
-                      [
-                        tools_operands.opentelemetry_collector.jaeger.name ~ "-collector",
-                        tools_operands.opentelemetry_collector.jaeger.namespace,
-                        "svc",
-                        "cluster",
-                        "local"
-                      ] |
-                      ansible.builtin.join(".")
-                    }}
-              - name: opentelemetry
-                envoyOtelAls:
+                  service: "jaeger-collector.{{ tools_namespace_itbench_observability }}.svc.cluster.local"
+              - envoyOtelAls:
                   port: 4317
-                  service: |-
-                    {{
-                      [
-                        tools_operands.opentelemetry_collector.istio.name ~ "-collector",
-                        tools_operands.opentelemetry_collector.istio.namespace,
-                        "svc",
-                        "cluster",
-                        "local"
-                      ] |
-                      ansible.builtin.join(".")
-                    }}
+                  service: "istio-collector.{{ tools_namespace_itbench_observability }}.svc.cluster.local"
+                name: opentelemetry
           profile: ambient
         wait: true
-
-    - name: Create Telemetry
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: telemetry.istio.io/v1
-          kind: Telemetry
-          metadata:
-            name: istio-telemetry
-            namespace: "{{ tools_releases.istio_istiod.namespace }}"
-          spec:
-            accessLogging:
-              - providers:
-                  - name: opentelemetry
-            tracing:
-              - providers:
-                  - name: jaeger
-                randomSamplingPercentage: 10
-        state: present
-
-    - name: Create ServiceMonitor for Control Plane
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: monitoring.coreos.com/v1
-          kind: ServiceMonitor
-          metadata:
-            name: "{{ tools_releases.istio_istiod.name }}"
-            namespace: "{{ tools_releases.istio_istiod.namespace }}"
-          spec:
-            selector:
-              matchLabels:
-                "app.kubernetes.io/name": "{{ tools_releases.istio_istiod.name }}"
-                "app.kubernetes.io/part-of": istio
-            endpoints:
-              - interval: 30s
-                port: http-monitoring
-        state: present
 
     - name: Install Istio CNI Node Agent
       kubernetes.core.helm:
         chart_ref: "oci://ghcr.io/istio/release/charts/cni"
         chart_version: "1.31.2"
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_releases.istio_cni.name }}"
-        release_namespace: "{{ tools_releases.istio_cni.namespace }}"
+        release_name: "{{ tools_helm_release_istio_cni }}"
+        release_namespace: "{{ tools_namespace_istio_cni }}"
         release_state: present
-        values:
+        release_values:
           profile: ambient
           useAppArmorAnnotation: false
         wait: true
-
-    - name: Create PodMonitor for CNI Pods
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: monitoring.coreos.com/v1
-          kind: PodMonitor
-          metadata:
-            name: "{{ tools_releases.istio_cni.name }}"
-            namespace: "{{ tools_releases.istio_cni.namespace }}"
-          spec:
-            selector:
-              matchLabels:
-                "app.kubernetes.io/name": "{{ tools_releases.istio_cni.name }}"
-                "app.kubernetes.io/part-of": istio
-            podMetricsEndpoints:
-              - interval: 30s
-                port: metrics
-        state: present
 
     - name: Install Istio ZTunnel
       kubernetes.core.helm:
         chart_ref: "oci://ghcr.io/istio/release/charts/ztunnel"
         chart_version: "1.31.2"
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_releases.istio_ztunnel.name }}"
-        release_namespace: "{{ tools_releases.istio_ztunnel.namespace }}"
+        release_name: "{{ tools_helm_release_istio_ztunnel }}"
+        release_namespace: "{{ tools_namespace_istio_ztunnel }}"
         release_state: present
-        values:
+        release_values:
           profile: ambient
         wait: true
 
-    - name: Create PodMonitor for ZTunnel Pods
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: monitoring.coreos.com/v1
-          kind: PodMonitor
-          metadata:
-            name: "{{ tools_releases.istio_ztunnel.name }}"
-            namespace: "{{ tools_releases.istio_ztunnel.namespace }}"
-          spec:
-            selector:
-              matchLabels:
-                "app.kubernetes.io/name": "{{ tools_releases.istio_ztunnel.name }}"
-                "app.kubernetes.io/part-of": istio
-            podMetricsEndpoints:
-              - interval: 30s
-                port: ztunnel-stats
-        state: present
-
-    - name: Create ConfigMap for Istio Gateway
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: "{{ tools_kubernetes_gateway_istio.name }}-options"
-            namespace: "{{ tools_kubernetes_gateway_istio.namespace }}"
-          data:
-            deployment: |
-              spec:
-                template:
-                  spec:
-                    affinity:
-                      nodeAffinity:
-                        requiredDuringSchedulingIgnoredDuringExecution:
-                          nodeSelectorTerms:
-                          - matchExpressions:
-                            - key: node-role.itbench.io/sandbox
-                              operator: DoesNotExist
-
-    - name: Create Istio implemented Gateway
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: gateway.networking.k8s.io/v1
-          kind: Gateway
-          metadata:
-            name: "{{ tools_kubernetes_gateway_istio.name }}"
-            namespace: "{{ tools_kubernetes_gateway_istio.namespace }}"
-          spec:
-            infrastructure:
-              parametersRef:
-                group: ""
-                kind: ConfigMap
-                name: "{{ tools_kubernetes_gateway_istio.name }}-options"
-            gatewayClassName: istio
-            listeners:
-              - name: http
-                port: 80
-                protocol: HTTP
-                allowedRoutes:
-                  namespaces:
-                    from: Selector
-                    selector:
-                      matchLabels:
-                        "itbench.io/gateway-access": shared
-        state: present
-        wait: true
-        wait_condition:
-          status: "True"
-          type: Programmed
-
-    - name: Create PodMonitor for Istio Kubernetes Gateway
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: monitoring.coreos.com/v1
-          kind: PodMonitor
-          metadata:
-            name: "{{ tools_kubernetes_gateway_istio.name }}"
-            namespace: "{{ tools_kubernetes_gateway_istio.namespace }}"
-          spec:
-            selector:
-              matchLabels:
-                "gateway.networking.k8s.io/gateway-name": "{{ tools_kubernetes_gateway_istio.name }}"
-            podMetricsEndpoints:
-              - interval: 30s
-                port: metrics
-        state: present
-
-- name: Install Service Mesh 3 (Istio) on OpenShift
+- name: Install Service Mesh on OpenShift
+  vars:
+    operator_namespace: openshift-operators
+    subscription: servicemeshoperator3
   when:
-    tools_cluster.platform == "openshift"
+    - tools_cluster.platform == "openshift"
   block:
-    - name: Create the subscription for Service Mesh 3
+    - name: Create Projects for Istio
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: project.openshift.io/v1
+          kind: Project
+          metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/inject": "false"
+              "itbench.io/layer": networking
+              "itbench.io/monitor": "true"
+            name: "{{ istio_namespace }}"
+        state: present
+      loop: >-
+        {{
+          [
+            tools_namespace_istio_istiod,
+            tools_namespace_istio_cni,
+            tools_namespace_istio_ztunnel
+          ] |
+          ansible.builtin.unique
+        }}
+      loop_control:
+        label: namespace/{{ istio_namespace }}
+        loop_var: istio_namespace
+
+    - name: Create Subscription for Service Mesh 3
+      kubernetes.core.k8s:
         resource_definition:
           apiVersion: operators.coreos.com/v1alpha1
           kind: Subscription
           metadata:
-            name: servicemeshoperator3
-            namespace: openshift-operators
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": networking
+            name: "{{ subscription }}"
+            namespace: "{{ operator_namespace }}"
           spec:
             channel: stable
             installPlanApproval: Automatic
-            name: servicemeshoperator3
+            name: "{{ subscription }}"
             source: redhat-operators
             sourceNamespace: openshift-marketplace
         state: present
         wait: true
         wait_condition:
-          type: CatalogSourcesUnhealthy
           status: "False"
+          type: CatalogSourcesUnhealthy
         wait_timeout: 300
-
-    - name: Create Namespaces for Istio
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          - apiVersion: v1
-            kind: Namespace
-            metadata:
-              labels:
-                "app.kubernetes.io/component": istio
-                "app.kubernetes.io/managed-by": ITBench
-                "prometheus.itbench.io/monitor": "true"
-              name: istio-system
-          - apiVersion: v1
-            kind: Namespace
-            metadata:
-              labels:
-                "app.kubernetes.io/component": istio
-                "app.kubernetes.io/managed-by": ITBench
-                "prometheus.itbench.io/monitor": "true"
-              name: istio-cni
-          - apiVersion: v1
-            kind: Namespace
-            metadata:
-              labels:
-                "app.kubernetes.io/component": istio
-                "app.kubernetes.io/managed-by": ITBench
-                "prometheus.itbench.io/monitor": "true"
-              name: ztunnel
-        state: present
 
     - name: Install Istio
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: sailoperator.io/v1
           kind: Istio
           metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": networking
             name: default
           spec:
-            namespace: istio-system
+            namespace: "{{ tools_namespace_istio_istiod }}"
             profile: ambient
             values:
               global:
-                nativeNftables: true  # Add this line if deploying on RHEL 10 or RHCOS 10 nodes
-              pilot:
-                trustedZtunnelNamespace: ztunnel
+                nativeNftables: true
               meshConfig:
                 discoverySelectors:
                   - matchLabels:
                       istio-discovery: enabled
+              pilot:
+                trustedZtunnelNamespace: "{{ tools_namespace_istio_ztunnel }}"
         state: present
 
     - name: Install IstioCNI
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: sailoperator.io/v1
           kind: IstioCNI
           metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": networking
             name: default
           spec:
-            namespace: istio-cni
+            namespace: "{{ tools_namespace_istio_cni }}"
             profile: ambient
             values:
               global:
-                nativeNftables: true  # Add this line if deploying on RHEL 10 or RHCOS 10 nodes
+                nativeNftables: true
         state: present
 
     - name: Install Ztunnel
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: sailoperator.io/v1alpha1
           kind: ZTunnel
           metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": networking
             name: default
           spec:
-            namespace: ztunnel
+            namespace: "{{ tools_namespace_istio_ztunnel }}"
             profile: ambient
         state: present
+
+- name: Create Telemetry
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: telemetry.istio.io/v1
+      kind: Telemetry
+      metadata:
+        name: istio-telemetry
+        namespace: "{{ tools_namespace_istio_istiod }}"
+      spec:
+        accessLogging:
+          - providers:
+              - name: opentelemetry
+        tracing:
+          - providers:
+              - name: jaeger
+            randomSamplingPercentage: 10
+    state: present
+  when:
+    - tools_observability_enabled
+
+- name: Create ServiceMonitor for Control Plane
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: "{{ tools_helm_release_istio_istiod }}"
+        namespace: "{{ tools_namespace_istio_istiod }}"
+      spec:
+        endpoints:
+          - interval: 30s
+            port: http-monitoring
+        selector:
+          matchLabels:
+            "app.kubernetes.io/name": "{{ tools_helm_release_istio_istiod }}"
+            "app.kubernetes.io/part-of": istio
+    state: present
+
+- name: Create PodMonitor for CNI Pods
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: PodMonitor
+      metadata:
+        name: "{{ tools_helm_release_istio_cni }}"
+        namespace: "{{ tools_namespace_istio_cni }}"
+      spec:
+        podMetricsEndpoints:
+          - interval: 30s
+            port: metrics
+        selector:
+          matchLabels:
+            "app.kubernetes.io/name": "{{ tools_helm_release_istio_cni }}"
+            "app.kubernetes.io/part-of": istio
+    state: present
+
+- name: Create PodMonitor for ZTunnel Pods
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: PodMonitor
+      metadata:
+        name: "{{ tools_helm_release_istio_ztunnel }}"
+        namespace: "{{ tools_namespace_istio_ztunnel }}"
+      spec:
+        podMetricsEndpoints:
+          - interval: 30s
+            port: ztunnel-stats
+        selector:
+          matchLabels:
+            "app.kubernetes.io/name": "{{ tools_helm_release_istio_ztunnel }}"
+            "app.kubernetes.io/part-of": istio
+    state: present

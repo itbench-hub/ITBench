@@ -1,23 +1,69 @@
 ---
-- name: Import Kubernetes Gateway API installation tasks
+- name: Create Namespaces for infrastructure tools
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: "{{ 'project.openshift.io/v1' if tools_cluster.platform == 'openshift' else 'v1' }}"
+      kind: "{{ 'Project' if tools_cluster.platform == 'openshift' else 'Namespace' }}"
+      metadata:
+        labels: >-
+          {{
+            itbench_namespace.labels |
+            ansible.builtin.combine(
+              {
+                "itbench.io/inject": "false",
+                "itbench.io/monitor": "true"
+              }
+            )
+          }}
+        name: "{{ itbench_namespace.name }}"
+  loop:
+    - name: "{{ tools_namespace_kyverno }}"
+      labels:
+        "itbench.io/layer": governance
+    - name: "{{ tools_namespace_itbench }}"
+      labels:
+        "itbench.io/layer": infrastructure
+    - name: "{{ tools_namespace_itbench_observability }}"
+      labels:
+        "itbench.io/gateway-access": shared
+        "itbench.io/layer": observability
+  loop_control:
+    label: namespace/{{ itbench_namespace.name }}
+    loop_var: itbench_namespace
+
+- name: Import Custom Resource Definitions installation tasks
   ansible.builtin.import_tasks:
-    file: install_kubernetes_gateway_api.yaml
+    file: install_custom_resource_definitions.yaml
+
+- name: Import Kyverno installation tasks
+  ansible.builtin.import_tasks:
+    file: install_kyverno.yaml
+
+- name: Import cert-manager installation tasks
+  ansible.builtin.import_tasks:
+    file: install_cert_manager.yaml
+
+- name: Install Kubernetes Metrics Server
+  kubernetes.core.helm:
+    chart_ref: metrics-server
+    chart_repo_url: "https://kubernetes-sigs.github.io/metrics-server/"
+    chart_version: "3.14.0"
+    release_name: "{{ tools_helm_release_kubernetes_metrics_server }}"
+    release_namespace: "{{ tools_namespace_kubernetes_metrics_server }}"
+    release_state: present
+    release_values:
+      apiService:
+        insecureSkipTLSVerify: false
+      tls:
+        type: cert-manager
+    timeout: 10m0s
+    wait: true
   when:
     - tools_cluster.platform == "kubernetes"
 
-- name: Import Prometheus Operator CRD installation tasks
-  ansible.builtin.import_tasks:
-    file: install_prometheus_operator_crds.yaml
+- name: Install observability tools
   when:
-    - tools_cluster.platform == "kubernetes"
-
-- name: Import Kubernetes Gateway installation tasks
-  ansible.builtin.import_tasks:
-    file: install_kubernetes_gateway.yaml
-
-- name: Install SRE and FinOps Tools
-  when:
-    - ((tools_configuration.finops.enabled | ansible.builtin.default(false)) or (tools_configuration.sre.enabled | ansible.builtin.default(false)))
+    - tools_observability_enabled
   block:
     - name: Import Clickhouse installation tasks
       ansible.builtin.import_tasks:
@@ -27,38 +73,26 @@
       ansible.builtin.import_tasks:
         file: install_prometheus.yaml
 
-    - name: Import Prometheus endpoint variable setting tasks
-      ansible.builtin.import_tasks:
-        file: set_internal_endpoints_prometheus.yaml
-
     - name: Import OpenTelemetry installation tasks
       ansible.builtin.import_tasks:
         file: install_opentelemetry.yaml
 
-    - name: Import Kubernetes Metrics Server installation tasks
+    - name: Import OpenCost installation tasks
       ansible.builtin.import_tasks:
-        file: install_kubernetes_metrics_server.yaml
+        file: install_opencost.yaml
 
-    - name: Import cert-manager installation tasks
+- name: Install Gateway tools
+  when:
+    - tools_gateway_enabled
+  block:
+    - name: Import Gateway installation tasks
       ansible.builtin.import_tasks:
-        file: install_cert_manager.yaml
+        file: install_kubernetes_gateway.yaml
 
-    - name: Install FinOps specific tools
-      when:
-        - tools_configuration.finops.enabled | ansible.builtin.default(false)
-      block:
-        - name: Import OpenCost installation tasks
-          ansible.builtin.import_tasks:
-            file: install_opencost.yaml
-
-    - name: Install SRE specific tools
-      when:
-        - tools_configuration.sre.enabled | ansible.builtin.default(false)
-      block:
-        - name: Import Chaos Mesh installation tasks
-          ansible.builtin.import_tasks:
-            file: install_chaos_mesh.yaml
-
+- name: Install service mesh tools
+  when:
+    - tools_service_mesh_enabled
+  block:
     - name: Import Istio installation tasks
       ansible.builtin.import_tasks:
         file: install_istio.yaml

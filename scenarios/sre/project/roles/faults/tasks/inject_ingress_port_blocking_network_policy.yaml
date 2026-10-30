@@ -5,11 +5,11 @@
 
 - name: Create network policy for workload
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: networking.k8s.io/v1
       kind: NetworkPolicy
       metadata:
+        labels: "{{ faults_kubernetes_object.metadata.labels | ansible.builtin.default({}) }}"
         name: "{{ faults_kubernetes_object.metadata.name }}-ingress"
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:

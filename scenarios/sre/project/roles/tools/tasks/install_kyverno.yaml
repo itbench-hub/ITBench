@@ -1,0 +1,40 @@
+---
+- name: Install Kyverno
+  kubernetes.core.helm:
+    chart_ref: "oci://ghcr.io/kyverno/charts/kyverno"
+    chart_version: "3.9.1"
+    release_name: "{{ tools_helm_release_kyverno }}"
+    release_namespace: "{{ tools_namespace_kyverno }}"
+    release_state: present
+    wait: true
+
+- name: Create ClusterPolicy for DaemonSets
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: kyverno.io/v1
+      kind: ClusterPolicy
+      metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": governance
+        name: itbench-fault-injection-toleration
+      spec:
+        background: true
+        rules:
+          - match:
+              any:
+                - resources:
+                    kinds:
+                      - DaemonSet
+            mutate:
+              patchStrategicMerge:
+                spec:
+                  template:
+                    spec:
+                      tolerations:
+                        - key: itbench.io/inject
+                          operator: Equal
+                          value: "true"
+                          effect: NoSchedule
+            name: add-sandbox-toleration-to-daemonsets
+    state: present

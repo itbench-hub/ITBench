@@ -42,7 +42,8 @@ func TestRun(t *testing.T) {
 	}
 
 	outDir := t.TempDir()
-	if err := recorder.Run(ctx, addr, "default", testPassword, outDir); err != nil {
+	namespaces := []string{"otel-demo", "book-info"}
+	if err := recorder.Run(ctx, addr, "default", testPassword, outDir, namespaces); err != nil {
 		t.Fatalf("recorder.Run: %v", err)
 	}
 
@@ -52,7 +53,7 @@ func TestRun(t *testing.T) {
 		"raw/k8s_topology_objects_raw.tsv",
 		"raw/k8s_objects_raw.tsv",
 		"raw/otel_logs_raw.tsv",
-		"raw/otel_traces_raw.tsv",
+		"raw/jaeger_spans_raw.tsv",
 	} {
 		assertFile(t, outDir, f)
 	}
@@ -62,7 +63,7 @@ func TestRun(t *testing.T) {
 		"lite/k8s_events.tsv",
 		"lite/k8s_objects.tsv",
 		"lite/otel_logs.tsv",
-		"lite/otel_traces.tsv",
+		"lite/jaeger_spans.tsv",
 	} {
 		assertFile(t, outDir, f)
 	}
@@ -73,7 +74,7 @@ func TestRun(t *testing.T) {
 	// ── test snapshot milestone mode ─────────────────────────────────────
 	snapshotDir := t.TempDir()
 	t1 := time.Date(2024, 1, 1, 0, 0, 0, 500000000, time.UTC)
-	if err := recorder.Run(ctx, addr, "default", testPassword, snapshotDir, t1); err != nil {
+	if err := recorder.Run(ctx, addr, "default", testPassword, snapshotDir, namespaces, t1); err != nil {
 		t.Fatalf("recorder.Run with snapshot timestamp: %v", err)
 	}
 

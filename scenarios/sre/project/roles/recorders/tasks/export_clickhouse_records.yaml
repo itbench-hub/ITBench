@@ -1,11 +1,11 @@
 ---
-- name: Import variable setting tasks
-  ansible.builtin.import_role:
-    name: tools
-    tasks_from: set_credentials_clickhouse
-  vars:
-    tools_cluster:
-      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+- name: Retrieve Namespaces with record labels
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    label_selectors:
+      - "itbench.io/record=true"
+  register: recorders_recordable_namespaces
 
 - name: Create PersistentVolumeClaim for Clickhouse Recorder
   kubernetes.core.k8s:
@@ -13,13 +13,8 @@
       apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        labels:
-          "app.kubernetes.io/component": clickhouse-recorder
-          "app.kubernetes.io/managed-by": ITBench
-          "app.kubernetes.io/name": "{{ recorders_instances.clickhouse_data_recorder.name }}-records"
-          "app.kubernetes.io/part-of": data-collection
-        name: "{{ recorders_instances.clickhouse_data_recorder.name }}-records"
-        namespace: "{{ recorders_namespaces.data_recorders }}"
+        name: "{{ recorders_instance_clickhouse_name }}-records"
+        namespace: "{{ recorders_namespace }}"
       spec:
         accessModes:
           - ReadWriteOnce
@@ -35,81 +30,82 @@
       apiVersion: batch/v1
       kind: Job
       metadata:
-        labels:
-          "app.kubernetes.io/component": clickhouse-recorder
-          "app.kubernetes.io/managed-by": ITBench
-          "app.kubernetes.io/name": "{{ recorders_instances.clickhouse_data_recorder.name }}"
-          "app.kubernetes.io/part-of": data-collection
-        name: "{{ recorders_instances.clickhouse_data_recorder.name }}"
-        namespace: "{{ recorders_namespaces.data_recorders }}"
+        name: itbench-clickhouse-recorder
+        namespace: "{{ recorders_namespace }}"
       spec:
         template:
-          metadata:
-            labels:
-              "app.kubernetes.io/component": clickhouse-recorder
-              "app.kubernetes.io/managed-by": ITBench
-              "app.kubernetes.io/name": "{{ recorders_instances.clickhouse_data_recorder.name }}"
-              "app.kubernetes.io/part-of": data-collection
           spec:
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.itbench.io/sandbox
-                          operator: DoesNotExist
             containers:
-              - name: recorder
-                image: quay.io/it-bench/clickhouse-recorder:1.0.0@sha256:36189ffcfddea44557af00cbec7c726276812954c1dff22f78074f8ade026224
-                env:
+              - env:
                   - name: CLICKHOUSE_HOST
                     value: "{{ tools_clickhouse_endpoint.tcp }}"
-                  - name: CLICKHOUSE_USERNAME
-                    value: "{{ tools_clickhouse_username }}"
-                  - name: CLICKHOUSE_PASSWORD
-                    value: "{{ tools_clickhouse_password }}"
+                  - name: NAMESPACES
+                    value: >-
+                      {{
+                        recorders_recordable_namespaces.resources |
+                        map(attribute='metadata.name') |
+                        ansible.builtin.join(',')
+                      }}
+                  - name: OUTPUT_DIR
+                    value: /records
                   - name: RECORDING_START_TIMESTAMP
                     value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (recorders_duration_minutes * 60)) }}"
                   - name: RECORDING_END_TIMESTAMP
                     value: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
                   - name: RECORDING_INTERVAL_SECONDS
                     value: "300"
+                envFrom:
+                  - secretRef:
+                      name: clickhouse-credentials
+                image: quay.io/it-bench/clickhouse-recorder:1.0.0@sha256:36189ffcfddea44557af00cbec7c726276812954c1dff22f78074f8ade026224
+                name: recorder
                 resources:
                   requests:
                     cpu: 500m
                     memory: 512Mi
-                  limits:
-                    memory: 1024Mi
+                limits:
+                  memory: 1024Mi
                 securityContext:
                   allowPrivilegeEscalation: false
                   capabilities:
                     drop:
                       - ALL
                 volumeMounts:
-                  - name: records
-                    mountPath: /opt/app-root/src/records
+                  - mountPath: /records
+                    name: records
             restartPolicy: Never
             securityContext:
               fsGroup: 1001
-              runAsUser: 1001
               runAsNonRoot: true
+              runAsUser: 1001
               seccompProfile:
                 type: RuntimeDefault
             volumes:
               - name: records
                 persistentVolumeClaim:
-                  claimName: "{{ recorders_instances.clickhouse_data_recorder.name }}-records"
+                  claimName: "{{ recorders_instance_clickhouse_name }}-records"
     state: present
     wait: true
-    wait_timeout: 600
     wait_condition:
-      type: Complete
       status: "True"
+      type: Complete
+    wait_timeout: 600
 
-- name: Import copy tasks
-  ansible.builtin.import_tasks:
-    file: copy_recorder_files.yaml
-  vars:
-    export:
-      directory: observability_information_from_clickhouse
-    recorder: "{{ recorders_instances.clickhouse_data_recorder }}"
+- name: Export Clickhouse records
+  block:
+    - name: Create temporary directory for Clickhouse records
+      ansible.builtin.tempfile:
+        prefix: clickhouse
+        state: directory
+      register: recorders_export_directory
+
+    - name: Import copy tasks
+      ansible.builtin.import_tasks:
+        file: copy_recorder_files.yaml
+      vars:
+        recorders_instance_name: itbench-clickhouse-recorder
+  always:
+    - name: Delete temporary directory for Clickhouse records
+      ansible.builtin.file:
+        path: "{{ recorders_export_directory.path }}"
+        state: absent

@@ -1,0 +1,39 @@
+---
+- name: Install Custom Resource Definitions on Kubernetes
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Create temporary directory for install files
+      ansible.builtin.tempfile:
+        prefix: k8s_gateway
+        state: directory
+      register: tools_standards_gateway_install_directory
+
+    - name: Download Gateway API files from standard release channel
+      ansible.builtin.get_url:
+        dest: "{{ tools_standards_gateway_install_directory.path }}"
+        mode: "0644"
+        url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.3/standard-install.yaml"
+
+    - name: Apply Custom Resource Definitions to cluster
+      kubernetes.core.k8s:
+        apply: true
+        server_side_apply:
+          field_manager: ansible
+        src: "{{ [tools_standards_gateway_install_directory.path, 'standard-install.yaml'] | ansible.builtin.path_join }}"
+        state: present
+
+    - name: Install Prometheus Operator Custom Resource Definitions
+      kubernetes.core.helm:
+        chart_ref: "oci://ghcr.io/prometheus-community/charts/prometheus-operator-crds"
+        chart_version: "32.0.1"
+        release_name: "{{ tools_helm_release_prometheus_operator_crds }}"
+        release_namespace: "{{ tools_namespace_itbench_observability }}"
+        release_state: present
+        timeout: 10m0s
+        wait: true
+  always:
+    - name: Delete the temporary directory
+      ansible.builtin.file:
+        path: "{{ tools_standards_gateway_install_directory.path }}"
+        state: absent

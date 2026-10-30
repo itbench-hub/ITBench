@@ -24,7 +24,7 @@ def undeploy_tools(kubeconfig: str) -> None:
             run_playbook(
                 playbook="manage_tools.yaml",
                 extra_vars={"cluster": {"kubeconfig": kubeconfig}},
-                tags=["uninstall_tools"],
+                tags=["uninstall"],
             )
         except RuntimeError as exc:
             console.print(f"[red]Undeploy failed:[/red] {exc}")

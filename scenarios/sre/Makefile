@@ -19,10 +19,10 @@ group-vars: ## Generates the group variables
 .PHONY: deploy-tools
 deploy-tools: ## Deploys the observability and fault tools to cluster
 ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install_tools" \
+	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install_tools"
+	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install"
 endif
 
 .PHONY: display-endpoints
@@ -32,53 +32,50 @@ display-endpoints: ## Shows the urls for accessing deployed tools in browser
 .PHONY: undeploy-tools
 undeploy-tools: ## Undeploys the observability and fault tools from cluster
 ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall_tools" \
+	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall_tools"
+	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall"
 endif
 
 .PHONY: discover-applications
 discover-applications: ## Discovers components of applications
-	$(UV) run ansible-playbook -i inventory project/discover_applications.yaml --tags "discover_applications"
+	$(UV) run ansible-playbook -i inventory project/discover_applications.yaml --tags "discover"
 
 .PHONY: deploy-applications
 deploy-applications: ## Deploys the applications to cluster
 ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install_applications" \
+	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install_applications"
+	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install"
 endif
 
 .PHONY: undeploy-applications
 undeploy-applications: ## Undeploys the applications to cluster
 ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall_applications" \
+	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall_applications"
+	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall"
 endif
 
 .PHONY: deploy-recorders
 deploy-recorders: ## Deploys the data recorders to cluster
 ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "setup_recording" \
+	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "setup_recording"
+	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install"
 endif
 
 .PHONY: undeploy-recorders
 undeploy-recorders: ## Undeploys the data recorders to cluster
 ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export_records" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "teardown_recording" \
+	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export,uninstall" \
 		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
 else
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export_records"
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "teardown_recording"
+	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export,uninstall"
 endif
 
 .PHONY: inject-scenario-faults

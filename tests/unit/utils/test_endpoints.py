@@ -13,29 +13,13 @@ from itbench.utils.endpoints import (
 
 
 # ---------------------------------------------------------------------------
-# Minimal releases fixture that satisfies _build_tool_definitions
+# Minimal vars fixture that satisfies _build_tool_definitions
 # ---------------------------------------------------------------------------
 
-_RELEASES: dict = {
-    "tools_releases": {
-        "kube_prometheus_stack": {
-            "name": "prometheus",
-            "namespace": {"kubernetes": "monitoring"},
-        },
-        "opencost": {"name": "opencost", "namespace": "opencost"},
-    },
-    "tools_operands": {
-        "opentelemetry_collector": {
-            "jaeger": {"name": "jaeger"},
-        },
-        "alinity_clickhouse": {
-            "main": {"name": "clickhouse"},
-        },
-    },
-    "tools_namespaces": {
-        "opentelemetry_collector": "otel-ns",
-        "alinity_clickhouse": "ch-ns",
-    },
+_VARS: dict = {
+    "tools_namespace_itbench_observability": "itbench-observability",
+    "tools_helm_release_kube_prometheus_stack": "kube-prometheus-stack",
+    "tools_helm_release_opencost": "opencost",
 }
 
 
@@ -60,30 +44,43 @@ def test_tool_endpoint_urls_empty_paths_list_falls_back_to_host() -> None:
 
 
 def test_build_tool_definitions_returns_expected_keys() -> None:
-    tools = _build_tool_definitions(_RELEASES)
-    assert set(tools.keys()) == {
-        "Prometheus",
-        "Jaeger",
-        "ClickHouse",
-        "OpenCost",
-    }
+    tools = _build_tool_definitions(_VARS)
+    assert set(tools.keys()) == {"Prometheus", "Jaeger", "ClickHouse", "OpenCost"}
 
 
 def test_build_tool_definitions_prometheus_ref() -> None:
-    tools = _build_tool_definitions(_RELEASES)
-    assert tools["Prometheus"]["name"] == "prometheus"
-    assert tools["Prometheus"]["namespace"] == "monitoring"
+    tools = _build_tool_definitions(_VARS)
+    assert tools["Prometheus"]["name"] == "kube-prometheus-stack"
+    assert tools["Prometheus"]["namespace"] == "itbench-observability"
+
+
+def test_build_tool_definitions_jaeger_ref() -> None:
+    tools = _build_tool_definitions(_VARS)
+    assert tools["Jaeger"]["name"] == "jaeger"
+    assert tools["Jaeger"]["namespace"] == "itbench-observability"
+
+
+def test_build_tool_definitions_clickhouse_ref() -> None:
+    tools = _build_tool_definitions(_VARS)
+    assert tools["ClickHouse"]["name"] == "clickhouse"
+    assert tools["ClickHouse"]["namespace"] == "itbench-observability"
+
+
+def test_build_tool_definitions_opencost_ref() -> None:
+    tools = _build_tool_definitions(_VARS)
+    assert tools["OpenCost"]["name"] == "opencost"
+    assert tools["OpenCost"]["namespace"] == "itbench-observability"
 
 
 def test_build_tool_definitions_all_tools_have_paths() -> None:
-    tools = _build_tool_definitions(_RELEASES)
+    tools = _build_tool_definitions(_VARS)
     for name, cfg in tools.items():
         assert isinstance(cfg["paths"], list), f"{name} missing paths"
         assert len(cfg["paths"]) > 0, f"{name} has empty paths"
 
 
 def test_build_tool_definitions_all_tools_have_name_and_namespace() -> None:
-    tools = _build_tool_definitions(_RELEASES)
+    tools = _build_tool_definitions(_VARS)
     for name, cfg in tools.items():
         assert "name" in cfg, f"{name} missing name"
         assert "namespace" in cfg, f"{name} missing namespace"
@@ -95,7 +92,7 @@ def test_resolve_gateway_host_ip_address() -> None:
         "status": {"addresses": [{"type": "IPAddress", "value": "10.0.0.1"}]}
     }
     host = _resolve_gateway_host(custom, name="gw", namespace="ns")
-    assert host == "http://10.0.0.1:80"
+    assert host == "http://10.0.0.1:8080"
 
 
 def test_resolve_gateway_host_hostname() -> None:
@@ -133,23 +130,20 @@ def _api_exception(status: int) -> Exception:
 
 def test_resolve_httproute_endpoints_returns_endpoint_for_found_route() -> None:
     custom = MagicMock()
-    custom.get_namespaced_custom_object.return_value = {
-        "spec": {
-            "rules": [{"matches": [{"path": {"value": "/prometheus"}}]}]
-        }
-    }
+    custom.get_namespaced_custom_object.return_value = {}
     tools = {
         "Prometheus": {
-            "name": "prometheus",
-            "namespace": "monitoring",
-            "paths": ["/alerts"],
+            "name": "kube-prometheus-stack",
+            "namespace": "itbench-observability",
+            "paths": ["/observability/prometheus/alerts", "/observability/prometheus/query"],
         }
     }
     results = _resolve_httproute_endpoints(custom, "http://1.2.3.4", tools)
 
     assert len(results) == 1
     assert results[0].tool == "Prometheus"
-    assert results[0].host == "http://1.2.3.4/prometheus"
+    assert results[0].host == "http://1.2.3.4"
+    assert results[0].paths == ["/observability/prometheus/alerts", "/observability/prometheus/query"]
 
 
 def test_resolve_httproute_endpoints_skips_404() -> None:
@@ -157,9 +151,9 @@ def test_resolve_httproute_endpoints_skips_404() -> None:
     custom.get_namespaced_custom_object.side_effect = _api_exception(404)
     tools = {
         "Prometheus": {
-            "name": "prometheus",
-            "namespace": "monitoring",
-            "paths": ["/alerts"],
+            "name": "kube-prometheus-stack",
+            "namespace": "itbench-observability",
+            "paths": ["/observability/prometheus/alerts"],
         }
     }
     results = _resolve_httproute_endpoints(custom, "http://1.2.3.4", tools)
@@ -173,20 +167,10 @@ def test_resolve_httproute_endpoints_reraises_non_404() -> None:
     custom.get_namespaced_custom_object.side_effect = _api_exception(500)
     tools = {
         "Prometheus": {
-            "name": "prometheus",
-            "namespace": "monitoring",
-            "paths": ["/alerts"],
+            "name": "kube-prometheus-stack",
+            "namespace": "itbench-observability",
+            "paths": ["/observability/prometheus/alerts"],
         }
     }
     with pytest.raises(client.exceptions.ApiException):
         _resolve_httproute_endpoints(custom, "http://1.2.3.4", tools)
-
-
-def test_resolve_httproute_endpoints_path_prefix_stripped_of_trailing_slash() -> None:
-    custom = MagicMock()
-    custom.get_namespaced_custom_object.return_value = {
-        "spec": {"rules": [{"matches": [{"path": {"value": "/prom/"}}]}]}
-    }
-    tools = {"T": {"name": "t", "namespace": "ns", "paths": ["/"]}}
-    results = _resolve_httproute_endpoints(custom, "http://gw", tools)
-    assert results[0].host == "http://gw/prom"

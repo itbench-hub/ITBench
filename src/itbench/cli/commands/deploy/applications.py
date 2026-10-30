@@ -15,19 +15,13 @@ from itbench.utils.runner import run_playbook
 
 console = Console()
 
-_LIBRARY_ROOT = Path(__file__).parents[6] / "library"
+_LIBRARY_ROOT = Path(__file__).parents[5] / "library"
 
 _DEFAULTS_DIR = (
     Path(__file__).parents[5]
     / "scenarios" / "sre" / "project"
     / "roles" / "applications" / "defaults" / "main"
 )
-
-_SCENARIO_APP_MAP: dict[str, str] = {
-    "book-info": "applications_book_info_enabled",
-    "opentelemetry-demo": "applications_opentelemetry_demo_enabled",
-}
-
 
 def _load_role_defaults() -> dict:
     """Merge all YAML files under the applications role defaults/main/ directory."""
@@ -40,22 +34,15 @@ def _load_role_defaults() -> dict:
 
 
 def _extra_vars_from_scenario(scenario_path: Path) -> dict:
-    """Build extra_vars from a scenario definition, or from extra_vars.yaml if present."""
-    extra_vars_path = scenario_path.parent / "extra_vars.yaml"
-    if extra_vars_path.exists():
-        with extra_vars_path.open(encoding="utf-8") as fh:
-            return yaml.safe_load(fh) or {}
+    """Build extra_vars from a scenario's extra_variables.yaml, filtered to applications_* keys."""
+    extra_vars_path = scenario_path.parent / "extra_variables.yaml"
+    if not extra_vars_path.exists():
+        return {}
 
-    with scenario_path.open(encoding="utf-8") as fh:
-        scenario = yaml.safe_load(fh)
+    with extra_vars_path.open(encoding="utf-8") as fh:
+        all_vars = yaml.safe_load(fh) or {}
 
-    extra_vars: dict = {}
-    for app in (scenario.get("environment") or {}).get("applications", []):
-        flag = _SCENARIO_APP_MAP.get(app.get("id", ""))
-        if flag and app.get("enabled", True):
-            extra_vars[flag] = True
-
-    return extra_vars
+    return {k: v for k, v in all_vars.items() if k.startswith("applications_")}
 
 
 def _extra_vars_from_wizard() -> dict:
@@ -151,7 +138,7 @@ def deploy_applications(scenario_id: str | None, kubeconfig: str) -> None:
             run_playbook(
                 playbook="manage_applications.yaml",
                 extra_vars=extra_vars,
-                tags=["install_applications"],
+                tags=["install"],
                 run_id=run_id,
             )
         except RuntimeError as exc:

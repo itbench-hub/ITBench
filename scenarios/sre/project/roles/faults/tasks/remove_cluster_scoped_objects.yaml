@@ -1,36 +1,10 @@
 ---
-- name: Delete all fault related ClusterRoleBinding
-  kubernetes.core.k8s:
-    api_version: rbac.authorization.k8s.io/v1
-    delete_all: true
-    kind: ClusterRoleBinding
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    label_selectors:
-      - "app.kubernetes.io/component = workload"
-      - "app.kubernetes.io/managed-by = ITBench"
-    state: absent
-    wait: true
-
-- name: Delete all fault related ClusterRole
-  kubernetes.core.k8s:
-    api_version: rbac.authorization.k8s.io/v1
-    delete_all: true
-    kind: ClusterRole
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
-    label_selectors:
-      - "app.kubernetes.io/component = workload"
-      - "app.kubernetes.io/managed-by = ITBench"
-    state: absent
-    wait: true
-
 - name: Delete all fault related PriorityClass
   kubernetes.core.k8s:
     api_version: scheduling.k8s.io/v1
     delete_all: true
     kind: PriorityClass
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     label_selectors:
-      - "app.kubernetes.io/component = workload"
-      - "app.kubernetes.io/managed-by = ITBench"
+      - "itbench.io/layer=application"
     state: absent
     wait: true

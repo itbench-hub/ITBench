@@ -15,14 +15,14 @@ from itbench.cli.commands.discover.endpoints import endpoints
 def test_discover_endpoints_finds_all_tools(
     kubeconfig: str, itbench_cli: CliRunner, tools_stack: None
 ) -> None:
-    """All five tool endpoints should resolve after the tools stack is deployed."""
+    """All four tool endpoints should resolve after the tools stack is deployed."""
     result = itbench_cli.invoke(
         endpoints,
         ["--kubeconfig", kubeconfig, "--platform", "kubernetes"],
         catch_exceptions=False,
     )
     assert result.exit_code == 0, result.output
-    for tool in ("Prometheus", "Jaeger", "ClickHouse", "OpenCost", "Kubernetes Topology Monitor"):
+    for tool in ("Prometheus", "Jaeger", "ClickHouse", "OpenCost"):
         assert tool in result.output, f"Expected '{tool}' in endpoint output"
 
 
@@ -30,15 +30,15 @@ def test_discover_endpoints_finds_all_tools(
 def test_discover_endpoints_surfaces_expected_paths(
     kubeconfig: str, itbench_cli: CliRunner, tools_stack: None
 ) -> None:
-    """Key URL paths (/alerts, /healthz) must appear in the resolved table."""
+    """Key URL paths must appear in the resolved table."""
     result = itbench_cli.invoke(
         endpoints,
         ["--kubeconfig", kubeconfig, "--platform", "kubernetes"],
         catch_exceptions=False,
     )
     assert result.exit_code == 0, result.output
-    assert "/alerts" in result.output
-    assert "/healthz" in result.output
+    assert "/observability/prometheus/alerts" in result.output
+    assert "/observability/jaeger/" in result.output
 
 
 @pytest.mark.integration

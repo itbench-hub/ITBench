@@ -1,26 +1,28 @@
 ---
-- name: Delete ClusterRoleBindings for topology collector
+- name: Delete ClusterRoleBindings for recorders
   kubernetes.core.k8s:
     api_version: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
     label_selectors:
-      - "itbench.io/record-type=topology"
+      - "itbench.io/ansible-role=recorders"
     state: absent
+    wait: true
 
-- name: Delete ClusterRoles for topology collector
+- name: Delete ClusterRoles for recorders
   kubernetes.core.k8s:
     api_version: rbac.authorization.k8s.io/v1
     kind: ClusterRole
     label_selectors:
-      - "itbench.io/record-type=topology"
+      - "itbench.io/ansible-role=recorders"
     state: absent
+    wait: true
 
 - name: Delete the namespace
   kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: "{{ recorders_namespaces.data_recorders }}"
+    api_version: v1
+    delete_all: true
+    kind: Namespace
+    label_selectors:
+      - "itbench.io/ansible-role=recorders"
     state: absent
     wait: true

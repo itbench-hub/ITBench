@@ -1,123 +1,83 @@
 ---
-- name: Import Clickhouse credential variable setting tasks
-  ansible.builtin.import_tasks:
-    file: set_credentials_clickhouse.yaml
-
-- name: Import Clickhouse endpoint variable setting tasks
+- name: Import tools role for variable setting tasks
   ansible.builtin.import_tasks:
     file: set_internal_endpoints_clickhouse.yaml
 
-- name: Install Prometheus and Prometheus Operator on Kubernetes
+- name: Install Prometheus on Kubernetes
   when:
     - tools_cluster.platform == "kubernetes"
   block:
-    - name: Create Namespace for Prometheus and Prometheus Operator
+    - name: Install Issuer for Prometheus proxy
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
-          apiVersion: v1
-          kind: Namespace
+          apiVersion: cert-manager.io/v1
+          kind: Issuer
           metadata:
-            labels:
-              "itbench.io/gateway-access": shared
-              "prometheus.itbench.io/monitor": "true"
-            name: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
+            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-issuer' }}"
+            namespace: "{{ tools_namespace_itbench_observability }}"
+          spec:
+            selfSigned: {}
         state: present
 
-    # Note: Since Prometheus only configures the authentication for Remote Write
-    #       via Kubernetes Secret, the Clickhouse credential has to be replicated
-    #       in the Prometheus namespace.
-
-    - name: Redeploy Clickhouse credential to Prometheus namespace
+    - name: Install Certificate for Prometheus proxy
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
-          apiVersion: v1
-          kind: Secret
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
           metadata:
-            name: clickhouse-remote-write-credentials
-            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
-          type: Opaque
-          stringData:
-            password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
-            username: "{{ tools_clickhouse_username }}"
+            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus-proxy-tls' }}"
+            namespace: "{{ tools_namespace_itbench_observability }}"
+          spec:
+            dnsNames:
+              - "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus' }}"
+              - >-
+                {{
+                    [
+                      tools_helm_release_kube_prometheus_stack,
+                      "-prometheus",
+                      tools_namespace_itbench_observability
+                    ] |
+                    ansible.builtin.join(".")
+                }}
+              - >-
+                {{
+                    [
+                      tools_helm_release_kube_prometheus_stack,
+                      "-prometheus",
+                      tools_namespace_itbench_observability,
+                      "svc",
+                      "cluster",
+                      "local"
+                    ] |
+                    ansible.builtin.join(".")
+                }}
+            duration: 2160h
+            isCA: false
+            issuerRef:
+              name: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-issuer' }}"
+              kind: Issuer
+            privateKey:
+              algorithm: RSA
+              size: 2048
+            renewBefore: 360h
+            secretName: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-cert' }}"
+            usages:
+              - server auth
+              - client auth
         state: present
 
     - name: Install Prometheus Operator and Prometheus
       kubernetes.core.helm:
         chart_ref: "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack"
         chart_version: "92.10.1"
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        release_name: "{{ tools_releases.kube_prometheus_stack.name }}"
-        release_namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
+        release_name: "{{ tools_helm_release_kube_prometheus_stack }}"
+        release_namespace: "{{ tools_namespace_itbench_observability }}"
         release_state: present
-        timeout: 10m0s
-        values:
+        release_values:
           alertmanager:
-            enabled: false
-          grafana:
             enabled: false
           crds:
             enabled: false
-          kube-state-metrics:
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.itbench.io/sandbox
-                          operator: DoesNotExist
-          prometheusOperator:
-            admissionWebhooks:
-              affinity:
-                nodeAffinity:
-                  requiredDuringSchedulingIgnoredDuringExecution:
-                    nodeSelectorTerms:
-                      - matchExpressions:
-                          - key: node-role.itbench.io/sandbox
-                            operator: DoesNotExist
-            affinity:
-              nodeAffinity:
-                requiredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                    - matchExpressions:
-                        - key: node-role.itbench.io/sandbox
-                          operator: DoesNotExist
-          prometheus:
-            prometheusSpec:
-              affinity:
-                nodeAffinity:
-                  requiredDuringSchedulingIgnoredDuringExecution:
-                    nodeSelectorTerms:
-                      - matchExpressions:
-                          - key: node-role.itbench.io/sandbox
-                            operator: DoesNotExist
-              podMonitorNamespaceSelector:
-                matchLabels:
-                  "prometheus.itbench.io/monitor": "true"
-              podMonitorSelectorNilUsesHelmValues: false
-              ruleNamespaceSelector:
-                matchLabels:
-                  "prometheus.itbench.io/monitor": "true"
-              ruleSelectorNilUsesHelmValues: false
-              serviceMonitorNamespaceSelector:
-                matchLabels:
-                  "prometheus.itbench.io/monitor": "true"
-              serviceMonitorSelectorNilUsesHelmValues: false
-              enableOTLPReceiver: true
-              routePrefix: /prometheus
-              remoteWrite:
-                - url: "http://{{ tools_clickhouse_endpoint.prometheus }}/write"
-                  basicAuth:
-                    password:
-                      name: clickhouse-remote-write-credentials
-                      key: password
-                    username:
-                      name: clickhouse-remote-write-credentials
-                      key: username
-                  queueConfig:
-                    maxSamplesPerSend: 5000
-                    batchSendDeadline: 10s
           customRules:
             KubeContainerWaiting:
               for: 5m
@@ -132,6 +92,8 @@
           defaultRules:
             rules:
               alertmanager: false
+          grafana:
+            enabled: false
           kubeControllerManager:
             enabled: "{{ tools_cluster.provider == 'kind' }}"
           kubeEtcd:
@@ -140,89 +102,191 @@
             enabled: "{{ tools_cluster.provider == 'kind' }}"
           kubeScheduler:
             enabled: "{{ tools_cluster.provider == 'kind' }}"
+          prometheus:
+            prometheusSpec:
+              containers:
+                - args:
+                    - "--secure-listen-address=0.0.0.0:8443"
+                    - "--upstream=http://127.0.0.1:9090/"
+                    - "--tls-cert-file=/etc/tls/proxy/tls.crt"
+                    - "--tls-private-key-file=/etc/tls/proxy/tls.key"
+                    - "--v=10"
+                  image: ghcr.io/kube-rbac-proxy/kube-rbac-proxy:v0.23.0@sha256:296fd0a10fb635414b4533b983f0d5a686ce0ce73567b7079b6595ba75034f1a
+                  name: kube-rbac-proxy
+                  ports:
+                    - containerPort: 8443
+                      name: http-proxy
+                  volumeMounts:
+                    - name: proxy-certs
+                      mountPath: /etc/tls/proxy
+                      readOnly: true
+              enableOTLPReceiver: true
+              listenLocal: true
+              podMonitorNamespaceSelector:
+                matchLabels:
+                  "itbench.io/monitor": "true"
+              podMonitorSelectorNilUsesHelmValues: false
+              remoteWrite:
+                - basicAuth:
+                    password:
+                      key: CLICKHOUSE_PASSWORD
+                      name: user-default-credentials
+                    username:
+                      key: CLICKHOUSE_USER
+                      name: user-default-credentials
+                  queueConfig:
+                    batchSendDeadline: 15s
+                    maxSamplesPerSend: 20000
+                  url: "http://{{ tools_clickhouse_endpoint.prometheus }}/write"
+              routePrefix: /observability/prometheus
+              ruleNamespaceSelector:
+                matchLabels:
+                  "itbench.io/monitor": "true"
+              ruleSelectorNilUsesHelmValues: false
+              serviceMonitorNamespaceSelector:
+                matchLabels:
+                  "itbench.io/monitor": "true"
+              serviceMonitorSelectorNilUsesHelmValues: false
+              volumes:
+                - name: proxy-certs
+                  secret:
+                    secretName: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-cert' }}"
+            service:
+              additionalPorts:
+                - name: http-proxy
+                  port: 8443
+                  targetPort: 8443
+              # NOTE: This is a workaround due to this issue: https://github.com/prometheus-operator/prometheus-operator/issues/8605
+              #       The following line can be safely removed should the connected PR be accepted by the community.
+              publishNotReadyAddresses: true
+        timeout: 10m0s
         wait: true
+
+    - name: Create ClusterRoleBinding for bearer token validation
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            labels:
+              "itbench.io/layer": observability
+            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-token-reviews' }}"
+          subjects:
+            - kind: ServiceAccount
+              name: "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus' }}"
+              namespace: itbench-observability
+          roleRef:
+            kind: ClusterRole
+            name: "system:auth-delegator"
+            apiGroup: rbac.authorization.k8s.io
+        state: present
+
+    - name: Create ClusterRole for reader access to Prometheus
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            labels:
+              "itbench.io/layer": observability
+              "itbench.io/install-role": tools
+            name: monitoring-prometheus-api-reader
+          rules:
+            - apiGroups:
+                - ""
+              resources:
+                - namespaces
+                - pods
+                - services
+                - endpoints
+              verbs:
+                - get
+                - list
+                - watch
+            - nonResourceURLs:
+                - /metrics
+                - /observability/prometheus*
+              verbs:
+                - get
+                - create
+        state: present
 
     - name: Create HTTPRoute for Prometheus
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: gateway.networking.k8s.io/v1
           kind: HTTPRoute
           metadata:
-            name: "{{ tools_releases.kube_prometheus_stack.name }}"
-            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.kubernetes }}"
+            name: "{{ tools_helm_release_kube_prometheus_stack }}"
+            namespace: "{{ tools_namespace_itbench_observability }}"
           spec:
             parentRefs:
-              - name: "{{ tools_kubernetes_gateway.name }}"
-                namespace: "{{ tools_kubernetes_gateway.namespace }}"
+              - name: "{{ tools_gateway }}"
+                namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
             rules:
               - backendRefs:
-                  - name: "{{ tools_releases.kube_prometheus_stack.name }}-kube-prometheus-prometheus"
-                    port: 9090
+                  - name: "{{ tools_helm_release_kube_prometheus_stack }}-prometheus"
+                    port: 8443
+                filters:
+                  - responseHeaderModifier:
+                      add: "{{ tools_response_headers_http }}"
+                    type: ResponseHeaderModifier
                 matches:
                   - path:
                       type: PathPrefix
-                      value: /prometheus/
-                filters:
-                  - type: ResponseHeaderModifier
-                    responseHeaderModifier:
-                      add: "{{ tools_http_route_response_headers }}"
+                      value: /observability/prometheus/
         state: present
 
-- name: Enabled OpenShift User Workload Monitoring (Prometheus)
+- name: Install Prometheus on OpenShift
   when:
     - tools_cluster.platform == "openshift"
   block:
-    # Note: Since Prometheus only configures the authentication for Remote Write
-    #       via Kubernetes Secret, the Clickhouse credential has to be replicated
-    #       in the Prometheus namespace.
+    - name: Import Clickhouse credential variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_credentials_clickhouse.yaml
+
+    - name: Import Clickhouse endpoint variable setting tasks
+      ansible.builtin.import_tasks:
+        file: set_internal_endpoints_clickhouse.yaml
 
     - name: Redeploy Clickhouse credential to Prometheus namespace
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Secret
           metadata:
             name: clickhouse-remote-write-credentials
-            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.openshift }}"
-          type: Opaque
+            namespace: "{{ tools_namespace_openshift_user_workload_monitoring }}"
           stringData:
             password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
             username: "{{ tools_clickhouse_username }}"
+          type: Opaque
         state: present
 
     - name: Create Cluster Monitoring ConfigMap
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: cluster-monitoring-config
-            namespace: openshift-monitoring
           data:
             config.yaml: |
               enableUserWorkload: true
+          kind: ConfigMap
+          metadata:
+            name: cluster-monitoring-config
+            namespace: "{{ tools_namespace_openshift_monitoring }}"
         state: present
 
     - name: Create User Workload ConfigMap
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
-          kind: ConfigMap
-          metadata:
-            name: user-workload-monitoring-config
-            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.openshift }}"
           data:
             config.yaml: |
               alertmanager:
                 enabled: false
               prometheus:
                 remoteWrite:
-                  - url: "http://{{ tools_clickhouse_endpoint.prometheus }}/write"
-                    basicAuth:
+                  - basicAuth:
                       password:
                         name: clickhouse-remote-write-credentials
                         key: password
@@ -232,20 +296,24 @@
                     queueConfig:
                       maxSamplesPerSend: 5000
                       batchSendDeadline: 10s
+                    url: "http://{{ tools_clickhouse_endpoint.prometheus }}/write"
+          kind: ConfigMap
+          metadata:
+            name: user-workload-monitoring-config
+            namespace: "{{ tools_namespace_openshift_user_workload_monitoring }}"
         state: present
 
     - name: Wait for Prometheus workload pods to start
       kubernetes.core.k8s_info:
         kind: Pod
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         label_selectors:
           - app.kubernetes.io/component = prometheus
           - app.kubernetes.io/instance = user-workload
-        namespace: "{{ tools_releases.kube_prometheus_stack.namespace.openshift }}"
+        namespace: "{{ tools_namespace_openshift_user_workload_monitoring }}"
         wait: true
         wait_condition:
-          type: Ready
           status: "True"
+          type: Ready
         wait_timeout: 300
 
     # Note: OpenShift's built-in Prometheus does not include the community alert
@@ -254,97 +322,98 @@
     #       The label openshift.io/prometheus-rule-evaluation-scope: leaf-prometheus
     #       is required for PrometheusRule objects to be picked up by the user
     #       workload Prometheus instance in OpenShift.
-    - name: Install community Prometheus alert rules on OpenShift
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: monitoring.coreos.com/v1
-          kind: PrometheusRule
-          metadata:
-            name: itbench-community-rules
-            namespace: "{{ tools_releases.kube_prometheus_stack.namespace.openshift }}"
-            labels:
-              openshift.io/prometheus-rule-evaluation-scope: leaf-prometheus
-          spec:
-            groups:
-              - name: kubernetes-resources
-                rules:
-                  - alert: KubePodNotReady
-                    expr: |
-                      sum by (namespace, pod) (
-                        max by (namespace, pod, phase) (
-                          kube_pod_status_phase{phase=~"Pending|Unknown|Failed"}
-                        ) * on(namespace, pod) group_left(owner_kind)
-                        topk by(namespace, pod) (
-                          1,
-                          max by(namespace, pod, owner_kind) (
-                            kube_pod_owner{owner_kind!="Job"}
-                          )
-                        )
-                      ) > 0
-                    for: 5m
-                    labels:
-                      severity: warning
-                    annotations:
-                      description: >-
-                        Pod {{ $labels.namespace }}/{{ $labels.pod }} has been
-                        in a non-ready state for more than 5 minutes.
-                  - alert: KubePodCrashLooping
-                    expr: |
-                      max_over_time(
-                        kube_pod_container_status_waiting_reason{
-                          reason="CrashLoopBackOff"
-                        }[5m]
-                      ) >= 1
-                    for: 5m
-                    labels:
-                      severity: warning
-                    annotations:
-                      description: >-
-                        Pod {{ $labels.namespace }}/{{ $labels.pod }}
-                        ({{ $labels.container }}) is in CrashLoopBackOff.
-                  - alert: KubeContainerWaiting
-                    expr: |
-                      sum by (namespace, pod, container) (
-                        kube_pod_container_status_waiting_reason{
-                          reason!~"ContainerCreating|PodInitializing|Completed"
-                        }
-                      ) > 0
-                    for: 5m
-                    labels:
-                      severity: warning
-                    annotations:
-                      description: >-
-                        Pod {{ $labels.namespace }}/{{ $labels.pod }}
-                        ({{ $labels.container }}) has been in a waiting state
-                        for more than 5 minutes.
-                  - alert: KubeDeploymentRolloutStuck
-                    expr: |
-                      kube_deployment_status_condition{
-                        condition="Progressing",
-                        status="false"
-                      } != 0
-                    for: 5m
-                    labels:
-                      severity: warning
-                    annotations:
-                      description: >-
-                        Rollout of Deployment {{ $labels.namespace }}/{{ $labels.deployment }}
-                        is not progressing.
-                  - alert: KubeHpaMaxedOut
-                    expr: |
-                      kube_horizontalpodautoscaler_status_current_replicas{
-                        job="kube-state-metrics"
-                      }
-                        ==
-                      kube_horizontalpodautoscaler_spec_max_replicas{
-                        job="kube-state-metrics"
-                      }
-                    for: 5m
-                    labels:
-                      severity: warning
-                    annotations:
-                      description: >-
-                        HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }}
-                        has been running at max replicas for longer than 5 minutes.
-        state: present
+
+    # - name: Install community Prometheus alert rules on OpenShift
+    #   kubernetes.core.k8s:
+    #     kubeconfig: "{{ tools_cluster.kubeconfig }}"
+    #     resource_definition:
+    #       apiVersion: monitoring.coreos.com/v1
+    #       kind: PrometheusRule
+    #       metadata:
+    #         name: itbench-community-rules
+    #         namespace: "{{ tools_releases.kube_prometheus_stack.namespace.openshift }}"
+    #         labels:
+    #           openshift.io/prometheus-rule-evaluation-scope: leaf-prometheus
+    #       spec:
+    #         groups:
+    #           - name: kubernetes-resources
+    #             rules:
+    #               - alert: KubePodNotReady
+    #                 expr: |
+    #                   sum by (namespace, pod) (
+    #                     max by (namespace, pod, phase) (
+    #                       kube_pod_status_phase{phase=~"Pending|Unknown|Failed"}
+    #                     ) * on(namespace, pod) group_left(owner_kind)
+    #                     topk by(namespace, pod) (
+    #                       1,
+    #                       max by(namespace, pod, owner_kind) (
+    #                         kube_pod_owner{owner_kind!="Job"}
+    #                       )
+    #                     )
+    #                   ) > 0
+    #                 for: 5m
+    #                 labels:
+    #                   severity: warning
+    #                 annotations:
+    #                   description: >-
+    #                     Pod {{ $labels.namespace }}/{{ $labels.pod }} has been
+    #                     in a non-ready state for more than 5 minutes.
+    #               - alert: KubePodCrashLooping
+    #                 expr: |
+    #                   max_over_time(
+    #                     kube_pod_container_status_waiting_reason{
+    #                       reason="CrashLoopBackOff"
+    #                     }[5m]
+    #                   ) >= 1
+    #                 for: 5m
+    #                 labels:
+    #                   severity: warning
+    #                 annotations:
+    #                   description: >-
+    #                     Pod {{ $labels.namespace }}/{{ $labels.pod }}
+    #                     ({{ $labels.container }}) is in CrashLoopBackOff.
+    #               - alert: KubeContainerWaiting
+    #                 expr: |
+    #                   sum by (namespace, pod, container) (
+    #                     kube_pod_container_status_waiting_reason{
+    #                       reason!~"ContainerCreating|PodInitializing|Completed"
+    #                     }
+    #                   ) > 0
+    #                 for: 5m
+    #                 labels:
+    #                   severity: warning
+    #                 annotations:
+    #                   description: >-
+    #                     Pod {{ $labels.namespace }}/{{ $labels.pod }}
+    #                     ({{ $labels.container }}) has been in a waiting state
+    #                     for more than 5 minutes.
+    #               - alert: KubeDeploymentRolloutStuck
+    #                 expr: |
+    #                   kube_deployment_status_condition{
+    #                     condition="Progressing",
+    #                     status="false"
+    #                   } != 0
+    #                 for: 5m
+    #                 labels:
+    #                   severity: warning
+    #                 annotations:
+    #                   description: >-
+    #                     Rollout of Deployment {{ $labels.namespace }}/{{ $labels.deployment }}
+    #                     is not progressing.
+    #               - alert: KubeHpaMaxedOut
+    #                 expr: |
+    #                   kube_horizontalpodautoscaler_status_current_replicas{
+    #                     job="kube-state-metrics"
+    #                   }
+    #                     ==
+    #                   kube_horizontalpodautoscaler_spec_max_replicas{
+    #                     job="kube-state-metrics"
+    #                   }
+    #                 for: 5m
+    #                 labels:
+    #                   severity: warning
+    #                 annotations:
+    #                   description: >-
+    #                     HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }}
+    #                     has been running at max replicas for longer than 5 minutes.
+    #     state: present

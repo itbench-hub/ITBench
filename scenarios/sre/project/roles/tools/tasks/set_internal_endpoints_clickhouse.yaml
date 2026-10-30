@@ -3,18 +3,17 @@
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Service
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    name: clickhouse-{{ tools_operands.alinity_clickhouse.main.name }}
-    namespace: "{{ tools_operands.alinity_clickhouse.main.namespace }}"
+    name: clickhouse-main
+    namespace: "{{ tools_namespace_itbench_observability }}"
   register: tools_clickhouse_service
 
 - name: Validate that Clickhouse service exists
   ansible.builtin.assert:
+    fail_msg: Clickhouse service not found. Please verify that Clickhouse was successfully installed.
+    success_msg: Clickhouse service found.
     that:
       - tools_clickhouse_service.api_found
       - tools_clickhouse_service.resources | ansible.builtin.length == 1
-    fail_msg: Clickhouse service not found. Please verify that Clickhouse was successfully installed.
-    success_msg: Clickhouse service found.
 
 - name: Create Clickhouse in-cluster endpoints
   ansible.builtin.set_fact:
@@ -34,20 +33,6 @@
           ) +
           ":8123"
         }}
-      tcp: |-
-        {{
-          (
-            [
-              tools_clickhouse_service.resources[0].metadata.name,
-              tools_clickhouse_service.resources[0].metadata.namespace,
-              "svc",
-              "cluster",
-              "local"
-            ] |
-            ansible.builtin.join(".") +
-            ":9000"
-          )
-        }}
       prometheus: |-
         {{
           (
@@ -61,4 +46,18 @@
             ansible.builtin.join(".")
           ) +
           ":9363"
+        }}
+      tcp: |-
+        {{
+          (
+            [
+              tools_clickhouse_service.resources[0].metadata.name,
+              tools_clickhouse_service.resources[0].metadata.namespace,
+              "svc",
+              "cluster",
+              "local"
+            ] |
+            ansible.builtin.join(".") +
+            ":9000"
+          )
         }}

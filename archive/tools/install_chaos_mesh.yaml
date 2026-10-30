@@ -77,9 +77,21 @@
     release_name: "{{ tools_releases.chaos_mesh.name }}"
     release_namespace: "{{ tools_releases.chaos_mesh.namespace }}"
     release_state: present
-    values: |-
-      {{
-        lookup('ansible.builtin.template', 'templates/helm/chaos_mesh/values.j2') |
-        ansible.builtin.from_yaml
-      }}
+    values:
+      controllerManager:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: node-role.itbench.io/sandbox
+                  operator: DoesNotExist
+      chaosDaemon:
+          podAnnotations: "{{ {'openshift.io/required-scc': 'it-bench-chaos-daemon-restricted'} if tools_cluster.platform == 'openshift' else ansible.builtin.omit }}"
+          runtime: "{{ 'crio' if tools_cluster.platform == 'openshift' else 'containerd' }}"
+          socketPath: "{{ '/var/run/crio/crio.sock' if tools_cluster.platform == 'openshift' else '/run/containerd/containerd.sock' }}"
+      dashboard:
+        create: false
+      dnsServer:
+        create: false
     wait: true

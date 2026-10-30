@@ -5,11 +5,11 @@
 
 - name: Create ConfigMap
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: v1
       kind: ConfigMap
       metadata:
+        labels: "{{ faults_kubernetes_object.metadata.labels | ansible.builtin.default({}) }}"
         name: "{{ faults_kubernetes_object.metadata.name }}-config"
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       data:
@@ -48,7 +48,6 @@
 
 - name: Update workload init containers
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
       kind: "{{ faults_kubernetes_object.kind }}"
@@ -59,33 +58,39 @@
         template:
           spec:
             initContainers:
-              - name: worker
-                image: registry.access.redhat.com/ubi10/python-314-minimal:10.2-1791928506@sha256:3754d6dacac3177e62637420cadf7dcf438e390f664c527b0457a79653a47488
-                command:
-                  - /bin/sh
-                args:
+              - args:
                   - -c
                   - "python3.14 ~/scripts/load_config.py"
+                command:
+                  - /bin/sh
+                image:
+                  registry.access.redhat.com/ubi10/python-314-minimal:10.2-1791928506@sha256:3754d6dacac3177e62637420cadf7dcf438e390f664c527b0457a79653a47488
+                name: worker
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
                 volumeMounts:
-                  - name: config
-                    mountPath: /opt/app-root/src/config
+                  - mountPath: /opt/app-root/src/config
+                    name: config
                     readOnly: true
-                  - name: scripts
-                    mountPath: /opt/app-root/src/scripts
+                  - mountPath: /opt/app-root/src/scripts
+                    name: scripts
                     readOnly: true
             volumes:
-              - name: config
-                configMap:
-                  name: "{{ faults_kubernetes_object.metadata.name }}-config"
+              - configMap:
                   defaultMode: 0755
                   items:
                     - key: config
                       path: config.json
-              - name: scripts
-                configMap:
                   name: "{{ faults_kubernetes_object.metadata.name }}-config"
+                name: config
+              - configMap:
                   defaultMode: 0755
                   items:
                     - key: script
                       path: load_config.py
+                  name: "{{ faults_kubernetes_object.metadata.name }}-config"
+                name: scripts
     state: patched

@@ -1,42 +1,45 @@
 ---
-- name: Delete Kubernetes Gateway API instances on OpenShift
-  when:
-    - tools_cluster.platform == "openshift"
-  block:
-    - name: Delete OpenShift implemented Kubernetes Gateway
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: gateway.networking.k8s.io/v1
-          kind: Gateway
-          metadata:
-            name: "{{ tools_kubernetes_gateway_openshift.name }}"
-            namespace: "{{ tools_kubernetes_gateway_openshift.namespace }}"
-        state: absent
-        wait: true
-
-    - name: Delete GatewayClass
-      kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
-        resource_definition:
-          apiVersion: gateway.networking.k8s.io/v1
-          kind: GatewayClass
-          metadata:
-            name: openshift-default
-          spec:
-            controllerName: openshift.io/gateway-controller/v1
-        state: absent
-        wait: true
-
-- name: Delete Kubernetes Gateway instance namespaces
-  kubernetes.core.k8s:
-    api_version: v1
-    delete_all: true
-    kind: Namespace
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    label_selectors:
-      - "app.kubernetes.io/component=gateway"
-    state: absent
+- name: Uninstall NGINX Gateway Fabric Helm release
+  kubernetes.core.helm:
+    release_name: "{{ tools_helm_release_nginx_gateway_fabric }}"
+    release_namespace: "{{ tools_namespace_kubernetes_gateway_nginx }}"
+    release_state: absent
     wait: true
   when:
     - tools_cluster.platform == "kubernetes"
+
+- name: Check for existence of Gateway resource
+  kubernetes.core.k8s_info:
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+  register: tools_gateway_resource
+
+- name: Delete ITBench infrastructure Gateways
+  kubernetes.core.k8s:
+    api_version: gateway.networking.k8s.io/v1
+    delete_all: true
+    kind: Gateway
+    label_selectors:
+      - "itbench.io/ansible-role=tools"
+    state: absent
+    wait: true
+  when:
+    - tools_gateway_resource.api_found
+
+- name: Check for existence of Gateway resource
+  kubernetes.core.k8s_info:
+    api_version: gateway.networking.k8s.io/v1
+    kind: GatewayClass
+  register: tools_gateway_class_resource
+
+- name: Delete ITBench infrastructure GatewayClasses
+  kubernetes.core.k8s:
+    api_version: gateway.networking.k8s.io/v1
+    delete_all: true
+    kind: GatewayClass
+    label_selectors:
+      - "itbench.io/ansible-role=tools"
+    state: absent
+    wait: true
+  when:
+    - tools_gateway_class_resource.api_found

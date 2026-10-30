@@ -1,8 +1,26 @@
 ---
-- name: Import OpenTelemetry Collectors uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_opentelemetry_collectors.yaml
+- name: Check for existence of OpenTelemetryCollector resource
+  kubernetes.core.k8s_info:
+    api_version: opentelemetry.io/v1beta1
+    kind: OpenTelemetryCollector
+  register: tools_opentelemetry_collector_resource
 
-- name: Import OpenTelemetry Operator uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_opentelemetry_operator.yaml
+- name: Delete OpenTelemetry Collectors
+  kubernetes.core.k8s:
+    api_version: opentelemetry.io/v1beta1
+    delete_all: true
+    kind: OpenTelemetryCollector
+    namespace: "{{ tools_namespace_itbench_observability }}"
+    state: absent
+    wait: true
+  when:
+    - tools_opentelemetry_collector_resource.api_found
+
+- name: Uninstall OpenTelemetry Operator on Kubernetes
+  kubernetes.core.helm:
+    release_name: "{{ tools_helm_release_opentelemetry_operator }}"
+    release_namespace: "{{ tools_namespace_itbench_observability }}"
+    release_state: absent
+    wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"

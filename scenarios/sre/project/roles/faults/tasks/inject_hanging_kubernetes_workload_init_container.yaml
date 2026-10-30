@@ -5,7 +5,6 @@
 
 - name: Update workload init containers
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
       kind: "{{ faults_kubernetes_object.kind }}"
@@ -16,11 +15,11 @@
         template:
           spec:
             initContainers:
-              - name: worker
-                image: registry.access.redhat.com/ubi10/ubi-minimal@sha256:ab67cd02caf8706e34a695a1432ebe965934f6128ec352a6c3f4048b43a4fb5e
-                command:
-                  - /bin/sh
-                args:
+              - args:
                   - -c
                   - "sleep infinity"
+                command:
+                  - /bin/sh
+                image: registry.access.redhat.com/ubi10/ubi-minimal@sha256:ab67cd02caf8706e34a695a1432ebe965934f6128ec352a6c3f4048b43a4fb5e
+                name: worker
     state: patched

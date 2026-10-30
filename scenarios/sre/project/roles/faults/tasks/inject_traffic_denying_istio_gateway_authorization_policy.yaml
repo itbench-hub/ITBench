@@ -5,19 +5,15 @@
 
 - name: Create authorization policy for gateway
   kubernetes.core.k8s:
-    kubeconfig: "{{ faults_cluster.kubeconfig }}"
     resource_definition:
       apiVersion: security.istio.io/v1
       kind: AuthorizationPolicy
       metadata:
+        labels: "{{ labels }}"
         name: "{{ faults_kubernetes_object.metadata.name }}-policy"
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
         action: DENY
-        targetRef:
-          group: gateway.networking.k8s.io
-          kind: Gateway
-          name: "{{ faults_kubernetes_object.metadata.name }}"
         rules:
           - to:
               - operation:
@@ -29,4 +25,15 @@
                     - PATCH
                     - HEAD
                     - OPTIONS
+        targetRef:
+          group: gateway.networking.k8s.io
+          kind: Gateway
+          name: "{{ faults_kubernetes_object.metadata.name }}"
     state: present
+  vars:
+    labels: >-
+      {{
+        faults_kubernetes_object.metadata.labels |
+        ansible.builtin.default({}) |
+        ansible.builtin.combine({"app.kubernetes.io/name": faults_kubernetes_object.metadata.name ~ "-policy"})
+      }}

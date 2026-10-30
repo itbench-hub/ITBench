@@ -1,11 +1,18 @@
 ---
-- name: Import Chaos Mesh uninstallation tasks
+- name: Import Istio uninstallation tasks
   ansible.builtin.import_tasks:
-    file: uninstall_chaos_mesh.yaml
+    file: uninstall_istio.yaml
 
-- name: Import OpenCost uninstallation tasks
+- name: Import Kubernetes Gateway uninstallation tasks
   ansible.builtin.import_tasks:
-    file: uninstall_opencost.yaml
+    file: uninstall_kubernetes_gateway.yaml
+
+- name: Uninstall OpenCost Helm release
+  kubernetes.core.helm:
+    release_name: "{{ tools_helm_release_opencost }}"
+    release_namespace: "{{ tools_namespace_itbench_observability }}"
+    release_state: absent
+    wait: true
 
 - name: Import OpenTelemetry uninstallation tasks
   ansible.builtin.import_tasks:
@@ -19,37 +26,98 @@
   ansible.builtin.import_tasks:
     file: uninstall_clickhouse.yaml
 
-- name: Import Istio uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_istio.yaml
-
-- name: Import cert-manager uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_cert_manager.yaml
-
-- name: Import Kubernetes Metrics Server uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_kubernetes_metrics_server.yaml
-  when:
-    - tools_cluster.platform == "kubernetes"
-
-- name: Import Kubernetes Gateway API uninstallation tasks
-  ansible.builtin.import_tasks:
-    file: uninstall_kubernetes_gateway.yaml
-  when:
-    - tools_cluster.platform == "kubernetes"
-
-- name: Uninstall Prometheus Operator Custom Resource Definitions
+- name: Uninstall Kubernetes Metrics Server Helm release
   kubernetes.core.helm:
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    release_name: "{{ tools_releases.prometheus_operator_crds.name }}"
-    release_namespace: "{{ tools_releases.prometheus_operator_crds.namespace }}"
+    release_name: "{{ tools_helm_release_kubernetes_metrics_server }}"
+    release_namespace: "{{ tools_namespace_kubernetes_metrics_server }}"
     release_state: absent
-    timeout: 10m0s
     wait: true
   when:
     - tools_cluster.platform == "kubernetes"
 
+- name: Uninstall cert-manager Helm release
+  kubernetes.core.helm:
+    release_name: "{{ tools_helm_release_cert_manager }}"
+    release_namespace: "{{ tools_namespace_itbench }}"
+    release_state: absent
+    wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"
+
+- name: Uninstall Kyverno Helm release
+  kubernetes.core.helm:
+    release_name: "{{ tools_helm_release_kyverno }}"
+    release_namespace: "{{ tools_namespace_kyverno }}"
+    release_state: absent
+    wait: true
+
 - name: Import Custom Resource Definition removal tasks
   ansible.builtin.import_tasks:
-    file: remove_custom_resource_definitions.yaml
+    file: uninstall_custom_resource_definitions.yaml
+
+- name: Delete all OpenShift Operators
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Retrieve all ITBench related OpenShift Subscriptions
+      kubernetes.core.k8s_info:
+        api_version: operators.coreos.com/v1alpha1
+        kind: Subscription
+        label_selectors:
+          - "itbench.io/ansible-role=tools"
+      register: tools_openshift_subscriptions
+
+    - name: Delete all ITBench related OpenShift Subscriptions
+      kubernetes.core.k8s:
+        resource_definition: "{{ tools_openshift_subscriptions.resources }}"
+        state: absent
+        wait: true
+      when:
+        - tools_openshift_subscriptions.resources | ansible.builtin.length > 0
+
+    - name: Delete all ITBench related OpenShift ClusterServiceVersions
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: ClusterServiceVersion
+          metadata:
+            name: "{{ subscription.status.currentCSV }}"
+            namespace: "{{ subscription.metadata.namespace }}"
+        state: absent
+        wait: true
+      loop: >-
+        {{
+          tools_openshift_subscriptions.resources |
+          ansible.builtin.selectattr("status.currentCSV", "ansible.builtin.defined")
+        }}
+      loop_control:
+        label: clusterserviceversion/{{ subscription.status.currentCSV }}
+        loop_var: subscription
+
+- name: Delete ITBench related ClusterRoleBindings
+  kubernetes.core.k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    label_selectors:
+      - "itbench.io/ansible-role=tools"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related ClusterRoles
+  kubernetes.core.k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    label_selectors:
+      - "itbench.io/ansible-role=tools"
+    state: absent
+    wait: true
+
+- name: Delete all infrastructure namespaces
+  kubernetes.core.k8s:
+    api_version: v1
+    delete_all: true
+    kind: Namespace
+    label_selectors:
+      - "itbench.io/ansible-role=tools"
+    state: absent
+    wait: true

@@ -12,10 +12,26 @@
       kind: Namespace
       metadata:
         labels:
+          "itbench.io/ansible-role": applications
+          "itbench.io/inject": "true"
+          "itbench.io/layer": application
+          "itbench.io/monitor": "true"
           "itbench.io/record": "true"
-          "prometheus.itbench.io/monitor": "true"
-        name: "{{ applications_releases.opentelemetry_demo.namespace }}"
+        name: "{{ applications_namespace_opentelemetry_demo }}"
     state: present
+
+- name: Enable Istio service mesh for application
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        labels:
+          "istio.io/dataplane-mode": ambient
+        name: "{{ applications_namespace_opentelemetry_demo }}"
+    state: patched
+  when:
+    - applications_opentelemetry_demo_service_mesh_enabled
 
 - name: Create valkey-credentials Secret
   kubernetes.core.k8s:
@@ -23,10 +39,14 @@
       apiVersion: v1
       kind: Secret
       metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ansible
+          "app.kubernetes.io/name": valkey-credentials
+          "app.kubernetes.io/part-of": opentelemetry-demo
         name: valkey-credentials
-        namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+        namespace: "{{ applications_namespace_opentelemetry_demo }}"
       stringData:
-        valkey-password: "" # pragma: allowlist secret
+        PASSWORD: "" # pragma: allowlist secret
     state: present
 
 - name: Import tools role for variable setting tasks
@@ -46,86 +66,35 @@
       kubeconfig: "{{ applications_cluster.kubeconfig }}"
       platform: "{{ applications_cluster.platform }}"
 
-- name: Create Service Account with `anyuid` access
+- name: Create RoleBinding for access to anyuid SecurityContextConstraint
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: otel-demo-scc
+        namespace: "{{ applications_namespace_opentelemetry_demo }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: system:openshift:scc:anyuid
+      subjects:
+        - kind: ServiceAccount
+          name: "{{ applications_helm_release_opentelemetry_demo }}"
+          namespace: "{{ applications_namespace_opentelemetry_demo }}"
+    state: present
   when:
     - applications_cluster.platform == "openshift"
-  block:
-    - name: Create ServiceAccount for OpenTelemetry Demo
-      kubernetes.core.k8s:
-        resource_definition:
-          apiVersion: v1
-          kind: ServiceAccount
-          metadata:
-            name: "{{ applications_releases.opentelemetry_demo.name }}"
-            namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
-        state: present
-
-    - name: Create RoleBinding for access to anyuid SecurityContextConstraint
-      kubernetes.core.k8s:
-        resource_definition:
-          kind: RoleBinding
-          apiVersion: rbac.authorization.k8s.io/v1
-          metadata:
-            name: "{{ applications_releases.opentelemetry_demo.name }}"
-            namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
-          subjects:
-            - kind: ServiceAccount
-              name: "{{ applications_releases.opentelemetry_demo.name }}"
-              namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
-          roleRef:
-            apiGroup: rbac.authorization.k8s.io
-            kind: ClusterRole
-            name: system:openshift:scc:anyuid
-        state: present
 
 - name: Install OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
     chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-demo"
     chart_version: "0.42.4"
-    release_name: "{{ applications_releases.opentelemetry_demo.name }}"
-    release_namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+    release_name: "{{ applications_helm_release_opentelemetry_demo }}"
+    release_namespace: "{{ applications_namespace_opentelemetry_demo }}"
     release_state: present
-    timeout: 10m0s
-    values:
-      serviceAccount:
-        create: "{{ applications_cluster.platform != 'openshift' }}"
-        name: "{{ applications_releases.opentelemetry_demo.name }}"
+    release_values:
       components:
-        accounting:
-          podSecurityContext:
-            runAsNonRoot: true
-            runAsUser: 1654
-          resources:
-            limits:
-              cpu: 500m
-              memory: 512Mi
-            requests:
-              cpu: 250m
-              memory: 256Mi
-        ad:
-          resources:
-            limits:
-              cpu: 150m
-              memory: 512Mi
-            requests:
-              cpu: 50m
-              memory: 256Mi
-        fraud-detection:
-          resources:
-            limits:
-              memory: 512Mi
-            requests:
-              memory: 256Mi
-        image-provider:
-          podSecurityContext:
-            runAsNonRoot: true
-            runAsUser: 101
-        kafka:
-          resources:
-            limits:
-              memory: 1024Mi
-            requests:
-              memory: 512Mi
         load-generator:
           envOverrides:
             - name: LOCUST_BROWSER_TRAFFIC_ENABLED
@@ -134,23 +103,7 @@
               value: "{{ applications_opentelemetry_demo_load_generator_spawn_rate | ansible.builtin.string }}"
             - name: LOCUST_USERS
               value: "{{ applications_opentelemetry_demo_load_generator_users | ansible.builtin.string }}"
-        product-catalog:
-          resources:
-            limits:
-              memory: 160Mi
-        recommendation:
-          resources:
-            limits:
-              cpu: 200m
-              memory: 512Mi
-            requests:
-              cpu: 50m
-              memory: 128Mi
         valkey-cart:
-          podSecurityContext:
-            runAsGroup: 1000
-            runAsNonRoot: true
-            runAsUser: 999
           command:
             - valkey-server
             - --requirepass
@@ -159,22 +112,28 @@
             - name: VALKEY_PASSWORD
               valueFrom:
                 secretKeyRef:
+                  key: PASSWORD
                   name: valkey-credentials
-                  key: valkey-password
+      grafana:
+        enabled: false
+      jaeger:
+        enabled: false
+      opensearch:
+        enabled: false
       opentelemetry-collector:
         config:
           connectors:
             span_metrics:
               dimensions:
-                - name: namespace
-                  default: "{{ applications_releases.opentelemetry_demo.namespace }}"
+                - default: "{{ applications_namespace_opentelemetry_demo }}"
+                  name: namespace
           exporters:
             clickhouse:
               database: opentelemetry_demo
-              username: "{{ tools_clickhouse_username }}"
-              password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
               logs_table_name: "logs"
+              password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
+              username: "{{ tools_clickhouse_username }}"
             otlp/jaeger:
               endpoint: "{{ tools_jaeger_endpoint.collector.grpc }}"
             prometheus:
@@ -204,6 +163,22 @@
                           host: 0.0.0.0
                           port: 8889
         mode: deployment
+        ports:
+          jaeger-compact:
+            enabled: false
+          jaeger-grpc:
+            enabled: false
+          jaeger-thrift:
+            enabled: false
+          metrics:
+            enabled: true
+          telemetry:
+            containerPort: 8889
+            enabled: true
+            protocol: TCP
+            servicePort: 8889
+          zipkin:
+            enabled: false
         presets:
           clusterMetrics:
             enabled: false
@@ -216,37 +191,16 @@
           metricsEndpoints:
             - port: metrics
             - port: telemetry
-        ports:
-          jaeger-compact:
-            enabled: false
-          jaeger-thrift:
-            enabled: false
-          jaeger-grpc:
-            enabled: false
-          metrics:
-            enabled: true
-          telemetry:
-            enabled: true
-            containerPort: 8889
-            servicePort: 8889
-            protocol: TCP
-          zipkin:
-            enabled: false
-      grafana:
-        enabled: false
-      jaeger:
-        enabled: false
-      opensearch:
-        enabled: false
       prometheus:
         enabled: false
+    timeout: 10m0s
     wait: true
 
 - name: Retrieve all pods
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Pod
-    namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+    namespace: "{{ applications_namespace_opentelemetry_demo }}"
   register: applications_otel_demo_pods
 
 - name: Wait for pods to reach ready state
@@ -257,8 +211,8 @@
     namespace: "{{ pod.metadata.namespace }}"
     wait: true
     wait_condition:
-      type: Ready
       status: "True"
+      type: Ready
     wait_timeout: 300
   loop: "{{ applications_otel_demo_pods.resources }}"
   loop_control:
@@ -269,7 +223,7 @@
   kubernetes.core.k8s_info:
     api_version: apps/v1
     kind: Deployment
-    namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+    namespace: "{{ applications_namespace_opentelemetry_demo }}"
   register: applications_otel_demo_deployments
 
 - name: Create HorizontalPodAutorscalers
@@ -278,38 +232,42 @@
       apiVersion: autoscaling/v2
       kind: HorizontalPodAutoscaler
       metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ansible
+          "app.kubernetes.io/name": "{{ workload.metadata.name }}"
+          "app.kubernetes.io/part-of": opentelemetry-demo
         name: "{{ workload.metadata.name }}"
         namespace: "{{ workload.metadata.namespace }}"
       spec:
+        behavior:
+          scaleDown:
+            policies:
+              - periodSeconds: 60
+                type: Percent
+                value: 50
+              - periodSeconds: 60
+                type: Pods
+                value: 2
+            selectPolicy: Min
+        maxReplicas: 10
+        metrics:
+          - resource:
+              name: cpu
+              target:
+                averageUtilization: 70
+                type: Utilization
+            type: Resource
+          - resource:
+              name: memory
+              target:
+                averageUtilization: 80
+                type: Utilization
+            type: Resource
+        minReplicas: 1
         scaleTargetRef:
           apiVersion: "{{ workload.apiVersion }}"
           kind: "{{ workload.kind }}"
           name: "{{ workload.metadata.name }}"
-        minReplicas: 1
-        maxReplicas: 10
-        metrics:
-          - type: Resource
-            resource:
-              name: cpu
-              target:
-                type: Utilization
-                averageUtilization: 70
-          - type: Resource
-            resource:
-              name: memory
-              target:
-                type: Utilization
-                averageUtilization: 80
-        behavior:
-          scaleDown:
-            policies:
-              - type: Percent
-                value: 50
-                periodSeconds: 60
-              - type: Pods
-                value: 2
-                periodSeconds: 60
-            selectPolicy: Min
     state: present
   loop: |-
     {{
@@ -325,19 +283,19 @@
 
 - name: Create Common PrometheusRules
   kubernetes.core.k8s:
+    state: present
     template:
       path: templates/kubernetes/common/prometheusrules.j2
       variable_end_string: "]]"
       variable_start_string: "[["
-    state: present
   vars:
-    application_namespace: "{{ applications_releases.opentelemetry_demo.namespace }}"
+    application_namespace: "{{ applications_namespace_opentelemetry_demo }}"
     group_name: opentelemetrydemo
 
 - name: Create OpenTelemetry Demo PrometheusRules
   kubernetes.core.k8s:
+    state: present
     template:
       path: templates/kubernetes/otel_demo/prometheusrules.j2
       variable_end_string: "]]"
       variable_start_string: "[["
-    state: present

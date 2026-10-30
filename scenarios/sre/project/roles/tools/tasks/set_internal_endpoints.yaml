@@ -3,38 +3,34 @@
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Namespace
-    kubeconfig: "{{ tools_cluster.kubeconfig }}"
   register: tools_k8s_namespaces
 
 - name: Validate that namespaces exists
   ansible.builtin.assert:
+    fail_msg: No namespaces were found. Please ensure that tool installation completed successfully.
+    success_msg: Namespaces found.
     that:
       - tools_k8s_namespaces.api_found
       - tools_k8s_namespaces.resources | ansible.builtin.length > 0
-    fail_msg: No namespaces were found. Please ensure that tool installation completed successfully.
-    success_msg: Namespaces found.
 
 - name: Map resources to names list
   ansible.builtin.set_fact:
-    tools_namespaces_names: "{{ tools_k8s_namespaces.resources | map(attribute='metadata.name') }}"
+    tools_namespace_names: "{{ tools_k8s_namespaces.resources | map(attribute='metadata.name') }}"
 
 - name: Import Clickhouse variable setting tasks
   ansible.builtin.import_tasks:
     file: set_internal_endpoints_clickhouse.yaml
   when:
-    - tools_operands.alinity_clickhouse.main.namespace in tools_namespaces_names
+    - tools_namespace_itbench_observability in tools_namespace_names
 
 - name: Import Jaeger variable setting tasks
   ansible.builtin.import_tasks:
     file: set_internal_endpoints_jaeger.yaml
   when:
-    - tools_operands.opentelemetry_collector.jaeger.namespace in tools_namespaces_names
+    - tools_namespace_itbench_observability in tools_namespace_names
 
 - name: Import Prometheus variable setting tasks
   ansible.builtin.import_tasks:
     file: set_internal_endpoints_prometheus.yaml
   when:
-    - (
-        ("openshift-monitoring" in tools_namespaces_names) or
-        (tools_releases.kube_prometheus_stack.namespace.kubernetes in tools_namespaces_names)
-      )
+    - tools_namespace_openshift_monitoring in tools_namespace_names or tools_namespace_itbench_observability in tools_namespace_names
