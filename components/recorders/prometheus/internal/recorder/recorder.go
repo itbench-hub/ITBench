@@ -247,12 +247,15 @@ func exportMetrics(ctx context.Context, api prometheusv1.API, baseDir string, na
 // queryMatrix evaluates selector[window] at ts, which returns every raw sample in the window.
 func queryMatrix(ctx context.Context, api prometheusv1.API, selector string, window time.Duration, ts time.Time) (model.Matrix, error) {
 	query := fmt.Sprintf("%s[%s]", selector, model.Duration(window))
-	val, warnings, err := api.Query(ctx, query, ts)
+	val, warnings, infos, err := api.Query(ctx, query, ts)
 	if err != nil {
 		return nil, fmt.Errorf("query %s at %s: %w", query, ts.Format(time.RFC3339), err)
 	}
 	if len(warnings) > 0 {
 		slog.Warn("query warnings", "query", query, "warnings", warnings)
+	}
+	if len(infos) > 0 {
+		slog.Info("query infos", "query", query, "infos", infos)
 	}
 	matrix, ok := val.(model.Matrix)
 	if !ok {
