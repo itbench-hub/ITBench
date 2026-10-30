@@ -5,7 +5,7 @@
     kind: Namespace
     label_selectors:
       - "itbench.io/record=true"
-  register: recorders_recordable_namespaces
+  register: tools_recordable_namespaces
 
 - name: Create PersistentVolumeClaim for Clickhouse Recorder
   kubernetes.core.k8s:
@@ -13,8 +13,11 @@
       apiVersion: v1
       kind: PersistentVolumeClaim
       metadata:
-        name: "{{ recorders_instance_clickhouse_name }}-records"
-        namespace: "{{ recorders_namespace }}"
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": data
+        name: itbench-clickhouse-recorder-records
+        namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
         accessModes:
           - ReadWriteOnce
@@ -30,8 +33,11 @@
       apiVersion: batch/v1
       kind: Job
       metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": data
         name: itbench-clickhouse-recorder
-        namespace: "{{ recorders_namespace }}"
+        namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
         template:
           spec:
@@ -42,21 +48,21 @@
                   - name: NAMESPACES
                     value: >-
                       {{
-                        recorders_recordable_namespaces.resources |
+                        tools_recordable_namespaces.resources |
                         map(attribute='metadata.name') |
                         ansible.builtin.join(',')
                       }}
                   - name: OUTPUT_DIR
                     value: /records
                   - name: RECORDING_START_TIMESTAMP
-                    value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (recorders_duration_minutes * 60)) }}"
+                    value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (tools_benchmark_duration_minutes * 60)) }}"
                   - name: RECORDING_END_TIMESTAMP
                     value: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
                   - name: RECORDING_INTERVAL_SECONDS
                     value: "300"
                 envFrom:
                   - secretRef:
-                      name: clickhouse-recorder-credentials
+                      name: user-recorder-credentials
                 image: quay.io/it-bench/clickhouse-recorder:1.0.0@sha256:36189ffcfddea44557af00cbec7c726276812954c1dff22f78074f8ade026224
                 name: recorder
                 resources:
@@ -83,7 +89,7 @@
             volumes:
               - name: records
                 persistentVolumeClaim:
-                  claimName: "{{ recorders_instance_clickhouse_name }}-records"
+                  claimName: itbench-clickhouse-recorder-records
     state: present
     wait: true
     wait_condition:
@@ -97,15 +103,15 @@
       ansible.builtin.tempfile:
         prefix: clickhouse
         state: directory
-      register: recorders_export_directory
+      register: tools_export_directory
 
     - name: Import copy tasks
       ansible.builtin.import_tasks:
         file: copy_recorder_files.yaml
       vars:
-        recorders_instance_name: itbench-clickhouse-recorder
+        tools_recorder_instance_name: itbench-clickhouse-recorder
   always:
     - name: Delete temporary directory for Clickhouse records
       ansible.builtin.file:
-        path: "{{ recorders_export_directory.path }}"
+        path: "{{ tools_export_directory.path }}"
         state: absent

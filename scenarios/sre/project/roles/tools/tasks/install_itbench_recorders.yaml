@@ -1,78 +1,15 @@
 ---
 - name: Import Clickhouse endpoint setting tasks
-  ansible.builtin.import_role:
-    name: tools
-    tasks_from: set_internal_endpoints_clickhouse
-  vars:
-    tools_cluster:
-      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+  ansible.builtin.import_tasks:
+    file: set_internal_endpoints_clickhouse.yaml
 
 - name: Import OTLP gateway endpoint setting tasks
-  ansible.builtin.import_role:
-    name: tools
-    tasks_from: set_internal_endpoints_opentelemetry_gateway
-  vars:
-    tools_cluster:
-      kubeconfig: "{{ recorders_cluster.kubeconfig }}"
-
-- name: Create namespace for data collection recorders
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        labels:
-          "itbench.io/ansible-role": recorders
-          "itbench.io/inject": "false"
-          "itbench.io/layer": data
-        name: "{{ recorders_namespace }}"
-    state: present
+  ansible.builtin.import_tasks:
+    file: set_internal_endpoints_opentelemetry_gateway.yaml
 
 # NOTE: The topology collector does not need Clickhouse credentials, as it writes through
 #       the OTLP gateway. Only the topology writer and the Clickhouse recorder do, and each
-#       gets its own scoped user instead of the admin user.
-- name: Retrieve scoped Clickhouse user Secrets
-  kubernetes.core.k8s_info:
-    kind: Secret
-    name: "user-{{ clickhouse_user }}-credentials"
-    namespace: "{{ tools_namespace_itbench_observability }}"
-  register: recorders_clickhouse_user_secrets
-  loop:
-    - topology
-    - recorder
-  loop_control:
-    label: secret/user-{{ clickhouse_user }}-credentials
-    loop_var: clickhouse_user
-
-- name: Fail if scoped Clickhouse user Secrets are missing
-  ansible.builtin.fail:
-    msg: >-
-      Unable to find Clickhouse user secret {{ user_secret.clickhouse_user }}.
-      Please verify that Clickhouse is installed.
-  loop: "{{ recorders_clickhouse_user_secrets.results }}"
-  loop_control:
-    label: secret/user-{{ user_secret.clickhouse_user }}-credentials
-    loop_var: user_secret
-  when:
-    - user_secret.resources | ansible.builtin.length != 1
-
-- name: Create Clickhouse credentials Secrets in recorders namespace
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: v1
-      kind: Secret
-      metadata:
-        name: "clickhouse-{{ user_secret.clickhouse_user }}-credentials"
-        namespace: "{{ recorders_namespace }}"
-      type: Opaque
-      stringData:
-        CLICKHOUSE_PASSWORD: "{{ user_secret.resources[0].data.CLICKHOUSE_PASSWORD | ansible.builtin.b64decode }}" # pragma: allowlist secret
-        CLICKHOUSE_USERNAME: "{{ user_secret.resources[0].data.CLICKHOUSE_USER | ansible.builtin.b64decode }}"
-    state: present
-  loop: "{{ recorders_clickhouse_user_secrets.results }}"
-  loop_control:
-    label: secret/clickhouse-{{ user_secret.clickhouse_user }}-credentials
-    loop_var: user_secret
+#       uses its own scoped user Secret from the observability namespace in place.
 
 - name: Create ServiceAccount for topology collector
   kubernetes.core.k8s:
@@ -80,8 +17,11 @@
       apiVersion: v1
       kind: ServiceAccount
       metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": data
         name: kubernetes-topology
-        namespace: "{{ recorders_namespace }}"
+        namespace: "{{ tools_namespace_itbench_observability }}"
     state: present
 
 - name: Create ClusterRole for topology collector
@@ -91,7 +31,7 @@
       kind: ClusterRole
       metadata:
         labels:
-          "itbench.io/ansible-role": recorders
+          "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: kubernetes-topology
       rules:
@@ -169,7 +109,7 @@
       kind: ClusterRoleBinding
       metadata:
         labels:
-          "itbench.io/ansible-role": recorders
+          "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: kubernetes-topology
       roleRef:
@@ -179,7 +119,7 @@
       subjects:
         - kind: ServiceAccount
           name: kubernetes-topology
-          namespace: "{{ recorders_namespace }}"
+          namespace: "{{ tools_namespace_itbench_observability }}"
     state: present
 
 - name: Retrieve Namespaces with record labels
@@ -188,7 +128,7 @@
     kind: Namespace
     label_selectors:
       - "itbench.io/record=true"
-  register: recorders_recordable_namespaces
+  register: tools_recordable_namespaces
 
 - name: Deploy topology collector
   kubernetes.core.k8s:
@@ -196,16 +136,12 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": data
         name: kubernetes-topology
-        namespace: "{{ recorders_namespace }}"
+        namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                    - key: node-role.itbench.io/sandbox
-                      operator: DoesNotExist
         config:
           exporters:
             otlp/gateway:
@@ -412,8 +348,7 @@
                   - k8sobjects/topology-namespaced
                   - k8sobjects/topology-cluster
                   - k8sobjects/topology-crd
-        image: quay.io/it-bench/opentelemetry-collector:2.0.0@sha256:900bd8b837e0a2d552ef030d111a1aed966f6fa9fa81a220e64775d20cbd8ba0
-        mode: deployment
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0
         podSecurityContext:
           runAsNonRoot: true
           seccompProfile:
@@ -431,7 +366,7 @@
       status: "True"
       type: Ready
   vars:
-    topology_required_namespaces: "{{ recorders_recordable_namespaces.resources | map(attribute='metadata.name') }}"
+    topology_required_namespaces: "{{ tools_recordable_namespaces.resources | map(attribute='metadata.name') }}"
 
 - name: Deploy topology writer
   kubernetes.core.k8s:
@@ -440,40 +375,37 @@
       kind: Deployment
       metadata:
         labels:
-          "app.kubernetes.io/component": data-writer
-          "app.kubernetes.io/managed-by": ansible
           "app.kubernetes.io/name": itbench-topology-writer
-          "app.kubernetes.io/part-of": itbench
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": data
         name: itbench-topology-writer
-        namespace: "{{ recorders_namespace }}"
+        namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
         replicas: 1
         selector:
           matchLabels:
-            "app.kubernetes.io/component": data-writer
-            "app.kubernetes.io/managed-by": ansible
             "app.kubernetes.io/name": itbench-topology-writer
-            "app.kubernetes.io/part-of": itbench
+            "itbench.io/ansible-role": tools
+            "itbench.io/layer": data
         template:
           metadata:
             labels:
-              "app.kubernetes.io/component": data-writer
-              "app.kubernetes.io/managed-by": ansible
               "app.kubernetes.io/name": itbench-topology-writer
-              "app.kubernetes.io/part-of": itbench
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": data
           spec:
             containers:
               - env:
                   - name: CLICKHOUSE_HOST
                     value: "{{ tools_clickhouse_endpoint.tcp }}"
                   - name: RECORDING_START_TIMESTAMP
-                    value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (recorders_duration_minutes * 60)) }}"
+                    value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (tools_benchmark_duration_minutes * 60)) }}"
                   - name: POLL_INTERVAL_SECONDS
                     value: "2"
                 envFrom:
                   - secretRef:
-                      name: clickhouse-topology-credentials
-                image: quay.io/it-bench/opentelemetry-collector:2.0.0@sha256:6f38985d3000d56cac17c5ad8c4f777ac74cebdf3592196f39b0f78b0ab1f7f7
+                      name: user-topology-credentials
+                image: quay.io/it-bench/topology-writer:1.0.0
                 imagePullPolicy: IfNotPresent
                 name: writer
                 resources:

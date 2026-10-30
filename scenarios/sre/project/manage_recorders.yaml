@@ -46,28 +46,30 @@
           when:
             - storage.local is ansible.builtin.defined
   tasks:
-    - name: Set recorders role variables
+    - name: Set tools role variables
       tags:
         - always
       block:
-        - name: Set recorders_storage_local
+        - name: Set tools_storage_local
           ansible.builtin.set_fact:
-            recorders_storage_local: "{{ storage.local }}"
+            tools_storage_local: "{{ storage.local }}"
           when:
             - storage is ansible.builtin.defined
             - storage.local is ansible.builtin.defined
 
-        - name: Set recorders_storage_s3
+        - name: Set tools_storage_s3
           ansible.builtin.set_fact:
-            recorders_storage_s3: "{{ storage.s3 }}"
+            tools_storage_s3: "{{ storage.s3 }}"
           when:
             - storage is ansible.builtin.defined
             - storage.s3 is ansible.builtin.defined
 
-    - name: Import recorders role
+    - name: Import tools role
       ansible.builtin.import_role:
-        name: recorders
+        name: tools
       vars:
-        recorders_cluster:
+        tools_cluster:
           kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+        tools_recorders_enabled: true

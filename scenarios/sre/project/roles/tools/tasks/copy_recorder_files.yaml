@@ -1,14 +1,17 @@
 ---
 - name: Copy files from volume
   block:
-    - name: Create Pod to export records from {{ recorders_instance_name }}
+    - name: Create Pod to export records from {{ tools_recorder_instance_name }}
       kubernetes.core.k8s:
         resource_definition:
           apiVersion: v1
           kind: Pod
           metadata:
-            name: "{{ recorders_instance_name }}-exporter"
-            namespace: "{{ recorders_namespace }}"
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": data
+            name: "{{ tools_recorder_instance_name }}-exporter"
+            namespace: "{{ tools_namespace_itbench_observability }}"
           spec:
             containers:
               - args:
@@ -41,7 +44,7 @@
             volumes:
               - name: records
                 persistentVolumeClaim:
-                  claimName: "{{ recorders_instance_name }}-records"
+                  claimName: "{{ tools_recorder_instance_name }}-records"
         state: present
         wait: true
         wait_condition:
@@ -50,28 +53,28 @@
 
     - name: Copy records from pod
       kubernetes.core.k8s_cp:
-        local_path: "{{ recorders_export_directory.path }}"
-        namespace: "{{ recorders_namespace }}"
-        pod: "{{ recorders_instance_name }}-exporter"
+        local_path: "{{ tools_export_directory.path }}"
+        namespace: "{{ tools_namespace_itbench_observability }}"
+        pod: "{{ tools_recorder_instance_name }}-exporter"
         remote_path: /opt/app-root/src/records
         state: from_pod
 
   always:
     - name: Delete Pod
       kubernetes.core.k8s:
-        kubeconfig: "{{ recorders_cluster.kubeconfig }}"
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Pod
           metadata:
-            name: "{{ recorders_instance_name }}-exporter"
-            namespace: "{{ recorders_namespace }}"
+            name: "{{ tools_recorder_instance_name }}-exporter"
+            namespace: "{{ tools_namespace_itbench_observability }}"
         state: absent
         wait: true
 
 - name: Copy exported data into local directory
   when:
-    - recorders_storage_local is ansible.builtin.defined
+    - tools_storage_local is ansible.builtin.defined
   block:
     - name: Create local directory for exported data
       ansible.builtin.file:
@@ -79,51 +82,51 @@
         path: |-
           {{
             [
-              recorders_storage_local.directory,
-              recorders_instance_name
+              tools_storage_local.directory,
+              tools_recorder_instance_name
             ] |
             ansible.builtin.path_join
           }}
         state: directory
-      register: recorders_local_directory
+      register: tools_local_directory
 
     - name: Copy exported data into local directory
       ansible.builtin.copy:
-        dest: "{{ recorders_local_directory.path }}"
+        dest: "{{ tools_local_directory.path }}"
         mode: "0644"
-        src: "{{ recorders_export_directory.path }}/"
+        src: "{{ tools_export_directory.path }}/"
 
 - name: Copy exported data into S3
   when:
-    - recorders_storage_s3 is ansible.builtin.defined
+    - tools_storage_s3 is ansible.builtin.defined
   block:
-    - name: Retrieve all files in temporary directory for {{ recorders_instance_name }}
+    - name: Retrieve all files in temporary directory for {{ tools_recorder_instance_name }}
       ansible.builtin.find:
-        path: "{{ recorders_export_directory.path }}"
-      register: recorders_exported_files
+        path: "{{ tools_export_directory.path }}"
+      register: tools_exported_files
 
     - name: Create AWS S3 bucket
       amazon.aws.s3_bucket:
-        endpoint_url: "{{ recorders_storage_s3.endpoint }}"
-        name: "{{ recorders_storage_s3.bucket }}"
+        endpoint_url: "{{ tools_storage_s3.endpoint }}"
+        name: "{{ tools_storage_s3.bucket }}"
         state: present
 
     - name: Upload exported data to S3 bucket
       amazon.aws.s3_object:
-        bucket: "{{ recorders_storage_s3.bucket }}"
-        endpoint_url: "{{ recorders_storage_s3.endpoint }}"
+        bucket: "{{ tools_storage_s3.bucket }}"
+        endpoint_url: "{{ tools_storage_s3.endpoint }}"
         mode: put
         object: |-
           {{
             [
-              recorders_storage_s3.directory,
-              recorders_instance_name,
+              tools_storage_s3.directory,
+              tools_recorder_instance_name,
               (record.path | ansible.builtin.basename)
             ] |
             ansible.builtin.path_join
           }}
         src: "{{ record.path }}"
-      loop: "{{ recorders_exported_files.files }}"
+      loop: "{{ tools_exported_files.files }}"
       loop_control:
         label: file/{{ record.path | ansible.builtin.basename }}
         loop_var: record

@@ -82,6 +82,7 @@
 
 # NOTE: The gateway is the only Clickhouse writer for OTLP logs. Each source has its own
 #       named receiver (and port) with a dedicated pipeline, so no routing is required.
+
 - name: Install OpenTelemetry Collector for OTLP gateway
   kubernetes.core.k8s:
     resource_definition:
@@ -158,7 +159,7 @@
         envFrom:
           - secretRef:
               name: user-ingest-credentials
-        image: quay.io/it-bench/opentelemetry-collector:2.0.0@sha256:6f38985d3000d56cac17c5ad8c4f777ac74cebdf3592196f39b0f78b0ab1f7f7
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0
         mode: deployment
         observability:
           metrics:
@@ -181,13 +182,6 @@
         name: jaeger
         namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                    - key: node-role.itbench.io/sandbox
-                      operator: DoesNotExist
         config:
           exporters:
             debug: {}
@@ -547,7 +541,7 @@
         envFrom:
           - secretRef:
               name: user-admin-credentials
-        image: quay.io/it-bench/opentelemetry-collector:2.0.0@sha256:6f38985d3000d56cac17c5ad8c4f777ac74cebdf3592196f39b0f78b0ab1f7f7
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0
         mode: deployment
         observability:
           metrics:
