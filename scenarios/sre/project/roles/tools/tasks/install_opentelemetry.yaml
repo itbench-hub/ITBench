@@ -100,6 +100,18 @@
               logs_table_name: access_logs
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               username: ${env:CLICKHOUSE_USER}
+            clickhouse/kubernetes_events:
+              database: kubernetes
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
+              logs_table_name: events
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
+            clickhouse/kubernetes_infrastructure:
+              database: kubernetes
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
+              logs_table_name: infrastructure
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
             clickhouse/kubernetes_topology:
               database: kubernetes
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
@@ -122,6 +134,14 @@
               protocols:
                 grpc:
                   endpoint: 0.0.0.0:4317
+            otlp/kubernetes_events:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4322
+            otlp/kubernetes_infrastructure:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4323
             otlp/kubernetes_topology:
               protocols:
                 grpc:
@@ -132,6 +152,22 @@
                   endpoint: 0.0.0.0:4320
           service:
             pipelines:
+              logs/kubernetes_events:
+                exporters:
+                  - debug
+                  - clickhouse/kubernetes_events
+                processors:
+                  - batch
+                receivers:
+                  - otlp/kubernetes_events
+              logs/kubernetes_infrastructure:
+                exporters:
+                  - debug
+                  - clickhouse/kubernetes_infrastructure
+                processors:
+                  - batch
+                receivers:
+                  - otlp/kubernetes_infrastructure
               logs/kubernetes_topology:
                 exporters:
                   - debug
@@ -171,6 +207,10 @@
             port: 4320
           - name: topology-grpc
             port: 4321
+          - name: events-grpc
+            port: 4322
+          - name: infra-grpc
+            port: 4323
     state: present
 
 - name: Install OpenTelemetry Collector for Jaeger
@@ -240,313 +280,6 @@
             port: 16685
           - name: query-http
             port: 16686
-    state: present
-
-- name: Create ServiceAccount for Kubernetes Telemetry Collector
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: v1
-      kind: ServiceAccount
-      metadata:
-        name: kubernetes
-        namespace: "{{ tools_namespace_itbench_observability }}"
-    state: present
-
-- name: Create ClusterRole for Kubernetes Telemetry Collector
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRole
-      metadata:
-        labels:
-          "itbench.io/ansible-role": tools
-          "itbench.io/layer": observability
-        name: kubernetes
-      rules:
-        - apiGroups:
-            - ""
-          resources:
-            - pods
-            - services
-            - endpoints
-            - persistentvolumeclaims
-            - persistentvolumes
-            - configmaps
-            - serviceaccounts
-            - nodes
-            - namespaces
-            - resourcequotas
-            - limitranges
-            - replicationcontrollers
-            - events
-          verbs:
-            - get
-            - list
-            - watch
-        - apiGroups:
-            - events.k8s.io
-          resources:
-            - events
-          verbs:
-            - get
-            - list
-            - watch
-        - apiGroups:
-            - apps
-          resources:
-            - deployments
-            - daemonsets
-            - statefulsets
-            - replicasets
-          verbs:
-            - get
-            - list
-        - apiGroups:
-            - batch
-          resources:
-            - jobs
-            - cronjobs
-          verbs:
-            - get
-            - list
-        - apiGroups:
-            - networking.k8s.io
-          resources:
-            - ingresses
-            - networkpolicies
-          verbs:
-            - get
-            - list
-        - apiGroups:
-            - rbac.authorization.k8s.io
-          resources:
-            - roles
-            - rolebindings
-            - clusterroles
-            - clusterrolebindings
-          verbs:
-            - get
-            - list
-        - apiGroups:
-            - storage.k8s.io
-          resources:
-            - storageclasses
-            - volumeattachments
-          verbs:
-            - get
-            - list
-        - apiGroups:
-            - autoscaling
-          resources:
-            - horizontalpodautoscalers
-          verbs:
-            - get
-            - list
-        - apiGroups:
-            - policy
-          resources:
-            - poddisruptionbudgets
-          verbs:
-            - get
-            - list
-        - apiGroups:
-            - apiextensions.k8s.io
-          resources:
-            - customresourcedefinitions
-          verbs:
-            - get
-            - list
-    state: present
-
-- name: Create ClusterRoleBinding for Kubernetes Telemetry Collector
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRoleBinding
-      metadata:
-        labels:
-          "itbench.io/ansible-role": tools
-          "itbench.io/layer": observability
-        name: kubernetes
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
-        kind: ClusterRole
-        name: kubernetes
-      subjects:
-        - kind: ServiceAccount
-          name: kubernetes
-          namespace: "{{ tools_namespace_itbench_observability }}"
-    state: present
-
-- name: Install OpenTelemetry Collector for Kubernetes Telemetry
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: opentelemetry.io/v1beta1
-      kind: OpenTelemetryCollector
-      metadata:
-        name: kubernetes
-        namespace: "{{ tools_namespace_itbench_observability }}"
-      spec:
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                    - key: node-role.itbench.io/sandbox
-                      operator: DoesNotExist
-        config:
-          exporters:
-            clickhouse/events:
-              database: kubernetes
-              endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: events
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            clickhouse/objects:
-              database: kubernetes
-              endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: objects_snapshot
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            debug: {}
-          receivers:
-            k8sobjects/events:
-              objects:
-                - group: events.k8s.io
-                  mode: watch
-                  name: events
-                - group: ""
-                  mode: watch
-                  name: events
-            k8sobjects/objects:
-              objects:
-                - interval: 5m
-                  mode: pull
-                  name: pods
-                - interval: 5m
-                  mode: pull
-                  name: services
-                - interval: 5m
-                  mode: pull
-                  name: endpoints
-                - interval: 5m
-                  mode: pull
-                  name: configmaps
-                - interval: 5m
-                  mode: pull
-                  name: serviceaccounts
-                - interval: 5m
-                  mode: pull
-                  name: namespaces
-                - interval: 5m
-                  mode: pull
-                  name: nodes
-                - interval: 5m
-                  mode: pull
-                  name: persistentvolumeclaims
-                - interval: 5m
-                  mode: pull
-                  name: persistentvolumes
-                - interval: 5m
-                  mode: pull
-                  name: resourcequotas
-                - interval: 5m
-                  mode: pull
-                  name: limitranges
-                - interval: 5m
-                  mode: pull
-                  name: replicationcontrollers
-                - group: apps
-                  interval: 5m
-                  mode: pull
-                  name: deployments
-                - group: apps
-                  interval: 5m
-                  mode: pull
-                  name: daemonsets
-                - group: apps
-                  interval: 5m
-                  mode: pull
-                  name: statefulsets
-                - group: apps
-                  interval: 5m
-                  mode: pull
-                  name: replicasets
-                - group: batch
-                  interval: 5m
-                  mode: pull
-                  name: jobs
-                - group: batch
-                  interval: 5m
-                  mode: pull
-                  name: cronjobs
-                - group: networking.k8s.io
-                  interval: 5m
-                  mode: pull
-                  name: ingresses
-                - group: networking.k8s.io
-                  interval: 5m
-                  mode: pull
-                  name: networkpolicies
-                - group: rbac.authorization.k8s.io
-                  interval: 5m
-                  mode: pull
-                  name: roles
-                - group: rbac.authorization.k8s.io
-                  interval: 5m
-                  mode: pull
-                  name: rolebindings
-                - group: rbac.authorization.k8s.io
-                  interval: 5m
-                  mode: pull
-                  name: clusterroles
-                - group: rbac.authorization.k8s.io
-                  interval: 5m
-                  mode: pull
-                  name: clusterrolebindings
-                - group: storage.k8s.io
-                  interval: 5m
-                  mode: pull
-                  name: storageclasses
-                - group: storage.k8s.io
-                  interval: 5m
-                  mode: pull
-                  name: volumeattachments
-                - group: autoscaling
-                  interval: 5m
-                  mode: pull
-                  name: horizontalpodautoscalers
-                - group: policy
-                  interval: 5m
-                  mode: pull
-                  name: poddisruptionbudgets
-                - group: apiextensions.k8s.io
-                  interval: 5m
-                  mode: pull
-                  name: customresourcedefinitions
-          service:
-            pipelines:
-              logs/events:
-                exporters:
-                  - debug
-                  - clickhouse/events
-                receivers:
-                  - k8sobjects/events
-              logs/objects:
-                exporters:
-                  - debug
-                  - clickhouse/objects
-                receivers:
-                  - k8sobjects/objects
-        envFrom:
-          - secretRef:
-              name: user-admin-credentials
-        image: quay.io/it-bench/opentelemetry-collector:2.0.0
-        mode: deployment
-        observability:
-          metrics:
-            enableMetrics: true
-        serviceAccount: kubernetes
     state: present
 
 - name: Wait for all OpenTelemetry Collectors to stabilize

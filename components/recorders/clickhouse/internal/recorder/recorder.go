@@ -130,23 +130,23 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir st
 		slog.Warn("k8s topology graph raw (table may not exist)", "err", err)
 	}
 
-	slog.Info("fetching k8s objects (raw)")
-	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_objects_raw",
-		fmt.Sprintf(`SELECT * FROM kubernetes.objects_snapshot WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
-		slog.Error("k8s objects raw", "err", err)
+	slog.Info("fetching k8s infrastructure (raw)")
+	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_infrastructure_raw",
+		fmt.Sprintf(`SELECT * FROM kubernetes.infrastructure WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
+		slog.Error("k8s infrastructure raw", "err", err)
 	}
 
-	slog.Info("fetching k8s objects (lite)")
-	if err := exportQuery(ctx, defaultDB, liteDir, "k8s_objects",
+	slog.Info("fetching k8s infrastructure (lite)")
+	if err := exportQuery(ctx, defaultDB, liteDir, "k8s_infrastructure",
 		fmt.Sprintf(`SELECT
 			Timestamp     AS timestamp,
 			Body          AS body,
 			ResourceAttributes['k8s.namespace.name'] AS namespace,
 			LogAttributes['k8s.resource.name']       AS resource_type
-		 FROM kubernetes.objects_snapshot
+		 FROM kubernetes.infrastructure
 		 WHERE %s AND ResourceAttributes['k8s.namespace.name'] IN (%s)
 		 ORDER BY Timestamp ASC`, timeFilter, namespaceList)); err != nil {
-		slog.Error("k8s objects lite", "err", err)
+		slog.Error("k8s infrastructure lite", "err", err)
 	}
 
 	slog.Info("fetching otel logs (raw)")

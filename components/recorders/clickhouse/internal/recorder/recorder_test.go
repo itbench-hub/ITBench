@@ -51,7 +51,7 @@ func TestRun(t *testing.T) {
 	for _, f := range []string{
 		"raw/k8s_events_raw.tsv",
 		"raw/k8s_topology_objects_raw.tsv",
-		"raw/k8s_objects_raw.tsv",
+		"raw/k8s_infrastructure_raw.tsv",
 		"raw/otel_logs_raw.tsv",
 		"raw/jaeger_spans_raw.tsv",
 	} {
@@ -61,7 +61,7 @@ func TestRun(t *testing.T) {
 	// ── lite files must exist ─────────────────────────────────────────────
 	for _, f := range []string{
 		"lite/k8s_events.tsv",
-		"lite/k8s_objects.tsv",
+		"lite/k8s_infrastructure.tsv",
 		"lite/otel_logs.tsv",
 		"lite/jaeger_spans.tsv",
 	} {
@@ -121,7 +121,7 @@ func seed(ctx context.Context, addr, password string) error {
 			LogAttributes Map(String, String)
 		) ENGINE = MergeTree() ORDER BY Timestamp`,
 
-		`CREATE TABLE IF NOT EXISTS kubernetes.objects_snapshot (
+		`CREATE TABLE IF NOT EXISTS kubernetes.infrastructure (
 			Timestamp DateTime64(9),
 			Body String,
 			ResourceAttributes Map(String, String),
@@ -177,7 +177,7 @@ func seed(ctx context.Context, addr, password string) error {
 		`INSERT INTO kubernetes.events VALUES
 			('2024-01-01 00:00:00', '{"type":"Normal"}', {'k8s.namespace.name': 'otel-demo'}, {})`,
 
-		`INSERT INTO kubernetes.objects_snapshot VALUES
+		`INSERT INTO kubernetes.infrastructure VALUES
 			('2024-01-01 00:00:00', '{"kind":"Pod"}', {'k8s.namespace.name': 'otel-demo'}, {'k8s.resource.name': 'Pod'})`,
 
 		`INSERT INTO kubernetes.topology VALUES

@@ -46,6 +46,11 @@
             - namespaces
             - nodes
             - persistentvolumes
+            - events
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["events.k8s.io"]
+          resources:
+            - events
           verbs: ["get", "list", "watch"]
         - apiGroups: ["rbac.authorization.k8s.io"]
           resources:
@@ -144,7 +149,31 @@
       spec:
         config:
           exporters:
-            otlp/gateway:
+            otlp/kubernetes-events:
+              endpoint: "{{ tools_otel_gateway_endpoint.kubernetes_events.grpc }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                batch:
+                  flush_timeout: 2s
+                  min_size: 2500
+                enabled: true
+                num_consumers: 5
+              tls:
+                insecure: true
+            otlp/kubernetes-infrastructure:
+              endpoint: "{{ tools_otel_gateway_endpoint.kubernetes_infrastructure.grpc }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                batch:
+                  flush_timeout: 2s
+                  min_size: 2500
+                enabled: true
+                num_consumers: 5
+              tls:
+                insecure: true
+            otlp/kubernetes-topology:
               endpoint: "{{ tools_otel_gateway_endpoint.kubernetes_topology.grpc }}"
               retry_on_failure:
                 enabled: true
@@ -171,6 +200,25 @@
                     - delete_key(body["object"], "stringData")
                     - delete_key(body["object"]["metadata"]["annotations"], "kubectl.kubernetes.io/last-applied-configuration")
           receivers:
+            k8sobjects/events:
+              objects:
+                - group: events.k8s.io
+                  mode: watch
+                  name: events
+                - group: ""
+                  mode: watch
+                  name: events
+            k8sobjects/infrastructure:
+              include_initial_state: true
+              kube_api_burst: 20
+              kube_api_qps: 10
+              objects:
+                - exclude_watch_type: [BOOKMARK]
+                  mode: watch
+                  name: pods
+                - exclude_watch_type: [BOOKMARK]
+                  mode: watch
+                  name: nodes
             # Cluster-scoped objects are mostly static, so without
             # include_initial_state they would never emit an event.
             k8sobjects/topology-cluster:
@@ -339,9 +387,19 @@
                   namespaces: "{{ topology_required_namespaces }}"
           service:
             pipelines:
+              logs/events:
+                exporters:
+                  - otlp/kubernetes-events
+                receivers:
+                  - k8sobjects/events
+              logs/infrastructure:
+                exporters:
+                  - otlp/kubernetes-infrastructure
+                receivers:
+                  - k8sobjects/infrastructure
               logs/topology:
                 exporters:
-                  - otlp/gateway
+                  - otlp/kubernetes-topology
                 processors:
                   - transform/strip-secrets
                 receivers:
