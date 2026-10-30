@@ -12,19 +12,28 @@
     timeout: 10m0s
     wait: true
 
-- name: Create Secret for Clickhouse installation default user
+- name: Create Secrets for Clickhouse users
   kubernetes.core.k8s:
     resource_definition:
       apiVersion: v1
       kind: Secret
       metadata:
-        name: user-default-credentials
+        name: "user-{{ clickhouse_user.name }}-credentials"
         namespace: "{{ tools_namespace_itbench_observability }}"
       stringData:
         CLICKHOUSE_PASSWORD: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_letters,digits length=32') }}" # pragma: allowlist secret
-        CLICKHOUSE_USER: default
+        CLICKHOUSE_USER: "{{ clickhouse_user.name }}"
       type: Opaque
     state: present
+  loop:
+    - name: admin
+    - name: ingest
+    - name: jaeger
+    - name: recorder
+    - name: topology
+  loop_control:
+    label: secret/user-{{ clickhouse_user.name }}-credentials
+    loop_var: clickhouse_user
 
 - name: Create Clickhouse Installation
   kubernetes.core.k8s:
@@ -61,16 +70,54 @@
             prometheus/metrics: "true"
             prometheus/port: 9363
           users:
-            default/access_management: 1
-            default/named_collection_control: 1
-            default/networks/ip: 0.0.0.0/0
-            default/password:
+            admin/access_management: 1
+            admin/named_collection_control: 1
+            admin/networks/ip: 0.0.0.0/0
+            admin/password:
               valueFrom:
                 secretKeyRef:
                   key: CLICKHOUSE_PASSWORD
-                  name: user-default-credentials
-            default/show_named_collections: 1
-            default/show_named_collections_secrets: 1
+                  name: user-admin-credentials
+            admin/show_named_collections: 1
+            admin/show_named_collections_secrets: 1
+            ingest/grants/query:
+              - GRANT CREATE, INSERT ON istio.*
+              - GRANT CREATE ON kubernetes.*
+              - GRANT INSERT ON kubernetes.topology
+              - GRANT CREATE, INSERT ON opentelemetry_demo.*
+            ingest/networks/ip: 0.0.0.0/0
+            ingest/password:
+              valueFrom:
+                secretKeyRef:
+                  key: CLICKHOUSE_PASSWORD
+                  name: user-ingest-credentials
+            jaeger/grants/query:
+              - GRANT ALL ON jaeger.*
+            jaeger/networks/ip: 0.0.0.0/0
+            jaeger/password:
+              valueFrom:
+                secretKeyRef:
+                  key: CLICKHOUSE_PASSWORD
+                  name: user-jaeger-credentials
+            recorder/grants/query:
+              - GRANT SELECT ON jaeger.*
+              - GRANT SELECT ON kubernetes.*
+              - GRANT SELECT ON opentelemetry_demo.*
+              - GRANT SELECT ON prometheus.*
+            recorder/networks/ip: 0.0.0.0/0
+            recorder/password:
+              valueFrom:
+                secretKeyRef:
+                  key: CLICKHOUSE_PASSWORD
+                  name: user-recorder-credentials
+            topology/grants/query:
+              - GRANT CREATE, INSERT, SELECT ON kubernetes.*
+            topology/networks/ip: 0.0.0.0/0
+            topology/password:
+              valueFrom:
+                secretKeyRef:
+                  key: CLICKHOUSE_PASSWORD
+                  name: user-topology-credentials
         defaults:
           templates:
             dataVolumeClaimTemplate: data-volume-template
@@ -194,6 +241,9 @@
                       CREATE DATABASE IF NOT EXISTS prometheus;
                       CREATE TABLE IF NOT EXISTS prometheus.metrics ENGINE = TimeSeries;
                       CREATE DATABASE IF NOT EXISTS jaeger;
+                      CREATE DATABASE IF NOT EXISTS istio;
+                      CREATE DATABASE IF NOT EXISTS kubernetes;
+                      CREATE DATABASE IF NOT EXISTS opentelemetry_demo;
                     "
                 command:
                   - /bin/sh
@@ -205,12 +255,12 @@
                     valueFrom:
                       secretKeyRef:
                         key: CLICKHOUSE_USER
-                        name: user-default-credentials
+                        name: user-admin-credentials
                   - name: CLICKHOUSE_PASSWORD
                     valueFrom:
                       secretKeyRef:
                         key: CLICKHOUSE_PASSWORD
-                        name: user-default-credentials
+                        name: user-admin-credentials
                 image: altinity/clickhouse-server:26.3.33.10001.altinitystable@sha256:5bd62b50208bae1d065de7685b0b0a1812f267d1a179aabb15f97c78aed47d1a
                 imagePullPolicy: IfNotPresent
                 name: init

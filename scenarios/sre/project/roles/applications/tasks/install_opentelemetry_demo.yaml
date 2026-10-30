@@ -52,14 +52,6 @@
 - name: Import tools role for variable setting tasks
   ansible.builtin.import_role:
     name: tools
-    tasks_from: set_credentials_clickhouse
-  vars:
-    tools_cluster:
-      kubeconfig: "{{ applications_cluster.kubeconfig }}"
-
-- name: Import tools role for variable setting tasks
-  ansible.builtin.import_role:
-    name: tools
     tasks_from: set_internal_endpoints
   vars:
     tools_cluster:
@@ -128,12 +120,14 @@
                 - default: "{{ applications_namespace_opentelemetry_demo }}"
                   name: namespace
           exporters:
-            clickhouse:
-              database: opentelemetry_demo
-              endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: "logs"
-              password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
-              username: "{{ tools_clickhouse_username }}"
+            otlp/gateway:
+              endpoint: "{{ tools_otel_gateway_endpoint.opentelemetry_demo.grpc }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
             otlp/jaeger:
               endpoint: "{{ tools_jaeger_endpoint.collector.grpc }}"
             prometheus:
@@ -142,8 +136,8 @@
             pipelines:
               logs:
                 exporters:
-                  - clickhouse
                   - debug
+                  - otlp/gateway
               metrics:
                 exporters:
                   - debug

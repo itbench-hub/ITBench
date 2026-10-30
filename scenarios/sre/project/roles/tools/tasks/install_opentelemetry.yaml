@@ -80,47 +80,96 @@
   ansible.builtin.import_tasks:
     file: set_internal_endpoints_clickhouse.yaml
 
-- name: Install OpenTelemetry Collector for Istio
+# NOTE: The gateway is the only Clickhouse writer for OTLP logs. Each source has its own
+#       named receiver (and port) with a dedicated pipeline, so no routing is required.
+- name: Install OpenTelemetry Collector for OTLP gateway
   kubernetes.core.k8s:
     resource_definition:
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: istio
+        name: itbench-otel-gateway
         namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
         config:
           exporters:
-            clickhouse:
+            clickhouse/istio:
               database: istio
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: "access_logs"
-              password: ${env:CLICKHOUSE_USER} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_PASSWORD}
+              logs_table_name: access_logs
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
+            clickhouse/kubernetes_topology:
+              database: kubernetes
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
+              logs_table_name: topology
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
+            clickhouse/opentelemetry_demo:
+              database: opentelemetry_demo
+              endpoint: "{{ tools_clickhouse_endpoint.http }}"
+              logs_table_name: logs
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
             debug: {}
+          processors:
+            batch:
+              send_batch_size: 8192
+              timeout: 1s
           receivers:
-            otlp:
+            otlp/istio:
               protocols:
                 grpc:
                   endpoint: 0.0.0.0:4317
-                http:
-                  endpoint: 0.0.0.0:4318
+            otlp/kubernetes_topology:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4321
+            otlp/opentelemetry_demo:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4320
           service:
             pipelines:
-              logs:
+              logs/kubernetes_topology:
                 exporters:
                   - debug
-                  - clickhouse
+                  - clickhouse/kubernetes_topology
+                processors:
+                  - batch
                 receivers:
-                  - otlp
+                  - otlp/kubernetes_topology
+              logs/istio:
+                exporters:
+                  - debug
+                  - clickhouse/istio
+                processors:
+                  - batch
+                receivers:
+                  - otlp/istio
+              logs/opentelemetry_demo:
+                exporters:
+                  - debug
+                  - clickhouse/opentelemetry_demo
+                processors:
+                  - batch
+                receivers:
+                  - otlp/opentelemetry_demo
         envFrom:
           - secretRef:
-              name: user-default-credentials
+              name: user-ingest-credentials
         image: quay.io/it-bench/opentelemetry-collector:2.0.0@sha256:6f38985d3000d56cac17c5ad8c4f777ac74cebdf3592196f39b0f78b0ab1f7f7
         mode: deployment
         observability:
           metrics:
             enableMetrics: true
+        ports:
+          - name: istio-grpc
+            port: 4317
+          - name: demo-grpc
+            port: 4320
+          - name: topology-grpc
+            port: 4321
     state: present
 
 - name: Install OpenTelemetry Collector for Jaeger
@@ -157,8 +206,8 @@
                       - "{{ tools_clickhouse_endpoint.tcp }}"
                     auth:
                       basic:
-                        password: ${env:CLICKHOUSE_USER} # pragma: allowlist secret
-                        username: ${env:CLICKHOUSE_PASSWORD}
+                        password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+                        username: ${env:CLICKHOUSE_USER}
                     create_schema: true
           processors:
             batch:
@@ -186,7 +235,7 @@
                   - otlp
         envFrom:
           - secretRef:
-              name: user-default-credentials
+              name: user-jaeger-credentials
         image: quay.io/jaegertracing/jaeger:2.22.0@sha256:836b967b5abcf1f7758066aa6b348619267a2f1459f72d472840570f9bd88a17
         mode: deployment
         observability:
@@ -357,14 +406,14 @@
               database: kubernetes
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
               logs_table_name: events
-              password: ${env:CLICKHOUSE_USER} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_PASSWORD}
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
             clickhouse/objects:
               database: kubernetes
               endpoint: "{{ tools_clickhouse_endpoint.http }}"
               logs_table_name: objects_snapshot
-              password: ${env:CLICKHOUSE_USER} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_PASSWORD}
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
             debug: {}
           receivers:
             k8sobjects/events:
@@ -497,7 +546,7 @@
                   - k8sobjects/objects
         envFrom:
           - secretRef:
-              name: user-default-credentials
+              name: user-admin-credentials
         image: quay.io/it-bench/opentelemetry-collector:2.0.0@sha256:6f38985d3000d56cac17c5ad8c4f777ac74cebdf3592196f39b0f78b0ab1f7f7
         mode: deployment
         observability:
