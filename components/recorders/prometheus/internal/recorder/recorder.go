@@ -1,6 +1,7 @@
 package recorder
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -191,7 +192,7 @@ func exportMetrics(ctx context.Context, api prometheusv1.API, baseDir string, na
 			for _, sample := range series.Values {
 				sampleTime := sample.Timestamp.Time().UTC().Format(sampleTimeFormat)
 				if err := rawPods.write(
-					filepath.Join(rawDir, "metrics_pod", fmt.Sprintf("pod_%s_raw.tsv", safePod)),
+					filepath.Join(rawDir, "metrics_pod", fmt.Sprintf("pod_%s_raw.tsv.gz", safePod)),
 					[]string{"metric_name", "timestamp", "value", "pod_name", "namespace", "tags"},
 					[]string{name, sampleTime, sample.Value.String(), pod, tags["namespace"], fmt.Sprintf("%v", tags)},
 				); err != nil {
@@ -201,7 +202,7 @@ func exportMetrics(ctx context.Context, api prometheusv1.API, baseDir string, na
 					continue
 				}
 				if err := litePods.write(
-					filepath.Join(liteDir, "metrics_pod", fmt.Sprintf("pod_%s.tsv", safePod)),
+					filepath.Join(liteDir, "metrics_pod", fmt.Sprintf("pod_%s.tsv.gz", safePod)),
 					[]string{"metric_name", "timestamp", "value", "pod_name", "namespace"},
 					[]string{name, sampleTime, sample.Value.String(), pod, tags["namespace"]},
 				); err != nil {
@@ -223,14 +224,14 @@ func exportMetrics(ctx context.Context, api prometheusv1.API, baseDir string, na
 				for _, sample := range series.Values {
 					sampleTime := sample.Timestamp.Time().UTC().Format(sampleTimeFormat)
 					if err := rawServices.write(
-						filepath.Join(rawDir, "metrics_service", fmt.Sprintf("service_%s_raw.tsv", service)),
+						filepath.Join(rawDir, "metrics_service", fmt.Sprintf("service_%s_raw.tsv.gz", service)),
 						[]string{"metric_name", "timestamp", "value", "service_name", "namespace", "tags"},
 						[]string{name, sampleTime, sample.Value.String(), service, tags[query.namespaceKey], fmt.Sprintf("%v", tags)},
 					); err != nil {
 						return err
 					}
 					if err := liteServices.write(
-						filepath.Join(liteDir, "metrics_service", fmt.Sprintf("service_%s.tsv", service)),
+						filepath.Join(liteDir, "metrics_service", fmt.Sprintf("service_%s.tsv.gz", service)),
 						[]string{"metric_name", "timestamp", "value", "service_name", "namespace"},
 						[]string{name, sampleTime, sample.Value.String(), service, tags[query.namespaceKey]},
 					); err != nil {
@@ -276,7 +277,7 @@ func splitMetric(metric model.Metric) (string, map[string]string) {
 	return string(metric[model.MetricNameLabel]), tags
 }
 
-// tsvSet holds TSV files by path. A file is created, with its header, on the first write.
+// tsvSet holds gzip-compressed TSV files by path. A file is created, with its header, on the first write.
 type tsvSet map[string]*lazyTSV
 
 func (s tsvSet) write(path string, headers, row []string) error {
@@ -294,11 +295,12 @@ func (s tsvSet) close() {
 	}
 }
 
-// lazyTSV opens and writes a header to a TSV file on the first write call.
+// lazyTSV opens and writes a header to a gzip-compressed TSV file on the first write call.
 type lazyTSV struct {
 	path    string
 	headers []string
 	f       *os.File
+	gz      *gzip.Writer
 	w       *csv.Writer
 }
 
@@ -308,14 +310,17 @@ func (l *lazyTSV) write(row []string) error {
 		if err != nil {
 			return fmt.Errorf("create %s: %w", l.path, err)
 		}
-		w := csv.NewWriter(f)
+		gz := gzip.NewWriter(f)
+		w := csv.NewWriter(gz)
 		w.Comma = '\t'
 		w.UseCRLF = false
 		if err := w.Write(l.headers); err != nil {
+			gz.Close()
 			f.Close()
 			return err
 		}
 		l.f = f
+		l.gz = gz
 		l.w = w
 	}
 	return l.w.Write(row)
@@ -328,6 +333,9 @@ func (l *lazyTSV) close() {
 	l.w.Flush()
 	if err := l.w.Error(); err != nil {
 		slog.Error("flush tsv", "path", l.path, "err", err)
+	}
+	if err := l.gz.Close(); err != nil {
+		slog.Error("close gzip", "path", l.path, "err", err)
 	}
 	l.f.Close()
 }

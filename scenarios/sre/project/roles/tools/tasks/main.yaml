@@ -1,7 +1,17 @@
 ---
-- name: Import installation tasks
+- name: Import infrastructure installation tasks
   ansible.builtin.import_tasks:
     file: install.yaml
+  when:
+    - not tools_recorders_enabled
+  tags:
+    - install
+
+- name: Import recorders installation tasks
+  ansible.builtin.import_tasks:
+    file: install_itbench_recorders.yaml
+  when:
+    - tools_recorders_enabled
   tags:
     - install
 

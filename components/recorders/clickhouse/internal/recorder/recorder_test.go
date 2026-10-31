@@ -1,6 +1,7 @@
 package recorder_test
 
 import (
+	"compress/gzip"
 	"context"
 	"database/sql"
 	"encoding/csv"
@@ -49,21 +50,21 @@ func TestRun(t *testing.T) {
 
 	// ── raw files must exist ──────────────────────────────────────────────
 	for _, f := range []string{
-		"raw/k8s_events_raw.tsv",
-		"raw/k8s_topology_objects_raw.tsv",
-		"raw/k8s_infrastructure_raw.tsv",
-		"raw/otel_logs_raw.tsv",
-		"raw/jaeger_spans_raw.tsv",
+		"raw/k8s_events_raw.tsv.gz",
+		"raw/k8s_topology_objects_raw.tsv.gz",
+		"raw/k8s_infrastructure_raw.tsv.gz",
+		"raw/otel_logs_raw.tsv.gz",
+		"raw/jaeger_spans_raw.tsv.gz",
 	} {
 		assertFile(t, outDir, f)
 	}
 
 	// ── lite files must exist ─────────────────────────────────────────────
 	for _, f := range []string{
-		"lite/k8s_events.tsv",
-		"lite/k8s_infrastructure.tsv",
-		"lite/otel_logs.tsv",
-		"lite/jaeger_spans.tsv",
+		"lite/k8s_events.tsv.gz",
+		"lite/k8s_infrastructure.tsv.gz",
+		"lite/otel_logs.tsv.gz",
+		"lite/jaeger_spans.tsv.gz",
 	} {
 		assertFile(t, outDir, f)
 	}
@@ -80,8 +81,8 @@ func TestRun(t *testing.T) {
 
 	snapSubDir := filepath.Join(snapshotDir, "snapshot_at_2024-01-01T00-00-00.500000")
 	for _, f := range []string{
-		"raw/k8s_events_raw.tsv",
-		"lite/k8s_events.tsv",
+		"raw/k8s_events_raw.tsv.gz",
+		"lite/k8s_events.tsv.gz",
 	} {
 		assertFile(t, snapSubDir, f)
 	}
@@ -219,18 +220,24 @@ func assertFile(t *testing.T, outDir, rel string) {
 	}
 }
 
-// assertLiteLogsFiltered checks that lite/otel_logs.tsv contains only
+// assertLiteLogsFiltered checks that lite/otel_logs.tsv.gz contains only
 // WARN/ERROR/FATAL rows and not INFO.
 func assertLiteLogsFiltered(t *testing.T, outDir string) {
 	t.Helper()
-	path := filepath.Join(outDir, "lite", "otel_logs.tsv")
+	path := filepath.Join(outDir, "lite", "otel_logs.tsv.gz")
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatalf("open lite logs: %v", err)
 	}
 	defer f.Close()
 
-	r := csv.NewReader(f)
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatalf("gunzip lite logs: %v", err)
+	}
+	defer gz.Close()
+
+	r := csv.NewReader(gz)
 	r.Comma = '\t'
 	records, err := r.ReadAll()
 	if err != nil {

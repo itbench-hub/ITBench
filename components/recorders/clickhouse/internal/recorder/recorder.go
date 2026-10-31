@@ -1,6 +1,7 @@
 package recorder
 
 import (
+	"compress/gzip"
 	"context"
 	"database/sql"
 	"encoding/csv"
@@ -8,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -64,17 +66,18 @@ func Run(ctx context.Context, addr, username, password, outputDir string, namesp
 	return nil
 }
 
-// quoteList converts values into a SQL list of single-quoted strings, e.g. 'a','b'.
-func quoteList(values []string) string {
-	quoted := make([]string, 0, len(values))
-	for _, v := range values {
-		quoted = append(quoted, "'"+strings.ReplaceAll(v, "'", "''")+"'")
-	}
-	return strings.Join(quoted, ",")
+type liteHandler struct {
+	dir    string
+	prefix string
+	header []string
+	derive func(colIdx map[string]int, vals []any) ([]string, bool)
 }
 
 func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir string, namespaces []string, maxTime, minTime *time.Time) error {
-	namespaceList := quoteList(namespaces)
+	nsSet := make(map[string]bool, len(namespaces))
+	for _, ns := range namespaces {
+		nsSet[ns] = true
+	}
 
 	rawDir := filepath.Join(baseDir, "raw")
 	liteDir := filepath.Join(baseDir, "lite")
@@ -100,130 +103,186 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir st
 		topologyTimeFilter += fmt.Sprintf(" AND Timestamp <= '%s'", maxTime.UTC().Format("2006-01-02 15:04:05.000000000"))
 	}
 
-	slog.Info("fetching k8s events (raw)")
+	slog.Info("fetching k8s events")
 	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_events_raw",
-		fmt.Sprintf(`SELECT * FROM kubernetes.events WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
-		slog.Error("k8s events raw", "err", err)
-	}
-
-	slog.Info("fetching k8s events (lite)")
-	if err := exportQuery(ctx, defaultDB, liteDir, "k8s_events",
-		fmt.Sprintf(`SELECT
-			Timestamp     AS timestamp,
-			Body          AS body,
-			ResourceAttributes['k8s.namespace.name'] AS namespace
-		 FROM kubernetes.events
-		 WHERE %s AND ResourceAttributes['k8s.namespace.name'] IN (%s)
-		 ORDER BY Timestamp ASC`, timeFilter, namespaceList)); err != nil {
-		slog.Error("k8s events lite", "err", err)
+		fmt.Sprintf(`SELECT * FROM kubernetes.events WHERE %s ORDER BY Timestamp ASC`, timeFilter),
+		&liteHandler{
+			dir:    liteDir,
+			prefix: "k8s_events",
+			header: []string{"timestamp", "body", "namespace"},
+			derive: func(colIdx map[string]int, vals []any) ([]string, bool) {
+				ns := getMapKey(vals[colIdx["ResourceAttributes"]], "k8s.namespace.name")
+				if !nsSet[ns] {
+					return nil, false
+				}
+				return []string{
+					formatVal(vals[colIdx["Timestamp"]]),
+					formatVal(vals[colIdx["Body"]]),
+					ns,
+				}, true
+			},
+		}); err != nil {
+		slog.Error("k8s events", "err", err)
 	}
 
 	slog.Info("fetching k8s topology objects (raw)")
 	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_topology_objects_raw",
-		fmt.Sprintf(`SELECT * FROM kubernetes.topology WHERE %s ORDER BY Timestamp ASC`, topologyTimeFilter)); err != nil {
+		fmt.Sprintf(`SELECT * FROM kubernetes.topology WHERE %s ORDER BY Timestamp ASC`, topologyTimeFilter), nil); err != nil {
 		slog.Warn("k8s topology objects raw (table may not exist)", "err", err)
 	}
 
 	slog.Info("fetching k8s topology graph (raw)")
 	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_topology_graph_raw",
-		fmt.Sprintf(`SELECT * FROM kubernetes.topology_graph WHERE %s ORDER BY Timestamp ASC, Seq ASC`, topologyTimeFilter)); err != nil {
+		fmt.Sprintf(`SELECT * FROM kubernetes.topology_graph WHERE %s ORDER BY Timestamp ASC, Seq ASC`, topologyTimeFilter), nil); err != nil {
 		slog.Warn("k8s topology graph raw (table may not exist)", "err", err)
 	}
 
-	slog.Info("fetching k8s infrastructure (raw)")
+	slog.Info("fetching k8s infrastructure")
 	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_infrastructure_raw",
-		fmt.Sprintf(`SELECT * FROM kubernetes.infrastructure WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
-		slog.Error("k8s infrastructure raw", "err", err)
+		fmt.Sprintf(`SELECT * FROM kubernetes.infrastructure WHERE %s ORDER BY Timestamp ASC`, timeFilter),
+		&liteHandler{
+			dir:    liteDir,
+			prefix: "k8s_infrastructure",
+			header: []string{"timestamp", "body", "namespace", "resource_type"},
+			derive: func(colIdx map[string]int, vals []any) ([]string, bool) {
+				ns := getMapKey(vals[colIdx["ResourceAttributes"]], "k8s.namespace.name")
+				if !nsSet[ns] {
+					return nil, false
+				}
+				resourceType := getMapKey(vals[colIdx["LogAttributes"]], "k8s.resource.name")
+				return []string{
+					formatVal(vals[colIdx["Timestamp"]]),
+					formatVal(vals[colIdx["Body"]]),
+					ns,
+					resourceType,
+				}, true
+			},
+		}); err != nil {
+		slog.Error("k8s infrastructure", "err", err)
 	}
 
-	slog.Info("fetching k8s infrastructure (lite)")
-	if err := exportQuery(ctx, defaultDB, liteDir, "k8s_infrastructure",
-		fmt.Sprintf(`SELECT
-			Timestamp     AS timestamp,
-			Body          AS body,
-			ResourceAttributes['k8s.namespace.name'] AS namespace,
-			LogAttributes['k8s.resource.name']       AS resource_type
-		 FROM kubernetes.infrastructure
-		 WHERE %s AND ResourceAttributes['k8s.namespace.name'] IN (%s)
-		 ORDER BY Timestamp ASC`, timeFilter, namespaceList)); err != nil {
-		slog.Error("k8s infrastructure lite", "err", err)
-	}
-
-	slog.Info("fetching otel logs (raw)")
+	slog.Info("fetching otel logs")
 	if err := exportQuery(ctx, defaultDB, rawDir, "otel_logs_raw",
-		fmt.Sprintf(`SELECT * FROM opentelemetry_demo.logs WHERE %s ORDER BY Timestamp ASC`, timeFilter)); err != nil {
-		slog.Error("otel logs raw", "err", err)
+		fmt.Sprintf(`SELECT * FROM opentelemetry_demo.logs WHERE %s ORDER BY Timestamp ASC`, timeFilter),
+		&liteHandler{
+			dir:    liteDir,
+			prefix: "otel_logs",
+			header: []string{
+				"timestamp", "trace_id", "span_id", "trace_flags",
+				"severity_text", "severity_number", "service_name",
+				"body", "resource_attributes", "log_attributes",
+			},
+			derive: func(colIdx map[string]int, vals []any) ([]string, bool) {
+				sevText := formatVal(vals[colIdx["SeverityText"]])
+				sevNum := toInt(vals[colIdx["SeverityNumber"]])
+				if sevText != "WARN" && sevText != "ERROR" && sevText != "FATAL" && sevNum < 13 {
+					return nil, false
+				}
+				return []string{
+					formatVal(vals[colIdx["Timestamp"]]),
+					formatVal(vals[colIdx["TraceId"]]),
+					formatVal(vals[colIdx["SpanId"]]),
+					formatVal(vals[colIdx["TraceFlags"]]),
+					sevText,
+					formatVal(vals[colIdx["SeverityNumber"]]),
+					formatVal(vals[colIdx["ServiceName"]]),
+					formatVal(vals[colIdx["Body"]]),
+					formatVal(vals[colIdx["ResourceAttributes"]]),
+					formatVal(vals[colIdx["LogAttributes"]]),
+				}, true
+			},
+		}); err != nil {
+		slog.Error("otel logs", "err", err)
 	}
 
-	slog.Info("fetching otel logs (lite)")
-	if err := exportQuery(ctx, defaultDB, liteDir, "otel_logs",
-		fmt.Sprintf(`SELECT
-			Timestamp        AS timestamp,
-			TraceId          AS trace_id,
-			SpanId           AS span_id,
-			TraceFlags       AS trace_flags,
-			SeverityText     AS severity_text,
-			SeverityNumber   AS severity_number,
-			ServiceName      AS service_name,
-			Body             AS body,
-			ResourceAttributes AS resource_attributes,
-			LogAttributes    AS log_attributes
-		 FROM opentelemetry_demo.logs
-		 WHERE %s AND (SeverityText IN ('WARN','ERROR','FATAL') OR SeverityNumber >= 13)
-		 ORDER BY Timestamp ASC`, timeFilter)); err != nil {
-		slog.Error("otel logs lite", "err", err)
-	}
-
-	slog.Info("fetching jaeger spans (raw)")
+	slog.Info("fetching jaeger spans")
 	if err := exportQuery(ctx, jaegerDB, rawDir, "jaeger_spans_raw",
-		fmt.Sprintf(`SELECT * FROM spans WHERE %s ORDER BY start_time ASC`, tracesTimeFilter)); err != nil {
-		slog.Error("jaeger spans raw", "err", err)
-	}
-
-	slog.Info("fetching jaeger spans (lite)")
-	if err := exportQuery(ctx, jaegerDB, liteDir, "jaeger_spans",
-		fmt.Sprintf(`SELECT
-			start_time     AS timestamp,
-			trace_id       AS trace_id,
-			id             AS span_id,
-			parent_span_id AS parent_span_id,
-			trace_state    AS trace_state,
-			name           AS span_name,
-			kind           AS span_kind,
-			service_name   AS service_name,
-			scope_name     AS scope_name,
-			scope_version  AS scope_version,
-			duration       AS duration,
-			status_code    AS status_code,
-			status_message AS status_message
-		 FROM spans
-		 WHERE %s AND (status_code = 'Error' OR status_code = 'STATUS_CODE_ERROR')
-		 ORDER BY start_time ASC`, tracesTimeFilter)); err != nil {
-		slog.Error("jaeger spans lite", "err", err)
+		fmt.Sprintf(`SELECT * FROM spans WHERE %s ORDER BY start_time ASC`, tracesTimeFilter),
+		&liteHandler{
+			dir:    liteDir,
+			prefix: "jaeger_spans",
+			header: []string{
+				"timestamp", "trace_id", "span_id", "parent_span_id",
+				"trace_state", "span_name", "span_kind", "service_name",
+				"scope_name", "scope_version", "duration", "status_code", "status_message",
+			},
+			derive: func(colIdx map[string]int, vals []any) ([]string, bool) {
+				statusCode := formatVal(vals[colIdx["status_code"]])
+				if statusCode != "Error" && statusCode != "STATUS_CODE_ERROR" {
+					return nil, false
+				}
+				return []string{
+					formatVal(vals[colIdx["start_time"]]),
+					formatVal(vals[colIdx["trace_id"]]),
+					formatVal(vals[colIdx["id"]]),
+					formatVal(vals[colIdx["parent_span_id"]]),
+					formatVal(vals[colIdx["trace_state"]]),
+					formatVal(vals[colIdx["name"]]),
+					formatVal(vals[colIdx["kind"]]),
+					formatVal(vals[colIdx["service_name"]]),
+					formatVal(vals[colIdx["scope_name"]]),
+					formatVal(vals[colIdx["scope_version"]]),
+					formatVal(vals[colIdx["duration"]]),
+					statusCode,
+					formatVal(vals[colIdx["status_message"]]),
+				}, true
+			},
+		}); err != nil {
+		slog.Error("jaeger spans", "err", err)
 	}
 
 	return nil
 }
 
-// exportQuery streams a SQL query page-by-page directly into a TSV file,
-// so the full result set is never held in memory.
-func exportQuery(ctx context.Context, db *sql.DB, dir, prefix, query string) error {
-	path := filepath.Join(dir, prefix+".tsv")
+// exportQuery streams a SQL query page-by-page directly into a gzip-compressed TSV file,
+// optionally deriving and writing a lite TSV in the same pass.
+func exportQuery(ctx context.Context, db *sql.DB, rawDir, rawPrefix, query string, lite *liteHandler) error {
+	rawPath := filepath.Join(rawDir, rawPrefix+".tsv.gz")
 	base := stripLimitOffset(query)
 
-	f, err := os.Create(path)
+	rawFile, err := os.Create(rawPath)
 	if err != nil {
-		return fmt.Errorf("create %s: %w", path, err)
+		return fmt.Errorf("create %s: %w", rawPath, err)
 	}
-	defer f.Close()
+	defer rawFile.Close()
 
-	w := csv.NewWriter(f)
-	w.Comma = '\t'
-	w.UseCRLF = false
+	rawGz := gzip.NewWriter(rawFile)
+	defer rawGz.Close()
+
+	rawWriter := csv.NewWriter(rawGz)
+	rawWriter.Comma = '\t'
+	rawWriter.UseCRLF = false
+
+	var (
+		liteGz     *gzip.Writer
+		liteWriter *csv.Writer
+		litePath   string
+		liteTotal  int
+	)
+
+	if lite != nil {
+		litePath = filepath.Join(lite.dir, lite.prefix+".tsv.gz")
+		f, err := os.Create(litePath)
+		if err != nil {
+			return fmt.Errorf("create %s: %w", litePath, err)
+		}
+		defer f.Close()
+
+		liteGz = gzip.NewWriter(f)
+		defer liteGz.Close()
+
+		liteWriter = csv.NewWriter(liteGz)
+		liteWriter.Comma = '\t'
+		liteWriter.UseCRLF = false
+		if err := liteWriter.Write(lite.header); err != nil {
+			return err
+		}
+	}
 
 	var (
 		colNames []string
-		total    int
+		colIdx   map[string]int
+		rawTotal int
 	)
 
 	for offset := 0; ; offset += batchSize {
@@ -240,72 +299,148 @@ func exportQuery(ctx context.Context, db *sql.DB, dir, prefix, query string) err
 				return fmt.Errorf("columns: %w", err)
 			}
 			colNames = cols
-			if err := w.Write(colNames); err != nil {
+			colIdx = make(map[string]int, len(colNames))
+			for i, c := range colNames {
+				colIdx[c] = i
+			}
+			if err := rawWriter.Write(colNames); err != nil {
 				rows.Close()
 				return err
 			}
 		}
 
-		n, err := streamRows(rows, len(colNames), w)
-		rows.Close()
-		if err != nil {
+		vals := make([]any, len(colNames))
+		ptrs := make([]any, len(colNames))
+		for i := range vals {
+			ptrs[i] = &vals[i]
+		}
+		rawRow := make([]string, len(colNames))
+
+		var batchCount int
+		for rows.Next() {
+			if err := rows.Scan(ptrs...); err != nil {
+				rows.Close()
+				return fmt.Errorf("scan: %w", err)
+			}
+			for i, v := range vals {
+				rawRow[i] = formatVal(v)
+			}
+			if err := rawWriter.Write(rawRow); err != nil {
+				rows.Close()
+				return err
+			}
+			rawTotal++
+			batchCount++
+
+			if lite != nil {
+				if liteRow, ok := lite.derive(colIdx, vals); ok {
+					if err := liteWriter.Write(liteRow); err != nil {
+						rows.Close()
+						return err
+					}
+					liteTotal++
+				}
+			}
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
 			return err
 		}
+		rows.Close()
 
-		total += n
-		if n < batchSize {
+		if batchCount < batchSize {
 			break
 		}
 	}
 
-	w.Flush()
-	if err := w.Error(); err != nil {
+	rawWriter.Flush()
+	if err := rawWriter.Error(); err != nil {
 		return err
 	}
-
-	if total == 0 {
-		_ = os.Remove(path)
-		slog.Info("no rows", "prefix", prefix)
-		return nil
+	if err := rawGz.Close(); err != nil {
+		return fmt.Errorf("close gzip %s: %w", rawPath, err)
 	}
 
-	slog.Info("wrote", "file", path, "rows", total)
+	if rawTotal == 0 {
+		_ = os.Remove(rawPath)
+		slog.Info("no rows", "prefix", rawPrefix)
+	} else {
+		slog.Info("wrote", "file", rawPath, "rows", rawTotal)
+	}
+
+	if lite != nil {
+		liteWriter.Flush()
+		if err := liteWriter.Error(); err != nil {
+			return err
+		}
+		if err := liteGz.Close(); err != nil {
+			return fmt.Errorf("close gzip %s: %w", litePath, err)
+		}
+		if liteTotal == 0 {
+			_ = os.Remove(litePath)
+			slog.Info("no rows", "prefix", lite.prefix)
+		} else {
+			slog.Info("wrote", "file", litePath, "rows", liteTotal)
+		}
+	}
+
 	return nil
 }
 
-func streamRows(rows *sql.Rows, ncols int, w *csv.Writer) (int, error) {
-	vals := make([]any, ncols)
-	ptrs := make([]any, ncols)
-	for i := range vals {
-		ptrs[i] = &vals[i]
+func formatVal(v any) string {
+	if v == nil {
+		return ""
 	}
-	row := make([]string, ncols)
+	switch val := v.(type) {
+	case string:
+		return val
+	case []byte:
+		return string(val)
+	default:
+		return fmt.Sprintf("%v", val)
+	}
+}
 
-	var n int
-	for rows.Next() {
-		if err := rows.Scan(ptrs...); err != nil {
-			return n, fmt.Errorf("scan: %w", err)
+func getMapKey(v any, key string) string {
+	switch m := v.(type) {
+	case map[string]string:
+		return m[key]
+	case map[string]any:
+		if val, ok := m[key]; ok {
+			return formatVal(val)
 		}
-		for i, v := range vals {
-			if v == nil {
-				row[i] = ""
-				continue
-			}
-			switch val := v.(type) {
-			case string:
-				row[i] = val
-			case []byte:
-				row[i] = string(val)
-			default:
-				row[i] = fmt.Sprintf("%v", val)
-			}
-		}
-		if err := w.Write(row); err != nil {
-			return n, err
-		}
-		n++
 	}
-	return n, rows.Err()
+	return ""
+}
+
+func toInt(v any) int64 {
+	switch val := v.(type) {
+	case int:
+		return int64(val)
+	case int8:
+		return int64(val)
+	case int16:
+		return int64(val)
+	case int32:
+		return int64(val)
+	case int64:
+		return val
+	case uint:
+		return int64(val)
+	case uint8:
+		return int64(val)
+	case uint16:
+		return int64(val)
+	case uint32:
+		return int64(val)
+	case uint64:
+		return int64(val)
+	case string:
+		n, _ := strconv.ParseInt(val, 10, 64)
+		return n
+	default:
+		return 0
+	}
 }
 
 // stripLimitOffset removes a trailing LIMIT [n] OFFSET [n] or LIMIT [n] clause.

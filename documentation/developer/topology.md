@@ -33,7 +33,7 @@ ITBench uses an in-cluster event-driven pipeline to build live topology graphs i
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Agent / Consumer SQL Access (HTTPRoute /clickhouse/)        │
-│  ClickHouse Recorder Export -> k8s_topology_graph_raw.tsv   │
+│  ClickHouse Recorder Export -> k8s_topology_graph_raw.tsv.gz │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,7 +53,7 @@ During the `install` stage of the scenario lifecycle:
 
 During the `export` stage:
 - The ClickHouse data recorder queries `kubernetes.topology` and `kubernetes.topology_graph` filtered between `RECORDING_START_TIMESTAMP` and `RECORDING_END_TIMESTAMP`.
-- It exports the raw rows to `raw/k8s_topology_objects_raw.tsv` and `raw/k8s_topology_graph_raw.tsv`.
+- It exports the raw rows to `raw/k8s_topology_objects_raw.tsv.gz` and `raw/k8s_topology_graph_raw.tsv.gz`.
 
 ### 3. Teardown Phase
 
