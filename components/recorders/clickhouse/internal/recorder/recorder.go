@@ -52,13 +52,13 @@ func Run(ctx context.Context, addr, username, password, outputDir string, namesp
 	}
 
 	if len(timestamps) == 0 {
-		return exportSnapshot(ctx, defaultDB, jaegerDB, outputDir, namespaces, nil, nil)
+		return exportSnapshot(ctx, defaultDB, jaegerDB, outputDir, namespaces, nil)
 	}
 
-	startTime := timestamps[0]
-	for _, ts := range timestamps {
-		targetDir := filepath.Join(outputDir, fmt.Sprintf("snapshot_at_%s", ts.UTC().Format("2006-01-02T15-04-05.000000")))
-		if err := exportSnapshot(ctx, defaultDB, jaegerDB, targetDir, namespaces, &ts, &startTime); err != nil {
+	for i, ts := range timestamps {
+		targetDir := filepath.Join(outputDir, "snapshots", ts.UTC().Format("2006-01-02T15-04-05.000000"))
+		slog.Info("exporting snapshot", "snapshot", ts.UTC().Format(time.RFC3339), "index", i+1, "total", len(timestamps))
+		if err := exportSnapshot(ctx, defaultDB, jaegerDB, targetDir, namespaces, &ts); err != nil {
 			return err
 		}
 	}
@@ -66,25 +66,21 @@ func Run(ctx context.Context, addr, username, password, outputDir string, namesp
 	return nil
 }
 
-type liteHandler struct {
+type filterHandler struct {
 	dir    string
 	prefix string
 	header []string
 	derive func(colIdx map[string]int, vals []any) ([]string, bool)
 }
 
-func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir string, namespaces []string, maxTime, minTime *time.Time) error {
+func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir string, namespaces []string, maxTime *time.Time) error {
 	nsSet := make(map[string]bool, len(namespaces))
 	for _, ns := range namespaces {
 		nsSet[ns] = true
 	}
 
-	rawDir := filepath.Join(baseDir, "raw")
-	liteDir := filepath.Join(baseDir, "lite")
-	for _, d := range []string{rawDir, liteDir} {
-		if err := os.MkdirAll(d, 0o755); err != nil {
-			return fmt.Errorf("mkdir %s: %w", d, err)
-		}
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", baseDir, err)
 	}
 
 	timeFilter := "1=1"
@@ -95,20 +91,11 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir st
 		tracesTimeFilter = fmt.Sprintf("start_time <= '%s'", t)
 	}
 
-	topologyTimeFilter := "1=1"
-	if minTime != nil {
-		topologyTimeFilter = fmt.Sprintf("Timestamp >= '%s'", minTime.UTC().Format("2006-01-02 15:04:05.000000000"))
-	}
-	if maxTime != nil {
-		topologyTimeFilter += fmt.Sprintf(" AND Timestamp <= '%s'", maxTime.UTC().Format("2006-01-02 15:04:05.000000000"))
-	}
-
-	slog.Info("fetching k8s events")
-	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_events_raw",
+	if err := exportQuery(ctx, defaultDB, baseDir, "k8s_events",
 		fmt.Sprintf(`SELECT * FROM kubernetes.events WHERE %s ORDER BY Timestamp ASC`, timeFilter),
-		&liteHandler{
-			dir:    liteDir,
-			prefix: "k8s_events",
+		&filterHandler{
+			dir:    baseDir,
+			prefix: "k8s_events_filtered",
 			header: []string{"timestamp", "body", "namespace"},
 			derive: func(colIdx map[string]int, vals []any) ([]string, bool) {
 				ns := getMapKey(vals[colIdx["ResourceAttributes"]], "k8s.namespace.name")
@@ -125,24 +112,21 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir st
 		slog.Error("k8s events", "err", err)
 	}
 
-	slog.Info("fetching k8s topology objects (raw)")
-	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_topology_objects_raw",
-		fmt.Sprintf(`SELECT * FROM kubernetes.topology WHERE %s ORDER BY Timestamp ASC`, topologyTimeFilter), nil); err != nil {
-		slog.Warn("k8s topology objects raw (table may not exist)", "err", err)
+	if err := exportQuery(ctx, defaultDB, baseDir, "k8s_topology_objects",
+		fmt.Sprintf(`SELECT * FROM kubernetes.topology WHERE %s ORDER BY Timestamp ASC`, timeFilter), nil); err != nil {
+		slog.Warn("k8s topology objects (table may not exist)", "err", err)
 	}
 
-	slog.Info("fetching k8s topology graph (raw)")
-	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_topology_graph_raw",
-		fmt.Sprintf(`SELECT * FROM kubernetes.topology_graph WHERE %s ORDER BY Timestamp ASC, Seq ASC`, topologyTimeFilter), nil); err != nil {
-		slog.Warn("k8s topology graph raw (table may not exist)", "err", err)
+	if err := exportQuery(ctx, defaultDB, baseDir, "k8s_topology_graph",
+		fmt.Sprintf(`SELECT * FROM kubernetes.topology_graph WHERE %s ORDER BY Timestamp ASC, Seq ASC`, timeFilter), nil); err != nil {
+		slog.Warn("k8s topology graph (table may not exist)", "err", err)
 	}
 
-	slog.Info("fetching k8s infrastructure")
-	if err := exportQuery(ctx, defaultDB, rawDir, "k8s_infrastructure_raw",
+	if err := exportQuery(ctx, defaultDB, baseDir, "k8s_infrastructure",
 		fmt.Sprintf(`SELECT * FROM kubernetes.infrastructure WHERE %s ORDER BY Timestamp ASC`, timeFilter),
-		&liteHandler{
-			dir:    liteDir,
-			prefix: "k8s_infrastructure",
+		&filterHandler{
+			dir:    baseDir,
+			prefix: "k8s_infrastructure_filtered",
 			header: []string{"timestamp", "body", "namespace", "resource_type"},
 			derive: func(colIdx map[string]int, vals []any) ([]string, bool) {
 				ns := getMapKey(vals[colIdx["ResourceAttributes"]], "k8s.namespace.name")
@@ -161,12 +145,11 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir st
 		slog.Error("k8s infrastructure", "err", err)
 	}
 
-	slog.Info("fetching otel logs")
-	if err := exportQuery(ctx, defaultDB, rawDir, "otel_logs_raw",
+	if err := exportQuery(ctx, defaultDB, baseDir, "otel_logs",
 		fmt.Sprintf(`SELECT * FROM opentelemetry_demo.logs WHERE %s ORDER BY Timestamp ASC`, timeFilter),
-		&liteHandler{
-			dir:    liteDir,
-			prefix: "otel_logs",
+		&filterHandler{
+			dir:    baseDir,
+			prefix: "otel_logs_filtered",
 			header: []string{
 				"timestamp", "trace_id", "span_id", "trace_flags",
 				"severity_text", "severity_number", "service_name",
@@ -195,12 +178,11 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir st
 		slog.Error("otel logs", "err", err)
 	}
 
-	slog.Info("fetching jaeger spans")
-	if err := exportQuery(ctx, jaegerDB, rawDir, "jaeger_spans_raw",
+	if err := exportQuery(ctx, jaegerDB, baseDir, "jaeger_spans",
 		fmt.Sprintf(`SELECT * FROM spans WHERE %s ORDER BY start_time ASC`, tracesTimeFilter),
-		&liteHandler{
-			dir:    liteDir,
-			prefix: "jaeger_spans",
+		&filterHandler{
+			dir:    baseDir,
+			prefix: "jaeger_spans_filtered",
 			header: []string{
 				"timestamp", "trace_id", "span_id", "parent_span_id",
 				"trace_state", "span_name", "span_kind", "service_name",
@@ -236,8 +218,8 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir st
 
 // exportQuery streams a SQL query page-by-page directly into a gzip-compressed TSV file,
 // optionally deriving and writing a lite TSV in the same pass.
-func exportQuery(ctx context.Context, db *sql.DB, rawDir, rawPrefix, query string, lite *liteHandler) error {
-	rawPath := filepath.Join(rawDir, rawPrefix+".tsv.gz")
+func exportQuery(ctx context.Context, db *sql.DB, baseDir, rawPrefix, query string, filtered *filterHandler) error {
+	rawPath := filepath.Join(baseDir, rawPrefix+".tsv.gz")
 	base := stripLimitOffset(query)
 
 	rawFile, err := os.Create(rawPath)
@@ -254,27 +236,27 @@ func exportQuery(ctx context.Context, db *sql.DB, rawDir, rawPrefix, query strin
 	rawWriter.UseCRLF = false
 
 	var (
-		liteGz     *gzip.Writer
-		liteWriter *csv.Writer
-		litePath   string
-		liteTotal  int
+		filteredGz     *gzip.Writer
+		filteredWriter *csv.Writer
+		filteredPath   string
+		filteredTotal  int
 	)
 
-	if lite != nil {
-		litePath = filepath.Join(lite.dir, lite.prefix+".tsv.gz")
-		f, err := os.Create(litePath)
+	if filtered != nil {
+		filteredPath = filepath.Join(filtered.dir, filtered.prefix+".tsv.gz")
+		f, err := os.Create(filteredPath)
 		if err != nil {
-			return fmt.Errorf("create %s: %w", litePath, err)
+			return fmt.Errorf("create %s: %w", filteredPath, err)
 		}
 		defer f.Close()
 
-		liteGz = gzip.NewWriter(f)
-		defer liteGz.Close()
+		filteredGz = gzip.NewWriter(f)
+		defer filteredGz.Close()
 
-		liteWriter = csv.NewWriter(liteGz)
-		liteWriter.Comma = '\t'
-		liteWriter.UseCRLF = false
-		if err := liteWriter.Write(lite.header); err != nil {
+		filteredWriter = csv.NewWriter(filteredGz)
+		filteredWriter.Comma = '\t'
+		filteredWriter.UseCRLF = false
+		if err := filteredWriter.Write(filtered.header); err != nil {
 			return err
 		}
 	}
@@ -332,13 +314,13 @@ func exportQuery(ctx context.Context, db *sql.DB, rawDir, rawPrefix, query strin
 			rawTotal++
 			batchCount++
 
-			if lite != nil {
-				if liteRow, ok := lite.derive(colIdx, vals); ok {
-					if err := liteWriter.Write(liteRow); err != nil {
+			if filtered != nil {
+				if filteredRow, ok := filtered.derive(colIdx, vals); ok {
+					if err := filteredWriter.Write(filteredRow); err != nil {
 						rows.Close()
 						return err
 					}
-					liteTotal++
+					filteredTotal++
 				}
 			}
 		}
@@ -363,24 +345,24 @@ func exportQuery(ctx context.Context, db *sql.DB, rawDir, rawPrefix, query strin
 
 	if rawTotal == 0 {
 		_ = os.Remove(rawPath)
-		slog.Info("no rows", "prefix", rawPrefix)
+		slog.Debug("no rows", "prefix", rawPrefix)
 	} else {
 		slog.Info("wrote", "file", rawPath, "rows", rawTotal)
 	}
 
-	if lite != nil {
-		liteWriter.Flush()
-		if err := liteWriter.Error(); err != nil {
+	if filtered != nil {
+		filteredWriter.Flush()
+		if err := filteredWriter.Error(); err != nil {
 			return err
 		}
-		if err := liteGz.Close(); err != nil {
-			return fmt.Errorf("close gzip %s: %w", litePath, err)
+		if err := filteredGz.Close(); err != nil {
+			return fmt.Errorf("close gzip %s: %w", filteredPath, err)
 		}
-		if liteTotal == 0 {
-			_ = os.Remove(litePath)
-			slog.Info("no rows", "prefix", lite.prefix)
+		if filteredTotal == 0 {
+			_ = os.Remove(filteredPath)
+			slog.Debug("no rows", "prefix", filtered.prefix)
 		} else {
-			slog.Info("wrote", "file", litePath, "rows", liteTotal)
+			slog.Info("wrote", "file", filteredPath, "rows", filteredTotal)
 		}
 	}
 

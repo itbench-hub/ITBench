@@ -3,6 +3,7 @@ package recorder
 import (
 	"compress/gzip"
 	"context"
+	"crypto/tls"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -32,7 +33,7 @@ type AlertSnapshot struct {
 // Run fetches alerts from Prometheus for the given timestamps and writes them as JSON to outputDir.
 // If timestamps is empty, it queries the ALERTS metric at the current time.
 // For every timestamp after the first, it also writes the pod and service metrics of namespaces
-// recorded since the first timestamp into outputDir/snapshot_at_<timestamp>.
+// recorded since the first timestamp into outputDir/snapshots/<timestamp>.
 func Run(ctx context.Context, endpoint, token, outputDir string, namespaces []string, timestamps ...time.Time) error {
 	if len(timestamps) == 0 {
 		timestamps = []time.Time{time.Now().UTC()}
@@ -53,11 +54,12 @@ func Run(ctx context.Context, endpoint, token, outputDir string, namespaces []st
 		return fmt.Errorf("mkdir %s: %w", outputDir, err)
 	}
 
-	for _, ts := range timestamps {
+	for i, ts := range timestamps {
+		slog.Info("exporting snapshot", "snapshot", ts.UTC().Format(time.RFC3339), "index", i+1, "total", len(timestamps))
 		if err := queryAndWriteSnapshot(ctx, api, ts, outputDir); err != nil {
 			return err
 		}
-		snapshotDir := filepath.Join(outputDir, fmt.Sprintf("snapshot_at_%s", ts.UTC().Format("2006-01-02T15-04-05.000000")))
+		snapshotDir := filepath.Join(outputDir, "snapshots", ts.UTC().Format("2006-01-02T15-04-05.000000"))
 		if err := exportMetrics(ctx, api, snapshotDir, namespaces, startTime, ts); err != nil {
 			return err
 		}
@@ -156,24 +158,22 @@ func exportMetrics(ctx context.Context, api prometheusv1.API, baseDir string, na
 		return nil
 	}
 
-	rawDir := filepath.Join(baseDir, "raw")
-	liteDir := filepath.Join(baseDir, "lite")
 	for _, d := range []string{
-		filepath.Join(rawDir, "metrics_pod"), filepath.Join(rawDir, "metrics_service"),
-		filepath.Join(liteDir, "metrics_pod"), filepath.Join(liteDir, "metrics_service"),
+		filepath.Join(baseDir, "metrics_pod"),
+		filepath.Join(baseDir, "metrics_service"),
 	} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			return fmt.Errorf("mkdir %s: %w", d, err)
 		}
 	}
 
-	rawPods, litePods := tsvSet{}, tsvSet{}
-	rawServices, liteServices := tsvSet{}, tsvSet{}
+	pods, filteredPods := tsvSet{}, tsvSet{}
+	services, filteredServices := tsvSet{}, tsvSet{}
 	defer func() {
-		rawPods.close()
-		litePods.close()
-		rawServices.close()
-		liteServices.close()
+		pods.close()
+		filteredPods.close()
+		services.close()
+		filteredServices.close()
 	}()
 
 	safeReplacer := strings.NewReplacer("/", "_", " ", "_")
@@ -187,22 +187,22 @@ func exportMetrics(ctx context.Context, api prometheusv1.API, baseDir string, na
 			name, tags := splitMetric(series.Metric)
 			pod := tags["pod"]
 			safePod := safeReplacer.Replace(pod)
-			isLite := strings.Contains(name, "cpu") || strings.Contains(name, "memory") || strings.Contains(name, "mem")
+			isFiltered := strings.Contains(name, "cpu") || strings.Contains(name, "memory") || strings.Contains(name, "mem")
 
 			for _, sample := range series.Values {
 				sampleTime := sample.Timestamp.Time().UTC().Format(sampleTimeFormat)
-				if err := rawPods.write(
-					filepath.Join(rawDir, "metrics_pod", fmt.Sprintf("pod_%s_raw.tsv.gz", safePod)),
+				if err := pods.write(
+					filepath.Join(baseDir, "metrics_pod", fmt.Sprintf("pod_%s.tsv.gz", safePod)),
 					[]string{"metric_name", "timestamp", "value", "pod_name", "namespace", "tags"},
 					[]string{name, sampleTime, sample.Value.String(), pod, tags["namespace"], fmt.Sprintf("%v", tags)},
 				); err != nil {
 					return err
 				}
-				if !isLite {
+				if !isFiltered {
 					continue
 				}
-				if err := litePods.write(
-					filepath.Join(liteDir, "metrics_pod", fmt.Sprintf("pod_%s.tsv.gz", safePod)),
+				if err := filteredPods.write(
+					filepath.Join(baseDir, "metrics_pod", fmt.Sprintf("pod_%s_filtered.tsv.gz", safePod)),
 					[]string{"metric_name", "timestamp", "value", "pod_name", "namespace"},
 					[]string{name, sampleTime, sample.Value.String(), pod, tags["namespace"]},
 				); err != nil {
@@ -223,15 +223,15 @@ func exportMetrics(ctx context.Context, api prometheusv1.API, baseDir string, na
 
 				for _, sample := range series.Values {
 					sampleTime := sample.Timestamp.Time().UTC().Format(sampleTimeFormat)
-					if err := rawServices.write(
-						filepath.Join(rawDir, "metrics_service", fmt.Sprintf("service_%s_raw.tsv.gz", service)),
+					if err := services.write(
+						filepath.Join(baseDir, "metrics_service", fmt.Sprintf("service_%s.tsv.gz", service)),
 						[]string{"metric_name", "timestamp", "value", "service_name", "namespace", "tags"},
 						[]string{name, sampleTime, sample.Value.String(), service, tags[query.namespaceKey], fmt.Sprintf("%v", tags)},
 					); err != nil {
 						return err
 					}
-					if err := liteServices.write(
-						filepath.Join(liteDir, "metrics_service", fmt.Sprintf("service_%s.tsv.gz", service)),
+					if err := filteredServices.write(
+						filepath.Join(baseDir, "metrics_service", fmt.Sprintf("service_%s_filtered.tsv.gz", service)),
 						[]string{"metric_name", "timestamp", "value", "service_name", "namespace"},
 						[]string{name, sampleTime, sample.Value.String(), service, tags[query.namespaceKey]},
 					); err != nil {
@@ -347,10 +347,12 @@ type roundTripper struct {
 }
 
 func newRoundTripper(token string) http.RoundTripper {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	if token == "" {
-		return prometheusapi.DefaultRoundTripper
+		return tr
 	}
-	return &roundTripper{token: token, inner: prometheusapi.DefaultRoundTripper}
+	return &roundTripper{token: token, inner: tr}
 }
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {

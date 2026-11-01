@@ -1,4 +1,24 @@
 ---
+- name: Create PersistentVolumeClaim for Prometheus Recorder
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": data
+        name: itbench-prometheus-records
+        namespace: "{{ tools_namespace_itbench_observability }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+        volumeMode: Filesystem
+    state: present
+
 - name: Create ServiceAccount for Prometheus recorder
   kubernetes.core.k8s:
     resource_definition:
@@ -85,7 +105,7 @@
                       }}
                   - name: RECORDING_INTERVAL_SECONDS
                     value: "60"
-                image: quay.io/it-bench/prometheus-recorder:1.0.0@sha256:57b130b1c89f0f000235aba279cfda0d064aec03d225ef6d5a6a0ad06eb0aad4
+                image: quay.io/it-bench/prometheus-recorder:1.0.0
                 name: recorder
                 resources:
                   limits:
@@ -112,7 +132,7 @@
             volumes:
               - name: records
                 persistentVolumeClaim:
-                  claimName: itbench-prometheus-recorder-records
+                  claimName: itbench-prometheus-records
     state: present
     wait: true
     wait_condition:
@@ -121,20 +141,7 @@
     wait_timeout: 300
 
 - name: Export Prometheus records
-  block:
-    - name: Create temporary directory for Prometheus records
-      ansible.builtin.tempfile:
-        prefix: prometheus
-        state: directory
-      register: tools_export_directory
-
-    - name: Import copy tasks
-      ansible.builtin.import_tasks:
-        file: copy_recorder_files.yaml
-      vars:
-        tools_recorder_instance_name: itbench-prometheus-recorder
-  always:
-    - name: Delete temporary directory for Prometheus records
-      ansible.builtin.file:
-        path: "{{ tools_export_directory.path }}"
-        state: absent
+  ansible.builtin.import_tasks:
+    file: export_records.yaml
+  vars:
+    recorder_persistent_volume_claim: itbench-prometheus-records
