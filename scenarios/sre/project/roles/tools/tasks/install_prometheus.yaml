@@ -1,8 +1,4 @@
 ---
-- name: Import tools role for variable setting tasks
-  ansible.builtin.import_tasks:
-    file: set_internal_endpoints_clickhouse.yaml
-
 - name: Install Prometheus on Kubernetes
   when:
     - tools_cluster.platform == "kubernetes"
@@ -126,18 +122,6 @@
                 matchLabels:
                   "itbench.io/monitor": "true"
               podMonitorSelectorNilUsesHelmValues: false
-              remoteWrite:
-                - basicAuth:
-                    password:
-                      key: CLICKHOUSE_PASSWORD
-                      name: user-admin-credentials
-                    username:
-                      key: CLICKHOUSE_USER
-                      name: user-admin-credentials
-                  queueConfig:
-                    batchSendDeadline: 15s
-                    maxSamplesPerSend: 20000
-                  url: "http://{{ tools_clickhouse_endpoint.prometheus }}/write"
               routePrefix: /observability/prometheus
               ruleNamespaceSelector:
                 matchLabels:
@@ -241,28 +225,6 @@
   when:
     - tools_cluster.platform == "openshift"
   block:
-    - name: Import Clickhouse credential variable setting tasks
-      ansible.builtin.import_tasks:
-        file: set_credentials_clickhouse.yaml
-
-    - name: Import Clickhouse endpoint variable setting tasks
-      ansible.builtin.import_tasks:
-        file: set_internal_endpoints_clickhouse.yaml
-
-    - name: Redeploy Clickhouse credential to Prometheus namespace
-      kubernetes.core.k8s:
-        resource_definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: clickhouse-remote-write-credentials
-            namespace: "{{ tools_namespace_openshift_user_workload_monitoring }}"
-          stringData:
-            password: "{{ tools_clickhouse_password }}" # pragma: allowlist secret
-            username: "{{ tools_clickhouse_username }}"
-          type: Opaque
-        state: present
-
     - name: Create Cluster Monitoring ConfigMap
       kubernetes.core.k8s:
         resource_definition:
@@ -284,19 +246,6 @@
             config.yaml: |
               alertmanager:
                 enabled: false
-              prometheus:
-                remoteWrite:
-                  - basicAuth:
-                      password:
-                        name: clickhouse-remote-write-credentials
-                        key: password
-                      username:
-                        name: clickhouse-remote-write-credentials
-                        key: username
-                    queueConfig:
-                      maxSamplesPerSend: 5000
-                      batchSendDeadline: 10s
-                    url: "http://{{ tools_clickhouse_endpoint.prometheus }}/write"
           kind: ConfigMap
           metadata:
             name: user-workload-monitoring-config
