@@ -1,7 +1,10 @@
 ---
 - name: Export recorded data to S3 storage
   when:
-    - tools_storage_s3 is ansible.builtin.defined
+    - aws_access_key_id is ansible.builtin.defined
+    - aws_secret_access_key is ansible.builtin.defined
+    - s3_bucket is ansible.builtin.defined
+    - s3_endpoint is ansible.builtin.defined
   block:
     - name: Create S3 credentials Secret
       kubernetes.core.k8s:
@@ -12,12 +15,12 @@
             labels:
               "itbench.io/ansible-role": tools
               "itbench.io/layer": data
-            name: itbench-s3-credentials
+            name: itbench-aws-credentials
             namespace: "{{ tools_namespace_itbench_observability }}"
           stringData:
-            AWS_ACCESS_KEY_ID: "{{ tools_storage_s3.access_key_id }}"
-            AWS_DEFAULT_REGION: "{{ tools_storage_s3.region | default('us-east-1') }}"
-            AWS_SECRET_ACCESS_KEY: "{{ tools_storage_s3.secret_access_key }}" # pragma: allowlist secret
+            AWS_ACCESS_KEY_ID: "{{ aws_access_key_id }}"
+            AWS_DEFAULT_REGION: "{{ aws_region }}"
+            AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}" # pragma: allowlist secret
           type: Opaque
         state: present
       no_log: true
@@ -46,9 +49,9 @@
                       - s3
                       - sync
                       - /records
-                      - "s3://{{ tools_storage_s3.bucket }}/{{ [tools_storage_s3.directory, recorder_persistent_volume_claim] | ansible.builtin.path_join }}"
+                      - "s3://{{ [s3_bucket, s3_directory, recorder_persistent_volume_claim] | ansible.builtin.path_join }}"
                       - --endpoint-url
-                      - "{{ tools_storage_s3.endpoint }}"
+                      - "{{ s3_endpoint }}"
                     env:
                       - name: HOME
                         value: /home/aws
@@ -62,7 +65,7 @@
                         value: when_required
                     envFrom:
                       - secretRef:
-                          name: itbench-s3-credentials
+                          name: itbench-aws-credentials
                     image: public.ecr.aws/aws-cli/aws-cli:2.27.41
                     name: exporter
                     resources:
