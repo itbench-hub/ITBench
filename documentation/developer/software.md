@@ -36,6 +36,7 @@ For issues and support directly related to the software, it is often best to rea
 | Ansible Builder | https://github.com/ansible/ansible-builder |
 | Ansible Lint | https://github.com/ansible/ansible-lint |
 | Ansible Runner | https://github.com/ansible/ansible-runner |
+| AWS CLI | https://github.com/aws/aws-cli |
 | Kubernetes Cloud Provider for KIND | https://github.com/kubernetes-sigs/cloud-provider-kind |
 | Commitizen | https://github.com/commitizen-tools/commitizen |
 | Detect Secrets | https://github.com/IBM/detect-secrets |

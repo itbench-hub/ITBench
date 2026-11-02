@@ -8,7 +8,7 @@
         labels:
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
-        name: itbench-clickhouse-recorder-records
+        name: itbench-clickhouse-records
         namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
         accessModes:
@@ -81,7 +81,7 @@
             volumes:
               - name: records
                 persistentVolumeClaim:
-                  claimName: itbench-clickhouse-recorder-records
+                  claimName: itbench-clickhouse-records
     state: present
     wait: true
     wait_condition:
@@ -90,20 +90,7 @@
     wait_timeout: 600
 
 - name: Export Clickhouse records
-  block:
-    - name: Create temporary directory for Clickhouse records
-      ansible.builtin.tempfile:
-        prefix: clickhouse
-        state: directory
-      register: tools_export_directory
-
-    - name: Import copy tasks
-      ansible.builtin.import_tasks:
-        file: copy_recorder_files.yaml
-      vars:
-        tools_recorder_instance_name: itbench-clickhouse-recorder
-  always:
-    - name: Delete temporary directory for Clickhouse records
-      ansible.builtin.file:
-        path: "{{ tools_export_directory.path }}"
-        state: absent
+  ansible.builtin.import_tasks:
+    file: export_records.yaml
+  vars:
+    recorder_persistent_volume_claim: itbench-clickhouse-records

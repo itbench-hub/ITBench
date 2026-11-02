@@ -133,7 +133,7 @@
             otlp/istio:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:4317
+                  endpoint: 0.0.0.0:4319
             otlp/kubernetes_events:
               protocols:
                 grpc:
@@ -202,7 +202,7 @@
             enableMetrics: true
         ports:
           - name: istio-grpc
-            port: 4317
+            port: 4319
           - name: demo-grpc
             port: 4320
           - name: topology-grpc
@@ -212,6 +212,11 @@
           - name: infra-grpc
             port: 4323
     state: present
+    wait: true
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready
 
 - name: Install OpenTelemetry Collector for Jaeger
   kubernetes.core.k8s:
@@ -281,12 +286,6 @@
           - name: query-http
             port: 16686
     state: present
-
-- name: Wait for all OpenTelemetry Collectors to stabilize
-  kubernetes.core.k8s_info:
-    api_version: opentelemetry.io/v1beta1
-    kind: OpenTelemetryCollector
-    namespace: "{{ tools_namespace_itbench_observability }}"
     wait: true
     wait_condition:
       reason: Reconciled

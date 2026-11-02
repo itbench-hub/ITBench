@@ -1,0 +1,189 @@
+---
+- name: Export recorded data to S3 storage
+  when:
+    - aws_access_key_id is ansible.builtin.defined
+    - aws_secret_access_key is ansible.builtin.defined
+    - s3_bucket is ansible.builtin.defined
+    - s3_endpoint is ansible.builtin.defined
+  block:
+    - name: Create S3 credentials Secret
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": data
+            name: itbench-aws-credentials
+            namespace: "{{ tools_namespace_itbench_observability }}"
+          stringData:
+            AWS_ACCESS_KEY_ID: "{{ aws_access_key_id }}"
+            AWS_DEFAULT_REGION: "{{ aws_region }}"
+            AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}" # pragma: allowlist secret
+          type: Opaque
+        state: present
+      no_log: true
+
+    - name: Create Kubernetes Job to export records to S3 from {{ recorder_persistent_volume_claim }}
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: batch/v1
+          kind: Job
+          metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": data
+            name: "{{ recorder_persistent_volume_claim }}-s3-exporter"
+            namespace: "{{ tools_namespace_itbench_observability }}"
+          spec:
+            backoffLimit: 3
+            template:
+              metadata:
+                labels:
+                  "itbench.io/ansible-role": tools
+                  "itbench.io/layer": data
+              spec:
+                containers:
+                  - args:
+                      - s3
+                      - sync
+                      - /records
+                      - "s3://{{ [s3_bucket, s3_directory, recorder_persistent_volume_claim] | ansible.builtin.path_join }}"
+                      - --endpoint-url
+                      - "{{ s3_endpoint }}"
+                    env:
+                      - name: HOME
+                        value: /home/aws
+                      - name: AWS_MAX_ATTEMPTS
+                        value: "5"
+                      - name: AWS_RETRY_MODE
+                        value: standard
+                      - name: AWS_REQUEST_CHECKSUM_CALCULATION
+                        value: when_required
+                      - name: AWS_RESPONSE_CHECKSUM_VALIDATION
+                        value: when_required
+                    envFrom:
+                      - secretRef:
+                          name: itbench-aws-credentials
+                    image: public.ecr.aws/aws-cli/aws-cli:2.27.41
+                    name: exporter
+                    resources:
+                      limits:
+                        memory: 512Mi
+                      requests:
+                        cpu: 100m
+                        memory: 128Mi
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      capabilities:
+                        drop:
+                          - ALL
+                    volumeMounts:
+                      - mountPath: /records
+                        name: records
+                        readOnly: true
+                      - mountPath: /home/aws
+                        name: home
+                restartPolicy: Never
+                securityContext:
+                  fsGroup: 1001
+                  runAsNonRoot: true
+                  runAsUser: 1001
+                  seccompProfile:
+                    type: RuntimeDefault
+                volumes:
+                  - name: records
+                    persistentVolumeClaim:
+                      claimName: "{{ recorder_persistent_volume_claim }}"
+                  - name: home
+                    emptyDir: {}
+              ttlSecondsAfterFinished: 30
+        state: present
+        wait: true
+        wait_condition:
+          status: "True"
+          type: Complete
+        wait_timeout: 300
+
+- name: Export recorded data to local storage
+  when:
+    - tools_storage_local is ansible.builtin.defined
+  block:
+    - name: Create local directory for exported data
+      ansible.builtin.file:
+        mode: "0755"
+        path: "{{ [tools_storage_local.directory, recorder_persistent_volume_claim] | ansible.builtin.path_join }}"
+        state: directory
+      register: tools_local_directory
+
+    - name: Create Pod to export records to local storage from {{ recorder_persistent_volume_claim }}
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": data
+            name: "{{ recorder_persistent_volume_claim }}-exporter"
+            namespace: "{{ tools_namespace_itbench_observability }}"
+          spec:
+            containers:
+              - args:
+                  - -c
+                  - "sleep infinity"
+                command:
+                  - /bin/sh
+                image: registry.access.redhat.com/ubi10/ubi@sha256:7495bfa53ae7a81a58aeface0bb4858d12741832c542c29dc690d67b183b73b0
+                name: exporter
+                resources:
+                  limits:
+                    memory: 100Mi
+                  requests:
+                    cpu: 10m
+                    memory: 50Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+                volumeMounts:
+                  - mountPath: /opt/app-root/src/records
+                    name: records
+            securityContext:
+              fsGroup: 1001
+              runAsNonRoot: true
+              runAsUser: 1001
+              seccompProfile:
+                type: RuntimeDefault
+            volumes:
+              - name: records
+                persistentVolumeClaim:
+                  claimName: "{{ recorder_persistent_volume_claim }}"
+        state: present
+        wait: true
+        wait_condition:
+          status: "True"
+          type: Ready
+
+    - name: Copy records from pod
+      kubernetes.core.k8s_cp:
+        local_path: "{{ tools_local_directory.path }}"
+        namespace: "{{ tools_namespace_itbench_observability }}"
+        pod: "{{ recorder_persistent_volume_claim }}-exporter"
+        remote_path: /opt/app-root/src/records
+        state: from_pod
+
+  always:
+    - name: Delete Pod
+      kubernetes.core.k8s:
+        kubeconfig: "{{ tools_cluster.kubeconfig }}"
+        resource_definition:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: "{{ recorder_persistent_volume_claim }}-exporter"
+            namespace: "{{ tools_namespace_itbench_observability }}"
+        state: absent
+        wait: true

@@ -48,28 +48,28 @@ func TestRun(t *testing.T) {
 		t.Fatalf("recorder.Run: %v", err)
 	}
 
-	// ── raw files must exist ──────────────────────────────────────────────
+	// ── complete files must exist ─────────────────────────────────────────
 	for _, f := range []string{
-		"raw/k8s_events_raw.tsv.gz",
-		"raw/k8s_topology_objects_raw.tsv.gz",
-		"raw/k8s_infrastructure_raw.tsv.gz",
-		"raw/otel_logs_raw.tsv.gz",
-		"raw/jaeger_spans_raw.tsv.gz",
+		"k8s_events.tsv.gz",
+		"k8s_topology_objects.tsv.gz",
+		"k8s_infrastructure.tsv.gz",
+		"otel_logs.tsv.gz",
+		"jaeger_spans.tsv.gz",
 	} {
 		assertFile(t, outDir, f)
 	}
 
-	// ── lite files must exist ─────────────────────────────────────────────
+	// ── filtered files must exist ─────────────────────────────────────────
 	for _, f := range []string{
-		"lite/k8s_events.tsv.gz",
-		"lite/k8s_infrastructure.tsv.gz",
-		"lite/otel_logs.tsv.gz",
-		"lite/jaeger_spans.tsv.gz",
+		"k8s_events_filtered.tsv.gz",
+		"k8s_infrastructure_filtered.tsv.gz",
+		"otel_logs_filtered.tsv.gz",
+		"jaeger_spans_filtered.tsv.gz",
 	} {
 		assertFile(t, outDir, f)
 	}
 
-	// ── lite logs must only contain WARN/ERROR/FATAL rows ─────────────────
+	// ── filtered logs must only contain WARN/ERROR/FATAL rows ─────────────
 	assertLiteLogsFiltered(t, outDir)
 
 	// ── test snapshot milestone mode ─────────────────────────────────────
@@ -79,10 +79,11 @@ func TestRun(t *testing.T) {
 		t.Fatalf("recorder.Run with snapshot timestamp: %v", err)
 	}
 
-	snapSubDir := filepath.Join(snapshotDir, "snapshot_at_2024-01-01T00-00-00.500000")
+	snapSubDir := filepath.Join(snapshotDir, "snapshots", "2024-01-01T00-00-00.500000")
 	for _, f := range []string{
-		"raw/k8s_events_raw.tsv.gz",
-		"lite/k8s_events.tsv.gz",
+		"k8s_events.tsv.gz",
+		"k8s_events_filtered.tsv.gz",
+		"k8s_topology_objects.tsv.gz",
 	} {
 		assertFile(t, snapSubDir, f)
 	}
@@ -220,11 +221,11 @@ func assertFile(t *testing.T, outDir, rel string) {
 	}
 }
 
-// assertLiteLogsFiltered checks that lite/otel_logs.tsv.gz contains only
+// assertLiteLogsFiltered checks that otel_logs_filtered.tsv.gz contains only
 // WARN/ERROR/FATAL rows and not INFO.
 func assertLiteLogsFiltered(t *testing.T, outDir string) {
 	t.Helper()
-	path := filepath.Join(outDir, "lite", "otel_logs.tsv.gz")
+	path := filepath.Join(outDir, "otel_logs_filtered.tsv.gz")
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatalf("open lite logs: %v", err)

@@ -53,7 +53,7 @@ During the `install` stage of the scenario lifecycle:
 
 During the `export` stage:
 - The ClickHouse data recorder queries `kubernetes.topology` and `kubernetes.topology_graph` filtered between `RECORDING_START_TIMESTAMP` and `RECORDING_END_TIMESTAMP`.
-- It exports the raw rows to `raw/k8s_topology_objects_raw.tsv.gz` and `raw/k8s_topology_graph_raw.tsv.gz`.
+- It exports the snapshot rows to `snapshots/<timestamp>/k8s_topology_objects.tsv.gz` and `snapshots/<timestamp>/k8s_topology_graph.tsv.gz`.
 
 ### 3. Teardown Phase
 

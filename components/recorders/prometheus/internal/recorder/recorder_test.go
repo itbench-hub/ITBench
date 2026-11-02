@@ -103,9 +103,9 @@ func TestRun(t *testing.T) {
 		t.Fatalf("recorder.Run: %v", err)
 	}
 
-	// The metrics of a snapshot are written to the snapshot_at_<timestamp> directory.
+	// The metrics of a snapshot are written to the snapshots/<timestamp> directory.
 	// The first snapshot is the recording start, so only the second one has a window.
-	assertFileNotEmpty(t, filepath.Join(outDir, "snapshot_at_"+t2.Format("2006-01-02T15-04-05.000000"), "raw", "metrics_pod", "pod_test-pod_raw.tsv.gz"))
+	assertFileNotEmpty(t, filepath.Join(outDir, "snapshots", t2.Format("2006-01-02T15-04-05.000000"), "metrics_pod", "pod_test-pod.tsv.gz"))
 
 	entries, err := os.ReadDir(outDir)
 	if err != nil {
