@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/go-toolset:1.26.10-1793232609@sha256:5d2ab83e88506afee6bcc909fdab425ab979725ab30d6ad43a02aaa77e2258ff AS builder
+FROM registry.access.redhat.com/ubi10/go-toolset:1.26.10-1793622842@sha256:05619897582acb01ee5dd3eaa2934a7cc2f24409a255142a704b734ef07b68a6 AS builder
 
 WORKDIR /build
 
