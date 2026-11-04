@@ -1,0 +1,25 @@
+---
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  labels:
+    kops.k8s.io/cluster: {{ cluster_name }}
+  name: control-plane-{{ kops_configuration.aws.zones | ansible.builtin.first }}
+spec:
+{% if kops_configuration.cluster.nodes.control.image is ansible.builtin.defined %}
+  image: {{ kops_configuration.cluster.nodes.control.image }}
+{% endif %}
+  machineType: {{ kops_configuration.cluster.nodes.control.instance_type }}
+  maxSize: {{ kops_configuration.cluster.nodes.control.count }}
+  minSize: {{ kops_configuration.cluster.nodes.control.count }}
+  role: Master
+  subnets:
+{% if kops_subnet_ids.private | ansible.builtin.length > 0 %}
+    - {{ kops_configuration.aws.zones | ansible.builtin.first }}-private
+{% else %}
+    - {{ kops_configuration.aws.zones | ansible.builtin.first }}
+{% endif %}
+  rootVolume:
+    size: {{ kops_configuration.cluster.nodes.control.root_volume_size | default(64) }}
+    type: gp3
+    encryption: true

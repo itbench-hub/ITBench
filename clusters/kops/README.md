@@ -40,7 +40,7 @@ The playbooks feature a number of [group variables](./inventory/group_vars/). Ea
 | File Name | Function |
 | --- | --- |
 | [aws.yaml](./inventory/group_vars/all/aws.yaml.example) | Configures region, vpc, and s3 storage |
-| [cluster.yaml](./inventory/group_vars/all/cluster.yaml.example) | Configures the cluster itself |
+| [cluster.yaml](./inventory/group_vars/all/cluster.yaml.example) | Configures the cluster itself (Kubernetes version, networking, node instance types, optional AMI and root volume size) |
 | [docker.yaml](./inventory/group_vars/all/docker.yaml.example) | Configures the registry secret |
 | [runner.yaml](./inventory/group_vars/single/runner.yaml.example) | Configures the name prefix for a single cluster |
 | [ssh_keys.yaml](./inventory/group_vars/all/ssh_keys.yaml.example) | Configured the ssh key to access the cluster |
@@ -48,6 +48,9 @@ The playbooks feature a number of [group variables](./inventory/group_vars/). Ea
 
 >[!NOTE]
 >Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.
+
+>[!NOTE]
+>Clusters are created using declarative kOps resource spec files ([`Cluster`](./playbooks/roles/kops/templates/specs/cluster.yaml.j2) and [`InstanceGroup`](./playbooks/roles/kops/templates/specs/)) rendered by Ansible at runtime. This replaces the previous CLI-flag approach and allows all cluster configuration — including Cilium networking settings, ebtables hooks, and instance group details — to be expressed as versioned YAML templates.
 
 1. Create the playbooks' group variables from the templates
 ```shell

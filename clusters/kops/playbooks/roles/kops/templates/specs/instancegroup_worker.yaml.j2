@@ -1,0 +1,25 @@
+---
+apiVersion: kops.k8s.io/v1alpha2
+kind: InstanceGroup
+metadata:
+  labels:
+    kops.k8s.io/cluster: {{ cluster_name }}
+  name: nodes-{{ kops_configuration.aws.zones | ansible.builtin.first }}
+spec:
+{% if kops_configuration.cluster.nodes.worker.image is ansible.builtin.defined %}
+  image: {{ kops_configuration.cluster.nodes.worker.image }}
+{% endif %}
+  machineType: {{ kops_configuration.cluster.nodes.worker.instance_type }}
+  maxSize: {{ kops_configuration.cluster.nodes.worker.count }}
+  minSize: {{ kops_configuration.cluster.nodes.worker.count }}
+  role: Node
+  subnets:
+{% if kops_subnet_ids.private | ansible.builtin.length > 0 %}
+    - {{ kops_configuration.aws.zones | ansible.builtin.first }}-private
+{% else %}
+    - {{ kops_configuration.aws.zones | ansible.builtin.first }}
+{% endif %}
+  rootVolume:
+    size: {{ kops_configuration.cluster.nodes.worker.root_volume_size | default(128) }}
+    type: gp3
+    encryption: true

@@ -1,0 +1,74 @@
+---
+apiVersion: kops.k8s.io/v1alpha2
+kind: Cluster
+metadata:
+  name: {{ cluster_name }}
+spec:
+  channel: stable
+  cloudProvider: aws
+  configBase: {{ kops_state_store }}/{{ cluster_name }}
+  kubernetesVersion: {{ kops_configuration.cluster.kubernetes.version }}
+  networking:
+    {{ kops_configuration.cluster.networking.mode }}:
+      cniExclusive: false
+      bpfLBSock: true
+      bpfLBSockHostNSOnly: true
+{% if kops_subnet_ids.private | ansible.builtin.length > 0 %}
+  topology:
+    masters: private
+    nodes: private
+  subnets:
+    - id: {{ kops_subnet_ids.private[name_index] }}
+      name: {{ kops_configuration.aws.zones | ansible.builtin.first }}-private
+      type: Private
+      zone: {{ kops_configuration.aws.zones | ansible.builtin.first }}
+    - id: {{ kops_subnet_ids.public[name_index] }}
+      name: {{ kops_configuration.aws.zones | ansible.builtin.first }}-utility
+      type: Utility
+      zone: {{ kops_configuration.aws.zones | ansible.builtin.first }}
+{% else %}
+  topology:
+    masters: public
+    nodes: public
+  subnets:
+    - id: {{ kops_subnet_ids.public[name_index] }}
+      name: {{ kops_configuration.aws.zones | ansible.builtin.first }}
+      type: Public
+      zone: {{ kops_configuration.aws.zones | ansible.builtin.first }}
+{% endif %}
+  networkID: {{ kops_ec2_vpc_net.vpcs[0].vpc_id }}
+  sshAccess:
+{% if kops_configuration.cluster.ssh_access_cidrs is ansible.builtin.defined %}
+{% for cidr in kops_configuration.cluster.ssh_access_cidrs %}
+    - {{ cidr }}
+{% endfor %}
+{% else %}
+    - {{ kops_configuration.aws.vpc.cidr }}
+{% endif %}
+  kubernetesApiAccess:
+{% if kops_configuration.cluster.api_access_cidrs is ansible.builtin.defined %}
+{% for cidr in kops_configuration.cluster.api_access_cidrs %}
+    - {{ cidr }}
+{% endfor %}
+{% else %}
+    - {{ kops_configuration.aws.vpc.cidr }}
+{% endif %}
+  hooks:
+    - name: install-ebtables.service
+      before:
+        - kubelet.service
+      roles:
+        - Master
+        - Node
+      manifest: |
+        [Unit]
+        Description=Install ebtables and load kernel modules
+        Before=kubelet.service
+
+        [Service]
+        Type=oneshot
+        ExecStart=/bin/bash -c 'apt-get update -qq && apt-get install -y ebtables && modprobe ebtable_broute && modprobe ebtable_nat && grep -q ebtable_broute /etc/modules || echo ebtable_broute >> /etc/modules && grep -q ebtable_nat /etc/modules || echo ebtable_nat >> /etc/modules'
+        RemainAfterExit=yes
+
+        [Install]
+        WantedBy=multi-user.target

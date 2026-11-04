@@ -60,6 +60,22 @@ argument_specs:
             required: false
             type: dict
             options:
+              api_access_cidrs:
+                description: >-
+                  List of CIDRs permitted to reach the Kubernetes API server.
+                  Defaults to the VPC CIDR when omitted. Avoid 0.0.0.0/0 in
+                  production environments.
+                elements: str
+                required: false
+                type: list
+              ssh_access_cidrs:
+                description: >-
+                  List of CIDRs permitted SSH access to cluster nodes.
+                  Defaults to the VPC CIDR when omitted. Avoid 0.0.0.0/0 in
+                  production environments.
+                elements: str
+                required: false
+                type: list
               kubernetes:
                 required: true
                 type: dict
@@ -87,9 +103,17 @@ argument_specs:
                       count:
                         required: true
                         type: int
+                      image:
+                        description: AMI ID or kOps image alias for control-plane nodes. Uses kOps channel default when omitted.
+                        required: false
+                        type: str
                       instance_type:
                         required: true
                         type: str
+                      root_volume_size:
+                        description: Root EBS volume size in GiB for control-plane nodes. Defaults to 64.
+                        required: false
+                        type: int
                   worker:
                     required: true
                     type: dict
@@ -97,9 +121,17 @@ argument_specs:
                       count:
                         required: true
                         type: int
+                      image:
+                        description: AMI ID or kOps image alias for worker nodes. Uses kOps channel default when omitted.
+                        required: false
+                        type: str
                       instance_type:
                         required: true
                         type: str
+                      root_volume_size:
+                        description: Root EBS volume size in GiB for worker nodes. Defaults to 128.
+                        required: false
+                        type: int
           ssh_keys:
             required: false
             type: dict
