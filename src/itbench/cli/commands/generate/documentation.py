@@ -217,7 +217,7 @@ def _generate_scenarios_documentation(output_dir: Path) -> Path:
         "## Usage",
         "",
         "```bash",
-        "itbench deploy applications --scenario <id>",
+        "itbench deploy environment --scenario <id>",
         "itbench list scenarios",
         "```",
         "",

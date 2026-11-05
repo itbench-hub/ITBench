@@ -2,13 +2,13 @@
 
 import click
 
-from itbench.cli.commands.undeploy.applications import undeploy_applications
-from itbench.cli.commands.undeploy.tools import undeploy_tools
+from itbench.cli.commands.undeploy.environment import undeploy_environment
+from itbench.cli.commands.undeploy.orchestrator import undeploy_orchestrator
 
 
-@click.group(name="undeploy", help="Undeploy and teardown applications, tools, or full benchmark scenarios.")
+@click.group(name="undeploy", help="Undeploy environment or orchestrator stack from the cluster.")
 def undeploy_group() -> None: ...
 
 
-undeploy_group.add_command(undeploy_applications)
-undeploy_group.add_command(undeploy_tools)
+undeploy_group.add_command(undeploy_environment)
+undeploy_group.add_command(undeploy_orchestrator)

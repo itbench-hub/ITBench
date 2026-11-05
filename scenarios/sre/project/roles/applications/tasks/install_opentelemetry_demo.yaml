@@ -5,34 +5,6 @@
 #       exporter instead to support both platforms until the functionality of
 #       Prometheus is the same on both platforms.
 
-- name: Create Namespace
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        labels:
-          "itbench.io/ansible-role": applications
-          "itbench.io/inject": "true"
-          "itbench.io/layer": application
-          "itbench.io/monitor": "true"
-          "itbench.io/record": "true"
-        name: "{{ applications_namespace_opentelemetry_demo }}"
-    state: present
-
-- name: Enable Istio service mesh for application
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        labels:
-          "istio.io/dataplane-mode": ambient
-        name: "{{ applications_namespace_opentelemetry_demo }}"
-    state: patched
-  when:
-    - applications_opentelemetry_demo_service_mesh_enabled
-
 - name: Create valkey-credentials Secret
   kubernetes.core.k8s:
     resource_definition:

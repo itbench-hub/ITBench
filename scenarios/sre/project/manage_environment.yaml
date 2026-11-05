@@ -1,0 +1,60 @@
+---
+- name: Manage ITBench Environment Cluster
+  hosts:
+    - localhost
+  environment:
+    K8_AUTH_KUBECONFIG: "{{ cluster.kubeconfig }}"
+  pre_tasks:
+    - name: Import executables role
+      ansible.builtin.import_role:
+        name: executables
+      tags:
+        - always
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+      vars:
+        cluster_files:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+  tasks:
+    - name: Set tools role variables
+      tags:
+        - always
+      when:
+        - storage is ansible.builtin.defined
+      block:
+        - name: Set tools_storage_local
+          ansible.builtin.set_fact:
+            tools_storage_local: "{{ storage.local }}"
+          when:
+            - storage.local is ansible.builtin.defined
+
+        - name: Set tools_storage_s3
+          ansible.builtin.set_fact:
+            tools_storage_s3: "{{ storage.s3 }}"
+          when:
+            - storage.s3 is ansible.builtin.defined
+
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+      vars:
+        tools_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+      when:
+        - environment_tool_management_enabled | ansible.builtin.default(false)
+
+    - name: Import applications role
+      ansible.builtin.import_role:
+        name: applications
+      vars:
+        applications_cluster:
+          kubeconfig: "{{ cluster.kubeconfig }}"
+          platform: "{{ cluster_platform }}"
+      when:
+        - environment_application_management_enabled | ansible.builtin.default(false)
