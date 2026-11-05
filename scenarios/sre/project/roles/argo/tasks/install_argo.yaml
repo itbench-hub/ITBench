@@ -1,0 +1,67 @@
+---
+- name: Create Argo namespace
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: "{{ 'project.openshift.io/v1' if argo_cluster.platform == 'openshift' else 'v1' }}"
+      kind: "{{ 'Project' if argo_cluster.platform == 'openshift' else 'Namespace' }}"
+      metadata:
+        labels:
+          "itbench.io/ansible-role": argo
+          "itbench.io/gateway-access": shared
+          "itbench.io/inject": "false"
+          "itbench.io/layer": orchestration
+          "itbench.io/monitor": "true"
+        name: "{{ argo_namespace }}"
+    state: present
+
+- name: Install Argo Workflows
+  kubernetes.core.helm:
+    chart_ref: "oci://ghcr.io/argoproj/argo-helm/argo-workflows"
+    chart_version: "2.0.16"
+    release_name: "{{ argo_helm_release_argo_workflows }}"
+    release_namespace: "{{ argo_namespace }}"
+    release_state: present
+    release_values:
+      server:
+        baseHref: /orchestration/workflows/
+      controller:
+        workflowNamespaces:
+          - "{{ argo_namespace }}"
+    timeout: 10m0s
+    wait: true
+
+- name: Install Argo Events
+  kubernetes.core.helm:
+    chart_ref: "oci://ghcr.io/argoproj/argo-helm/argo-events"
+    chart_version: "2.4.27"
+    release_name: "{{ argo_helm_release_argo_events }}"
+    release_namespace: "{{ argo_namespace }}"
+    release_state: present
+    timeout: 10m0s
+    wait: true
+
+- name: Create HTTPRoute for Argo Workflows
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ argo_helm_release_argo_workflows }}"
+        namespace: "{{ argo_namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_gateway }}"
+            namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
+        rules:
+          - backendRefs:
+              - name: "{{ argo_helm_release_argo_workflows }}-server"
+                port: 2746
+            filters:
+              - responseHeaderModifier:
+                  add: "{{ tools_response_headers_http }}"
+                type: ResponseHeaderModifier
+            matches:
+              - path:
+                  type: PathPrefix
+                  value: /orchestration/workflows
+    state: present

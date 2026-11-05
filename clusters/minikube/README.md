@@ -99,18 +99,18 @@ export KUBECONFIG=~/.kube/config
 kubectl cluster-info
 ```
 
-### AWX Cluster
+### Orchestrator Cluster
 
 #### Creation
 
 1. Run the following command to create a Minikube cluster:
 ```shell
-make create-awx-cluster
+make create-orchestrator-cluster
 ```
 
 2. Open a new terminal window and run the following command to start the Minikube tunnel
 ```shell
-make start-awx-tunnel
+make start-orchestrator-tunnel
 ```
 
 #### Deletion
@@ -119,7 +119,7 @@ make start-awx-tunnel
 
 2. Run the following command to destroy a Minikube cluster
 ```shell
-make destroy-awx-cluster
+make destroy-orchestrator-cluster
 ```
 
 ### Simple Cluster

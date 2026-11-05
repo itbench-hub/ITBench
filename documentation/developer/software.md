@@ -11,7 +11,6 @@ For issues and support directly related to the software, it is often best to rea
 | amazon.aws | https://github.com/ansible-collections/amazon.aws |
 | ansible.posix | https://github.com/ansible-collections/ansible.posix |
 | ansible.windows | https://github.com/ansible-collections/ansible.windows |
-| awx.awx | https://github.com/ansible/awx |
 | azure.azcollection | https://github.com/ansible-collections/azure |
 | community.aws | https://github.com/ansible-collections/community.aws |
 | community.vmware | https://github.com/ansible-collections/community.vmware |
