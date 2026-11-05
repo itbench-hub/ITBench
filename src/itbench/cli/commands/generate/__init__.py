@@ -2,7 +2,7 @@
 
 import click
 
-from itbench.cli.commands.generate.docs import generate_docs_command
+from itbench.cli.commands.generate.documentation import generate_documentation_command
 from itbench.cli.commands.generate.schemas import generate_schemas_command
 from itbench.cli.commands.generate.variables import variables_group
 
@@ -12,5 +12,5 @@ def generate_group() -> None: ...
 
 
 generate_group.add_command(generate_schemas_command)
-generate_group.add_command(generate_docs_command)
+generate_group.add_command(generate_documentation_command)
 generate_group.add_command(variables_group)

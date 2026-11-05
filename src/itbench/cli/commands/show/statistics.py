@@ -2,6 +2,7 @@
 
 from collections import Counter, defaultdict
 from pathlib import Path
+from typing import Any
 
 import click
 import yaml
@@ -29,10 +30,10 @@ def _bar(count: int, total: int) -> str:
     return f"{bar} {pct:5.1f}%"
 
 
-def _load_scenarios() -> list[dict]:
+def _load_scenarios() -> list[dict[str, Any]]:
     """Return parsed YAML dicts for every scenario in the library."""
     scenarios_dir = _LIBRARY_ROOT / "scenarios"
-    results = []
+    results: list[dict[str, Any]] = []
     if not scenarios_dir.exists():
         return results
     for scenario_dir in sorted(
@@ -58,7 +59,7 @@ def _stats_faults(full: bool) -> None:
     scenarios_by_fault: defaultdict[str, list[str]] = defaultdict(list)
 
     for data in scenarios:
-        seen = set()
+        seen: set[str] = set()
         for fault_block in data.get("faults") or []:
             for inj in fault_block.get("injections") or []:
                 fault_id = inj.get("id", "?")
@@ -100,14 +101,14 @@ def _stats_faults(full: bool) -> None:
 def _stats_applications(full: bool) -> None:
     scenarios = _load_scenarios()
     usage: Counter[str] = Counter()
-    scenarios_by_app: defaultdict[str, list[str]] = defaultdict(list)
+    scenarios_by_application: defaultdict[str, list[str]] = defaultdict(list)
 
     for data in scenarios:
         env = data.get("environment") or {}
-        for app in env.get("applications") or []:
-            app_id = app.get("id", "?")
-            usage[app_id] += 1
-            scenarios_by_app[app_id].append(data["_id"])
+        for application in env.get("applications") or []:
+            application_id = application.get("id", "?")
+            usage[application_id] += 1
+            scenarios_by_application[application_id].append(data["_id"])
 
     if not usage:
         console.print("[yellow]No application usage found in scenarios.[/yellow]")
@@ -126,10 +127,10 @@ def _stats_applications(full: bool) -> None:
     if full:
         table.add_column("Scenarios", style="dim")
 
-    for app_id, count in sorted(usage.items()):
-        row = [app_id, str(count), _bar(count, total)]
+    for application_id, count in sorted(usage.items()):
+        row = [application_id, str(count), _bar(count, total)]
         if full:
-            ids = sorted(scenarios_by_app[app_id], key=lambda x: int(x) if x.isdigit() else x)
+            ids = sorted(scenarios_by_application[application_id], key=lambda x: int(x) if x.isdigit() else x)
             row.append(", ".join(ids))
         table.add_row(*row)
 
@@ -233,10 +234,12 @@ def show_statistics(subject: str | None, full: bool) -> None:
         console.print("[dim]Add --full for a detailed breakdown.[/dim]")
         raise SystemExit(1)
 
-    dispatch = {
-        "faults": _stats_faults,
-        "applications": _stats_applications,
-        "waiters": _stats_waiters,
-        "scenarios": _stats_scenarios,
-    }
-    dispatch[subject](full)
+    match subject:
+        case "faults":
+            _stats_faults(full)
+        case "applications":
+            _stats_applications(full)
+        case "waiters":
+            _stats_waiters(full)
+        case "scenarios":
+            _stats_scenarios(full)

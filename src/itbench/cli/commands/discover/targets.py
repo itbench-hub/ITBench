@@ -11,8 +11,8 @@ console = Console()
 
 
 @click.command(name="targets", help="Discover targetable workloads for all applications.")
-@click.option("--app", "app_id", default=None, metavar="SLUG", help="Limit discovery to a single application slug.")
-def targets(app_id: str | None) -> None:
+@click.option("--application", "application_id", default=None, metavar="SLUG", help="Limit discovery to a single application slug.")
+def targets(application_id: str | None) -> None:
     """Run the discovery playbook and print all targetable workloads as a table.
 
     Invokes ``discover_applications.yaml`` via ansible-runner, which renders
@@ -23,11 +23,11 @@ def targets(app_id: str | None) -> None:
 
     \b
         itbench discover targets
-        itbench discover targets --app opentelemetry-demo
+        itbench discover targets --application opentelemetry-demo
     """
     with console.status("Running discovery playbook…"):
         try:
-            workloads_by_app = discover_workloads(app_id=app_id)
+            workloads_by_app = discover_workloads(app_id=application_id)
         except RuntimeError as exc:
             console.print(f"[red]Discovery failed:[/red] {exc}")
             raise SystemExit(1) from exc

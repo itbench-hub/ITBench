@@ -33,4 +33,4 @@ def test_explain_application_unknown_slug() -> None:
 
     assert result.exit_code == 1
     assert "not found" in result.output
-    assert "itbench list apps" in result.output
+    assert "itbench list applications" in result.output

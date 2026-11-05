@@ -5,6 +5,7 @@ import sys
 import uuid
 
 from pathlib import Path
+from typing import Any
 
 import click
 import questionary
@@ -32,29 +33,26 @@ _TOOLS_VARS = [
 ]
 
 
-def _load_role_defaults() -> dict:
+def _load_role_defaults() -> dict[str, Any]:
     """Merge all YAML files under the tools role defaults/main/ directory."""
-    defaults: dict = {}
+    defaults: dict[str, Any] = {}
     for path in sorted(_DEFAULTS_DIR.glob("*.yaml")):
-        with path.open(encoding="utf-8") as fh:
-            data = yaml.safe_load(fh) or {}
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         defaults.update(data)
     return defaults
 
 
-def _extra_vars_from_scenario(scenario_path: Path) -> dict:
+def _extra_vars_from_scenario(scenario_path: Path) -> dict[str, Any]:
     """Build extra_vars from a scenario's extra_variables.yaml, filtered to tools_* keys."""
     extra_vars_path = scenario_path.parent / "extra_variables.yaml"
     if not extra_vars_path.exists():
         return {}
 
-    with extra_vars_path.open(encoding="utf-8") as fh:
-        all_vars = yaml.safe_load(fh) or {}
-
+    all_vars = yaml.safe_load(extra_vars_path.read_text(encoding="utf-8")) or {}
     return {k: v for k, v in all_vars.items() if k in _TOOLS_VARS}
 
 
-def _extra_vars_from_wizard() -> dict:
+def _extra_vars_from_wizard() -> dict[str, Any]:
     """Interactively build extra_vars via Questionary prompts, pre-filled from role defaults.
 
     When stdin is not a TTY (e.g. CI), skips prompts and returns the role defaults as-is so
@@ -132,7 +130,7 @@ def deploy_tools(scenario_id: str | None, kubeconfig: str) -> None:
 
     extra_vars_file = artifact_dir / "extra_vars.json"
     extra_vars_file.write_text(json.dumps(extra_vars, indent=2), encoding="utf-8")
-    console.print(f"[dim]Extra vars written to {extra_vars_file}[/dim]")
+    console.print(f"[dim]Extra variables written to {extra_vars_file}[/dim]")
 
     with console.status("Deploying tools…"):
         try:

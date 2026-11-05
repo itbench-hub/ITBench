@@ -15,7 +15,7 @@ _DEFAULT_OUTPUT = (
 )
 
 
-def _prompt() -> dict:
+def _prompt() -> dict[str, str]:
     """Interactively collect S3 bucket variables."""
     console.print("[bold]Configure S3 bucket variables[/bold]\n")
 

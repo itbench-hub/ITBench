@@ -1,6 +1,7 @@
 """CLI command to create and scaffold a new fault."""
 
 from pathlib import Path
+from typing import Any
 
 import click
 import questionary
@@ -144,7 +145,7 @@ def create_fault_command(library_dir: Path, tasks_dir: Path) -> None:
         targets=target_refs,
     )
 
-    fault_dict: dict = fault.model_dump(
+    fault_dict: dict[str, Any] = fault.model_dump(
         mode="json",
         by_alias=True,
         exclude={"id"},
@@ -156,7 +157,7 @@ def create_fault_command(library_dir: Path, tasks_dir: Path) -> None:
 
     header = f"# yaml-language-server: $schema=../../schemas/json/library/faults/{fault.id}.json\n"
     yaml_path.write_text(
-        header + yaml.dump(fault_dict, sort_keys=False, explicit_start=True, allow_unicode=True),
+        f"{header}{yaml.dump(fault_dict, sort_keys=False, explicit_start=True, allow_unicode=True)}",
         encoding="utf-8",
     )
     console.print(f"[green]Created fault at {yaml_path}[/green]")

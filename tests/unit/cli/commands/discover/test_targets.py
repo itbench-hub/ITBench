@@ -49,7 +49,7 @@ def test_targets_discovery_failure() -> None:
     assert "Discovery failed" in result.output
 
 
-def test_targets_filtered_by_app() -> None:
+def test_targets_filtered_by_application() -> None:
     runner = CliRunner()
     fake_workloads = {
         "book-info": [
@@ -60,7 +60,7 @@ def test_targets_filtered_by_app() -> None:
     with patch(
         "itbench.cli.commands.discover.targets.discover_workloads", return_value=fake_workloads
     ) as mock_disc:
-        result = runner.invoke(targets, ["--app", "book-info"])
+        result = runner.invoke(targets, ["--application", "book-info"])
 
     assert result.exit_code == 0
     mock_disc.assert_called_once_with(app_id="book-info")

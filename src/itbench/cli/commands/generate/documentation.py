@@ -15,10 +15,10 @@ _LIBRARY_ROOT = Path(__file__).parents[5] / "library"
 _DOCS_ROOT = Path("documentation/library")
 
 
-def _generate_applications_doc(output_dir: Path) -> Path:
+def _generate_applications_documentation(output_dir: Path) -> Path:
     from itbench.models.application import APPLICATION_CATALOG
 
-    rows: list[dict] = [
+    rows: list[dict[str, str]] = [
         {
             "slug": slug,
             "name": entry.name,
@@ -47,8 +47,8 @@ def _generate_applications_doc(output_dir: Path) -> Path:
         "## Usage",
         "",
         "```yaml",
-        "# itbench explain app <slug>",
-        "# itbench list apps",
+        "# itbench explain application <slug>",
+        "# itbench list applications",
         "```",
         "",
     ]
@@ -59,10 +59,10 @@ def _generate_applications_doc(output_dir: Path) -> Path:
     return doc_path
 
 
-def _generate_faults_doc(output_dir: Path) -> Path:
+def _generate_faults_documentation(output_dir: Path) -> Path:
     from itbench.models.fault import FAULT_CATALOG
 
-    rows: list[dict] = [
+    rows: list[dict[str, str]] = [
         {
             "slug": slug,
             "name": fault.name,
@@ -124,7 +124,7 @@ def _generate_faults_doc(output_dir: Path) -> Path:
     return doc_path
 
 
-def _generate_waiters_doc(output_dir: Path) -> Path:
+def _generate_waiters_documentation(output_dir: Path) -> Path:
     lines = [
         "# Waiters",
         "",
@@ -167,10 +167,10 @@ def _generate_waiters_doc(output_dir: Path) -> Path:
     return doc_path
 
 
-def _generate_scenarios_doc(output_dir: Path) -> Path:
+def _generate_scenarios_documentation(output_dir: Path) -> Path:
     scenarios_dir = _LIBRARY_ROOT / "scenarios"
 
-    rows: list[dict] = []
+    rows: list[dict[str, str]] = []
     if scenarios_dir.exists():
         for scenario_dir in sorted(
             scenarios_dir.iterdir(),
@@ -185,7 +185,7 @@ def _generate_scenarios_doc(output_dir: Path) -> Path:
                 continue
 
             env = data.get("environment") or {}
-            apps = [a.get("id", "?") for a in env.get("applications", [])]
+            applications = [a.get("id", "?") for a in env.get("applications", [])]
             domains = env.get("domains", [])
             fault_ids = [
                 inj.get("id", "?")
@@ -195,7 +195,7 @@ def _generate_scenarios_doc(output_dir: Path) -> Path:
             rows.append(
                 {
                     "id": scenario_dir.name,
-                    "apps": ", ".join(apps),
+                    "applications": ", ".join(applications),
                     "domains": ", ".join(domains),
                     "faults": ", ".join(fault_ids),
                 }
@@ -210,7 +210,7 @@ def _generate_scenarios_doc(output_dir: Path) -> Path:
         "| -- | ------- | ------------ | ------ |",
     ]
     for r in rows:
-        lines.append(f"| {r['id']} | {r['domains']} | {r['apps']} | {r['faults']} |")
+        lines.append(f"| {r['id']} | {r['domains']} | {r['applications']} | {r['faults']} |")
 
     lines += [
         "",
@@ -229,7 +229,7 @@ def _generate_scenarios_doc(output_dir: Path) -> Path:
     return doc_path
 
 
-@click.command(name="docs", help="Generate Markdown documentation for ITBench library primitives.")
+@click.command(name="documentation", help="Generate Markdown documentation for ITBench library primitives.")
 @click.option(
     "--output-dir",
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
@@ -237,16 +237,16 @@ def _generate_scenarios_doc(output_dir: Path) -> Path:
     show_default=True,
     help="Target directory where Markdown files will be written.",
 )
-def generate_docs_command(output_dir: Path) -> None:
+def generate_documentation_command(output_dir: Path) -> None:
     """Generate Markdown documentation for all benchmark primitives."""
-    path = _generate_applications_doc(output_dir)
-    console.print(f"[green]Generated applications doc → {path}[/green]")
+    path = _generate_applications_documentation(output_dir)
+    console.print(f"[green]Generated applications documentation → {path}[/green]")
 
-    path = _generate_faults_doc(output_dir)
-    console.print(f"[green]Generated faults doc → {path}[/green]")
+    path = _generate_faults_documentation(output_dir)
+    console.print(f"[green]Generated faults documentation → {path}[/green]")
 
-    path = _generate_waiters_doc(output_dir)
-    console.print(f"[green]Generated waiters doc → {path}[/green]")
+    path = _generate_waiters_documentation(output_dir)
+    console.print(f"[green]Generated waiters documentation → {path}[/green]")
 
-    path = _generate_scenarios_doc(output_dir)
-    console.print(f"[green]Generated scenarios doc → {path}[/green]")
+    path = _generate_scenarios_documentation(output_dir)
+    console.print(f"[green]Generated scenarios documentation → {path}[/green]")

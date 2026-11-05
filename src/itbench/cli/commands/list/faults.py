@@ -6,7 +6,7 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from itbench.models.fault import FAULT_CATALOG
+from itbench.models.fault import FAULT_CATALOG, Fault
 
 console = Console()
 
@@ -29,7 +29,7 @@ def list_faults(tag: str | None, platform: str | None) -> None:
     table.add_column("Alerts")
     table.add_column("Status")
 
-    rows = []
+    rows: list[tuple[str, Fault]] = []
     for slug, fault in sorted(FAULT_CATALOG.items()):
         if platform and fault.platform.lower() != platform.lower():
             continue
@@ -47,7 +47,7 @@ def list_faults(tag: str | None, platform: str | None) -> None:
         tags = ", ".join(fault.tags)
         if retired:
             reason = fault.status.retired.reason or ""
-            status_cell = f"[dim]retired[/dim]" + (f" [dim]— {reason}[/dim]" if reason else "")
+            status_cell = f"[dim]retired[/dim]{f' [dim]— {reason}[/dim]' if reason else ''}"
             table.add_row(
                 f"[dim]{slug}[/dim]",
                 f"[dim]{fault.name}[/dim]",

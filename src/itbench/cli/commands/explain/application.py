@@ -1,4 +1,4 @@
-"""Explain app sub-command for ITBench."""
+"""Explain application sub-command for ITBench."""
 
 import click
 
@@ -6,12 +6,12 @@ from rich.console import Console
 from rich.markup import escape
 from rich.panel import Panel
 
-from itbench.models.application import APPLICATION_CATALOG
+from itbench.models.application import APPLICATION_CATALOG, Application
 
 console = Console()
 
 
-def _render_application(slug: str, entry) -> None:
+def _render_application(slug: str, entry: Application) -> None:
     """Render an application as a Rich man-page."""
     console.print()
     console.print(Panel(
@@ -39,13 +39,13 @@ def _render_application(slug: str, entry) -> None:
         console.print()
 
 
-@click.command(name="app", help="Explain an application by its slug.")
+@click.command(name="application", help="Explain an application by its slug.")
 @click.argument("slug")
 def explain_application(slug: str) -> None:
     """Print a formatted man-page for an application."""
     entry = APPLICATION_CATALOG.get(slug)
     if entry is None:
         console.print(f"[red]Application '[bold]{slug}[/bold]' not found.[/red]")
-        console.print("[dim]Run `itbench list apps` to see available application slugs.[/dim]")
+        console.print("[dim]Run `itbench list applications` to see available application slugs.[/dim]")
         raise SystemExit(1)
     _render_application(slug, entry)

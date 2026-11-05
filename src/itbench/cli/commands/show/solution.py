@@ -1,6 +1,7 @@
 """Show solution sub-command for ITBench."""
 
 from pathlib import Path
+from typing import Any
 
 import click
 import yaml
@@ -15,11 +16,11 @@ console = Console()
 _LIBRARY_ROOT = Path(__file__).parents[5] / "library"
 
 
-def _render_solution(scenario_id: str, data: dict) -> None:
+def _render_solution(scenario_id: str, data: dict[str, Any]) -> None:
     """Render a scenario's ground truth solution as a Rich man-page."""
-    alerts: list[dict] = data.get("alerts") or []
-    entities: list[dict] = data.get("entities") or []
-    solutions: list[list[dict]] = data.get("solutions") or []
+    alerts: list[dict[str, Any]] = data.get("alerts") or []
+    entities: list[dict[str, Any]] = data.get("entities") or []
+    solutions: list[list[dict[str, Any]]] = data.get("solutions") or []
 
     console.print()
     console.print(Panel(
@@ -57,7 +58,7 @@ def _render_solution(scenario_id: str, data: dict) -> None:
             console.print(f"\n  [bold]Fault {fault_idx}[/bold]")
 
         for variant_idx, variant in enumerate(variants, 1):
-            steps: list[dict] = variant.get("steps") or []
+            steps: list[dict[str, Any]] = variant.get("steps") or []
             if len(variants) > 1:
                 console.print(f"  [dim]Variant {variant_idx}[/dim]")
             for step_idx, step in enumerate(steps, 1):

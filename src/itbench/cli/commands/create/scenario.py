@@ -1,6 +1,7 @@
 """CLI command to create and scaffold a new scenario."""
 
 from pathlib import Path
+from typing import Any
 
 import click
 import questionary
@@ -181,7 +182,7 @@ def create_scenario_command(scenarios_dir: Path) -> None:
         faults=fault_blocks,
     )
 
-    scenario_dict: dict = scenario.model_dump(
+    scenario_dict: dict[str, Any] = scenario.model_dump(
         mode="json",
         by_alias=True,
         exclude_none=True,
@@ -195,7 +196,7 @@ def create_scenario_command(scenarios_dir: Path) -> None:
     scenario_path = scenario_dir / "scenario.yaml"
     header = "# yaml-language-server: $schema=../../../schemas/json/library/scenario.json\n"
     scenario_path.write_text(
-        header + yaml.dump(scenario_dict, sort_keys=False, explicit_start=True, allow_unicode=True),
+        f"{header}{yaml.dump(scenario_dict, sort_keys=False, explicit_start=True, allow_unicode=True)}",
         encoding="utf-8",
     )
     console.print(f"\n[green]Created scenario → {scenario_path}[/green]")
@@ -207,7 +208,7 @@ def create_scenario_command(scenarios_dir: Path) -> None:
         "\nDo you want to add custom extra variables (extra_variables)?", default=False
     ).ask():
         console.print("[dim]Enter Ansible variable overrides as key: value pairs.[/dim]")
-        extra_vars: dict = {}
+        extra_vars: dict[str, Any] = {}
         is_adding_vars = True
 
         while is_adding_vars:
@@ -218,22 +219,23 @@ def create_scenario_command(scenarios_dir: Path) -> None:
                 continue
             value = questionary.text(f"  Value for '{key}':").ask()
             if value is not None:
-                if value.lower() == "true":
-                    extra_vars[key] = True
-                elif value.lower() == "false":
-                    extra_vars[key] = False
-                elif value.isdigit():
-                    extra_vars[key] = int(value)
-                else:
-                    extra_vars[key] = value
+                match value.lower():
+                    case "true":
+                        extra_vars[key] = True
+                    case "false":
+                        extra_vars[key] = False
+                    case _ if value.isdigit():
+                        extra_vars[key] = int(value)
+                    case _:
+                        extra_vars[key] = value
 
             if not questionary.confirm("  Add another variable?", default=False).ask():
                 is_adding_vars = False
 
         if extra_vars:
-            ev_path = scenario_dir / "extra_variables.yaml"
-            ev_path.write_text(
+            extra_variables_path = scenario_dir / "extra_variables.yaml"
+            extra_variables_path.write_text(
                 yaml.dump(extra_vars, sort_keys=True, explicit_start=True, allow_unicode=True),
                 encoding="utf-8",
             )
-            console.print(f"[green]Written extra vars → {ev_path}[/green]")
+            console.print(f"[green]Written extra variables → {extra_variables_path}[/green]")

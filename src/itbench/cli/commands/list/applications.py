@@ -1,4 +1,4 @@
-"""List apps sub-command for ITBench."""
+"""List applications sub-command for ITBench."""
 
 import click
 
@@ -11,7 +11,7 @@ from itbench.models.application import APPLICATION_CATALOG
 console = Console()
 
 
-@click.command(name="apps", help="List all available applications.")
+@click.command(name="applications", help="List all available applications.")
 @click.option("--platform", default=None, help="Filter by platform (e.g. Kubernetes, OpenShift).")
 def list_applications(platform: str | None) -> None:
     """List all available applications."""

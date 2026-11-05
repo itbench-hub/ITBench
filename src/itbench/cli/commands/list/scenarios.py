@@ -33,7 +33,7 @@ def list_scenarios() -> None:
     table.add_column("Applications", style="dim")
     table.add_column("Faults", style="dim")
 
-    rows = []
+    rows: list[tuple[str, str, str, str]] = []
     for scenario_dir in sorted(
         scenarios_dir.iterdir(),
         key=lambda p: int(p.name) if p.name.isdigit() else p.name,
@@ -47,7 +47,7 @@ def list_scenarios() -> None:
             continue
 
         env = data.get("environment") or {}
-        apps = [a.get("id", "?") for a in env.get("applications", [])]
+        applications = [a.get("id", "?") for a in env.get("applications", [])]
         domains = env.get("domains", [])
         fault_ids = [
             inj.get("id", "?")
@@ -55,7 +55,7 @@ def list_scenarios() -> None:
             for inj in fault.get("injections", [])
         ]
 
-        rows.append((scenario_dir.name, ", ".join(domains), ", ".join(apps), ", ".join(fault_ids)))
+        rows.append((scenario_dir.name, ", ".join(domains), ", ".join(applications), ", ".join(fault_ids)))
 
     if not rows:
         console.print("[yellow]No scenarios found.[/yellow]")

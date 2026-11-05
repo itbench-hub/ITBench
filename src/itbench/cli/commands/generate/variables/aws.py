@@ -17,7 +17,7 @@ _DEFAULT_OUTPUT = (
 )
 
 
-def _prompt() -> dict:
+def _prompt() -> dict[str, str]:
     """Interactively collect AWS credentials."""
     console.print("[bold]Configure AWS credentials[/bold]\n")
 
@@ -40,7 +40,7 @@ def _prompt() -> dict:
     }
 
 
-def _build_doc(creds: dict) -> dict:
+def _build_doc(creds: dict[str, str]) -> dict[str, str]:
     """Build the AWS group_vars dict, vault-encrypting the sensitive values."""
     vault_password = resolve_vault_password()
     return {
