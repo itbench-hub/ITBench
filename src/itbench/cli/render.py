@@ -76,13 +76,22 @@ def _plain(value: object) -> str:
     return escape(str(value))
 
 
-def emit_structured(data: object, output_format: str) -> None:
-    """Print *data* as JSON or YAML to stdout without any Rich wrapping."""
+def dump_structured(data: object, output_format: str) -> str:
+    """Serialise *data* as a JSON or YAML string."""
     normalised = json.loads(json.dumps(data, default=str))
     if output_format == "json":
-        click.echo(json.dumps(normalised, indent=2))
-    else:
-        click.echo(yaml.safe_dump(normalised, sort_keys=False, default_flow_style=False).rstrip())
+        return json.dumps(normalised, indent=2)
+    return yaml.safe_dump(normalised, sort_keys=False, default_flow_style=False).rstrip()
+
+
+def emit_structured(data: object, output_format: str) -> None:
+    """Print *data* as JSON or YAML to stdout without any Rich wrapping."""
+    click.echo(dump_structured(data, output_format))
+
+
+def warn_skipped_scenario(scenario_id: str, exc: Exception) -> None:
+    """Report on stderr that a scenario could not be read; suitable as ``load_scenario_docs(on_error=...)``."""
+    err_console.print(f"[yellow]Skipped scenario {escape(scenario_id)}: {escape(str(exc))}[/yellow]")
 
 
 def exit_not_found(kind: str, key: str, known: Iterable[str], list_command: str) -> NoReturn:

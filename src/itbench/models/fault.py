@@ -5,11 +5,9 @@ import re
 from enum import StrEnum
 from typing import Self
 
-import yaml
-
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
-from itbench.models.catalog import LazyCatalog
+from itbench.models.catalog import LazyCatalog, load_catalog_directory
 from itbench.models.kubernetes import KubernetesObjectKind
 from itbench.models.platform import Platform
 from itbench.paths import library
@@ -207,21 +205,7 @@ class Fault(BaseModel):
 
 
 def _load_fault_catalog() -> dict[str, Fault]:
-    faults_dir = library.faults
-    if not faults_dir.exists():
-        raise FileNotFoundError(f"Fault library directory not found: {faults_dir}")
-
-    catalog: dict[str, Fault] = {}
-
-    for path in faults_dir.glob("*.yaml"):
-        try:
-            data = yaml.safe_load(path.read_text(encoding="utf-8"))
-            fault = Fault.model_validate(data)
-            catalog[fault.id] = fault
-        except Exception:
-            continue
-
-    return catalog
+    return load_catalog_directory(library.faults, Fault, "fault")
 
 
 FAULT_CATALOG: LazyCatalog[Fault] = LazyCatalog(_load_fault_catalog)

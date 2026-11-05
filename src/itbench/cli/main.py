@@ -9,7 +9,6 @@ from itbench.cli.commands.explain import explain_group
 from itbench.cli.commands.generate import generate_group
 from itbench.cli.commands.list import list_group
 from itbench.cli.commands.prepare import prepare_group
-from itbench.cli.commands.show import show_group
 from itbench.cli.commands.undeploy import undeploy_group
 
 
@@ -29,7 +28,6 @@ cli.add_command(discover_group)
 cli.add_command(explain_group)
 cli.add_command(generate_group)
 cli.add_command(list_group)
-cli.add_command(show_group)
 
 
 if __name__ == "__main__":

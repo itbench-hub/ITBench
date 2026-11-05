@@ -7,6 +7,7 @@ import click
 
 from rich.markup import escape
 
+from itbench.cli.commands.list._usage import USAGE_COLUMN, add_usage, usage_option
 from itbench.cli.render import Column, format_option, render_rows
 from itbench.models.fault import FAULT_CATALOG
 
@@ -31,8 +32,9 @@ _COLUMNS = [
 @click.command(name="faults", help="List all available faults with optional filtering.")
 @click.option("--tag", default=None, help="Filter by tag (e.g. Networking, Deployment).")
 @click.option("--platform", default=None, help="Filter by platform (e.g. Kubernetes, OpenShift).")
+@usage_option
 @format_option
-def list_faults(tag: str | None, platform: str | None, output_format: str) -> None:
+def list_faults(tag: str | None, platform: str | None, show_usage: bool, output_format: str) -> None:
     """List all available faults."""
     rows: list[dict[str, Any]] = []
     for slug, fault in sorted(FAULT_CATALOG.items()):
@@ -50,10 +52,12 @@ def list_faults(tag: str | None, platform: str | None, output_format: str) -> No
             "status": "retired" if retired is not None else "active",
             "retired_reason": retired.reason if retired is not None else None,
         })
+    if show_usage:
+        add_usage(rows, "slug", "faults")
 
     render_rows(
         rows,
-        _COLUMNS,
+        [*_COLUMNS, USAGE_COLUMN] if show_usage else _COLUMNS,
         title="Faults",
         footer=f"{len(rows)} fault(s) found.",
         empty_message="[yellow]No faults matched the given filters.[/yellow]",

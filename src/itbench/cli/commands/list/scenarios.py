@@ -4,9 +4,7 @@ from typing import Any
 
 import click
 
-from rich.markup import escape
-
-from itbench.cli.render import Column, err_console, format_option, render_rows
+from itbench.cli.render import Column, format_option, render_rows, warn_skipped_scenario
 from itbench.paths import library
 from itbench.utils.scenarios import load_scenario_docs, summarize_scenario
 
@@ -18,17 +16,13 @@ _COLUMNS = [
 ]
 
 
-def _warn_invalid(scenario_id: str, exc: Exception) -> None:
-    err_console.print(f"[yellow]Skipped scenario {escape(scenario_id)}: {escape(str(exc))}[/yellow]")
-
-
 @click.command(name="scenarios", help="List all benchmark scenarios.")
 @format_option
 def list_scenarios(output_format: str) -> None:
     """List all benchmark scenarios."""
     rows: list[dict[str, Any]] = [
         summarize_scenario(scenario_id, data)
-        for scenario_id, data in load_scenario_docs(library.scenarios, on_error=_warn_invalid)
+        for scenario_id, data in load_scenario_docs(library.scenarios, on_error=warn_skipped_scenario)
     ]
 
     render_rows(
