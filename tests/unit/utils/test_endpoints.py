@@ -1,6 +1,6 @@
 """Tests for itbench.utils.endpoints."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -10,7 +10,6 @@ from itbench.utils.endpoints import (
     _resolve_gateway_host,
     _resolve_httproute_endpoints,
 )
-
 
 # ---------------------------------------------------------------------------
 # Minimal vars fixture that satisfies _build_tool_definitions

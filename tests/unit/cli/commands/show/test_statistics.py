@@ -9,7 +9,6 @@ from click.testing import CliRunner
 
 from itbench.cli.commands.show.statistics import show_statistics
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

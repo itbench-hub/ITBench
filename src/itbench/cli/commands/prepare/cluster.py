@@ -1,6 +1,7 @@
 """Prepare cluster command for ITBench."""
 
 import click
+
 from rich.console import Console
 
 from itbench.utils.cluster import prepare_cluster

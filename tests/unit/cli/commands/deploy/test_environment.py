@@ -14,7 +14,6 @@ from itbench.cli.commands.deploy.environment import (
     deploy_environment,
 )
 
-
 # ---------------------------------------------------------------------------
 # _extra_variables_from_scenario
 # ---------------------------------------------------------------------------

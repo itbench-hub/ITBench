@@ -8,8 +8,8 @@ from itbench.cli.commands.discover import discover_group
 from itbench.cli.commands.explain import explain_group
 from itbench.cli.commands.generate import generate_group
 from itbench.cli.commands.list import list_group
-from itbench.cli.commands.show import show_group
 from itbench.cli.commands.prepare import prepare_group
+from itbench.cli.commands.show import show_group
 from itbench.cli.commands.undeploy import undeploy_group
 
 

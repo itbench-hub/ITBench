@@ -7,7 +7,7 @@ import click
 from rich.console import Console
 
 from itbench.models.application import Application
-from itbench.models.fault import Fault, FAULT_CATALOG
+from itbench.models.fault import FAULT_CATALOG, Fault
 from itbench.models.ground_truth import GroundTruth
 from itbench.models.scenario import Scenario
 from itbench.models.waiter import WAITER_CATALOG

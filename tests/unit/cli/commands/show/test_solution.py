@@ -9,7 +9,6 @@ from click.testing import CliRunner
 
 from itbench.cli.commands.show.solution import show_solution
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -9,7 +9,6 @@ import pytest
 
 from itbench.utils.ansible_vault import resolve_vault_password, vault_encrypt
 
-
 # ---------------------------------------------------------------------------
 # resolve_vault_password
 # ---------------------------------------------------------------------------

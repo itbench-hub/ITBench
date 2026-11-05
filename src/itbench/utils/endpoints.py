@@ -14,7 +14,6 @@ import yaml
 
 from kubernetes import client, config  # type: ignore[import-untyped]
 
-
 _VARS_DIR = (
     Path(__file__).parents[3]
     / "scenarios"

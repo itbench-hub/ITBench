@@ -3,8 +3,6 @@
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from itbench.models.kubernetes import KubernetesObject
 from itbench.utils.manifests import (
     _extract_targets_from_file,

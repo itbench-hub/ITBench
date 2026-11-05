@@ -11,6 +11,7 @@ deps: ## Installs dependencies
 
 .PHONY: lint
 lint: ## Lints files
+	$(UV) run ruff check src tests
 	$(UV) run ansible-lint
 
 .PHONY: pre-commit-hooks

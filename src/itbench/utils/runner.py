@@ -1,6 +1,7 @@
 """Ansible runner utilities for ITBench CLI commands."""
 
 import uuid
+
 from pathlib import Path
 
 import ansible_runner

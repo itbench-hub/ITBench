@@ -11,10 +11,8 @@ from click.testing import CliRunner
 
 from itbench.cli.commands.generate.variables.aws import (
     _build_doc,
-    _prompt,
     variables_aws_command,
 )
-
 
 # ---------------------------------------------------------------------------
 # _build_doc

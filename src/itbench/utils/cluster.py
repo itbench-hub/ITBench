@@ -4,7 +4,7 @@ Handles automatic CertificateSigningRequest (CSR) approvals and node partitionin
 for workloads and tools.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from kubernetes import client, config  # type: ignore[import-untyped]
 
@@ -34,7 +34,7 @@ def approve_pending_kublet_certificate_requests() -> None:
                 status="True",
                 reason="AutoApproved",
                 message="Automatically approved by ITBench",
-                last_update_time=datetime.now(timezone.utc),
+                last_update_time=datetime.now(UTC),
             )
         ]
 

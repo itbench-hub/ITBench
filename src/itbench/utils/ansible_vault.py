@@ -1,6 +1,7 @@
 """Ansible Vault helpers — password resolution and string encryption."""
 
 import os
+
 from pathlib import Path
 
 import click

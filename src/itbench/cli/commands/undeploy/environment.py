@@ -26,7 +26,6 @@ def undeploy_environment(kubeconfig: str, only: str | None, yes: bool) -> None:
         itbench undeploy environment --only tools --kubeconfig ~/.kube/config
     """
     tools_enabled = (only == "tools") or (only is None)
-    applications_enabled = True
 
     if not yes:
         confirmed = questionary.confirm(

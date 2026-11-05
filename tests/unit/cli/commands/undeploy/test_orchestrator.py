@@ -1,6 +1,6 @@
 """Tests for the undeploy orchestrator CLI command."""
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 

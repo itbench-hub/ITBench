@@ -9,7 +9,6 @@ from click.testing import CliRunner
 
 from itbench.cli.commands.generate.variables.s3 import variables_s3_command
 
-
 # ---------------------------------------------------------------------------
 # variables_s3_command (CLI integration)
 # ---------------------------------------------------------------------------
