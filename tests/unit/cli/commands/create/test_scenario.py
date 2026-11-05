@@ -3,6 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 import yaml
 
 from click.testing import CliRunner
@@ -53,22 +54,20 @@ def test_ask_target_returns_fault_target() -> None:
             assert target.kubernetes.namespace == "default"
 
 
-def test_create_scenario_command_abort_no_apps(tmp_path: Path) -> None:
+def test_create_scenario_command_abort_no_apps() -> None:
     runner = CliRunner()
     with patch("questionary.checkbox") as mock_checkbox:
         mock_checkbox.return_value.ask.return_value = []
 
-        result = runner.invoke(
-            create_scenario_command,
-            ["--scenarios-dir", str(tmp_path / "scenarios")],
-        )
+        result = runner.invoke(create_scenario_command, [])
 
         assert result.exit_code == 0
         assert "At least one application is required" in result.output
 
 
-def test_create_scenario_command_success(tmp_path: Path) -> None:
+def test_create_scenario_command_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     runner = CliRunner()
+    monkeypatch.setenv("ITBENCH_LIBRARY", str(tmp_path))
     scenarios_dir = tmp_path / "scenarios"
     first_app_id = next(iter(APPLICATION_CATALOG.keys()))
     # TODO: Pick a fault that is guaranteed to have targets so the confirm sequence is deterministic.
@@ -107,10 +106,7 @@ def test_create_scenario_command_success(tmp_path: Path) -> None:
         ]
         mock_gt.return_value = scenarios_dir / "1" / "ground_truth.yaml"
 
-        result = runner.invoke(
-            create_scenario_command,
-            ["--scenarios-dir", str(scenarios_dir)],
-        )
+        result = runner.invoke(create_scenario_command, [])
 
         assert result.exit_code == 0
         assert "Created scenario →" in result.output

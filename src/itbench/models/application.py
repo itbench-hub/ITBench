@@ -2,15 +2,13 @@
 
 import re
 
-from pathlib import Path
-
 import yaml
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
+from itbench.models.catalog import LazyCatalog
 from itbench.models.platform import Platform
-
-_APPLICATIONS_DIR = Path(__file__).parents[3] / "library" / "applications"
+from itbench.paths import library
 
 
 class Application(BaseModel):
@@ -57,12 +55,13 @@ class Application(BaseModel):
 
 
 def _load_application_catalog() -> dict[str, Application]:
-    if not _APPLICATIONS_DIR.exists():
-        raise FileNotFoundError(f"Application library directory not found: {_APPLICATIONS_DIR}")
+    applications_dir = library.applications
+    if not applications_dir.exists():
+        raise FileNotFoundError(f"Application library directory not found: {applications_dir}")
 
     catalog: dict[str, Application] = {}
 
-    for path in sorted(_APPLICATIONS_DIR.glob("*.yaml")):
+    for path in sorted(applications_dir.glob("*.yaml")):
         try:
             data = yaml.safe_load(path.read_text(encoding="utf-8"))
             application = Application.model_validate(data)
@@ -73,4 +72,4 @@ def _load_application_catalog() -> dict[str, Application]:
     return catalog
 
 
-APPLICATION_CATALOG: dict[str, Application] = _load_application_catalog()
+APPLICATION_CATALOG: LazyCatalog[Application] = LazyCatalog(_load_application_catalog)

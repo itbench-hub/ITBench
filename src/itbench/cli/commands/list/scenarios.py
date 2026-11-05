@@ -1,68 +1,41 @@
 """List scenarios sub-command for ITBench."""
 
-from pathlib import Path
+from typing import Any
 
 import click
-import yaml
 
-from rich import box
-from rich.console import Console
-from rich.table import Table
+from rich.markup import escape
 
-console = Console()
+from itbench.cli.render import Column, err_console, format_option, render_rows
+from itbench.paths import library
+from itbench.utils.scenarios import load_scenario_docs, summarize_scenario
 
-_LIBRARY_ROOT = Path(__file__).parents[5] / "library"
+_COLUMNS = [
+    Column("id", "ID", style="cyan", no_wrap=True),
+    Column("domains", "Domains", style="dim"),
+    Column("applications", "Applications", style="dim"),
+    Column("faults", "Faults", style="dim"),
+]
+
+
+def _warn_invalid(scenario_id: str, exc: Exception) -> None:
+    err_console.print(f"[yellow]Skipped scenario {escape(scenario_id)}: {escape(str(exc))}[/yellow]")
 
 
 @click.command(name="scenarios", help="List all benchmark scenarios.")
-def list_scenarios() -> None:
+@format_option
+def list_scenarios(output_format: str) -> None:
     """List all benchmark scenarios."""
-    scenarios_dir = _LIBRARY_ROOT / "scenarios"
-    if not scenarios_dir.exists():
-        console.print("[yellow]No scenarios directory found at library/scenarios/.[/yellow]")
-        return
+    rows: list[dict[str, Any]] = [
+        summarize_scenario(scenario_id, data)
+        for scenario_id, data in load_scenario_docs(library.scenarios, on_error=_warn_invalid)
+    ]
 
-    table = Table(
+    render_rows(
+        rows,
+        _COLUMNS,
         title="Scenarios",
-        box=box.SIMPLE_HEAVY,
-        show_lines=False,
-        header_style="bold",
+        footer=f"{len(rows)} scenario(s) found.",
+        empty_message="[yellow]No scenarios found.[/yellow]",
+        output_format=output_format,
     )
-    table.add_column("ID", style="cyan", no_wrap=True)
-    table.add_column("Domains", style="dim")
-    table.add_column("Applications", style="dim")
-    table.add_column("Faults", style="dim")
-
-    rows: list[tuple[str, str, str, str]] = []
-    for scenario_dir in sorted(
-        scenarios_dir.iterdir(),
-        key=lambda p: int(p.name) if p.name.isdigit() else p.name,
-    ):
-        scenario_file = scenario_dir / "scenario.yaml"
-        if not scenario_file.exists():
-            continue
-        try:
-            data = yaml.safe_load(scenario_file.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-
-        env = data.get("environment") or {}
-        applications = [a.get("id", "?") for a in env.get("applications", [])]
-        domains = env.get("domains", [])
-        fault_ids = [
-            inj.get("id", "?")
-            for fault in (data.get("faults") or [])
-            for inj in fault.get("injections", [])
-        ]
-
-        rows.append((scenario_dir.name, ", ".join(domains), ", ".join(applications), ", ".join(fault_ids)))
-
-    if not rows:
-        console.print("[yellow]No scenarios found.[/yellow]")
-        return
-
-    for row in rows:
-        table.add_row(*row)
-
-    console.print(table)
-    console.print(f"[dim]{len(rows)} scenario(s) found.[/dim]")

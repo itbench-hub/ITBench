@@ -64,7 +64,7 @@ def test_generate_scenarios_documentation_with_scenarios(tmp_path: Path) -> None
     }
     (library_dir / "scenario.yaml").write_text(yaml.dump(scenario), encoding="utf-8")
 
-    with patch("itbench.cli.commands.generate.documentation._LIBRARY_ROOT", tmp_path / "library"):
+    with patch.dict("os.environ", {"ITBENCH_LIBRARY": str(tmp_path / "library")}):
         runner = CliRunner()
         result = runner.invoke(generate_documentation_command, ["--output-dir", str(output_dir)])
 

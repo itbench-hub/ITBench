@@ -2,42 +2,38 @@
 
 import click
 
-from rich import box
-from rich.console import Console
-from rich.table import Table
-
+from itbench.cli.render import Column, format_option, render_rows
 from itbench.models.application import APPLICATION_CATALOG
 
-console = Console()
+_COLUMNS = [
+    Column("slug", "Slug", style="cyan", no_wrap=True),
+    Column("name", "Name"),
+    Column("platforms", "Platforms", style="dim"),
+    Column("authors", "Authors", style="dim"),
+]
 
 
 @click.command(name="applications", help="List all available applications.")
 @click.option("--platform", default=None, help="Filter by platform (e.g. Kubernetes, OpenShift).")
-def list_applications(platform: str | None) -> None:
+@format_option
+def list_applications(platform: str | None, output_format: str) -> None:
     """List all available applications."""
-    table = Table(
-        title="Applications",
-        box=box.SIMPLE_HEAVY,
-        show_lines=False,
-        header_style="bold",
-    )
-    table.add_column("Slug", style="cyan", no_wrap=True)
-    table.add_column("Name")
-    table.add_column("Platforms", style="dim")
-    table.add_column("Authors", style="dim")
-
     rows = [
-        (slug, entry.name, ", ".join(entry.platforms), ", ".join(entry.authors))
-        for slug, entry in APPLICATION_CATALOG.items()
+        {
+            "slug": slug,
+            "name": entry.name,
+            "platforms": list(entry.platforms),
+            "authors": list(entry.authors),
+        }
+        for slug, entry in sorted(APPLICATION_CATALOG.items())
         if not platform or platform in entry.platforms
     ]
 
-    if not rows:
-        console.print("[yellow]No applications matched the given filters.[/yellow]")
-        return
-
-    for row in rows:
-        table.add_row(*row)
-
-    console.print(table)
-    console.print(f"[dim]{len(rows)} application(s) found.[/dim]")
+    render_rows(
+        rows,
+        _COLUMNS,
+        title="Applications",
+        footer=f"{len(rows)} application(s) found.",
+        empty_message="[yellow]No applications matched the given filters.[/yellow]",
+        output_format=output_format,
+    )

@@ -1,5 +1,7 @@
 """Tests for Fault model, lifecycle statuses, and fault catalog."""
 
+from collections.abc import Mapping
+
 import pytest
 
 from pydantic import ValidationError
@@ -137,7 +139,7 @@ def test_converted_fault_status() -> None:
 
 
 def test_fault_catalog_loaded() -> None:
-    assert isinstance(FAULT_CATALOG, dict)
+    assert isinstance(FAULT_CATALOG, Mapping)
     for fault_id, fault in FAULT_CATALOG.items():
         assert fault.id == fault_id
         assert isinstance(fault, Fault)

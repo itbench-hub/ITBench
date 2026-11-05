@@ -308,7 +308,7 @@ def test_deploy_environment_with_scenario(tmp_path: Path) -> None:
     (scenario_dir / "extra_variables.yaml").write_text(yaml.dump(extra_vars), encoding="utf-8")
 
     with (
-        patch("itbench.cli.commands.deploy.environment._LIBRARY_ROOT", tmp_path / "library"),
+        patch.dict("os.environ", {"ITBENCH_LIBRARY": str(tmp_path / "library")}),
         patch("itbench.cli.commands.deploy.environment.run_playbook") as mock_run,
     ):
         mock_run.return_value = MagicMock()
@@ -332,7 +332,7 @@ def test_deploy_environment_with_scenario(tmp_path: Path) -> None:
 def test_deploy_environment_missing_scenario(tmp_path: Path) -> None:
     runner = CliRunner()
 
-    with patch("itbench.cli.commands.deploy.environment._LIBRARY_ROOT", tmp_path / "library"):
+    with patch.dict("os.environ", {"ITBENCH_LIBRARY": str(tmp_path / "library")}):
         result = runner.invoke(
             deploy_environment,
             ["--scenario", "999", "--kubeconfig", "/kube.conf"],

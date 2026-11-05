@@ -1,63 +1,62 @@
 """List faults sub-command for ITBench."""
 
+from collections.abc import Mapping
+from typing import Any
+
 import click
 
-from rich import box
-from rich.console import Console
-from rich.table import Table
+from rich.markup import escape
 
-from itbench.models.fault import FAULT_CATALOG, Fault
+from itbench.cli.render import Column, format_option, render_rows
+from itbench.models.fault import FAULT_CATALOG
 
-console = Console()
+
+def _status_cell(row: Mapping[str, Any]) -> str:
+    if row["status"] != "retired":
+        return "[green]active[/green]"
+    reason = row["retired_reason"]
+    return f"retired — {escape(reason)}" if reason else "retired"
+
+
+_COLUMNS = [
+    Column("slug", "Slug", no_wrap=True),
+    Column("name", "Name"),
+    Column("platform", "Platform"),
+    Column("tags", "Tags"),
+    Column("alerts", "Alerts"),
+    Column("status", "Status", cell=_status_cell),
+]
 
 
 @click.command(name="faults", help="List all available faults with optional filtering.")
 @click.option("--tag", default=None, help="Filter by tag (e.g. Networking, Deployment).")
 @click.option("--platform", default=None, help="Filter by platform (e.g. Kubernetes, OpenShift).")
-def list_faults(tag: str | None, platform: str | None) -> None:
+@format_option
+def list_faults(tag: str | None, platform: str | None, output_format: str) -> None:
     """List all available faults."""
-    table = Table(
-        title="Faults",
-        box=box.SIMPLE_HEAVY,
-        show_lines=False,
-        header_style="bold",
-    )
-    table.add_column("Slug", no_wrap=True)
-    table.add_column("Name")
-    table.add_column("Platform")
-    table.add_column("Tags")
-    table.add_column("Alerts")
-    table.add_column("Status")
-
-    rows: list[tuple[str, Fault]] = []
+    rows: list[dict[str, Any]] = []
     for slug, fault in sorted(FAULT_CATALOG.items()):
         if platform and fault.platform.lower() != platform.lower():
             continue
         if tag and tag not in fault.tags:
             continue
-        rows.append((slug, fault))
+        retired = fault.status.retired if fault.status is not None else None
+        rows.append({
+            "slug": slug,
+            "name": fault.name,
+            "platform": fault.platform,
+            "tags": list(fault.tags),
+            "alerts": list(fault.alerts),
+            "status": "retired" if retired is not None else "active",
+            "retired_reason": retired.reason if retired is not None else None,
+        })
 
-    if not rows:
-        console.print("[yellow]No faults matched the given filters.[/yellow]")
-        return
-
-    for slug, fault in rows:
-        retired = fault.status is not None and fault.status.retired is not None
-        alerts = ", ".join(fault.alerts) if fault.alerts else ""
-        tags = ", ".join(fault.tags)
-        if retired:
-            reason = fault.status.retired.reason or ""
-            status_cell = f"[dim]retired[/dim]{f' [dim]— {reason}[/dim]' if reason else ''}"
-            table.add_row(
-                f"[dim]{slug}[/dim]",
-                f"[dim]{fault.name}[/dim]",
-                f"[dim]{fault.platform}[/dim]",
-                f"[dim]{tags}[/dim]",
-                f"[dim]{alerts}[/dim]",
-                status_cell,
-            )
-        else:
-            table.add_row(slug, fault.name, fault.platform, tags, alerts, "[green]active[/green]")
-
-    console.print(table)
-    console.print(f"[dim]{len(rows)} fault(s) found.[/dim]")
+    render_rows(
+        rows,
+        _COLUMNS,
+        title="Faults",
+        footer=f"{len(rows)} fault(s) found.",
+        empty_message="[yellow]No faults matched the given filters.[/yellow]",
+        output_format=output_format,
+        row_style=lambda row: "dim" if row["status"] == "retired" else None,
+    )

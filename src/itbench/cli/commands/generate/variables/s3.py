@@ -11,7 +11,7 @@ from rich.console import Console
 console = Console()
 
 _DEFAULT_OUTPUT = (
-    Path(__file__).parents[7] / "scenarios" / "sre" / "inventory" / "group_vars" / "all" / "s3.yaml"
+    Path(__file__).parents[7] / "scenarios" / "sre" / "inventory" / "group_vars" / "storage" / "s3.yaml"
 )
 
 

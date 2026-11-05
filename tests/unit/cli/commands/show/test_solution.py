@@ -29,7 +29,7 @@ def _write_ground_truth(scenarios_dir: Path, scenario_id: str, data: dict) -> Pa
 def test_show_solution_missing_scenario(tmp_path: Path) -> None:
     runner = CliRunner()
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("itbench.cli.commands.show.solution._LIBRARY_ROOT", tmp_path / "library")
+        mp.setenv("ITBENCH_LIBRARY", str(tmp_path / "library"))
         result = runner.invoke(show_solution, ["999"])
     assert result.exit_code == 1
     assert "No ground truth found" in result.output
@@ -48,7 +48,7 @@ def test_show_solution_renders_panel(tmp_path: Path) -> None:
     })
     runner = CliRunner()
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("itbench.cli.commands.show.solution._LIBRARY_ROOT", lib)
+        mp.setenv("ITBENCH_LIBRARY", str(lib))
         result = runner.invoke(show_solution, ["16"])
     assert result.exit_code == 0
     assert "Scenario 16" in result.output
@@ -64,7 +64,7 @@ def test_show_solution_renders_entities(tmp_path: Path) -> None:
     })
     runner = CliRunner()
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("itbench.cli.commands.show.solution._LIBRARY_ROOT", lib)
+        mp.setenv("ITBENCH_LIBRARY", str(lib))
         result = runner.invoke(show_solution, ["16"])
     assert result.exit_code == 0
     assert "Deployment" in result.output
@@ -81,7 +81,7 @@ def test_show_solution_renders_alerts(tmp_path: Path) -> None:
     })
     runner = CliRunner()
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("itbench.cli.commands.show.solution._LIBRARY_ROOT", lib)
+        mp.setenv("ITBENCH_LIBRARY", str(lib))
         result = runner.invoke(show_solution, ["16"])
     assert result.exit_code == 0
     assert "KubePodNotReady" in result.output
@@ -98,7 +98,7 @@ def test_show_solution_renders_steps_and_commands(tmp_path: Path) -> None:
     })
     runner = CliRunner()
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("itbench.cli.commands.show.solution._LIBRARY_ROOT", lib)
+        mp.setenv("ITBENCH_LIBRARY", str(lib))
         result = runner.invoke(show_solution, ["16"])
     assert result.exit_code == 0
     assert "Edit the manifest." in result.output
@@ -117,7 +117,7 @@ def test_show_solution_multiple_variants_labeled(tmp_path: Path) -> None:
     })
     runner = CliRunner()
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("itbench.cli.commands.show.solution._LIBRARY_ROOT", lib)
+        mp.setenv("ITBENCH_LIBRARY", str(lib))
         result = runner.invoke(show_solution, ["60"])
     assert result.exit_code == 0
     assert "Variant 1" in result.output
@@ -136,7 +136,7 @@ def test_show_solution_multiple_faults_labeled(tmp_path: Path) -> None:
     })
     runner = CliRunner()
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("itbench.cli.commands.show.solution._LIBRARY_ROOT", lib)
+        mp.setenv("ITBENCH_LIBRARY", str(lib))
         result = runner.invoke(show_solution, ["60"])
     assert result.exit_code == 0
     assert "Fault 1" in result.output
@@ -152,7 +152,7 @@ def test_show_solution_no_solutions_message(tmp_path: Path) -> None:
     })
     runner = CliRunner()
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("itbench.cli.commands.show.solution._LIBRARY_ROOT", lib)
+        mp.setenv("ITBENCH_LIBRARY", str(lib))
         result = runner.invoke(show_solution, ["1"])
     assert result.exit_code == 0
     assert "No solutions recorded" in result.output
@@ -173,7 +173,7 @@ def test_show_solution_parses_file_with_schema_comment(tmp_path: Path) -> None:
     (d / "ground_truth.yaml").write_text(content, encoding="utf-8")
     runner = CliRunner()
     with pytest.MonkeyPatch().context() as mp:
-        mp.setattr("itbench.cli.commands.show.solution._LIBRARY_ROOT", lib)
+        mp.setenv("ITBENCH_LIBRARY", str(lib))
         result = runner.invoke(show_solution, ["16"])
     assert result.exit_code == 0
     assert "No solutions recorded" in result.output

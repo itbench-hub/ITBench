@@ -1,11 +1,9 @@
 """Show statistics sub-command for ITBench."""
 
 from collections import Counter, defaultdict
-from pathlib import Path
 from typing import Any
 
 import click
-import yaml
 
 from rich import box
 from rich.console import Console
@@ -13,10 +11,11 @@ from rich.table import Table
 
 from itbench.models.fault import FAULT_CATALOG
 from itbench.models.waiter import WAITER_CATALOG
+from itbench.paths import library
+from itbench.utils.scenarios import load_scenario_docs
 
 console = Console()
 
-_LIBRARY_ROOT = Path(__file__).parents[5] / "library"
 _BAR_WIDTH = 20
 
 
@@ -32,25 +31,7 @@ def _bar(count: int, total: int) -> str:
 
 def _load_scenarios() -> list[dict[str, Any]]:
     """Return parsed YAML dicts for every scenario in the library."""
-    scenarios_dir = _LIBRARY_ROOT / "scenarios"
-    results: list[dict[str, Any]] = []
-    if not scenarios_dir.exists():
-        return results
-    for scenario_dir in sorted(
-        scenarios_dir.iterdir(),
-        key=lambda p: int(p.name) if p.name.isdigit() else p.name,
-    ):
-        f = scenario_dir / "scenario.yaml"
-        if not f.exists():
-            continue
-        try:
-            data = yaml.safe_load(f.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        if isinstance(data, dict):
-            data["_id"] = scenario_dir.name
-            results.append(data)
-    return results
+    return [{**data, "_id": scenario_id} for scenario_id, data in load_scenario_docs(library.scenarios)]
 
 
 def _stats_faults(full: bool) -> None:

@@ -13,11 +13,10 @@ import yaml
 
 from rich.console import Console
 
+from itbench.paths import library
 from itbench.utils.runner import run_playbook
 
 console = Console()
-
-_LIBRARY_ROOT = Path(__file__).parents[5] / "library"
 
 _TOOLS_DEFAULTS_DIR = (
     Path(__file__).parents[5]
@@ -178,7 +177,7 @@ def deploy_environment(scenario_id: str | None, kubeconfig: str, only: str | Non
     recorders_vars: dict[str, Any] = {}
 
     if scenario_id:
-        scenario_path = _LIBRARY_ROOT / "scenarios" / str(scenario_id) / "scenario.yaml"
+        scenario_path = library.scenarios / str(scenario_id) / "scenario.yaml"
         if not scenario_path.exists():
             console.print(f"[red]Scenario '{scenario_id}' not found at {scenario_path}[/red]")
             raise SystemExit(1)

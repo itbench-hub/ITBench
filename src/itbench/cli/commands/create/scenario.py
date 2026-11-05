@@ -28,11 +28,10 @@ from itbench.models.scenario import (
     ScenarioFault,
     ScenarioFaultInjection,
 )
+from itbench.paths import library
 from itbench.utils.ground_truth import generate_ground_truth
 
 console = Console()
-
-_LIBRARY_ROOT = Path(__file__).parents[5] / "library" / "scenarios"
 
 _DOMAINS: list[str] = [domain.value for domain in ScenarioDomain]
 
@@ -134,14 +133,7 @@ def _ask_fault_block() -> ScenarioFault | None:
 
 
 @click.command(name="scenario", help="Interactively create and scaffold a new scenario.")
-@click.option(
-    "--scenarios-dir",
-    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
-    default=_LIBRARY_ROOT,
-    show_default=True,
-    help="Directory where numbered scenario subdirectories will be created.",
-)
-def create_scenario_command(scenarios_dir: Path) -> None:
+def create_scenario_command() -> None:
     """Interactively scaffold a new scenario, its ground truth, and an optional extra_vars file."""
     console.print("[bold blue]Create a New ITBench Scenario[/bold blue]\n")
 
@@ -189,6 +181,7 @@ def create_scenario_command(scenarios_dir: Path) -> None:
         exclude={"environment": {"applications": {"__all__": {"enabled"}}}},
     )
 
+    scenarios_dir = library.scenarios
     next_id = _get_next_index(scenarios_dir)
     scenario_dir = scenarios_dir / str(next_id)
     scenario_dir.mkdir(parents=True, exist_ok=True)

@@ -3,17 +3,16 @@
 import re
 
 from enum import StrEnum
-from pathlib import Path
 from typing import Self
 
 import yaml
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
+from itbench.models.catalog import LazyCatalog
 from itbench.models.kubernetes import KubernetesObjectKind
 from itbench.models.platform import Platform
-
-_FAULTS_DIR = Path(__file__).parents[3] / "library" / "faults"
+from itbench.paths import library
 
 
 class FaultAlerts(StrEnum):
@@ -208,12 +207,13 @@ class Fault(BaseModel):
 
 
 def _load_fault_catalog() -> dict[str, Fault]:
-    if not _FAULTS_DIR.exists():
-        raise FileNotFoundError(f"Fault library directory not found: {_FAULTS_DIR}")
+    faults_dir = library.faults
+    if not faults_dir.exists():
+        raise FileNotFoundError(f"Fault library directory not found: {faults_dir}")
 
     catalog: dict[str, Fault] = {}
 
-    for path in _FAULTS_DIR.glob("*.yaml"):
+    for path in faults_dir.glob("*.yaml"):
         try:
             data = yaml.safe_load(path.read_text(encoding="utf-8"))
             fault = Fault.model_validate(data)
@@ -224,4 +224,4 @@ def _load_fault_catalog() -> dict[str, Fault]:
     return catalog
 
 
-FAULT_CATALOG: dict[str, Fault] = _load_fault_catalog()
+FAULT_CATALOG: LazyCatalog[Fault] = LazyCatalog(_load_fault_catalog)

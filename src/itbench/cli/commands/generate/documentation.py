@@ -3,15 +3,15 @@
 from pathlib import Path
 
 import click
-import yaml
 
 from rich.console import Console
 
 from itbench.models.waiter import WAITER_CATALOG
+from itbench.paths import library
+from itbench.utils.scenarios import load_scenario_docs, summarize_scenario
 
 console = Console()
 
-_LIBRARY_ROOT = Path(__file__).parents[5] / "library"
 _DOCS_ROOT = Path("documentation/library")
 
 
@@ -168,38 +168,17 @@ def _generate_waiters_documentation(output_dir: Path) -> Path:
 
 
 def _generate_scenarios_documentation(output_dir: Path) -> Path:
-    scenarios_dir = _LIBRARY_ROOT / "scenarios"
-
     rows: list[dict[str, str]] = []
-    if scenarios_dir.exists():
-        for scenario_dir in sorted(
-            scenarios_dir.iterdir(),
-            key=lambda p: int(p.name) if p.name.isdigit() else p.name,
-        ):
-            scenario_file = scenario_dir / "scenario.yaml"
-            if not scenario_file.exists():
-                continue
-            try:
-                data = yaml.safe_load(scenario_file.read_text(encoding="utf-8"))
-            except Exception:
-                continue
-
-            env = data.get("environment") or {}
-            applications = [a.get("id", "?") for a in env.get("applications", [])]
-            domains = env.get("domains", [])
-            fault_ids = [
-                inj.get("id", "?")
-                for fault in (data.get("faults") or [])
-                for inj in fault.get("injections", [])
-            ]
-            rows.append(
-                {
-                    "id": scenario_dir.name,
-                    "applications": ", ".join(applications),
-                    "domains": ", ".join(domains),
-                    "faults": ", ".join(fault_ids),
-                }
-            )
+    for scenario_id, data in load_scenario_docs(library.scenarios):
+        summary = summarize_scenario(scenario_id, data)
+        rows.append(
+            {
+                "id": summary["id"],
+                "applications": ", ".join(summary["applications"]),
+                "domains": ", ".join(summary["domains"]),
+                "faults": ", ".join(summary["faults"]),
+            }
+        )
 
     lines = [
         "# Scenarios",

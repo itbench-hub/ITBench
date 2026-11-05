@@ -1,6 +1,5 @@
 """Show solution sub-command for ITBench."""
 
-from pathlib import Path
 from typing import Any
 
 import click
@@ -11,9 +10,9 @@ from rich.markup import escape
 from rich.panel import Panel
 from rich.rule import Rule
 
-console = Console()
+from itbench.paths import library
 
-_LIBRARY_ROOT = Path(__file__).parents[5] / "library"
+console = Console()
 
 
 def _render_solution(scenario_id: str, data: dict[str, Any]) -> None:
@@ -78,7 +77,7 @@ def _render_solution(scenario_id: str, data: dict[str, Any]) -> None:
 @click.argument("scenario_id")
 def show_solution(scenario_id: str) -> None:
     """Print the ground truth solution for a scenario."""
-    ground_truth_path = _LIBRARY_ROOT / "scenarios" / scenario_id / "ground_truth.yaml"
+    ground_truth_path = library.scenarios / scenario_id / "ground_truth.yaml"
 
     if not ground_truth_path.exists():
         console.print(f"[red]No ground truth found for scenario '[bold]{scenario_id}[/bold]'.[/red]")

@@ -21,6 +21,7 @@ from itbench.models.fault import (
 )
 from itbench.models.kubernetes import KubernetesObjectKind
 from itbench.models.platform import Platform
+from itbench.paths import library
 
 console = Console()
 
@@ -60,7 +61,7 @@ def _scaffold_ansible_task(tasks_dir: Path, fault_id: str) -> Path:
 @click.option(
     "--library-dir",
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
-    default=Path("library/faults"),
+    default=library.faults,
     show_default=True,
     help="Directory containing fault YAML files.",
 )
