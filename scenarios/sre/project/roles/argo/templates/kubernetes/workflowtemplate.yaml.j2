@@ -1,0 +1,247 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  labels:
+    "itbench.io/ansible-role": argo
+    "itbench.io/layer": orchestration
+  name: itbench-scenario-execution
+  namespace: "[[ argo_namespace ]]"
+spec:
+  arguments:
+    parameters:
+      - name: scenario_id
+      - name: workflow_variant
+        value: Full-Execution
+      - name: environment_index
+        value: "1"
+      - name: environment_secret
+        value: environment-1-kubeconfig
+      - name: trial_id
+        value: "1"
+      - name: experiment_id
+        value: ""
+  entrypoint: scenario-execution
+  synchronization:
+    mutex:
+      name: "environment-{{inputs.parameters.environment_index}}"
+  volumes:
+    - name: kubeconfig-volume
+      secret:
+        secretName: "{{inputs.parameters.environment_secret}}"
+  templates:
+    - name: scenario-execution
+      dag:
+        tasks:
+          - name: deploy-tools
+            template: run-itbench-step
+            when: "{{inputs.parameters.workflow_variant}} != Post-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_tools.yaml
+                - name: tags
+                  value: install
+
+          - name: deploy-applications
+            template: run-itbench-step
+            depends: "deploy-tools.Succeeded || deploy-tools.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Post-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_applications.yaml
+                - name: tags
+                  value: install
+                - name: extra-vars
+                  value: '{"scenario_id": "{{inputs.parameters.scenario_id}}"}'
+
+          - name: deploy-recorders-pre-fault
+            template: run-itbench-step
+            depends: "deploy-applications.Succeeded || deploy-applications.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Post-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_recorders.yaml
+                - name: tags
+                  value: install_recorders
+                - name: extra-vars
+                  value: '{"scenario_id": "{{inputs.parameters.scenario_id}}", "benchmark_phase": "pre-fault-injection"}'
+
+          - name: clear-kubernetes-events
+            template: run-itbench-step
+            depends: "deploy-recorders-pre-fault.Succeeded || deploy-recorders-pre-fault.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Post-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: clear_kubernetes_events.yaml
+
+          - name: grant-access-to-agent
+            template: run-itbench-step
+            depends: "clear-kubernetes-events.Succeeded || clear-kubernetes-events.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Post-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_agent_access.yaml
+                - name: tags
+                  value: grant_access
+                - name: extra-vars
+                  value: '{"scenario_id": "{{inputs.parameters.scenario_id}}"}'
+
+          - name: pre-injection-pause
+            template: pause-step
+            depends: "grant-access-to-agent.Succeeded || grant-access-to-agent.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Post-Agent-Execution"
+            arguments:
+              parameters:
+                - name: duration
+                  value: "2m"
+
+          - name: inject-faults
+            template: run-itbench-step
+            depends: "pre-injection-pause.Succeeded || pre-injection-pause.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Post-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_faults.yaml
+                - name: tags
+                  value: inject_faults
+                - name: extra-vars
+                  value: '{"scenario_id": "{{inputs.parameters.scenario_id}}", "faults_index": 0}'
+
+          - name: deploy-recorders-pre-agent
+            template: run-itbench-step
+            depends: "inject-faults.Succeeded || inject-faults.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Post-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_recorders.yaml
+                - name: tags
+                  value: install_recorders
+                - name: extra-vars
+                  value: '{"scenario_id": "{{inputs.parameters.scenario_id}}", "benchmark_phase": "pre-agent-injection"}'
+
+          - name: deploy-recorders-post-agent
+            template: run-itbench-step
+            depends: "deploy-recorders-pre-agent.Succeeded || deploy-recorders-pre-agent.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Pre-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_recorders.yaml
+                - name: tags
+                  value: install_recorders
+                - name: extra-vars
+                  value: '{"scenario_id": "{{inputs.parameters.scenario_id}}", "benchmark_phase": "post-agent-execution"}'
+
+          - name: post-agent-execution-pause
+            template: pause-step
+            depends: "deploy-recorders-post-agent.Succeeded || deploy-recorders-post-agent.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} == Full-Execution"
+            arguments:
+              parameters:
+                - name: duration
+                  value: "10m"
+
+          - name: remove-fault
+            template: run-itbench-step
+            depends: "post-agent-execution-pause.Succeeded || post-agent-execution-pause.Skipped || deploy-recorders-post-agent.Failed || deploy-recorders-pre-agent.Failed || inject-faults.Failed || grant-access-to-agent.Failed || clear-kubernetes-events.Failed || deploy-recorders-pre-fault.Failed || deploy-applications.Failed || deploy-tools.Failed"
+            when: "{{inputs.parameters.workflow_variant}} != Pre-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_faults.yaml
+                - name: tags
+                  value: remove_faults
+                - name: extra-vars
+                  value: '{"scenario_id": "{{inputs.parameters.scenario_id}}"}'
+
+          - name: remove-access-from-agent
+            template: run-itbench-step
+            depends: "remove-fault.Succeeded || remove-fault.Failed || remove-fault.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Pre-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_agent_access.yaml
+                - name: tags
+                  value: revoke_access
+
+          - name: undeploy-recorders
+            template: run-itbench-step
+            depends: "remove-access-from-agent.Succeeded || remove-access-from-agent.Failed || remove-access-from-agent.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Pre-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_recorders.yaml
+                - name: tags
+                  value: uninstall_recorders
+
+          - name: undeploy-applications
+            template: run-itbench-step
+            depends: "undeploy-recorders.Succeeded || undeploy-recorders.Failed || undeploy-recorders.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Pre-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_applications.yaml
+                - name: tags
+                  value: uninstall
+
+          - name: undeploy-tools
+            template: run-itbench-step
+            depends: "undeploy-applications.Succeeded || undeploy-applications.Failed || undeploy-applications.Skipped"
+            when: "{{inputs.parameters.workflow_variant}} != Pre-Agent-Execution"
+            arguments:
+              parameters:
+                - name: playbook
+                  value: manage_tools.yaml
+                - name: tags
+                  value: uninstall
+
+    - name: run-itbench-step
+      inputs:
+        parameters:
+          - name: playbook
+          - name: tags
+            value: ""
+          - name: extra-vars
+            value: "{}"
+      container:
+        image: quay.io/it-bench/bench-runner:1.0.0
+        imagePullPolicy: IfNotPresent
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - >-
+            python3 -c "
+            import json, os;
+            from itbench.utils.runner import run_playbook;
+            extra = json.loads('''{{inputs.parameters.extra-vars}}''');
+            extra['cluster'] = {'kubeconfig': '/etc/itbench/kubeconfig'};
+            tags = ['{{inputs.parameters.tags}}'] if '{{inputs.parameters.tags}}' else None;
+            run_playbook(playbook='{{inputs.parameters.playbook}}', extra_vars=extra, tags=tags);
+            "
+        env:
+          - name: KUBECONFIG
+            value: /etc/itbench/kubeconfig
+          - name: PYTHONUNBUFFERED
+            value: "1"
+        volumeMounts:
+          - name: kubeconfig-volume
+            mountPath: /etc/itbench
+            readOnly: true
+
+    - name: pause-step
+      inputs:
+        parameters:
+          - name: duration
+      suspend:
+        duration: "{{inputs.parameters.duration}}"

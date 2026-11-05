@@ -94,12 +94,12 @@ podman machine start
 
 Two configuration templates are provided in the `configs` directory:
 
-- [awx](./configs/awx.yaml)
+- [orchestrator](./configs/orchestrator.yaml)
 - [simple](./configs/simple.yaml)
 
 The `simple` configuration is for basic use cases, such as developing new faults or scenarios or running a single benchmark trial. This cluster will suffice for most needs. For management instructions for a Kind cluster based on the `simple` configuration, please see [here](#simple-cluster).
 
-The `AWX` configuration is for advanced use cases which require orchestration to run multi-trial benchmarks across a cluster or clusters. This requires a machine with significantly more resources than the `simple` configuration. For management instructions for a Kind cluster based on the `awx` configuration, please see [here](#awx-cluster).
+The `orchestrator` configuration is for advanced use cases which require orchestration to run multi-trial benchmarks across a cluster or clusters. This requires a machine with significantly more resources than the `simple` configuration. For management instructions for a Kind cluster based on the `orchestrator` configuration, please see [here](#orchestrator-cluster).
 
 Regardless of the configuration used, once the cluster has been started, it can be accessed with kubectl using the following command:
 
@@ -108,13 +108,13 @@ export KUBECONFIG=~/.kube/config
 kubectl cluster-info
 ```
 
-### AWX Cluster
+### Orchestrator Cluster
 
 #### Creation
 
 1. Run the following command to create a Kind cluster:
 ```shell
-make create-awx-cluster
+make create-orchestrator-cluster
 ```
 
 2. Open a new terminal window and run the following command to start the Cloud Provider Kind
@@ -128,7 +128,7 @@ make run-service-provider
 
 2. Run the following command to destroy a Kind cluster
 ```shell
-make destroy-awx-cluster
+make destroy-orchestrator-cluster
 ```
 
 ### Simple Cluster

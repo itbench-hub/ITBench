@@ -58,22 +58,22 @@ start-simple-tunnel: CLUSTER_PROFILE=minikube-dev
 start-simple-tunnel: ## Opens Minikube tunnel to allow external IP access to dev cluster
 	$(MAKE) start-tunnel CLUSTER_PROFILE=$(CLUSTER_PROFILE)
 
-.PHONY: create-awx-cluster
-create-awx-cluster: CLUSTER_PROFILE=minikube-awx
-create-awx-cluster: CLUSTER_NODES=3
-create-awx-cluster: CLUSTER_TARGET=awx-stack
-create-awx-cluster: group-vars ## Create a Minikube cluster for local development on AWX
+.PHONY: create-orchestrator-cluster
+create-orchestrator-cluster: CLUSTER_PROFILE=minikube-orchestrator
+create-orchestrator-cluster: CLUSTER_NODES=3
+create-orchestrator-cluster: CLUSTER_TARGET=orchestrator-stack
+create-orchestrator-cluster: group-vars ## Create a Minikube cluster for local development on Orchestrator
 	$(MAKE) check-resources CLUSTER_TARGET=$(CLUSTER_TARGET)
 	$(MAKE) create-cluster CLUSTER_PROFILE=$(CLUSTER_PROFILE) CLUSTER_NODES=$(CLUSTER_NODES)
 
-.PHONY: destroy-awx-cluster
-destroy-awx-cluster: CLUSTER_PROFILE=minikube-awx
-destroy-awx-cluster: ## Deletes the local development AWX Minikube cluster
+.PHONY: destroy-orchestrator-cluster
+destroy-orchestrator-cluster: CLUSTER_PROFILE=minikube-orchestrator
+destroy-orchestrator-cluster: ## Deletes the local development Orchestrator Minikube cluster
 	$(MAKE) destroy-cluster CLUSTER_PROFILE=$(CLUSTER_PROFILE)
 
-.PHONY: start-awx-tunnel
-start-awx-tunnel: CLUSTER_PROFILE=minikube-awx
-start-awx-tunnel: ## Opens Minikube tunnel to allow external IP access to AWX cluster
+.PHONY: start-orchestrator-tunnel
+start-orchestrator-tunnel: CLUSTER_PROFILE=minikube-orchestrator
+start-orchestrator-tunnel: ## Opens Minikube tunnel to allow external IP access to Orchestrator cluster
 	$(MAKE) start-tunnel CLUSTER_PROFILE=$(CLUSTER_PROFILE)
 
 .PHONY: test-molecule

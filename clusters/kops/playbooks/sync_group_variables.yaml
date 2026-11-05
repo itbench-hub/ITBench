@@ -6,7 +6,7 @@
     - name: Validate target variable
       ansible.builtin.assert:
         that:
-          - target in ["awx-stack", "single-cluster"]
+          - target in ["orchestrator-stack", "single-cluster"]
         fail_msg: Invalid target provided. Please provide valid target.
         success_msg: Valid target provided.
   tasks:
@@ -49,36 +49,36 @@
           vars:
             group_vars_path: "{{ playbook_dir }}/../../../scenarios/sre/inventory/group_vars/environment/cluster.yaml"
 
-    - name: Write runner group variables
+    - name: Write orchestrator stack group variables
       when:
-        - target == "awx-stack"
+        - target == "orchestrator-stack"
       block:
         - name: Validate the existence of kubeconfig
           ansible.builtin.assert:
             that:
-              - kubeconfig_paths.matched == 1 + stack.runners.count
+              - kubeconfig_paths.matched == 1 + stack.environments.count
             fail_msg: Unable to find kubeconfigs. Please ensure that cluster kubeconfigs has been exported.
             success_msg: Located kubeconfigs.
 
-        - name: Write runner group variables
+        - name: Write orchestrator stack group variables
           ansible.builtin.copy:
             content: |-
               {{
                 (
                   {
                     "stack": {
-                      "awx": {
+                      "orchestrator": {
                         "kubeconfig": (
                           kubeconfig_paths.files |
-                          ansible.builtin.selectattr("path", "search", stack.name.prefix + "-head") |
+                          ansible.builtin.selectattr("path", "search", stack.name.prefix + "-orchestrator") |
                           map(attribute="path") |
                           ansible.builtin.first
                         )
                       },
-                      "runners": {
+                      "environments": {
                         "kubeconfigs": (
                           kubeconfig_paths.files |
-                          ansible.builtin.select("search", stack.name.prefix + "-runner") |
+                          ansible.builtin.selectattr("path", "search", stack.name.prefix + "-environment") |
                           map(attribute="path")
                         )
                       }
@@ -90,4 +90,4 @@
             dest: "{{ group_vars_path | ansible.builtin.realpath }}"
             mode: "0644"
           vars:
-            group_vars_path: "{{ playbook_dir }}/../../../scenarios/sre/inventory/group_vars/runner/stack.yaml"
+            group_vars_path: "{{ playbook_dir }}/../../../scenarios/sre/inventory/group_vars/orchestrator/stack.yaml"

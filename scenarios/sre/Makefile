@@ -11,10 +11,10 @@ group-vars: ## Generates the group variables
 	cp inventory/group_vars/environment/applications.yaml.example inventory/group_vars/environment/applications.yaml
 	cp inventory/group_vars/environment/cluster.yaml.example inventory/group_vars/environment/cluster.yaml
 	cp inventory/group_vars/environment/tools.yaml.example inventory/group_vars/environment/tools.yaml
-	cp inventory/group_vars/runner/agent.yaml.example inventory/group_vars/runner/agent.yaml
-	cp inventory/group_vars/runner/experiments.yaml.example inventory/group_vars/runner/experiments.yaml
-	cp inventory/group_vars/runner/github.yaml.example inventory/group_vars/runner/github.yaml
-	cp inventory/group_vars/runner/stack.yaml.example inventory/group_vars/runner/stack.yaml
+	cp inventory/group_vars/orchestrator/agent.yaml.example inventory/group_vars/orchestrator/agent.yaml
+	cp inventory/group_vars/orchestrator/experiments.yaml.example inventory/group_vars/orchestrator/experiments.yaml
+	cp inventory/group_vars/orchestrator/github.yaml.example inventory/group_vars/orchestrator/github.yaml
+	cp inventory/group_vars/orchestrator/stack.yaml.example inventory/group_vars/orchestrator/stack.yaml
 
 .PHONY: deploy-tools
 deploy-tools: ## Deploys the observability and fault tools to cluster
@@ -117,45 +117,9 @@ endif
 disable-agent-access: ## Removes access controls for llm agent
 	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "revoke_access"
 
-.PHONY: deploy-awx
-deploy-awx: ## Deploys AWX to a cluster
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "install_tools"
-
-.PHONY: undeploy-awx
-undeploy-awx: ## Undeploys AWX to a cluster
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "uninstall_tools"
-
-.PHONY: configure-awx-stack
-configure-awx-stack: ## Add job and workflow templates to AWX pipeline
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "configure_awx"
-
-.PHONY: launch-start-workflow
-launch-start-workflow: ## Launches the workflow equivalent of start_incident on AWX
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=start"
-
-.PHONY: launch-stop-workflow
-launch-stop-workflow: ## Launches the workflow equivalent of stop_incident on AWX
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=stop"
-
-.PHONY: launch-full-workflow
-launch-full-workflow: ## Launches the scenario full execution workflow
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=full"
-
-.PHONY: launch-data-collection-workflow
-launch-data-collection-workflow: ## Launches the data collection execution workflow
-	$(UV) run ansible-playbook -i inventory project/manage_awx.yaml --tags "launch_workflows" \
-		--extra-vars "workflow_type=data"
-
 .PHONY: test-molecule-agent
 test-molecule-agent: ## Runs Molecule tests for the Agent role
 	cd project/roles/agent && $(UV) run molecule test --all --report --command-borders
-
-.PHONY: test-molecule-awx
-test-molecule-awx: ## Runs Molecule tests for the AWX role
-	cd project/roles/awx && $(UV) run molecule test --all --report --command-borders
 
 .PHONY: test-molecule-faults
 test-molecule-faults: ## Runs Molecule tests for the Faults role

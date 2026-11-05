@@ -39,16 +39,16 @@ destroy-simple-cluster: CLUSTER_NAME=kind-dev
 destroy-simple-cluster: ## Deletes the local development Kind cluster
 	$(MAKE) destroy-cluster CLUSTER_NAME=$(CLUSTER_NAME)
 
-.PHONY: create-awx-cluster
-create-awx-cluster: CLUSTER_CONFIG_FILE=awx.yaml
-create-awx-cluster: CLUSTER_TARGET=awx-stack
-create-awx-cluster: group-vars ## Create a Kind cluster for local development on AWX
+.PHONY: create-orchestrator-cluster
+create-orchestrator-cluster: CLUSTER_CONFIG_FILE=orchestrator.yaml
+create-orchestrator-cluster: CLUSTER_TARGET=orchestrator-stack
+create-orchestrator-cluster: group-vars ## Create a Kind cluster for local development on Orchestrator
 	$(MAKE) check-resources CLUSTER_TARGET=$(CLUSTER_TARGET)
 	$(MAKE) create-cluster CLUSTER_CONFIG_FILE=$(CLUSTER_CONFIG_FILE)
 
-.PHONY: destroy-awx-cluster
-destroy-awx-cluster: CLUSTER_NAME=kind-awx
-destroy-awx-cluster: ## Deletes the local development AWX Kind cluster
+.PHONY: destroy-orchestrator-cluster
+destroy-orchestrator-cluster: CLUSTER_NAME=kind-orchestrator
+destroy-orchestrator-cluster: ## Deletes the local development Orchestrator Kind cluster
 	$(MAKE) destroy-cluster CLUSTER_NAME=$(CLUSTER_NAME)
 
 .PHONY: run-service-provider
