@@ -14,12 +14,18 @@ def summarize_scenario(scenario_id: str, data: dict[str, Any]) -> dict[str, Any]
         "id": scenario_id,
         "domains": list(env.get("domains") or []),
         "applications": [a.get("id", "?") for a in env.get("applications") or []],
-        "faults": [
-            inj.get("id", "?")
-            for fault in data.get("faults") or []
-            for inj in fault.get("injections") or []
-        ],
+        "faults": [inj.get("id", "?") for fault in data.get("faults") or [] for inj in fault.get("injections") or []],
     }
+
+
+def known_scenario_ids(scenarios_dir: Path) -> list[str]:
+    """Return the ids of all scenario directories in *scenarios_dir*, in numeric order.
+
+    A missing *scenarios_dir* yields an empty list.
+    """
+    if not scenarios_dir.is_dir():
+        return []
+    return sorted((d.name for d in scenarios_dir.iterdir() if d.name.isdigit()), key=int)
 
 
 def load_scenario_docs(

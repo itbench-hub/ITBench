@@ -38,11 +38,7 @@ def _parse_discovery_dir(app_id: str | None = None) -> dict[str, list[Kubernetes
     if not discovery_dir.exists():
         return results
 
-    app_dirs = (
-        [discovery_dir / app_id]
-        if app_id
-        else [p for p in discovery_dir.iterdir() if p.is_dir()]
-    )
+    app_dirs = [discovery_dir / app_id] if app_id else [p for p in discovery_dir.iterdir() if p.is_dir()]
 
     for app_dir in app_dirs:
         if not app_dir.is_dir():

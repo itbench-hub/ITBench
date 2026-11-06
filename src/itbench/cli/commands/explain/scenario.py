@@ -12,12 +12,8 @@ from rich.rule import Rule
 from rich.table import Table
 
 from itbench.cli.render import console, detail_format_option, emit_structured, err_console, exit_not_found
-from itbench.paths import library
-
-
-def _known_scenario_ids() -> list[str]:
-    """Return the ids of all scenario directories, in numeric order."""
-    return sorted((d.name for d in library.scenarios.iterdir() if d.name.isdigit()), key=int)
+from itbench.paths import repository
+from itbench.utils.scenarios import known_scenario_ids
 
 
 def _load_mapping(path: Any) -> dict[str, Any]:
@@ -144,13 +140,15 @@ def _render_scenario(scenario_id: str, data: dict[str, Any], ground_truth: dict[
     applications = [str(a.get("id", "?")) for a in env.get("applications") or []]
 
     console.print()
-    console.print(Panel(
-        f"[bold]Scenario {escape(scenario_id)}[/bold]\n\n"
-        f"[dim]domains:[/dim] {escape(', '.join(domains))}   "
-        f"[dim]applications:[/dim] {escape(', '.join(applications))}",
-        title="[bold magenta]SCENARIO[/bold magenta]",
-        border_style="magenta",
-    ))
+    console.print(
+        Panel(
+            f"[bold]Scenario {escape(scenario_id)}[/bold]\n\n"
+            f"[dim]domains:[/dim] {escape(', '.join(domains))}   "
+            f"[dim]applications:[/dim] {escape(', '.join(applications))}",
+            title="[bold magenta]SCENARIO[/bold magenta]",
+            border_style="magenta",
+        )
+    )
 
     faults = data.get("faults") or []
     if faults:
@@ -167,11 +165,11 @@ def _render_scenario(scenario_id: str, data: dict[str, Any], ground_truth: dict[
 @detail_format_option
 def explain_scenario(scenario_id: str, output_format: str) -> None:
     """Print a formatted man-page for a scenario."""
-    known = _known_scenario_ids()
+    known = known_scenario_ids(repository.scenarios)
     if scenario_id not in known:
         exit_not_found("Scenario", scenario_id, known, "itbench list scenarios")
 
-    scenario_dir = library.scenarios / scenario_id
+    scenario_dir = repository.scenarios / scenario_id
     data = _load_mapping(scenario_dir / "scenario.yaml")
 
     ground_truth_path = scenario_dir / "ground_truth.yaml"

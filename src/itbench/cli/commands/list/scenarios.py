@@ -5,7 +5,7 @@ from typing import Any
 import click
 
 from itbench.cli.render import Column, format_option, render_rows, warn_skipped_scenario
-from itbench.paths import library
+from itbench.paths import repository
 from itbench.utils.scenarios import load_scenario_docs, summarize_scenario
 
 _COLUMNS = [
@@ -22,7 +22,7 @@ def list_scenarios(output_format: str) -> None:
     """List all benchmark scenarios."""
     rows: list[dict[str, Any]] = [
         summarize_scenario(scenario_id, data)
-        for scenario_id, data in load_scenario_docs(library.scenarios, on_error=warn_skipped_scenario)
+        for scenario_id, data in load_scenario_docs(repository.scenarios, on_error=warn_skipped_scenario)
     ]
 
     render_rows(

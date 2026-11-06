@@ -62,7 +62,7 @@ def _invoke(library: Path, args: list[str]) -> Any:
     return CliRunner().invoke(
         explain_scenario,
         args,
-        env={"ITBENCH_LIBRARY": str(library), "COLUMNS": "200"},
+        env={"ITBENCH_LIBRARY_PATH": str(library), "COLUMNS": "200"},
     )
 
 

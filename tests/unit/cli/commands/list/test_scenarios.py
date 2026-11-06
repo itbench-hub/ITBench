@@ -21,7 +21,7 @@ def _write_scenario(library: Path, name: str, data: dict | None, raw: str | None
 
 def test_list_scenarios_empty_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     (tmp_path / "scenarios").mkdir()
-    monkeypatch.setenv("ITBENCH_LIBRARY", str(tmp_path))
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
 
     result = CliRunner().invoke(list_scenarios, [])
 
@@ -30,11 +30,15 @@ def test_list_scenarios_empty_directory(tmp_path: Path, monkeypatch: pytest.Monk
 
 
 def test_list_scenarios_shows_entries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _write_scenario(tmp_path, "1", {
-        "environment": {"applications": [{"id": "opentelemetry-demo"}], "domains": ["sre"]},
-        "faults": [{"injections": [{"id": "scaled-to-zero-kubernetes-workload"}]}],
-    })
-    monkeypatch.setenv("ITBENCH_LIBRARY", str(tmp_path))
+    _write_scenario(
+        tmp_path,
+        "1",
+        {
+            "environment": {"applications": [{"id": "opentelemetry-demo"}], "domains": ["sre"]},
+            "faults": [{"injections": [{"id": "scaled-to-zero-kubernetes-workload"}]}],
+        },
+    )
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
 
     result = CliRunner().invoke(list_scenarios, [], env={"COLUMNS": "300"})
 
@@ -47,7 +51,7 @@ def test_list_scenarios_shows_entries(tmp_path: Path, monkeypatch: pytest.Monkey
 def test_list_scenarios_sorted_numerically(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     for name in ("10", "2", "1"):
         _write_scenario(tmp_path, name, {"environment": {}})
-    monkeypatch.setenv("ITBENCH_LIBRARY", str(tmp_path))
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
 
     result = CliRunner().invoke(list_scenarios, ["--format", "json"])
 
@@ -56,7 +60,7 @@ def test_list_scenarios_sorted_numerically(tmp_path: Path, monkeypatch: pytest.M
 
 def test_list_scenarios_reports_malformed_yaml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _write_scenario(tmp_path, "1", None, raw=": invalid: yaml: [")
-    monkeypatch.setenv("ITBENCH_LIBRARY", str(tmp_path))
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
 
     result = CliRunner().invoke(list_scenarios, [])
 
@@ -67,7 +71,7 @@ def test_list_scenarios_reports_malformed_yaml(tmp_path: Path, monkeypatch: pyte
 
 def test_list_scenarios_reports_empty_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _write_scenario(tmp_path, "1", None, raw="")
-    monkeypatch.setenv("ITBENCH_LIBRARY", str(tmp_path))
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
 
     result = CliRunner().invoke(list_scenarios, [])
 
@@ -76,11 +80,15 @@ def test_list_scenarios_reports_empty_file(tmp_path: Path, monkeypatch: pytest.M
 
 
 def test_list_scenarios_json_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _write_scenario(tmp_path, "7", {
-        "environment": {"applications": [{"id": "book-info"}], "domains": ["sre"]},
-        "faults": [{"injections": [{"id": "some-fault"}]}],
-    })
-    monkeypatch.setenv("ITBENCH_LIBRARY", str(tmp_path))
+    _write_scenario(
+        tmp_path,
+        "7",
+        {
+            "environment": {"applications": [{"id": "book-info"}], "domains": ["sre"]},
+            "faults": [{"injections": [{"id": "some-fault"}]}],
+        },
+    )
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
 
     result = CliRunner().invoke(list_scenarios, ["--format", "json"])
 
@@ -92,7 +100,7 @@ def test_list_scenarios_json_output(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
 def test_list_scenarios_yaml_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _write_scenario(tmp_path, "7", {"environment": {"domains": ["sre"]}})
-    monkeypatch.setenv("ITBENCH_LIBRARY", str(tmp_path))
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
 
     result = CliRunner().invoke(list_scenarios, ["--format", "yaml"])
 

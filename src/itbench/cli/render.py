@@ -6,12 +6,14 @@ renders either a Rich table or machine-readable JSON / YAML.
 
 import difflib
 import json
+import sys
 
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, NoReturn
 
 import click
+import questionary
 import yaml
 
 from rich import box
@@ -49,6 +51,28 @@ def format_option[F: Callable[..., Any]](func: F) -> F:
         default="table",
         show_default=True,
         help="Output format.",
+    )(func)
+
+
+def kubeconfig_option[F: Callable[..., Any]](func: F) -> F:
+    """Add a required ``--kubeconfig`` option that falls back to ``$KUBECONFIG``."""
+    return click.option(
+        "--kubeconfig",
+        required=True,
+        envvar="KUBECONFIG",
+        metavar="PATH",
+        help="Path to kubeconfig file.",
+    )(func)
+
+
+def verbose_option[F: Callable[..., Any]](func: F) -> F:
+    """Add a ``-v/--verbose`` flag that streams the Ansible output instead of showing a spinner."""
+    return click.option(
+        "-v",
+        "--verbose",
+        is_flag=True,
+        default=False,
+        help="Stream the Ansible output instead of showing a spinner.",
     )(func)
 
 
@@ -92,6 +116,29 @@ def emit_structured(data: object, output_format: str) -> None:
 def warn_skipped_scenario(scenario_id: str, exc: Exception) -> None:
     """Report on stderr that a scenario could not be read; suitable as ``load_scenario_docs(on_error=...)``."""
     err_console.print(f"[yellow]Skipped scenario {escape(scenario_id)}: {escape(str(exc))}[/yellow]")
+
+
+def fail(message: str) -> NoReturn:
+    """Report *message* on stderr and exit with status 1. The message is printed as Rich markup."""
+    err_console.print(message)
+    raise SystemExit(1)
+
+
+def confirm_or_cancel(prompt: str, yes: bool, *, cancelled: str = "Cancelled.") -> bool:
+    """Ask the user to confirm a destructive action; return whether to proceed.
+
+    Returns ``True`` straight away when *yes* is set. Without a terminal there is nobody to ask, so
+    the command fails with a hint to pass ``--yes`` instead of hanging. Declining (or Ctrl-C) prints
+    *cancelled* and returns ``False``.
+    """
+    if yes:
+        return True
+    if not sys.stdin.isatty():
+        fail("[red]Confirmation required but input is not interactive. Pass --yes to proceed.[/red]")
+    if not questionary.confirm(prompt, default=False).ask():
+        console.print(f"[dim]{escape(cancelled)}[/dim]")
+        return False
+    return True
 
 
 def exit_not_found(kind: str, key: str, known: Iterable[str], list_command: str) -> NoReturn:

@@ -21,7 +21,7 @@ from itbench.models.fault import (
 )
 from itbench.models.kubernetes import KubernetesObjectKind
 from itbench.models.platform import Platform
-from itbench.paths import library
+from itbench.paths import repository
 
 console = Console()
 
@@ -34,14 +34,14 @@ _INJECT_TASK_TEMPLATE = Template("""\
 """)
 
 _KIND_TO_MODEL: dict[str, KubernetesObjectKind] = {
-    "DaemonSet":                 KubernetesObjectKind.KubernetesWorkload,
-    "Deployment":                KubernetesObjectKind.KubernetesWorkload,
-    "Gateway":                   KubernetesObjectKind.KubernetesGateway,
-    "HorizontalPodAutoscaler":   KubernetesObjectKind.KubernetesHorizontalPodAutoscaler,
-    "Namespace":                 KubernetesObjectKind.KubernetesNamespace,
-    "Secret":                    KubernetesObjectKind.KubernetesSecret,
-    "Service":                   KubernetesObjectKind.KubernetesService,
-    "StatefulSet":               KubernetesObjectKind.KubernetesWorkload,
+    "DaemonSet": KubernetesObjectKind.KubernetesWorkload,
+    "Deployment": KubernetesObjectKind.KubernetesWorkload,
+    "Gateway": KubernetesObjectKind.KubernetesGateway,
+    "HorizontalPodAutoscaler": KubernetesObjectKind.KubernetesHorizontalPodAutoscaler,
+    "Namespace": KubernetesObjectKind.KubernetesNamespace,
+    "Secret": KubernetesObjectKind.KubernetesSecret,
+    "Service": KubernetesObjectKind.KubernetesService,
+    "StatefulSet": KubernetesObjectKind.KubernetesWorkload,
 }
 
 
@@ -61,7 +61,7 @@ def _scaffold_ansible_task(tasks_dir: Path, fault_id: str) -> Path:
 @click.option(
     "--library-dir",
     type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
-    default=library.faults,
+    default=repository.faults,
     show_default=True,
     help="Directory containing fault YAML files.",
 )
@@ -90,10 +90,13 @@ def create_fault_command(library_dir: Path, tasks_dir: Path) -> None:
         default=Platform.Kubernetes.value,
     ).ask()
 
-    selected_tags = questionary.checkbox(
-        "Select tags:",
-        choices=[t.value for t in FaultTags],
-    ).ask() or []
+    selected_tags = (
+        questionary.checkbox(
+            "Select tags:",
+            choices=[t.value for t in FaultTags],
+        ).ask()
+        or []
+    )
 
     resources_input = questionary.text("Resource links (comma-separated):").ask() or ""
     resources = [r.strip() for r in resources_input.split(",") if r.strip()]
@@ -112,24 +115,27 @@ def create_fault_command(library_dir: Path, tasks_dir: Path) -> None:
             console.print("[yellow]At least one solution step is recommended.[/yellow]")
             continue
 
-        if not questionary.confirm(
-            "Add another solution step?", default=False
-        ).ask():
+        if not questionary.confirm("Add another solution step?", default=False).ask():
             is_defining_solutions = False
 
-    selected_alerts = questionary.checkbox(
-        "Alerts (optional):",
-        choices=[a.value for a in FaultAlerts],
-    ).ask() or []
+    selected_alerts = (
+        questionary.checkbox(
+            "Alerts (optional):",
+            choices=[a.value for a in FaultAlerts],
+        ).ask()
+        or []
+    )
 
-    selected_kinds = questionary.checkbox(
-        "Target kind(s):",
-        choices=list(_KIND_TO_MODEL),
-    ).ask() or []
+    selected_kinds = (
+        questionary.checkbox(
+            "Target kind(s):",
+            choices=list(_KIND_TO_MODEL),
+        ).ask()
+        or []
+    )
 
     target_refs: list[FaultTargetReference] = [
-        FaultTargetReference(kubernetes=_KIND_TO_MODEL[k])
-        for k in selected_kinds
+        FaultTargetReference(kubernetes=_KIND_TO_MODEL[k]) for k in selected_kinds
     ]
 
     fault = Fault(

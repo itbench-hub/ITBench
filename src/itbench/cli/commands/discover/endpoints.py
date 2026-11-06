@@ -12,7 +12,13 @@ console = Console()
 
 @click.command(name="endpoints", help="Discover external endpoints for the installed tools stack.")
 @click.option("--kubeconfig", required=True, envvar="KUBECONFIG", metavar="PATH", help="Path to kubeconfig file.")
-@click.option("--platform", required=True, type=click.Choice(["kubernetes", "openshift"]), envvar="ITBENCH_PLATFORM", help="Cluster platform.")
+@click.option(
+    "--platform",
+    required=True,
+    type=click.Choice(["kubernetes", "openshift"]),
+    envvar="ITBENCH_PLATFORM",
+    help="Cluster platform.",
+)
 def endpoints(kubeconfig: str, platform: str) -> None:
     """Resolve and print external URLs for all installed tools.
 

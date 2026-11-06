@@ -11,7 +11,13 @@ console = Console()
 
 
 @click.command(name="targets", help="Discover targetable workloads for all applications.")
-@click.option("--application", "application_id", default=None, metavar="SLUG", help="Limit discovery to a single application slug.")
+@click.option(
+    "--application",
+    "application_id",
+    default=None,
+    metavar="SLUG",
+    help="Limit discovery to a single application slug.",
+)
 def targets(application_id: str | None) -> None:
     """Run the discovery playbook and print all targetable workloads as a table.
 

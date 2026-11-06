@@ -10,9 +10,7 @@ from itbench.utils.cluster import SANDBOX_NODE_LABEL, WORKER_NODE_LABEL_SELECTOR
 
 
 @pytest.mark.integration
-def test_prepare_cluster_partitions_worker_nodes(
-    kubeconfig: str, itbench_cli: CliRunner
-) -> None:
+def test_prepare_cluster_partitions_worker_nodes(kubeconfig: str, itbench_cli: CliRunner) -> None:
     """prepare cluster should succeed and correctly label worker nodes."""
     result = itbench_cli.invoke(
         prepare_cluster_command,
@@ -44,15 +42,11 @@ def test_prepare_cluster_partitions_worker_nodes(
 
     for node in tool_workers:
         labels = node.metadata.labels or {}
-        assert SANDBOX_NODE_LABEL not in labels, (
-            f"Tool node '{node.metadata.name}' should not have sandbox label"
-        )
+        assert SANDBOX_NODE_LABEL not in labels, f"Tool node '{node.metadata.name}' should not have sandbox label"
 
 
 @pytest.mark.integration
-def test_prepare_cluster_is_idempotent(
-    kubeconfig: str, itbench_cli: CliRunner
-) -> None:
+def test_prepare_cluster_is_idempotent(kubeconfig: str, itbench_cli: CliRunner) -> None:
     """Running prepare cluster repeatedly should succeed without errors."""
     result = itbench_cli.invoke(
         prepare_cluster_command,

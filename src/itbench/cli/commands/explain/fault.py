@@ -28,8 +28,7 @@ def _placeholder_name(class_name: str) -> str:
 
 
 _KUBERNETES_OBJECT_CLASSES: dict[str, type[KubernetesObject]] = {
-    cls.__name__: cls
-    for cls in get_args(get_args(KubernetesObjects)[0])
+    cls.__name__: cls for cls in get_args(get_args(KubernetesObjects)[0])
 }
 
 
@@ -93,14 +92,16 @@ def _render_solutions(fault: Fault) -> None:
 def _render_fault(slug: str, fault: Fault) -> None:
     """Render a fault as a Rich man-page."""
     console.print()
-    console.print(Panel(
-        f"[bold]{escape(fault.name)}[/bold]\n\n"
-        f"[dim]slug:[/dim] {escape(slug)}   "
-        f"[dim]platform:[/dim] {escape(fault.platform)}   "
-        f"[dim]tags:[/dim] {escape(', '.join(fault.tags))}",
-        title="[bold blue]FAULT[/bold blue]",
-        border_style="blue",
-    ))
+    console.print(
+        Panel(
+            f"[bold]{escape(fault.name)}[/bold]\n\n"
+            f"[dim]slug:[/dim] {escape(slug)}   "
+            f"[dim]platform:[/dim] {escape(fault.platform)}   "
+            f"[dim]tags:[/dim] {escape(', '.join(fault.tags))}",
+            title="[bold blue]FAULT[/bold blue]",
+            border_style="blue",
+        )
+    )
 
     _render_status(fault)
 
@@ -120,11 +121,7 @@ def _render_fault(slug: str, fault: Fault) -> None:
             console.print(f"  kubernetes: {escape(target.kubernetes)}")
         console.print()
 
-    targets = [
-        example
-        for target in fault.targets
-        if (example := _target_example(target.kubernetes)) is not None
-    ]
+    targets = [example for target in fault.targets if (example := _target_example(target.kubernetes)) is not None]
     example = {"faults": [{"injections": [{"id": slug, "targets": targets}]}]}
     console.print("[bold]SCENARIO YAML EXAMPLE[/bold]")
     console.print("  # In library/scenarios/<id>/scenario.yaml", markup=False)

@@ -14,16 +14,7 @@ import yaml
 
 from kubernetes import client, config  # type: ignore[import-untyped]
 
-_VARS_DIR = (
-    Path(__file__).parents[3]
-    / "scenarios"
-    / "sre"
-    / "project"
-    / "roles"
-    / "tools"
-    / "vars"
-    / "main"
-)
+_VARS_DIR = Path(__file__).parents[3] / "scenarios" / "sre" / "project" / "roles" / "tools" / "vars" / "main"
 
 
 def _load_vars() -> dict[str, Any]:
@@ -128,8 +119,7 @@ def _resolve_gateway_host(
     addresses = gw.get("status", {}).get("addresses", [])
     if not addresses:
         raise RuntimeError(
-            f"Gateway '{name}' in namespace '{namespace}' has no addresses. "
-            "Ensure the tools stack is fully deployed."
+            f"Gateway '{name}' in namespace '{namespace}' has no addresses. Ensure the tools stack is fully deployed."
         )
     addr = addresses[0]
     suffix = ":8080" if addr.get("type") == "IPAddress" else ""

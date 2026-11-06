@@ -19,9 +19,7 @@ def approve_pending_kublet_certificate_requests() -> None:
     """Approve all pending CertificateSigningRequests matching kubelet-serving signer."""
     cert_api = client.CertificatesV1Api()
 
-    requests = cert_api.list_certificate_signing_request(
-        field_selector=f"spec.signerName={KUBELET_SERVING_SIGNER}"
-    )
+    requests = cert_api.list_certificate_signing_request(field_selector=f"spec.signerName={KUBELET_SERVING_SIGNER}")
 
     for request in requests.items:
         conditions = request.status.conditions or []

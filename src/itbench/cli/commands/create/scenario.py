@@ -28,7 +28,7 @@ from itbench.models.scenario import (
     ScenarioFault,
     ScenarioFaultInjection,
 )
-from itbench.paths import library
+from itbench.paths import repository
 from itbench.utils.ground_truth import generate_ground_truth
 
 console = Console()
@@ -36,14 +36,14 @@ console = Console()
 _DOMAINS: list[str] = [domain.value for domain in ScenarioDomain]
 
 _KIND_TO_CONSTRUCTOR = {
-    "DaemonSet":               lambda name, ns: KubernetesWorkload(kind="DaemonSet", name=name, namespace=ns),
-    "Deployment":              lambda name, ns: KubernetesWorkload(kind="Deployment", name=name, namespace=ns),
-    "Gateway":                 lambda name, ns: KubernetesGateway(name=name, namespace=ns),
+    "DaemonSet": lambda name, ns: KubernetesWorkload(kind="DaemonSet", name=name, namespace=ns),
+    "Deployment": lambda name, ns: KubernetesWorkload(kind="Deployment", name=name, namespace=ns),
+    "Gateway": lambda name, ns: KubernetesGateway(name=name, namespace=ns),
     "HorizontalPodAutoscaler": lambda name, ns: KubernetesHorizontalPodAutoscaler(name=name, namespace=ns),
-    "Namespace":               lambda name, _:  KubernetesNamespace(name=name),
-    "Secret":                  lambda name, ns: KubernetesSecret(name=name, namespace=ns),
-    "Service":                 lambda name, ns: KubernetesService(name=name, namespace=ns),
-    "StatefulSet":             lambda name, ns: KubernetesWorkload(kind="StatefulSet", name=name, namespace=ns),
+    "Namespace": lambda name, _: KubernetesNamespace(name=name),
+    "Secret": lambda name, ns: KubernetesSecret(name=name, namespace=ns),
+    "Service": lambda name, ns: KubernetesService(name=name, namespace=ns),
+    "StatefulSet": lambda name, ns: KubernetesWorkload(kind="StatefulSet", name=name, namespace=ns),
 }
 
 
@@ -52,11 +52,7 @@ def _get_next_index(scenarios_dir: Path) -> int:
     if not scenarios_dir.exists():
         return 1
 
-    indices = [
-        int(d.name)
-        for d in scenarios_dir.iterdir()
-        if d.is_dir() and d.name.isdigit()
-    ]
+    indices = [int(d.name) for d in scenarios_dir.iterdir() if d.is_dir() and d.name.isdigit()]
 
     return max(indices, default=0) + 1
 
@@ -115,18 +111,14 @@ def _ask_fault_block() -> ScenarioFault | None:
             target = _ask_target(fault_id)
             if target:
                 targets.append(target)
-                while questionary.confirm(
-                    "  Add another target for this injection?", default=False
-                ).ask():
+                while questionary.confirm("  Add another target for this injection?", default=False).ask():
                     extra = _ask_target(fault_id)
                     if extra:
                         targets.append(extra)
 
         injections.append(ScenarioFaultInjection(id=fault_id, targets=targets))
 
-        if not questionary.confirm(
-            "  Add another injection to this fault block?", default=False
-        ).ask():
+        if not questionary.confirm("  Add another injection to this fault block?", default=False).ask():
             is_collecting_injections = False
 
     return ScenarioFault(injections=injections) if injections else None
@@ -137,10 +129,13 @@ def create_scenario_command() -> None:
     """Interactively scaffold a new scenario, its ground truth, and an optional extra_vars file."""
     console.print("[bold blue]Create a New ITBench Scenario[/bold blue]\n")
 
-    selected_apps = questionary.checkbox(
-        "Select applications:",
-        choices=sorted(APPLICATION_CATALOG.keys()),
-    ).ask() or []
+    selected_apps = (
+        questionary.checkbox(
+            "Select applications:",
+            choices=sorted(APPLICATION_CATALOG.keys()),
+        ).ask()
+        or []
+    )
 
     if not selected_apps:
         console.print("[red]At least one application is required.[/red]")
@@ -181,7 +176,7 @@ def create_scenario_command() -> None:
         exclude={"environment": {"applications": {"__all__": {"enabled"}}}},
     )
 
-    scenarios_dir = library.scenarios
+    scenarios_dir = repository.scenarios
     next_id = _get_next_index(scenarios_dir)
     scenario_dir = scenarios_dir / str(next_id)
     scenario_dir.mkdir(parents=True, exist_ok=True)
@@ -197,9 +192,7 @@ def create_scenario_command() -> None:
     gt_path = generate_ground_truth(scenario, scenario_dir)
     console.print(f"[green]Generated ground truth → {gt_path}[/green]")
 
-    if questionary.confirm(
-        "\nDo you want to add custom extra variables (extra_variables)?", default=False
-    ).ask():
+    if questionary.confirm("\nDo you want to add custom extra variables (extra_variables)?", default=False).ask():
         console.print("[dim]Enter Ansible variable overrides as key: value pairs.[/dim]")
         extra_vars: dict[str, Any] = {}
         is_adding_vars = True

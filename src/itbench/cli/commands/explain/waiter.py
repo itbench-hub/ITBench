@@ -16,11 +16,7 @@ _BASE_FIELD_NAMES = set(Waiter.model_fields)
 
 def _render_fields(entry: Waiter) -> None:
     """Print the waiter's type-specific fields with their descriptions and defaults."""
-    fields = {
-        name: field
-        for name, field in type(entry).model_fields.items()
-        if name not in _BASE_FIELD_NAMES
-    }
+    fields = {name: field for name, field in type(entry).model_fields.items() if name not in _BASE_FIELD_NAMES}
     if not fields:
         return
 
@@ -36,13 +32,15 @@ def _render_fields(entry: Waiter) -> None:
 def _render_waiter(entry: Waiter) -> None:
     """Render a waiter as a Rich man-page."""
     console.print()
-    console.print(Panel(
-        f"[bold]{escape(entry.name)}[/bold]\n\n"
-        f"[dim]id:[/dim] {escape(entry.id)}   "
-        f"[dim]platforms:[/dim] {escape(', '.join(entry.platforms))}",
-        title="[bold yellow]WAITER[/bold yellow]",
-        border_style="yellow",
-    ))
+    console.print(
+        Panel(
+            f"[bold]{escape(entry.name)}[/bold]\n\n"
+            f"[dim]id:[/dim] {escape(entry.id)}   "
+            f"[dim]platforms:[/dim] {escape(', '.join(entry.platforms))}",
+            title="[bold yellow]WAITER[/bold yellow]",
+            border_style="yellow",
+        )
+    )
 
     if entry.description:
         console.print("[bold]DESCRIPTION[/bold]")
@@ -52,12 +50,14 @@ def _render_waiter(entry: Waiter) -> None:
 
     type_data = entry.model_dump(mode="json", by_alias=True, exclude_none=True, exclude=_BASE_FIELD_NAMES)
     example = {
-        "faults": [{
-            "injections": [{"id": "<fault-id>"}],
-            "waitFor": {
-                "postInjection": [{"id": entry.id} | type_data],
-            },
-        }],
+        "faults": [
+            {
+                "injections": [{"id": "<fault-id>"}],
+                "waitFor": {
+                    "postInjection": [{"id": entry.id} | type_data],
+                },
+            }
+        ],
     }
     console.print("[bold]SCENARIO YAML EXAMPLE[/bold]")
     console.print("  # In library/scenarios/<id>/scenario.yaml", markup=False)

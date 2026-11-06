@@ -72,8 +72,7 @@ def compute_usage(subject: str, scenarios: Iterable[tuple[str, Mapping[str, Any]
 def usage_rows(usage: Mapping[str, Usage]) -> dict[str, dict[str, Any]]:
     """Convert usage into plain ``{"uses": n, "scenarios": [...]}`` dictionaries keyed by id."""
     return {
-        item_id: {"uses": entry.uses, "scenarios": entry.sorted_scenarios()}
-        for item_id, entry in sorted(usage.items())
+        item_id: {"uses": entry.uses, "scenarios": entry.sorted_scenarios()} for item_id, entry in sorted(usage.items())
     }
 
 

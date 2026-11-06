@@ -9,7 +9,9 @@ from itbench.utils.cluster import prepare_cluster
 console = Console()
 
 
-@click.command(name="cluster", help="Prepare Kubernetes cluster by approving kubelet CSRs and partitioning worker nodes.")
+@click.command(
+    name="cluster", help="Prepare Kubernetes cluster by approving kubelet CSRs and partitioning worker nodes."
+)
 @click.option("--kubeconfig", required=True, envvar="KUBECONFIG", metavar="PATH", help="Path to kubeconfig file.")
 @click.option("--context", default=None, metavar="NAME", help="Kubeconfig context to use.")
 def prepare_cluster_command(kubeconfig: str, context: str | None) -> None:

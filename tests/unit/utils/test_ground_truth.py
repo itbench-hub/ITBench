@@ -31,7 +31,8 @@ def _make_fault(
     name: str = "Test Fault",
     alerts: list[str] | None = None,
     step_text: str = "Fix {{ args.kubernetesObject.metadata.name }} in {{ args.kubernetesObject.metadata.namespace }}",
-    step_command: str | None = "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
+    step_command: str
+    | None = "kubectl -n {{ args.kubernetesObject.metadata.namespace }} get {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}",
 ) -> Fault:
     return Fault.model_construct(
         name=name,
@@ -43,9 +44,7 @@ def _make_fault(
         status=None,
         resources=[],
         solution_templates=FaultSolutionTemplates(
-            templates=[
-                FaultSolution(steps=[FaultSolutionStep(text=step_text, command=step_command)])
-            ]
+            templates=[FaultSolution(steps=[FaultSolutionStep(text=step_text, command=step_command)])]
         ),
     )
 
@@ -228,7 +227,12 @@ def test_generate_ground_truth_companion_entities(tmp_path: Path) -> None:
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
     assert len(doc["entities"]) == 2
     assert doc["entities"][0] == {"apiVersion": "apps/v1", "kind": "Deployment", "name": "ad", "namespace": "otel-demo"}
-    assert doc["entities"][1] == {"apiVersion": "v1", "kind": "ResourceQuota", "name": "strict-resource-quota", "namespace": "otel-demo"}
+    assert doc["entities"][1] == {
+        "apiVersion": "v1",
+        "kind": "ResourceQuota",
+        "name": "strict-resource-quota",
+        "namespace": "otel-demo",
+    }
 
 
 def test_generate_ground_truth_entities_omit_namespace_when_none(tmp_path: Path) -> None:
@@ -277,13 +281,7 @@ def test_generate_ground_truth_solutions_resolve_placeholders(tmp_path: Path) ->
 def test_generate_ground_truth_unknown_fault_id_skipped(tmp_path: Path) -> None:
     scenario = Scenario.model_construct(
         environment=ScenarioEnvironment(applications=[]),
-        faults=[
-            ScenarioFault(
-                injections=[
-                    ScenarioFaultInjection.model_construct(id="nonexistent-fault", targets=[])
-                ]
-            )
-        ],
+        faults=[ScenarioFault(injections=[ScenarioFaultInjection.model_construct(id="nonexistent-fault", targets=[])])],
     )
 
     with patch("itbench.utils.ground_truth.FAULT_CATALOG", {}):

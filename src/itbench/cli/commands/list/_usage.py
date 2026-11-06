@@ -6,7 +6,7 @@ from typing import Any
 import click
 
 from itbench.cli.render import Column, warn_skipped_scenario
-from itbench.paths import library
+from itbench.paths import repository
 from itbench.utils.scenarios import load_scenario_docs
 from itbench.utils.statistics import compute_usage
 
@@ -29,7 +29,7 @@ def add_usage(rows: list[dict[str, Any]], key: str, subject: str) -> None:
 
     *subject* is ``faults``, ``applications`` or ``waiters``.
     """
-    usage = compute_usage(subject, load_scenario_docs(library.scenarios, on_error=warn_skipped_scenario))
+    usage = compute_usage(subject, load_scenario_docs(repository.scenarios, on_error=warn_skipped_scenario))
     for row in rows:
         entry = usage.get(row[key])
         row["uses"] = entry.uses if entry else 0

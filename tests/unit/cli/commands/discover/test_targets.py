@@ -57,9 +57,7 @@ def test_targets_filtered_by_application() -> None:
         ],
     }
 
-    with patch(
-        "itbench.cli.commands.discover.targets.discover_workloads", return_value=fake_workloads
-    ) as mock_disc:
+    with patch("itbench.cli.commands.discover.targets.discover_workloads", return_value=fake_workloads) as mock_disc:
         result = runner.invoke(targets, ["--application", "book-info"])
 
     assert result.exit_code == 0

@@ -97,7 +97,7 @@ jobs:
       - name: Prepare cluster
         run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
       - name: Deploy tools stack
-        run: uv run itbench deploy tools --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench deploy environment --only tools --kubeconfig "$HOME/.kube/config"
       - name: Run CLI integration tests
         run: uv run --group dev pytest --integration -m integration -v tests/integration/
         env:
@@ -105,7 +105,7 @@ jobs:
           ITBENCH_PLATFORM: kubernetes
       - name: Undeploy tools stack
         if: always()
-        run: uv run itbench undeploy tools --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench undeploy environment --yes --kubeconfig "$HOME/.kube/config"
       - name: Destroy Kind cluster
         if: always()
         run: |

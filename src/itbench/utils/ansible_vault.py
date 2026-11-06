@@ -28,8 +28,7 @@ def resolve_vault_password() -> str:
         path = Path(password_file).expanduser()
         if not path.exists():
             raise click.ClickException(
-                f"Vault password file not found: {path}\n"
-                "Set ANSIBLE_VAULT_PASSWORD_FILE to a valid path."
+                f"Vault password file not found: {path}\nSet ANSIBLE_VAULT_PASSWORD_FILE to a valid path."
             )
         return path.read_text(encoding="utf-8").strip()
 

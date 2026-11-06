@@ -12,9 +12,7 @@ from itbench.cli.commands.discover.endpoints import endpoints
 
 
 @pytest.mark.integration
-def test_discover_endpoints_finds_all_tools(
-    kubeconfig: str, itbench_cli: CliRunner, tools_stack: None
-) -> None:
+def test_discover_endpoints_finds_all_tools(kubeconfig: str, itbench_cli: CliRunner, tools_stack: None) -> None:
     """All four tool endpoints should resolve after the tools stack is deployed."""
     result = itbench_cli.invoke(
         endpoints,
@@ -27,9 +25,7 @@ def test_discover_endpoints_finds_all_tools(
 
 
 @pytest.mark.integration
-def test_discover_endpoints_surfaces_expected_paths(
-    kubeconfig: str, itbench_cli: CliRunner, tools_stack: None
-) -> None:
+def test_discover_endpoints_surfaces_expected_paths(kubeconfig: str, itbench_cli: CliRunner, tools_stack: None) -> None:
     """Key URL paths must appear in the resolved table."""
     result = itbench_cli.invoke(
         endpoints,
@@ -42,9 +38,7 @@ def test_discover_endpoints_surfaces_expected_paths(
 
 
 @pytest.mark.integration
-def test_discover_endpoints_bad_kubeconfig_exits_nonzero(
-    itbench_cli: CliRunner, tools_stack: None
-) -> None:
+def test_discover_endpoints_bad_kubeconfig_exits_nonzero(itbench_cli: CliRunner, tools_stack: None) -> None:
     """A kubeconfig pointing at a non-existent file should fail gracefully."""
     result = itbench_cli.invoke(
         endpoints,

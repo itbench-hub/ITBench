@@ -3,6 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
+import pytest
 import yaml
 
 from click.testing import CliRunner
@@ -13,10 +14,19 @@ from itbench.cli.commands.deploy.environment import (
     _tools_extra_vars_from_wizard,
     deploy_environment,
 )
+from itbench.utils.runner import PlaybookError
+
+
+@pytest.fixture(autouse=True)
+def _run_in_tmp_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the ``.itbench/runs`` artifacts written by the command out of the working tree."""
+    monkeypatch.chdir(tmp_path)
+
 
 # ---------------------------------------------------------------------------
 # _extra_variables_from_scenario
 # ---------------------------------------------------------------------------
+
 
 def test_extra_variables_from_scenario_reads_yaml(tmp_path: Path) -> None:
     scenario_dir = tmp_path / "1"
@@ -46,6 +56,7 @@ def test_extra_variables_from_scenario_returns_empty_when_no_file(tmp_path: Path
 # _tools_extra_vars_from_wizard
 # ---------------------------------------------------------------------------
 
+
 def test_tools_extra_vars_from_wizard_checkbox() -> None:
     defaults = {
         "tools_gateway_enabled": False,
@@ -68,6 +79,56 @@ def test_tools_extra_vars_from_wizard_checkbox() -> None:
     assert result["tools_observability_enabled"] is True
     assert result["tools_service_mesh_enabled"] is False
     assert result["tools_infrastructure_enabled"] is False
+
+
+def test_tools_wizard_preselects_choices_from_role_defaults() -> None:
+    defaults = {
+        "tools_gateway_enabled": True,
+        "tools_observability_enabled": False,
+        "tools_service_mesh_enabled": True,
+        "tools_infrastructure_enabled": False,
+    }
+
+    with (
+        patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=defaults),
+        patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
+        patch("questionary.checkbox") as mock_checkbox,
+    ):
+        mock_stdin.isatty.return_value = True
+        mock_checkbox.return_value.ask.return_value = []
+
+        _tools_extra_vars_from_wizard()
+
+    choices = mock_checkbox.call_args.kwargs["choices"]
+    assert [(c.title, c.value, c.checked) for c in choices] == [
+        ("Gateway", "tools_gateway_enabled", True),
+        ("Observability", "tools_observability_enabled", False),
+        ("Service Mesh", "tools_service_mesh_enabled", True),
+        ("Infrastructure", "tools_infrastructure_enabled", False),
+    ]
+
+
+def test_applications_wizard_preselects_choices_from_role_defaults() -> None:
+    defaults = {
+        "applications_book_info_enabled": False,
+        "applications_opentelemetry_demo_enabled": True,
+    }
+
+    with (
+        patch("itbench.cli.commands.deploy.environment._load_applications_defaults", return_value=defaults),
+        patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
+        patch("questionary.checkbox") as mock_checkbox,
+    ):
+        mock_stdin.isatty.return_value = True
+        mock_checkbox.return_value.ask.return_value = []
+
+        _applications_extra_vars_from_wizard()
+
+    choices = mock_checkbox.call_args.kwargs["choices"]
+    assert [(c.title, c.value, c.checked) for c in choices] == [
+        ("Book Info", "book_info", False),
+        ("OpenTelemetry Demo", "opentelemetry_demo", True),
+    ]
 
 
 def test_tools_extra_vars_from_wizard_non_tty() -> None:
@@ -94,6 +155,7 @@ def test_tools_extra_vars_from_wizard_non_tty() -> None:
 # ---------------------------------------------------------------------------
 # _applications_extra_vars_from_wizard
 # ---------------------------------------------------------------------------
+
 
 def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
     defaults = {
@@ -178,6 +240,7 @@ def test_applications_extra_vars_from_wizard_non_tty() -> None:
 # deploy_environment command
 # ---------------------------------------------------------------------------
 
+
 def test_deploy_environment_full_success(tmp_path: Path) -> None:
     runner = CliRunner()
     tools_defaults = {"tools_gateway_enabled": False, "tools_observability_enabled": False}
@@ -187,7 +250,7 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
         patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=tools_defaults),
         patch("itbench.cli.commands.deploy.environment._load_applications_defaults", return_value=apps_defaults),
         patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
-        patch("itbench.cli.commands.deploy.environment.run_playbook") as mock_run,
+        patch("itbench.cli.playbook.run_playbook") as mock_run,
     ):
         mock_stdin.isatty.return_value = False
         mock_run.return_value = MagicMock()
@@ -209,6 +272,7 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
         },
         tags=["install"],
         run_id=mock_run.call_args_list[0].kwargs["run_id"],
+        verbose=False,
     )
     assert mock_run.call_args_list[1] == call(
         playbook="manage_environment.yaml",
@@ -222,6 +286,7 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
         },
         tags=["install"],
         run_id=mock_run.call_args_list[1].kwargs["run_id"],
+        verbose=False,
     )
 
 
@@ -232,7 +297,7 @@ def test_deploy_environment_only_tools(tmp_path: Path) -> None:
     with (
         patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=tools_defaults),
         patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
-        patch("itbench.cli.commands.deploy.environment.run_playbook") as mock_run,
+        patch("itbench.cli.playbook.run_playbook") as mock_run,
     ):
         mock_stdin.isatty.return_value = False
         mock_run.return_value = MagicMock()
@@ -255,7 +320,7 @@ def test_deploy_environment_only_applications(tmp_path: Path) -> None:
         patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=tools_defaults),
         patch("itbench.cli.commands.deploy.environment._load_applications_defaults", return_value=apps_defaults),
         patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
-        patch("itbench.cli.commands.deploy.environment.run_playbook") as mock_run,
+        patch("itbench.cli.playbook.run_playbook") as mock_run,
     ):
         mock_stdin.isatty.return_value = False
         mock_run.return_value = MagicMock()
@@ -276,7 +341,7 @@ def test_deploy_environment_only_recorders(tmp_path: Path) -> None:
     with (
         patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=tools_defaults),
         patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
-        patch("itbench.cli.commands.deploy.environment.run_playbook") as mock_run,
+        patch("itbench.cli.playbook.run_playbook") as mock_run,
     ):
         mock_stdin.isatty.return_value = False
         mock_run.return_value = MagicMock()
@@ -307,8 +372,8 @@ def test_deploy_environment_with_scenario(tmp_path: Path) -> None:
     (scenario_dir / "extra_variables.yaml").write_text(yaml.dump(extra_vars), encoding="utf-8")
 
     with (
-        patch.dict("os.environ", {"ITBENCH_LIBRARY": str(tmp_path / "library")}),
-        patch("itbench.cli.commands.deploy.environment.run_playbook") as mock_run,
+        patch.dict("os.environ", {"ITBENCH_LIBRARY_PATH": str(tmp_path / "library")}),
+        patch("itbench.cli.playbook.run_playbook") as mock_run,
     ):
         mock_run.return_value = MagicMock()
 
@@ -322,33 +387,71 @@ def test_deploy_environment_with_scenario(tmp_path: Path) -> None:
     assert mock_run.call_args_list[0].kwargs["playbook"] == "manage_environment.yaml"
     recorders_call = mock_run.call_args_list[1]
     assert recorders_call.kwargs["playbook"] == "manage_environment.yaml"
-    assert recorders_call.kwargs["extra_vars"]["scenario_id"] == "5"
+    assert recorders_call.kwargs["extra_vars"]["scenario_id"] == 5
     assert recorders_call.kwargs["extra_vars"]["tools_recorders_enabled"] is True
     assert recorders_call.kwargs["extra_vars"]["environment_tool_management_enabled"] is True
     assert recorders_call.kwargs["extra_vars"]["environment_application_management_enabled"] is False
 
 
-def test_deploy_environment_missing_scenario(tmp_path: Path) -> None:
+def test_deploy_environment_missing_scenario_suggests_close_matches(tmp_path: Path) -> None:
     runner = CliRunner()
+    for scenario_id in ("10", "11"):
+        scenario_dir = tmp_path / "library" / "scenarios" / scenario_id
+        scenario_dir.mkdir(parents=True)
+        (scenario_dir / "scenario.yaml").write_text("{}", encoding="utf-8")
 
-    with patch.dict("os.environ", {"ITBENCH_LIBRARY": str(tmp_path / "library")}):
+    with (
+        patch.dict("os.environ", {"ITBENCH_LIBRARY_PATH": str(tmp_path / "library")}),
+        patch("itbench.cli.playbook.run_playbook") as mock_run,
+    ):
         result = runner.invoke(
             deploy_environment,
-            ["--scenario", "999", "--kubeconfig", "/kube.conf"],
+            ["--scenario", "12", "--kubeconfig", "/kube.conf"],
         )
 
     assert result.exit_code == 1
     assert "not found" in result.output
+    assert "Did you mean" in result.output
+    mock_run.assert_not_called()
 
 
-def test_deploy_environment_playbook_failure_aborts_later_steps(tmp_path: Path) -> None:
+def test_deploy_environment_scenario_must_be_an_integer() -> None:
+    runner = CliRunner()
+
+    with patch("itbench.cli.playbook.run_playbook") as mock_run:
+        result = runner.invoke(deploy_environment, ["--scenario", "../x", "--kubeconfig", "/kube.conf"])
+
+    assert result.exit_code == 2
+    mock_run.assert_not_called()
+
+
+def test_deploy_environment_verbose_streams_ansible_output() -> None:
     runner = CliRunner()
     tools_defaults = {"tools_gateway_enabled": False}
 
     with (
         patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=tools_defaults),
         patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
-        patch("itbench.cli.commands.deploy.environment.run_playbook", side_effect=RuntimeError("env deploy failed")),
+        patch("itbench.cli.playbook.run_playbook") as mock_run,
+    ):
+        mock_stdin.isatty.return_value = False
+        mock_run.return_value = MagicMock()
+
+        result = runner.invoke(deploy_environment, ["-v", "--only", "tools", "--kubeconfig", "/kube.conf"])
+
+    assert result.exit_code == 0
+    assert mock_run.call_args.kwargs["verbose"] is True
+
+
+def test_deploy_environment_playbook_failure_aborts_later_steps(tmp_path: Path) -> None:
+    runner = CliRunner()
+    tools_defaults = {"tools_gateway_enabled": False}
+    error = PlaybookError("manage_environment.yaml", 2, tmp_path, output="TASK [boom] fatal")
+
+    with (
+        patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=tools_defaults),
+        patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
+        patch("itbench.cli.playbook.run_playbook", side_effect=error) as mock_run,
     ):
         mock_stdin.isatty.return_value = False
 
@@ -356,3 +459,5 @@ def test_deploy_environment_playbook_failure_aborts_later_steps(tmp_path: Path) 
 
     assert result.exit_code == 1
     assert "Environment deploy failed" in result.output
+    assert "TASK [boom] fatal" in result.output
+    assert mock_run.call_count == 1

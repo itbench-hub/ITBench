@@ -15,13 +15,15 @@ from itbench.models.application import APPLICATION_CATALOG, Application
 def _render_application(slug: str, entry: Application) -> None:
     """Render an application as a Rich man-page."""
     console.print()
-    console.print(Panel(
-        f"[bold]{escape(entry.name)}[/bold]\n\n"
-        f"[dim]slug:[/dim] {escape(slug)}   "
-        f"[dim]platforms:[/dim] {escape(', '.join(entry.platforms))}",
-        title="[bold green]APPLICATION[/bold green]",
-        border_style="green",
-    ))
+    console.print(
+        Panel(
+            f"[bold]{escape(entry.name)}[/bold]\n\n"
+            f"[dim]slug:[/dim] {escape(slug)}   "
+            f"[dim]platforms:[/dim] {escape(', '.join(entry.platforms))}",
+            title="[bold green]APPLICATION[/bold green]",
+            border_style="green",
+        )
+    )
 
     console.print("[bold]DESCRIPTION[/bold]")
     console.print(f"  {escape(entry.description)}\n")

@@ -6,15 +6,14 @@ import click
 import questionary
 import yaml
 
-from rich.console import Console
-
+from itbench.cli.render import confirm_or_cancel, console
+from itbench.paths import repository
 from itbench.utils.ansible_vault import resolve_vault_password, vault_encrypt
 
-console = Console()
 
-_DEFAULT_OUTPUT = (
-    Path(__file__).parents[7] / "scenarios" / "sre" / "inventory" / "group_vars" / "all" / "aws.yaml"
-)
+def _output_path() -> Path:
+    """Location of the AWS group_vars file in the repository."""
+    return repository.group_vars / "all" / "aws.yaml"
 
 
 def _prompt() -> dict[str, str]:
@@ -51,15 +50,15 @@ def _build_doc(creds: dict[str, str]) -> dict[str, str]:
 
 
 @click.command(name="aws", help="Generate vault-encrypted AWS credentials into the SRE group_vars.")
-@click.option(
-    "--output",
-    type=click.Path(dir_okay=False, path_type=Path),
-    default=_DEFAULT_OUTPUT,
-    show_default=True,
-    help="Path to the aws.yaml group_vars file to write.",
-)
-def variables_aws_command(output: Path) -> None:
-    """Prompt for AWS credentials, vault-encrypt them, and write group_vars."""
+@click.option("-y", "--yes", is_flag=True, default=False, help="Overwrite an existing file without asking.")
+def variables_aws_command(yes: bool) -> None:
+    """Prompt for AWS credentials, vault-encrypt them, and write the SRE ``group_vars/all/aws.yaml``."""
+    output = _output_path()
+    if output.exists() and not confirm_or_cancel(
+        f"{output} already exists. Overwrite it?", yes, cancelled="Existing file kept."
+    ):
+        return
+
     creds = _prompt()
     doc = _build_doc(creds)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -67,5 +66,4 @@ def variables_aws_command(output: Path) -> None:
         yaml.safe_dump(doc, default_flow_style=False, explicit_start=True, sort_keys=False),
         encoding="utf-8",
     )
-    console.print(f"\n[green]AWS credentials written → {output}[/green]")
-    console.print("[dim]Tip: commit the file — credentials are vault-encrypted.[/dim]")
+    console.print(f"\n[green]AWS credentials written → {output}[/green]", soft_wrap=True)

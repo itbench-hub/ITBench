@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validat
 from itbench.models.catalog import LazyCatalog, load_catalog_directory
 from itbench.models.kubernetes import KubernetesObjectKind
 from itbench.models.platform import Platform
-from itbench.paths import library
+from itbench.paths import repository
 
 
 class FaultAlerts(StrEnum):
@@ -173,24 +173,46 @@ class Fault(BaseModel):
         json_schema_extra={"uniqueItems": True},
     )
 
+    @property
+    def is_retired(self) -> bool:
+        """Whether the fault has been retired."""
+        return self.status is not None and self.status.retired is not None
+
+    @property
+    def is_converted(self) -> bool:
+        """Whether the fault has been converted to a waiter."""
+        return self.status is not None and self.status.converted is not None
+
+    @property
+    def is_inactive(self) -> bool:
+        """Whether the fault is retired or converted and so no longer injected."""
+        return self.is_retired or self.is_converted
+
+    @property
+    def retired_reason(self) -> str | None:
+        """Reason the fault was retired, if it was retired and a reason was given."""
+        if self.status is None or self.status.retired is None:
+            return None
+        return self.status.retired.reason
+
     @model_validator(mode="after")
     def _require_alerts_for_active_faults(self) -> Self:
         """Enforce that at least one alert is defined for non-retired faults."""
-        if (self.status is None or self.status.retired is None) and not self.alerts:
+        if not self.is_retired and not self.alerts:
             raise ValueError("Non-retired faults must define at least one alert in 'alerts'.")
         return self
 
     @model_validator(mode="after")
     def _require_tags_for_active_faults(self) -> Self:
         """Enforce that at least one tag is defined for non-retired faults."""
-        if (self.status is None or self.status.retired is None) and not self.tags:
+        if not self.is_retired and not self.tags:
             raise ValueError("Non-retired faults must define at least one tag in 'tags'.")
         return self
 
     @model_validator(mode="after")
     def _require_targets_for_active_faults(self) -> Self:
         """Enforce that at least one target is defined for non-retired faults."""
-        if (self.status is None or self.status.retired is None) and not self.targets:
+        if not self.is_retired and not self.targets:
             raise ValueError("Non-retired faults must define at least one target in 'targets'.")
         return self
 
@@ -205,7 +227,7 @@ class Fault(BaseModel):
 
 
 def _load_fault_catalog() -> dict[str, Fault]:
-    return load_catalog_directory(library.faults, Fault, "fault")
+    return load_catalog_directory(repository.faults, Fault, "fault")
 
 
 FAULT_CATALOG: LazyCatalog[Fault] = LazyCatalog(_load_fault_catalog)

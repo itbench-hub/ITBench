@@ -191,8 +191,6 @@ def test_prepare_cluster_success() -> None:
     ):
         prepare_cluster(kubeconfig="/path/to/kubeconfig", context="kind-test")
 
-        mock_load_config.assert_called_once_with(
-            config_file="/path/to/kubeconfig", context="kind-test"
-        )
+        mock_load_config.assert_called_once_with(config_file="/path/to/kubeconfig", context="kind-test")
         mock_approve.assert_called_once()
         mock_partition.assert_called_once()

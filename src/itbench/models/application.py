@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from itbench.models.catalog import LazyCatalog, load_catalog_directory
 from itbench.models.platform import Platform
-from itbench.paths import library
+from itbench.paths import repository
 
 
 class Application(BaseModel):
@@ -53,7 +53,7 @@ class Application(BaseModel):
 
 
 def _load_application_catalog() -> dict[str, Application]:
-    return load_catalog_directory(library.applications, Application, "application")
+    return load_catalog_directory(repository.applications, Application, "application")
 
 
 APPLICATION_CATALOG: LazyCatalog[Application] = LazyCatalog(_load_application_catalog)

@@ -12,7 +12,7 @@ class KubernetesObjectKind(StrEnum):
     KubernetesGateway = "KubernetesGateway"
     KubernetesHorizontalPodAutoscaler = "KubernetesHorizontalPodAutoscaler"
     KubernetesNamespace = "KubernetesNamespace"
-    KubernetesSecret = "KubernetesSecret" # pragma: allowlist secret
+    KubernetesSecret = "KubernetesSecret"  # pragma: allowlist secret
     KubernetesService = "KubernetesService"
     KubernetesWorkload = "KubernetesWorkload"
 

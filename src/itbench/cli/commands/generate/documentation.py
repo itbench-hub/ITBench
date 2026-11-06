@@ -1,48 +1,56 @@
 """CLI command to generate Markdown documentation for ITBench primitives."""
 
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 import click
 
-from rich.console import Console
-
+from itbench.cli.render import console
 from itbench.models.waiter import WAITER_CATALOG
-from itbench.paths import library
+from itbench.paths import repository
 from itbench.utils.scenarios import load_scenario_docs, summarize_scenario
 
-console = Console()
 
-_DOCS_ROOT = Path("documentation/library")
+def _table(headers: Sequence[str], rows: Iterable[Sequence[str]]) -> list[str]:
+    """Render a Markdown table: a header row, a separator row, then one line per row."""
+    return [
+        "| " + " | ".join(headers) + " |",
+        "| " + " | ".join("-" * len(header) for header in headers) + " |",
+        *("| " + " | ".join(row) + " |" for row in rows),
+    ]
+
+
+def _write(output_dir: Path, name: str, lines: list[str]) -> Path:
+    """Write *lines* to ``output_dir/name`` (creating the directory) and return the path."""
+    doc_path = output_dir / name
+    doc_path.parent.mkdir(parents=True, exist_ok=True)
+    doc_path.write_text("\n".join(lines), encoding="utf-8")
+    return doc_path
 
 
 def _generate_applications_documentation(output_dir: Path) -> Path:
     from itbench.models.application import APPLICATION_CATALOG
 
-    rows: list[dict[str, str]] = [
-        {
-            "slug": slug,
-            "name": entry.name,
-            "description": entry.description,
-            "platforms": ", ".join(entry.platforms),
-            "repository": entry.repository,
-        }
-        for slug, entry in APPLICATION_CATALOG.items()
-    ]
+    table = _table(
+        ["Slug", "Name", "Platforms", "Description", "Repository"],
+        (
+            [
+                f"`{slug}`",
+                entry.name,
+                ", ".join(entry.platforms),
+                entry.description,
+                f"[{entry.repository}]({entry.repository})",
+            ]
+            for slug, entry in APPLICATION_CATALOG.items()
+        ),
+    )
 
     lines = [
         "# Applications",
         "",
         "All benchmark applications available in ITBench.",
         "",
-        "| Slug | Name | Platforms | Description | Repository |",
-        "| ---- | ---- | --------- | ----------- | ---------- |",
-    ]
-    for r in rows:
-        lines.append(
-            f"| `{r['slug']}` | {r['name']} | {r['platforms']} | {r['description']} | [{r['repository']}]({r['repository']}) |"
-        )
-
-    lines += [
+        *table,
         "",
         "## Usage",
         "",
@@ -52,42 +60,33 @@ def _generate_applications_documentation(output_dir: Path) -> Path:
         "```",
         "",
     ]
-
-    doc_path = output_dir / "applications.md"
-    doc_path.parent.mkdir(parents=True, exist_ok=True)
-    doc_path.write_text("\n".join(lines), encoding="utf-8")
-    return doc_path
+    return _write(output_dir, "applications.md", lines)
 
 
 def _generate_faults_documentation(output_dir: Path) -> Path:
     from itbench.models.fault import FAULT_CATALOG
 
-    rows: list[dict[str, str]] = [
-        {
-            "slug": slug,
-            "name": fault.name,
-            "tags": ", ".join(fault.tags),
-            "platform": fault.platform,
-            "alerts": ", ".join(fault.alerts) if fault.alerts else "",
-            "description": fault.description,
-        }
-        for slug, fault in sorted(FAULT_CATALOG.items())
-    ]
+    table = _table(
+        ["Slug", "Name", "Platform", "Tags", "Alerts", "Description"],
+        (
+            [
+                f"`{slug}`",
+                fault.name,
+                fault.platform,
+                ", ".join(fault.tags),
+                ", ".join(fault.alerts) if fault.alerts else "",
+                fault.description,
+            ]
+            for slug, fault in sorted(FAULT_CATALOG.items())
+        ),
+    )
 
     lines = [
         "# Faults",
         "",
         "All benchmark faults available in ITBench.",
         "",
-        "| Slug | Name | Platform | Tags | Alerts | Description |",
-        "| ---- | ---- | -------- | ---- | ------ | ----------- |",
-    ]
-    for r in rows:
-        lines.append(
-            f"| `{r['slug']}` | {r['name']} | {r['platform']} | {r['tags']} | {r['alerts']} | {r['description']} |"
-        )
-
-    lines += [
+        *table,
         "",
         "## Usage",
         "",
@@ -117,26 +116,24 @@ def _generate_faults_documentation(output_dir: Path) -> Path:
         "```",
         "",
     ]
-
-    doc_path = output_dir / "faults.md"
-    doc_path.parent.mkdir(parents=True, exist_ok=True)
-    doc_path.write_text("\n".join(lines), encoding="utf-8")
-    return doc_path
+    return _write(output_dir, "faults.md", lines)
 
 
 def _generate_waiters_documentation(output_dir: Path) -> Path:
+    table = _table(
+        ["ID", "Name", "Platforms", "Description"],
+        (
+            [f"`{waiter_id}`", entry.name, ", ".join(entry.platforms), entry.description]
+            for waiter_id, entry in WAITER_CATALOG.items()
+        ),
+    )
+
     lines = [
         "# Waiters",
         "",
         "Built-in waiter primitives used in scenario `waitFor` blocks.",
         "",
-        "| ID | Name | Platforms | Description |",
-        "| -- | ---- | --------- | ----------- |",
-    ]
-    for waiter_id, entry in WAITER_CATALOG.items():
-        lines.append(f"| `{waiter_id}` | {entry.name} | {', '.join(entry.platforms)} | {entry.description} |")
-
-    lines += [
+        *table,
         "",
         "## Usage",
         "",
@@ -160,38 +157,24 @@ def _generate_waiters_documentation(output_dir: Path) -> Path:
         "```",
         "",
     ]
-
-    doc_path = output_dir / "waiters.md"
-    doc_path.parent.mkdir(parents=True, exist_ok=True)
-    doc_path.write_text("\n".join(lines), encoding="utf-8")
-    return doc_path
+    return _write(output_dir, "waiters.md", lines)
 
 
 def _generate_scenarios_documentation(output_dir: Path) -> Path:
-    rows: list[dict[str, str]] = []
-    for scenario_id, data in load_scenario_docs(library.scenarios):
-        summary = summarize_scenario(scenario_id, data)
-        rows.append(
-            {
-                "id": summary["id"],
-                "applications": ", ".join(summary["applications"]),
-                "domains": ", ".join(summary["domains"]),
-                "faults": ", ".join(summary["faults"]),
-            }
-        )
+    summaries = [
+        summarize_scenario(scenario_id, data) for scenario_id, data in load_scenario_docs(repository.scenarios)
+    ]
+    table = _table(
+        ["ID", "Domains", "Applications", "Faults"],
+        ([s["id"], ", ".join(s["domains"]), ", ".join(s["applications"]), ", ".join(s["faults"])] for s in summaries),
+    )
 
     lines = [
         "# Scenarios",
         "",
         "All benchmark scenarios available in ITBench.",
         "",
-        "| ID | Domains | Applications | Faults |",
-        "| -- | ------- | ------------ | ------ |",
-    ]
-    for r in rows:
-        lines.append(f"| {r['id']} | {r['domains']} | {r['applications']} | {r['faults']} |")
-
-    lines += [
+        *table,
         "",
         "## Usage",
         "",
@@ -201,31 +184,22 @@ def _generate_scenarios_documentation(output_dir: Path) -> Path:
         "```",
         "",
     ]
-
-    doc_path = output_dir / "scenarios.md"
-    doc_path.parent.mkdir(parents=True, exist_ok=True)
-    doc_path.write_text("\n".join(lines), encoding="utf-8")
-    return doc_path
+    return _write(output_dir, "scenarios.md", lines)
 
 
 @click.command(name="documentation", help="Generate Markdown documentation for ITBench library primitives.")
-@click.option(
-    "--output-dir",
-    type=click.Path(file_okay=False, dir_okay=True, path_type=Path),
-    default=_DOCS_ROOT,
-    show_default=True,
-    help="Target directory where Markdown files will be written.",
-)
-def generate_documentation_command(output_dir: Path) -> None:
-    """Generate Markdown documentation for all benchmark primitives."""
+def generate_documentation_command() -> None:
+    """Generate Markdown documentation for all benchmark primitives into the repository's ``documentation/library``."""
+    output_dir = repository.documentation
+
     path = _generate_applications_documentation(output_dir)
-    console.print(f"[green]Generated applications documentation → {path}[/green]")
+    console.print(f"[green]Generated applications documentation → {path}[/green]", soft_wrap=True)
 
     path = _generate_faults_documentation(output_dir)
-    console.print(f"[green]Generated faults documentation → {path}[/green]")
+    console.print(f"[green]Generated faults documentation → {path}[/green]", soft_wrap=True)
 
     path = _generate_waiters_documentation(output_dir)
-    console.print(f"[green]Generated waiters documentation → {path}[/green]")
+    console.print(f"[green]Generated waiters documentation → {path}[/green]", soft_wrap=True)
 
     path = _generate_scenarios_documentation(output_dir)
-    console.print(f"[green]Generated scenarios documentation → {path}[/green]")
+    console.print(f"[green]Generated scenarios documentation → {path}[/green]", soft_wrap=True)

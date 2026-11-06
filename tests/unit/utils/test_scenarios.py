@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from itbench.utils.scenarios import load_scenario_docs, summarize_scenario
+from itbench.utils.scenarios import known_scenario_ids, load_scenario_docs, summarize_scenario
 
 
 def _scenario(root: Path, name: str, content: str) -> None:
@@ -40,6 +40,17 @@ def test_invalid_and_non_mapping_files_reported(tmp_path: Path) -> None:
 
     assert [sid for sid, _ in docs] == ["4"]
     assert errors == ["1", "2", "3"]
+
+
+def test_known_scenario_ids_numeric_order_and_non_numeric_ignored(tmp_path: Path) -> None:
+    for name in ("10", "2", "1", "notes"):
+        (tmp_path / name).mkdir()
+
+    assert known_scenario_ids(tmp_path) == ["1", "2", "10"]
+
+
+def test_known_scenario_ids_missing_directory_returns_empty(tmp_path: Path) -> None:
+    assert known_scenario_ids(tmp_path / "nope") == []
 
 
 def test_summarize_scenario_handles_missing_keys() -> None:

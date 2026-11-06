@@ -42,16 +42,17 @@ def list_faults(tag: str | None, platform: str | None, show_usage: bool, output_
             continue
         if tag and tag not in fault.tags:
             continue
-        retired = fault.status.retired if fault.status is not None else None
-        rows.append({
-            "slug": slug,
-            "name": fault.name,
-            "platform": fault.platform,
-            "tags": list(fault.tags),
-            "alerts": list(fault.alerts),
-            "status": "retired" if retired is not None else "active",
-            "retired_reason": retired.reason if retired is not None else None,
-        })
+        rows.append(
+            {
+                "slug": slug,
+                "name": fault.name,
+                "platform": fault.platform,
+                "tags": list(fault.tags),
+                "alerts": list(fault.alerts),
+                "status": "retired" if fault.is_retired else "active",
+                "retired_reason": fault.retired_reason,
+            }
+        )
     if show_usage:
         add_usage(rows, "slug", "faults")
 

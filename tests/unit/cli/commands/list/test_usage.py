@@ -56,14 +56,12 @@ def library(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         directory = tmp_path / "scenarios" / name
         directory.mkdir(parents=True)
         (directory / "scenario.yaml").write_text(yaml.safe_dump(data), encoding="utf-8")
-    monkeypatch.setenv("ITBENCH_LIBRARY", str(tmp_path))
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
     return tmp_path
 
 
 @pytest.mark.parametrize(("command", "key", "item_id"), _COMMANDS)
-def test_usage_adds_uses_and_sorted_scenarios_to_json(
-    library: Path, command: Command, key: str, item_id: str
-) -> None:
+def test_usage_adds_uses_and_sorted_scenarios_to_json(library: Path, command: Command, key: str, item_id: str) -> None:
     result = CliRunner().invoke(command, ["--usage", "--format", "json"])
 
     assert result.exit_code == 0

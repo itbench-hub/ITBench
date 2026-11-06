@@ -91,9 +91,7 @@ def test_export_fault_schema_constrains_kubernetes_enum(tmp_path: Path) -> None:
     export_fault_schema(fault, out)
     data = json.loads(out.read_text(encoding="utf-8"))
 
-    enum = (
-        data["$defs"]["FaultTargetReference"]["properties"]["kubernetes"]["enum"]
-    )
+    enum = data["$defs"]["FaultTargetReference"]["properties"]["kubernetes"]["enum"]
     expected = [t.kubernetes for t in fault.targets]
     assert enum == expected
 

@@ -1,8 +1,6 @@
 """Deploy environment command for ITBench."""
 
-import json
 import sys
-import uuid
 
 from pathlib import Path
 from typing import Any
@@ -11,37 +9,38 @@ import click
 import questionary
 import yaml
 
-from rich.console import Console
+from itbench.cli.playbook import run_step
+from itbench.cli.render import console, exit_not_found, fail, kubeconfig_option, verbose_option
+from itbench.paths import repository
+from itbench.utils.runner import create_run
+from itbench.utils.scenarios import known_scenario_ids
 
-from itbench.paths import library
-from itbench.utils.runner import run_playbook
+_TOOL_CHOICES = (
+    ("Gateway", "tools_gateway_enabled"),
+    ("Observability", "tools_observability_enabled"),
+    ("Service Mesh", "tools_service_mesh_enabled"),
+    ("Infrastructure", "tools_infrastructure_enabled"),
+)
+_TOOLS_VARS = [var for _, var in _TOOL_CHOICES]
 
-console = Console()
-
-_TOOLS_DEFAULTS_DIR = (
-    Path(__file__).parents[5]
-    / "scenarios" / "sre" / "project"
-    / "roles" / "tools" / "defaults" / "main"
+_APPLICATION_CHOICES = (
+    ("Book Info", "book_info"),
+    ("OpenTelemetry Demo", "opentelemetry_demo"),
 )
 
-_APPLICATIONS_DEFAULTS_DIR = (
-    Path(__file__).parents[5]
-    / "scenarios" / "sre" / "project"
-    / "roles" / "applications" / "defaults" / "main"
-)
-
-_TOOLS_VARS = [
-    "tools_gateway_enabled",
-    "tools_observability_enabled",
-    "tools_service_mesh_enabled",
-    "tools_infrastructure_enabled",
-]
+# Which subsystems each ``--only`` value deploys, in order. Applications and recorders both need the tools.
+_STEPS: dict[str | None, tuple[str, ...]] = {
+    None: ("tools", "applications", "recorders"),
+    "tools": ("tools",),
+    "applications": ("tools", "applications"),
+    "recorders": ("tools", "recorders"),
+}
 
 
 def _load_tools_defaults() -> dict[str, Any]:
     """Merge all YAML files under the tools role defaults/main/ directory."""
     defaults: dict[str, Any] = {}
-    for path in sorted(_TOOLS_DEFAULTS_DIR.glob("*.yaml")):
+    for path in sorted(repository.tools_defaults.glob("*.yaml")):
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         defaults.update(data)
     return defaults
@@ -50,7 +49,7 @@ def _load_tools_defaults() -> dict[str, Any]:
 def _load_applications_defaults() -> dict[str, Any]:
     """Merge all YAML files under the applications role defaults/main/ directory."""
     defaults: dict[str, Any] = {}
-    for path in sorted(_APPLICATIONS_DEFAULTS_DIR.glob("*.yaml")):
+    for path in sorted(repository.applications_defaults.glob("*.yaml")):
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         defaults.update(data)
     return defaults
@@ -70,12 +69,7 @@ def _tools_extra_vars_from_wizard() -> dict[str, Any]:
     if not sys.stdin.isatty():
         return dict(defaults)
 
-    choices = [
-        questionary.Choice("Gateway", value="tools_gateway_enabled", checked=defaults.get("tools_gateway_enabled", False)),
-        questionary.Choice("Observability", value="tools_observability_enabled", checked=defaults.get("tools_observability_enabled", False)),
-        questionary.Choice("Service Mesh", value="tools_service_mesh_enabled", checked=defaults.get("tools_service_mesh_enabled", False)),
-        questionary.Choice("Infrastructure", value="tools_infrastructure_enabled", checked=defaults.get("tools_infrastructure_enabled", False)),
-    ]
+    choices = [questionary.Choice(title, value=var, checked=defaults.get(var, False)) for title, var in _TOOL_CHOICES]
     selected = questionary.checkbox("Select tools to deploy:", choices=choices).ask()
     if selected is None:
         raise click.Abort()
@@ -93,16 +87,16 @@ def _applications_extra_vars_from_wizard() -> dict[str, Any]:
         return dict(defaults)
 
     choices = [
-        questionary.Choice("Book Info", value="book_info", checked=defaults.get("applications_book_info_enabled", False)),
-        questionary.Choice("OpenTelemetry Demo", value="opentelemetry_demo", checked=defaults.get("applications_opentelemetry_demo_enabled", False)),
+        questionary.Choice(title, value=slug, checked=defaults.get(f"applications_{slug}_enabled", False))
+        for title, slug in _APPLICATION_CHOICES
     ]
     selected = questionary.checkbox("Select applications to deploy:", choices=choices).ask()
     if selected is None:
         raise click.Abort()
 
     extra_vars = dict(defaults)
-    extra_vars["applications_book_info_enabled"] = "book_info" in selected
-    extra_vars["applications_opentelemetry_demo_enabled"] = "opentelemetry_demo" in selected
+    for _, slug in _APPLICATION_CHOICES:
+        extra_vars[f"applications_{slug}_enabled"] = slug in selected
 
     if "book_info" in selected:
         console.print("\n[dim]Configure Book Info:[/dim]")
@@ -140,7 +134,9 @@ def _applications_extra_vars_from_wizard() -> dict[str, Any]:
         otel_answers = otel_form.ask()
         if otel_answers is None:
             raise click.Abort()
-        extra_vars["applications_opentelemetry_demo_kubernetes_autoscaling_enabled"] = bool(otel_answers.get("autoscaling"))
+        extra_vars["applications_opentelemetry_demo_kubernetes_autoscaling_enabled"] = bool(
+            otel_answers.get("autoscaling")
+        )
         extra_vars["applications_opentelemetry_demo_load_generator_browser_enabled"] = bool(otel_answers.get("browser"))
         extra_vars["applications_opentelemetry_demo_load_generator_users"] = int(otel_answers.get("users", 50))
         extra_vars["applications_opentelemetry_demo_load_generator_spawn_rate"] = int(otel_answers.get("spawn_rate", 5))
@@ -149,10 +145,23 @@ def _applications_extra_vars_from_wizard() -> dict[str, Any]:
 
 
 @click.command(name="environment", help="Deploy the benchmark environment stack onto the cluster.")
-@click.option("--scenario", "scenario_id", default=None, metavar="ID", help="Derive configuration from a scenario definition.")
-@click.option("--kubeconfig", required=True, envvar="KUBECONFIG", metavar="PATH", help="Path to kubeconfig file.")
-@click.option("--only", type=click.Choice(["tools", "applications", "recorders"]), default=None, help="Limit deployment to a specific subsystem.")
-def deploy_environment(scenario_id: str | None, kubeconfig: str, only: str | None) -> None:
+@click.option(
+    "--scenario",
+    "scenario_id",
+    type=click.INT,
+    default=None,
+    metavar="ID",
+    help="Derive configuration from a scenario definition.",
+)
+@kubeconfig_option
+@click.option(
+    "--only",
+    type=click.Choice(["tools", "applications", "recorders"]),
+    default=None,
+    help="Limit deployment to a specific subsystem.",
+)
+@verbose_option
+def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | None, verbose: bool) -> None:
     """Deploy the benchmark environment stack (tools, applications, recorders) onto the cluster.
 
     Examples:
@@ -162,25 +171,21 @@ def deploy_environment(scenario_id: str | None, kubeconfig: str, only: str | Non
         itbench deploy environment --scenario 5 --kubeconfig ~/.kube/config
         itbench deploy environment --only tools --kubeconfig ~/.kube/config
         itbench deploy environment --only applications --kubeconfig ~/.kube/config
+        itbench deploy environment -v --kubeconfig ~/.kube/config
     """
-    if only == "tools":
-        steps = ["tools"]
-    elif only == "applications":
-        steps = ["tools", "applications"]
-    elif only == "recorders":
-        steps = ["tools", "recorders"]
-    else:
-        steps = ["tools", "applications", "recorders"]
+    steps = _STEPS[only]
 
     tools_vars: dict[str, Any] = {}
     applications_vars: dict[str, Any] = {}
     recorders_vars: dict[str, Any] = {}
 
-    if scenario_id:
-        scenario_path = library.scenarios / str(scenario_id) / "scenario.yaml"
-        if not scenario_path.exists():
-            console.print(f"[red]Scenario '{scenario_id}' not found at {scenario_path}[/red]")
-            raise SystemExit(1)
+    if scenario_id is not None:
+        known = known_scenario_ids(repository.scenarios)
+        if str(scenario_id) not in known:
+            exit_not_found("Scenario", str(scenario_id), known, "itbench list scenarios")
+        scenario_path = repository.scenarios / str(scenario_id) / "scenario.yaml"
+        if not scenario_path.is_file():
+            fail(f"[red]Scenario {scenario_id} has no scenario.yaml at {scenario_path}[/red]")
         scenario_vars = _extra_variables_from_scenario(scenario_path)
         console.print(f"[dim]Loaded configuration from scenario {scenario_id}[/dim]")
 
@@ -196,10 +201,6 @@ def deploy_environment(scenario_id: str | None, kubeconfig: str, only: str | Non
         if "recorders" in steps:
             recorders_vars = {**tools_vars, "tools_recorders_enabled": True}
 
-    run_id = str(uuid.uuid4())
-    artifact_dir = Path.cwd() / ".itbench" / "runs" / run_id
-    artifact_dir.mkdir(parents=True, exist_ok=True)
-
     cluster_config = {"cluster": {"kubeconfig": kubeconfig}}
     environment_vars = {
         **tools_vars,
@@ -210,37 +211,32 @@ def deploy_environment(scenario_id: str | None, kubeconfig: str, only: str | Non
     }
     recorders_vars.update(cluster_config)
 
-    combined_extra_vars = {**environment_vars, **recorders_vars}
-    extra_vars_file = artifact_dir / "extra_vars.json"
-    extra_vars_file.write_text(json.dumps(combined_extra_vars, indent=2), encoding="utf-8")
-    console.print(f"[dim]Extra variables written to {extra_vars_file}[/dim]")
+    run_id, extra_vars_file = create_run({**environment_vars, **recorders_vars})
+    console.print(f"[dim]Extra variables written to {extra_vars_file}[/dim]", soft_wrap=True)
 
-    with console.status("Deploying environment…"):
-        try:
-            run_playbook(
-                playbook="manage_environment.yaml",
-                extra_vars=environment_vars,
-                tags=["install"],
-                run_id=run_id,
-            )
-        except RuntimeError as exc:
-            console.print(f"[red]Environment deploy failed:[/red] {exc}")
-            raise SystemExit(1) from exc
+    run_step(
+        playbook="manage_environment.yaml",
+        extra_vars=environment_vars,
+        tags=["install"],
+        status="Deploying environment…",
+        failure="Environment deploy",
+        verbose=verbose,
+        run_id=run_id,
+    )
 
-        if "recorders" in steps:
-            try:
-                run_playbook(
-                    playbook="manage_environment.yaml",
-                    extra_vars={
-                        **recorders_vars,
-                        "environment_tool_management_enabled": True,
-                        "environment_application_management_enabled": False,
-                    },
-                    tags=["install"],
-                    run_id=run_id,
-                )
-            except RuntimeError as exc:
-                console.print(f"[red]Environment deploy failed:[/red] {exc}")
-                raise SystemExit(1) from exc
+    if "recorders" in steps:
+        run_step(
+            playbook="manage_environment.yaml",
+            extra_vars={
+                **recorders_vars,
+                "environment_tool_management_enabled": True,
+                "environment_application_management_enabled": False,
+            },
+            tags=["install"],
+            status="Deploying recorders…",
+            failure="Environment deploy",
+            verbose=verbose,
+            run_id=run_id,
+        )
 
     console.print("[bold green]Environment deployed successfully.[/bold green]")
