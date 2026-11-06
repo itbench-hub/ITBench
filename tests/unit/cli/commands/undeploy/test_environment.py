@@ -11,25 +11,25 @@ from itbench.utils.runner import PlaybookError
 _APPLICATIONS_STEP = call(
     playbook="manage_environment.yaml",
     extra_vars={
-        "cluster": {"kubeconfig": "/kube.conf"},
         "environment_tool_management_enabled": False,
         "environment_application_management_enabled": True,
     },
     tags=["uninstall"],
     run_id=None,
     verbose=False,
+    kubeconfig="/kube.conf",
 )
 
 _TOOLS_STEP = call(
     playbook="manage_environment.yaml",
     extra_vars={
-        "cluster": {"kubeconfig": "/kube.conf"},
         "environment_tool_management_enabled": True,
         "environment_application_management_enabled": False,
     },
     tags=["uninstall"],
     run_id=None,
     verbose=False,
+    kubeconfig="/kube.conf",
 )
 
 

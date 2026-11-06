@@ -18,6 +18,7 @@ def run_step(
     failure: str,
     verbose: bool,
     run_id: str | None = None,
+    kubeconfig: str | None = None,
 ) -> None:
     """Run one playbook and exit with status 1 if it fails.
 
@@ -31,7 +32,14 @@ def run_step(
 
     try:
         with spinner:
-            run_playbook(playbook=playbook, extra_vars=extra_vars, tags=tags, run_id=run_id, verbose=verbose)
+            run_playbook(
+                playbook=playbook,
+                extra_vars=extra_vars,
+                tags=tags,
+                run_id=run_id,
+                verbose=verbose,
+                kubeconfig=kubeconfig,
+            )
     except PlaybookError as exc:
         if exc.output:
             err_console.print(exc.output, markup=False, highlight=False, soft_wrap=True)

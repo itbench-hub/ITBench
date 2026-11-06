@@ -1,5 +1,7 @@
 """CLI command to create and scaffold a new scenario."""
 
+import sys
+
 from pathlib import Path
 from typing import Any
 
@@ -7,8 +9,7 @@ import click
 import questionary
 import yaml
 
-from rich.console import Console
-
+from itbench.cli.render import console, fail
 from itbench.models.application import APPLICATION_CATALOG
 from itbench.models.fault import FAULT_CATALOG
 from itbench.models.kubernetes import (
@@ -30,8 +31,6 @@ from itbench.models.scenario import (
 )
 from itbench.paths import repository
 from itbench.utils.ground_truth import generate_ground_truth
-
-console = Console()
 
 _DOMAINS: list[str] = [domain.value for domain in ScenarioDomain]
 
@@ -70,11 +69,22 @@ def _ask_target(fault_id: str) -> FaultTarget | None:
         choices=list(_KIND_TO_CONSTRUCTOR),
         default=suggested_kind if suggested_kind in _KIND_TO_CONSTRUCTOR else "Deployment",
     ).ask()
+    if kind is None:
+        raise click.Abort()
 
-    name = questionary.text("    Resource name:").ask() or "<name>"
+    name = questionary.text("    Resource name:").ask()
+    if name is None:
+        raise click.Abort()
+    if not name:
+        name = "<name>"
+
     namespace: str | None = None
     if kind != "Namespace":
-        namespace = questionary.text("    Namespace:").ask() or "<namespace>"
+        namespace = questionary.text("    Namespace:").ask()
+        if namespace is None:
+            raise click.Abort()
+        if not namespace:
+            namespace = "<namespace>"
 
     return FaultTarget(kubernetes=_KIND_TO_CONSTRUCTOR[kind](name, namespace))
 
@@ -91,6 +101,9 @@ def _ask_fault_block() -> ScenarioFault | None:
             choices=fault_ids,
             match_middle=True,
         ).ask()
+
+        if fault_id is None:
+            raise click.Abort()
 
         if not fault_id:
             if injections:
@@ -111,14 +124,22 @@ def _ask_fault_block() -> ScenarioFault | None:
             target = _ask_target(fault_id)
             if target:
                 targets.append(target)
-                while questionary.confirm("  Add another target for this injection?", default=False).ask():
+                while True:
+                    add_another = questionary.confirm("  Add another target for this injection?", default=False).ask()
+                    if add_another is None:
+                        raise click.Abort()
+                    if not add_another:
+                        break
                     extra = _ask_target(fault_id)
                     if extra:
                         targets.append(extra)
 
         injections.append(ScenarioFaultInjection(id=fault_id, targets=targets))
 
-        if not questionary.confirm("  Add another injection to this fault block?", default=False).ask():
+        add_another_inj = questionary.confirm("  Add another injection to this fault block?", default=False).ask()
+        if add_another_inj is None:
+            raise click.Abort()
+        if not add_another_inj:
             is_collecting_injections = False
 
     return ScenarioFault(injections=injections) if injections else None
@@ -127,19 +148,20 @@ def _ask_fault_block() -> ScenarioFault | None:
 @click.command(name="scenario", help="Interactively create and scaffold a new scenario.")
 def create_scenario_command() -> None:
     """Interactively scaffold a new scenario, its ground truth, and an optional extra_vars file."""
+    if not sys.stdin.isatty():
+        fail("[red]Input is not interactive. This command must be run in a terminal.[/red]")
+
     console.print("[bold blue]Create a New ITBench Scenario[/bold blue]\n")
 
-    selected_apps = (
-        questionary.checkbox(
-            "Select applications:",
-            choices=sorted(APPLICATION_CATALOG.keys()),
-        ).ask()
-        or []
-    )
-
+    selected_apps = questionary.checkbox(
+        "Select applications:",
+        choices=sorted(APPLICATION_CATALOG.keys()),
+        validate=lambda choices: True if len(choices) > 0 else "At least one application must be selected.",
+    ).ask()
+    if selected_apps is None:
+        raise click.Abort()
     if not selected_apps:
-        console.print("[red]At least one application is required.[/red]")
-        return
+        raise click.UsageError("At least one application is required.")
 
     applications = [ScenarioApplication(id=app_id) for app_id in selected_apps]
 
@@ -148,6 +170,8 @@ def create_scenario_command() -> None:
         choices=_DOMAINS,
         default="sre",
     ).ask()
+    if domain_value is None:
+        raise click.Abort()
     domains = [ScenarioDomain(domain_value)]
 
     fault_blocks: list[ScenarioFault] = []
@@ -162,7 +186,10 @@ def create_scenario_command() -> None:
         else:
             console.print("[yellow]Empty block skipped.[/yellow]")
 
-        is_adding_fault_blocks = questionary.confirm("Add another fault block?", default=False).ask()
+        add_block = questionary.confirm("Add another fault block?", default=False).ask()
+        if add_block is None:
+            raise click.Abort()
+        is_adding_fault_blocks = add_block
 
     scenario = Scenario(
         environment=ScenarioEnvironment(applications=applications, domains=domains),
@@ -192,18 +219,27 @@ def create_scenario_command() -> None:
     gt_path = generate_ground_truth(scenario, scenario_dir)
     console.print(f"[green]Generated ground truth → {gt_path}[/green]")
 
-    if questionary.confirm("\nDo you want to add custom extra variables (extra_variables)?", default=False).ask():
+    add_custom = questionary.confirm(
+        "\nDo you want to add custom extra variables (extra_variables)?", default=False
+    ).ask()
+    if add_custom is None:
+        raise click.Abort()
+    if add_custom:
         console.print("[dim]Enter Ansible variable overrides as key: value pairs.[/dim]")
         extra_vars: dict[str, Any] = {}
         is_adding_vars = True
 
         while is_adding_vars:
             key = questionary.text("  Variable name:").ask()
+            if key is None:
+                raise click.Abort()
             if not key:
                 if extra_vars:
                     is_adding_vars = False
                 continue
             value = questionary.text(f"  Value for '{key}':").ask()
+            if value is None:
+                raise click.Abort()
             if value is not None:
                 match value.lower():
                     case "true":
@@ -215,8 +251,10 @@ def create_scenario_command() -> None:
                     case _:
                         extra_vars[key] = value
 
-            if not questionary.confirm("  Add another variable?", default=False).ask():
-                is_adding_vars = False
+            add_var = questionary.confirm("  Add another variable?", default=False).ask()
+            if add_var is None:
+                raise click.Abort()
+            is_adding_vars = add_var
 
         if extra_vars:
             extra_variables_path = scenario_dir / "extra_variables.yaml"

@@ -266,13 +266,13 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
             "tools_gateway_enabled": False,
             "tools_observability_enabled": False,
             "applications_book_info_enabled": False,
-            "cluster": {"kubeconfig": "/kube.conf"},
             "environment_tool_management_enabled": True,
             "environment_application_management_enabled": True,
         },
         tags=["install"],
         run_id=mock_run.call_args_list[0].kwargs["run_id"],
         verbose=False,
+        kubeconfig="/kube.conf",
     )
     assert mock_run.call_args_list[1] == call(
         playbook="manage_environment.yaml",
@@ -280,13 +280,13 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
             "tools_gateway_enabled": False,
             "tools_observability_enabled": False,
             "tools_recorders_enabled": True,
-            "cluster": {"kubeconfig": "/kube.conf"},
             "environment_tool_management_enabled": True,
             "environment_application_management_enabled": False,
         },
         tags=["install"],
         run_id=mock_run.call_args_list[1].kwargs["run_id"],
         verbose=False,
+        kubeconfig="/kube.conf",
     )
 
 

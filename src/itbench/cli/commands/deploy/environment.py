@@ -201,15 +201,12 @@ def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | Non
         if "recorders" in steps:
             recorders_vars = {**tools_vars, "tools_recorders_enabled": True}
 
-    cluster_config = {"cluster": {"kubeconfig": kubeconfig}}
     environment_vars = {
         **tools_vars,
         **applications_vars,
-        **cluster_config,
         "environment_tool_management_enabled": True,
         "environment_application_management_enabled": "applications" in steps,
     }
-    recorders_vars.update(cluster_config)
 
     run_id, extra_vars_file = create_run({**environment_vars, **recorders_vars})
     console.print(f"[dim]Extra variables written to {extra_vars_file}[/dim]", soft_wrap=True)
@@ -222,6 +219,7 @@ def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | Non
         failure="Environment deploy",
         verbose=verbose,
         run_id=run_id,
+        kubeconfig=kubeconfig,
     )
 
     if "recorders" in steps:
@@ -237,6 +235,7 @@ def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | Non
             failure="Environment deploy",
             verbose=verbose,
             run_id=run_id,
+            kubeconfig=kubeconfig,
         )
 
     console.print("[bold green]Environment deployed successfully.[/bold green]")

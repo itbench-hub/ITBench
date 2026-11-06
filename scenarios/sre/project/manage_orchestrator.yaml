@@ -2,8 +2,6 @@
 - name: Manage ITBench Orchestrator Cluster
   hosts:
     - localhost
-  environment:
-    K8_AUTH_KUBECONFIG: "{{ cluster.kubeconfig }}"
   pre_tasks:
     - name: Import executables role
       ansible.builtin.import_role:
@@ -16,14 +14,10 @@
         name: cluster
       tags:
         - always
-      vars:
-        cluster_files:
-          kubeconfig: "{{ cluster.kubeconfig }}"
   tasks:
     - name: Import argo role
       ansible.builtin.import_role:
         name: argo
       vars:
         argo_cluster:
-          platform: "{{ cluster_platform }}"
           provider: "{{ cluster_provider }}"

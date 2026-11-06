@@ -41,6 +41,17 @@ def test_run_playbook_passes_correct_args() -> None:
     assert kwargs["artifact_dir"].endswith("abc")
 
 
+def test_run_playbook_passes_kubeconfig_as_envvars() -> None:
+    mock_runner = _make_runner(rc=0)
+
+    with patch("ansible_runner.run", return_value=mock_runner) as mock_run:
+        run_playbook(playbook="my.yaml", kubeconfig="/kube.conf")
+
+    _, kwargs = mock_run.call_args
+    assert "envvars" in kwargs
+    assert kwargs["envvars"].get("K8S_AUTH_KUBECONFIG") == "/kube.conf"
+
+
 def test_run_playbook_no_tags_passes_none_cmdline() -> None:
     mock_runner = _make_runner(rc=0)
 

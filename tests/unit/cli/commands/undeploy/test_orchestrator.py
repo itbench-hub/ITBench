@@ -21,10 +21,11 @@ def test_undeploy_orchestrator_with_yes_flag_success() -> None:
     assert "Orchestrator undeployed successfully" in result.output
     mock_run.assert_called_once_with(
         playbook="manage_orchestrator.yaml",
-        extra_vars={"cluster": {"kubeconfig": "/kube.conf"}},
+        extra_vars={},
         tags=["uninstall"],
         run_id=None,
         verbose=False,
+        kubeconfig="/kube.conf",
     )
 
 

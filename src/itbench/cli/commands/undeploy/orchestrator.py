@@ -28,11 +28,12 @@ def undeploy_orchestrator(kubeconfig: str, verbose: bool, yes: bool) -> None:
 
     run_step(
         playbook="manage_orchestrator.yaml",
-        extra_vars={"cluster": {"kubeconfig": kubeconfig}},
+        extra_vars={},
         tags=["uninstall"],
         status="Undeploying orchestrator…",
         failure="Orchestrator undeploy",
         verbose=verbose,
+        kubeconfig=kubeconfig,
     )
 
     console.print("[green]Orchestrator undeployed successfully.[/green]")

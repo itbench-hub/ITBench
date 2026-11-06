@@ -2,8 +2,6 @@
 - name: Manage ITBench Environment Cluster
   hosts:
     - localhost
-  environment:
-    K8_AUTH_KUBECONFIG: "{{ cluster.kubeconfig }}"
   pre_tasks:
     - name: Import executables role
       ansible.builtin.import_role:
@@ -16,9 +14,6 @@
         name: cluster
       tags:
         - always
-      vars:
-        cluster_files:
-          kubeconfig: "{{ cluster.kubeconfig }}"
   tasks:
     - name: Set tools role variables
       tags:
@@ -43,7 +38,6 @@
         name: tools
       vars:
         tools_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
           provider: "{{ cluster_provider }}"
       when:
@@ -54,7 +48,6 @@
         name: applications
       vars:
         applications_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
           platform: "{{ cluster_platform }}"
       when:
         - environment_application_management_enabled | ansible.builtin.default(false)

@@ -65,6 +65,7 @@ def run_playbook(
     tags: list[str] | None = None,
     run_id: str | None = None,
     verbose: bool = False,
+    kubeconfig: str | None = None,
 ) -> ansible_runner.Runner:
     """Invoke an Ansible playbook via ansible-runner.
 
@@ -76,6 +77,7 @@ def run_playbook(
         run_id: Optional run identifier; a UUID is generated when omitted.
         verbose: Stream the Ansible output to the terminal. When false the output is
                  captured and only attached to the error if the playbook fails.
+        kubeconfig: Optional absolute path to a kubeconfig file.
 
     Returns:
         The :class:`ansible_runner.Runner` instance after the run completes.
@@ -90,6 +92,11 @@ def run_playbook(
     if tags:
         cmdline_args += ["--tags", ",".join(tags)]
 
+    envvars = {}
+
+    if kubeconfig:
+        envvars["K8S_AUTH_KUBECONFIG"] = str(kubeconfig)
+
     runner = ansible_runner.run(
         private_data_dir=str(repository.ansible_project),
         playbook=playbook,
@@ -97,6 +104,7 @@ def run_playbook(
         cmdline=" ".join(cmdline_args) if cmdline_args else None,
         artifact_dir=str(artifact_dir),
         quiet=not verbose,
+        envvars=envvars,
     )
 
     if runner.rc != 0:

@@ -31,7 +31,8 @@ def test_deploy_orchestrator_success() -> None:
     _, kwargs = mock_run.call_args
     assert kwargs["playbook"] == "manage_orchestrator.yaml"
     assert kwargs["tags"] == ["install"]
-    assert kwargs["extra_vars"]["cluster"]["kubeconfig"] == "/kube.conf"
+    assert kwargs["extra_vars"] == {}
+    assert kwargs["kubeconfig"] == "/kube.conf"
     assert kwargs["verbose"] is False
 
 

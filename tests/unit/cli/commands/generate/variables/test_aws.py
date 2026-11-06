@@ -115,7 +115,7 @@ def test_command_overwrites_existing_file_with_yes(output: Path) -> None:
         patch("itbench.cli.commands.generate.variables.aws.questionary") as mock_q,
         patch("itbench.cli.commands.generate.variables.aws.resolve_vault_password", return_value="vaultpass"),
     ):
-        _mock_prompts(mock_q, region="us-west-2", key_id="AKIANEW", secret="newsecret") # pragma: allowlist secret
+        _mock_prompts(mock_q, region="us-west-2", key_id="AKIANEW", secret="newsecret")  # pragma: allowlist secret
         runner.invoke(variables_aws_command, ["--yes"])
 
     content = yaml.safe_load(output.read_text())

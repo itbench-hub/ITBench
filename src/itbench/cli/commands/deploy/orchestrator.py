@@ -19,7 +19,7 @@ def deploy_orchestrator(kubeconfig: str, verbose: bool) -> None:
         itbench deploy orchestrator --kubeconfig ~/.kube/config
         itbench deploy orchestrator -v --kubeconfig ~/.kube/config
     """
-    extra_vars = {"cluster": {"kubeconfig": kubeconfig}}
+    extra_vars = {}
 
     run_id, extra_vars_file = create_run(extra_vars)
     console.print(f"[dim]Extra variables written to {extra_vars_file}[/dim]", soft_wrap=True)
@@ -32,6 +32,7 @@ def deploy_orchestrator(kubeconfig: str, verbose: bool) -> None:
         failure="Orchestrator deploy",
         verbose=verbose,
         run_id=run_id,
+        kubeconfig=kubeconfig,
     )
 
     console.print("[green]Orchestrator deployed successfully.[/green]")

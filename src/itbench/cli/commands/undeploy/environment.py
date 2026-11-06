@@ -37,12 +37,9 @@ def undeploy_environment(kubeconfig: str, only: str | None, verbose: bool, yes: 
     if not confirm_or_cancel(f"Are you sure you want to undeploy {target}?", yes, cancelled="Undeployment cancelled."):
         return
 
-    cluster_config = {"cluster": {"kubeconfig": kubeconfig}}
-
     run_step(
         playbook="manage_environment.yaml",
         extra_vars={
-            **cluster_config,
             "environment_tool_management_enabled": False,
             "environment_application_management_enabled": True,
         },
@@ -50,13 +47,13 @@ def undeploy_environment(kubeconfig: str, only: str | None, verbose: bool, yes: 
         status="Undeploying applications…",
         failure="Environment undeploy",
         verbose=verbose,
+        kubeconfig=kubeconfig,
     )
 
     if tools_enabled:
         run_step(
             playbook="manage_environment.yaml",
             extra_vars={
-                **cluster_config,
                 "environment_tool_management_enabled": True,
                 "environment_application_management_enabled": False,
             },
@@ -64,6 +61,7 @@ def undeploy_environment(kubeconfig: str, only: str | None, verbose: bool, yes: 
             status="Undeploying tools…",
             failure="Environment undeploy",
             verbose=verbose,
+            kubeconfig=kubeconfig,
         )
 
     console.print("[bold green]Environment undeployed successfully.[/bold green]")
