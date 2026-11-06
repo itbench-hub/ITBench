@@ -99,7 +99,7 @@
                 - default: "{{ applications_namespace_opentelemetry_demo }}"
                   name: namespace
           exporters:
-            otlp/gateway:
+            otlp/gateway-logs:
               endpoint: "{{ tools_otel_gateway_endpoint.opentelemetry_demo.grpc }}"
               retry_on_failure:
                 enabled: true
@@ -107,8 +107,14 @@
                 enabled: true
               tls:
                 insecure: true
-            otlp/jaeger:
-              endpoint: "{{ tools_jaeger_endpoint.collector.grpc }}"
+            otlp/gateway-traces:
+              endpoint: "{{ tools_otel_gateway_endpoint.jaeger.grpc }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
             prometheus:
               endpoint: 0.0.0.0:8888
           service:
@@ -116,7 +122,7 @@
               logs:
                 exporters:
                   - debug
-                  - otlp/gateway
+                  - otlp/gateway-logs
               metrics:
                 exporters:
                   - debug
@@ -124,7 +130,7 @@
               traces:
                 exporters:
                   - debug
-                  - otlp/jaeger
+                  - otlp/gateway-traces
                   - span_metrics
             telemetry:
               metrics:

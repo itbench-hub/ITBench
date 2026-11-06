@@ -2,7 +2,6 @@
 
 import click
 
-from itbench.cli.commands.discover.endpoints import endpoints
 from itbench.cli.commands.discover.targets import targets
 
 
@@ -10,5 +9,4 @@ from itbench.cli.commands.discover.targets import targets
 def discover_group() -> None: ...
 
 
-discover_group.add_command(endpoints)
 discover_group.add_command(targets)
