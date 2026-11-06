@@ -28,6 +28,15 @@ def test_playbooks_run_from_the_sre_project() -> None:
     assert repository.ansible_project.parts[-3:] == ("scenarios", "sre", "project")
 
 
+def test_playbooks_use_the_sre_inventory_so_group_vars_apply() -> None:
+    with patch("ansible_runner.run", return_value=_make_runner()) as mock_run:
+        run_playbook(playbook="my.yaml")
+
+    assert mock_run.call_args.kwargs["inventory"] == str(repository.inventory)
+    assert repository.inventory.parts[-3:] == ("scenarios", "sre", "inventory")
+    assert repository.group_vars == repository.inventory / "group_vars"
+
+
 def test_run_playbook_passes_correct_args() -> None:
     mock_runner = _make_runner(rc=0)
 

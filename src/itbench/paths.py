@@ -80,9 +80,14 @@ class ITBenchRepository:
         return self.root / "scenarios" / "sre" / "project"
 
     @property
+    def inventory(self) -> Path:
+        """Ansible inventory directory (``inventory.yaml``, ``group_vars`` and ``host_vars``)."""
+        return self.root / "scenarios" / "sre" / "inventory"
+
+    @property
     def group_vars(self) -> Path:
         """Ansible inventory ``group_vars`` directory."""
-        return self.root / "scenarios" / "sre" / "inventory" / "group_vars"
+        return self.inventory / "group_vars"
 
     @property
     def tools_defaults(self) -> Path:

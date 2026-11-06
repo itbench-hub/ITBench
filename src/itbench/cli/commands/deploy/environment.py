@@ -177,7 +177,6 @@ def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | Non
 
     tools_vars: dict[str, Any] = {}
     applications_vars: dict[str, Any] = {}
-    recorders_vars: dict[str, Any] = {}
 
     if scenario_id is not None:
         known = known_scenario_ids(repository.scenarios)
@@ -192,23 +191,20 @@ def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | Non
         tools_vars = {k: v for k, v in scenario_vars.items() if k in _TOOLS_VARS}
         if "applications" in steps:
             applications_vars = {k: v for k, v in scenario_vars.items() if k.startswith("applications_")}
-        if "recorders" in steps:
-            recorders_vars = {**tools_vars, "tools_recorders_enabled": True, "scenario_id": scenario_id}
     else:
         tools_vars = _tools_extra_vars_from_wizard()
         if "applications" in steps:
             applications_vars = _applications_extra_vars_from_wizard()
-        if "recorders" in steps:
-            recorders_vars = {**tools_vars, "tools_recorders_enabled": True}
 
     environment_vars = {
         **tools_vars,
         **applications_vars,
         "environment_tool_management_enabled": True,
         "environment_application_management_enabled": "applications" in steps,
+        "environment_recorder_management_enabled": "recorders" in steps,
     }
 
-    run_id, extra_vars_file = create_run({**environment_vars, **recorders_vars})
+    run_id, extra_vars_file = create_run(environment_vars)
     console.print(f"[dim]Extra variables written to {extra_vars_file}[/dim]", soft_wrap=True)
 
     run_step(
@@ -221,21 +217,5 @@ def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | Non
         run_id=run_id,
         kubeconfig=kubeconfig,
     )
-
-    if "recorders" in steps:
-        run_step(
-            playbook="manage_environment.yaml",
-            extra_vars={
-                **recorders_vars,
-                "environment_tool_management_enabled": True,
-                "environment_application_management_enabled": False,
-            },
-            tags=["install"],
-            status="Deploying recorders…",
-            failure="Environment deploy",
-            verbose=verbose,
-            run_id=run_id,
-            kubeconfig=kubeconfig,
-        )
 
     console.print("[bold green]Environment deployed successfully.[/bold green]")

@@ -1,10 +1,11 @@
 ---
 - name: Export recorded data to S3 storage
   when:
-    - aws_access_key_id is ansible.builtin.defined
-    - aws_secret_access_key is ansible.builtin.defined
-    - s3_bucket is ansible.builtin.defined
-    - s3_endpoint is ansible.builtin.defined
+    - tools_storage_s3_bucket is ansible.builtin.defined
+    - tools_storage_s3_directory is ansible.builtin.defined
+    - tools_storage_s3_endpoint is ansible.builtin.defined
+    - tools_storage_s3_password is ansible.builtin.defined
+    - tools_storage_s3_username is ansible.builtin.defined
   block:
     - name: Create S3 credentials Secret
       kubernetes.core.k8s:
@@ -18,9 +19,9 @@
             name: itbench-aws-credentials
             namespace: "{{ tools_namespace_itbench_observability }}"
           stringData:
-            AWS_ACCESS_KEY_ID: "{{ aws_access_key_id }}"
-            AWS_DEFAULT_REGION: "{{ aws_region }}"
-            AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}" # pragma: allowlist secret
+            AWS_ACCESS_KEY_ID: "{{ tools_storage_s3_username }}"
+            AWS_ENDPOINT_URL_S3: "{{ tools_storage_s3_endpoint }}"
+            AWS_SECRET_ACCESS_KEY: "{{ tools_storage_s3_password }}" # pragma: allowlist secret
           type: Opaque
         state: present
       no_log: true
@@ -49,9 +50,17 @@
                       - s3
                       - sync
                       - /records
-                      - "s3://{{ [s3_bucket, s3_directory, recorder_persistent_volume_claim] | ansible.builtin.path_join }}"
-                      - --endpoint-url
-                      - "{{ s3_endpoint }}"
+                      - >-
+                        {{
+                          "s3://" ~
+                          (
+                            [
+                              tools_storage_s3_bucket,
+                              tools_storage_s3_directory,
+                              recorder_persistent_volume_claim
+                            ] | ansible.builtin.path_join
+                          )
+                        }}
                     env:
                       - name: HOME
                         value: /home/aws
@@ -108,12 +117,12 @@
 
 - name: Export recorded data to local storage
   when:
-    - tools_storage_local is ansible.builtin.defined
+    - storage_localhost_directory is ansible.builtin.defined
   block:
     - name: Create local directory for exported data
       ansible.builtin.file:
         mode: "0755"
-        path: "{{ [tools_storage_local.directory, recorder_persistent_volume_claim] | ansible.builtin.path_join }}"
+        path: "{{ [storage_localhost_directory, recorder_persistent_volume_claim] | ansible.builtin.path_join }}"
         state: directory
       register: tools_local_directory
 
@@ -178,7 +187,6 @@
   always:
     - name: Delete Pod
       kubernetes.core.k8s:
-        kubeconfig: "{{ tools_cluster.kubeconfig }}"
         resource_definition:
           apiVersion: v1
           kind: Pod

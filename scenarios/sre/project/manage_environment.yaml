@@ -15,25 +15,7 @@
       tags:
         - always
   tasks:
-    - name: Set tools role variables
-      tags:
-        - always
-      when:
-        - storage is ansible.builtin.defined
-      block:
-        - name: Set tools_storage_local
-          ansible.builtin.set_fact:
-            tools_storage_local: "{{ storage.local }}"
-          when:
-            - storage.local is ansible.builtin.defined
-
-        - name: Set tools_storage_s3
-          ansible.builtin.set_fact:
-            tools_storage_s3: "{{ storage.s3 }}"
-          when:
-            - storage.s3 is ansible.builtin.defined
-
-    - name: Import tools role
+    - name: Import tools role (non-recorder)
       ansible.builtin.import_role:
         name: tools
       vars:
@@ -51,3 +33,14 @@
           platform: "{{ cluster_platform }}"
       when:
         - environment_application_management_enabled | ansible.builtin.default(false)
+
+    - name: Import tools role (recorder)
+      ansible.builtin.import_role:
+        name: tools
+      vars:
+        tools_cluster:
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+        tools_recorders_enabled: true
+      when:
+        - environment_recorder_management_enabled | ansible.builtin.default(false)

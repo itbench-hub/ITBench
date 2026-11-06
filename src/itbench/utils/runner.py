@@ -1,6 +1,7 @@
 """Ansible runner utilities for ITBench CLI commands."""
 
 import json
+import os
 import uuid
 
 from collections.abc import Mapping
@@ -71,7 +72,7 @@ def run_playbook(
 
     Args:
         playbook: Playbook filename relative to the SRE project directory
-                  (e.g. ``"manage_applications.yaml"``).
+                  (e.g. ``"manage_environment.yaml"``).
         extra_vars: Optional dictionary of extra variables passed to the playbook.
         tags: Optional list of Ansible tags to limit task execution.
         run_id: Optional run identifier; a UUID is generated when omitted.
@@ -92,13 +93,13 @@ def run_playbook(
     if tags:
         cmdline_args += ["--tags", ",".join(tags)]
 
-    envvars = {}
-
+    envvars = dict(os.environ)
     if kubeconfig:
         envvars["K8S_AUTH_KUBECONFIG"] = str(kubeconfig)
 
     runner = ansible_runner.run(
         private_data_dir=str(repository.ansible_project),
+        inventory=str(repository.inventory),
         playbook=playbook,
         extravars=extra_vars or {},
         cmdline=" ".join(cmdline_args) if cmdline_args else None,

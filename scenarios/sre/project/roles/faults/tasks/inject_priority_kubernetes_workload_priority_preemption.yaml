@@ -9,7 +9,7 @@
 
 - name: Select an available worker node randomly
   ansible.builtin.set_fact:
-    faults_node: "{{ faults_worker_nodes.resources | ansible.builtin.random }}"
+    faults_node: "{{ faults_sandbox_nodes | ansible.builtin.random }}"
 
 - name: Create PriorityClass (high priority)
   kubernetes.core.k8s:
@@ -105,6 +105,11 @@
             nodeSelector:
               "kubernetes.io/hostname": "{{ faults_node.metadata.name }}"
             priorityClassName: application-critical
+            tolerations:
+              - effect: NoSchedule
+                key: itbench.io/sandbox
+                operator: Equal
+                value: "true"
     state: present
     wait: true
   vars:
