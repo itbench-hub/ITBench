@@ -295,34 +295,3 @@
           matchLabels:
             "app.kubernetes.io/name": clickhouse
     state: present
-
-- name: Create HTTPRoute for Clickhouse
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: gateway.networking.k8s.io/v1
-      kind: HTTPRoute
-      metadata:
-        name: clickhouse
-        namespace: "{{ tools_namespace_itbench_observability }}"
-      spec:
-        parentRefs:
-          - name: "{{ tools_gateway }}"
-            namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
-        rules:
-          - backendRefs:
-              - name: clickhouse-main
-                port: 8123
-            filters:
-              - responseHeaderModifier:
-                  add: "{{ tools_response_headers_http }}"
-                type: ResponseHeaderModifier
-              - type: URLRewrite
-                urlRewrite:
-                  path:
-                    replacePrefixMatch: /
-                    type: ReplacePrefixMatch
-            matches:
-              - path:
-                  type: PathPrefix
-                  value: /observability/clickhouse/
-    state: present

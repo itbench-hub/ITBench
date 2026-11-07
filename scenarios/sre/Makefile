@@ -104,23 +104,6 @@ start-scenario: create-environment deploy-recorders inject-scenario-faults ## St
 .PHONY: stop-scenario
 stop-scenario: undeploy-recorders remove-fault-resources destroy-environment ## Stops an scenario by undeploying a stack, applications, faults, and recorders
 
-.PHONY: enable-agent-access
-enable-agent-access: ## Adds access controls for llm agent
-ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "grant_access" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
-	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
-endif
-
-.PHONY: disable-agent-access
-disable-agent-access: ## Removes access controls for llm agent
-	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "revoke_access"
-
-.PHONY: test-molecule-agent
-test-molecule-agent: ## Runs Molecule tests for the Agent role
-	cd project/roles/agent && $(UV) run molecule test --all --report --command-borders
-
 .PHONY: test-molecule-faults
 test-molecule-faults: ## Runs Molecule tests for the Faults role
 	cd project/roles/faults && $(UV) run molecule test --all --report --command-borders

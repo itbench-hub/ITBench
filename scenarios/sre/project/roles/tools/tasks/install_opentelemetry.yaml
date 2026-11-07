@@ -154,32 +154,6 @@
       status: "True"
       type: Ready
 
-- name: Create HTTPRoute for Jaeger
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: gateway.networking.k8s.io/v1
-      kind: HTTPRoute
-      metadata:
-        name: jaeger
-        namespace: "{{ tools_namespace_itbench_observability }}"
-      spec:
-        parentRefs:
-          - name: "{{ tools_gateway }}"
-            namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
-        rules:
-          - backendRefs:
-              - name: jaeger-collector
-                port: 16686
-            filters:
-              - responseHeaderModifier:
-                  add: "{{ tools_response_headers_http }}"
-                type: ResponseHeaderModifier
-            matches:
-              - path:
-                  type: PathPrefix
-                  value: /observability/jaeger/
-    state: present
-
 # NOTE: The gateway is the only Clickhouse writer for OTLP logs. Each source has its own
 #       named receiver (and port) with a dedicated pipeline, so no routing is required.
 

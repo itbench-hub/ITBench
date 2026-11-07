@@ -16,7 +16,7 @@
       subjects:
         - kind: ServiceAccount
           name: opencost
-          namespace: "{{ tools_namespace_itbench_observability }}"
+          namespace: "{{ tools_namespace_opencost }}"
     state: present
 
 - name: Install OpenCost
@@ -24,7 +24,7 @@
     chart_ref: "oci://ghcr.io/opencost/charts/opencost"
     chart_version: "2.5.33"
     release_name: "{{ tools_helm_release_opencost }}"
-    release_namespace: "{{ tools_namespace_itbench_observability }}"
+    release_namespace: "{{ tools_namespace_opencost }}"
     release_state: present
     release_values:
       opencost:
@@ -49,6 +49,21 @@
         metrics:
           serviceMonitor:
             enabled: true
+        mcp:
+          httpRoute:
+            enabled: true
+            parentRefs:
+              - name: "{{ tools_gateway }}"
+                namespace: "{{ tools_namespace_kubernetes_gateway_system }}"
+            rules:
+              - filters:
+                  - responseHeaderModifier:
+                      add: "{{ tools_response_headers_http }}"
+                    type: ResponseHeaderModifier
+                matches:
+                  - path:
+                      type: PathPrefix
+                      value: /mcp/opencost
         platforms:
           openshift:
             enabled: "{{ tools_cluster.platform == 'openshift' }}"
@@ -85,28 +100,6 @@
             serviceName: thanos-querier
     timeout: 10m0s
     wait: true
-
-- name: Create HTTPRoute for OpenCost
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: gateway.networking.k8s.io/v1
-      kind: HTTPRoute
-      metadata:
-        name: "{{ tools_helm_release_opencost }}"
-        namespace: "{{ tools_namespace_itbench_observability }}"
-      spec:
-        parentRefs:
-          - name: "{{ tools_gateway }}"
-            namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
-        rules:
-          - backendRefs:
-              - name: "{{ tools_helm_release_opencost }}"
-                port: 9090
-            filters:
-              - responseHeaderModifier:
-                  add: "{{ tools_response_headers_http }}"
-                type: ResponseHeaderModifier
-    state: present
 
 - name: Create PrometheusRules
   kubernetes.core.k8s:

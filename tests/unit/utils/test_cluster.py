@@ -5,13 +5,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from itbench.utils.cluster import (
+    AGENT_MISSION_LABEL,
+    INJECT_NAMESPACE_LABEL_SELECTOR,
     KUBELET_SERVING_SIGNER,
+    MIN_TOKEN_MINUTES,
     SANDBOX_NODE_LABEL,
     SANDBOX_NODE_TAINT_EFFECT,
     SANDBOX_NODE_TAINT_KEY,
     WORKER_NODE_LABEL_SELECTOR,
     approve_pending_kublet_certificate_requests,
     configure_environment,
+    create_agent_access,
     delete_events,
     partition_cluster_nodes,
     prepare_cluster,
@@ -318,3 +322,103 @@ def test_delete_events_without_events() -> None:
 
     assert count == 0
     events_api.delete_collection_namespaced_event.assert_not_called()
+
+
+def _agent_core_api(service_accounts: list[MagicMock], namespaces: list[str] | None = None) -> MagicMock:
+    core_api = MagicMock()
+    core_api.list_service_account_for_all_namespaces.return_value.items = service_accounts
+    core_api.list_namespace.return_value.items = [MagicMock(**{"metadata.name": name}) for name in namespaces or []]
+    core_api.create_namespaced_service_account_token.return_value.status.token = "secret-token"
+    core_api.create_namespaced_service_account_token.return_value.status.expiration_timestamp = "2026-01-01T00:00:00Z"
+    return core_api
+
+
+def _agent_service_account() -> MagicMock:
+    service_account = MagicMock()
+    service_account.metadata.name = "agent-diagnosis"
+    service_account.metadata.namespace = "itbench-agents"
+    return service_account
+
+
+def _client_settings(**overrides: object) -> MagicMock:
+    settings = MagicMock(host="https://api.example:6443", verify_ssl=True, ssl_ca_cert=None, tls_server_name=None)
+    for key, value in overrides.items():
+        setattr(settings, key, value)
+    return settings
+
+
+def _create_agent_access(core_api: MagicMock, settings: MagicMock, minutes: int = 15):
+    with (
+        patch("itbench.utils.cluster.config.load_kube_config") as mock_load_config,
+        patch("itbench.utils.cluster.client.Configuration.get_default_copy", return_value=settings),
+        patch("itbench.utils.cluster.client.CoreV1Api", return_value=core_api),
+    ):
+        access = create_agent_access(kubeconfig="/path/to/kubeconfig", mission="diagnosis", minutes=minutes)
+    mock_load_config.assert_called_once_with(config_file="/path/to/kubeconfig")
+    return access
+
+
+def test_create_agent_access_requests_token_and_builds_minimal_kubeconfig(tmp_path) -> None:
+    ca_file = tmp_path / "ca.crt"
+    ca_file.write_bytes(b"CERT")
+    core_api = _agent_core_api([_agent_service_account()], ["otel-demo", "book-info"])
+
+    access = _create_agent_access(core_api, _client_settings(ssl_ca_cert=str(ca_file), tls_server_name="api.internal"))
+
+    core_api.list_service_account_for_all_namespaces.assert_called_once_with(
+        label_selector=f"{AGENT_MISSION_LABEL}=diagnosis"
+    )
+    core_api.list_namespace.assert_called_once_with(label_selector=INJECT_NAMESPACE_LABEL_SELECTOR)
+    name, namespace, body = core_api.create_namespaced_service_account_token.call_args.args
+    assert (name, namespace) == ("agent-diagnosis", "itbench-agents")
+    assert body.spec.expiration_seconds == 15 * 60
+    assert body.spec.audiences is None
+    assert access.namespaces == ["book-info", "otel-demo"]
+    assert access.expires == "2026-01-01T00:00:00Z"
+    assert access.kubeconfig == {
+        "apiVersion": "v1",
+        "kind": "Config",
+        "clusters": [
+            {
+                "name": "itbench",
+                "cluster": {
+                    "server": "https://api.example:6443",
+                    "certificate-authority-data": "Q0VSVA==",
+                    "tls-server-name": "api.internal",
+                },
+            }
+        ],
+        "users": [{"name": "itbench-diagnosis", "user": {"token": "secret-token"}}],
+        "contexts": [{"name": "itbench-diagnosis", "context": {"cluster": "itbench", "user": "itbench-diagnosis"}}],
+        "current-context": "itbench-diagnosis",
+    }
+
+
+def test_create_agent_access_raises_token_lifetime_to_the_api_minimum() -> None:
+    core_api = _agent_core_api([_agent_service_account()])
+
+    _create_agent_access(core_api, _client_settings(), minutes=1)
+
+    body = core_api.create_namespaced_service_account_token.call_args.args[2]
+    assert body.spec.expiration_seconds == MIN_TOKEN_MINUTES * 60
+
+
+def test_create_agent_access_skips_tls_verification_when_the_context_does() -> None:
+    core_api = _agent_core_api([_agent_service_account()])
+
+    access = _create_agent_access(core_api, _client_settings(verify_ssl=False))
+
+    assert access.kubeconfig["clusters"][0]["cluster"] == {
+        "server": "https://api.example:6443",
+        "insecure-skip-tls-verify": True,
+    }
+
+
+@pytest.mark.parametrize("count", [0, 2])
+def test_create_agent_access_requires_exactly_one_service_account(count: int) -> None:
+    core_api = _agent_core_api([_agent_service_account() for _ in range(count)])
+
+    with pytest.raises(RuntimeError, match=f"found {count}"):
+        _create_agent_access(core_api, _client_settings())
+
+    core_api.create_namespaced_service_account_token.assert_not_called()

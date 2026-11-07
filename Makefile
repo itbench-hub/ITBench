@@ -9,10 +9,16 @@ deps: ## Installs dependencies
 	$(UV) sync
 	$(UV) run ansible-galaxy install -r requirements.yaml --force
 
-.PHONY: lint
-lint: ## Lints files
-	$(UV) run ruff check src tests
+.PHONY: ansible-lint
+ansible-lint: ## Lints Ansible files
 	$(UV) run ansible-lint
+
+.PHONY: py-lint
+py-lint: ## Lints Python files
+	$(UV) run ruff check src tests
+
+.PHONY: lint
+lint: ansible-lint py-lint ## Lints all files
 
 .PHONY: pre-commit-hooks
 pre-commit-hooks: ## Installs pre-commit hooks

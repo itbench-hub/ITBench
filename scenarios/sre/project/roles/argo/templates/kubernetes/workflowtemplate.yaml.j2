@@ -49,23 +49,9 @@ spec:
                 - name: args
                   value: remove events
 
-          # TODO: replace with `itbench grant access` once grant/revoke are decided.
-          - name: grant-access-to-agent
-            template: run-playbook-step
-            depends: "remove-events.Succeeded || remove-events.Skipped"
-            when: "{{workflow.parameters.workflow_variant}} != teardown"
-            arguments:
-              parameters:
-                - name: playbook
-                  value: manage_agent_access.yaml
-                - name: tags
-                  value: grant_access
-                - name: extra-vars
-                  value: '{"scenario_id": "{{workflow.parameters.scenario}}"}'
-
           - name: pre-injection-pause
             template: pause-step
-            depends: "grant-access-to-agent.Succeeded || grant-access-to-agent.Skipped"
+            depends: "remove-events.Succeeded || remove-events.Skipped"
             when: "{{workflow.parameters.workflow_variant}} != teardown"
             arguments:
               parameters:
@@ -93,7 +79,7 @@ spec:
           # Everything below runs whether or not the steps above succeeded.
           - name: export-records
             template: run-itbench-step
-            depends: "teardown-pause.Succeeded || teardown-pause.Skipped || inject-faults.Failed || pre-injection-pause.Failed || grant-access-to-agent.Failed || remove-events.Failed || deploy-environment.Failed"
+            depends: "teardown-pause.Succeeded || teardown-pause.Skipped || inject-faults.Failed || pre-injection-pause.Failed || remove-events.Failed || deploy-environment.Failed"
             when: "{{workflow.parameters.workflow_variant}} != setup"
             arguments:
               parameters:
@@ -109,21 +95,9 @@ spec:
                 - name: args
                   value: remove faults
 
-          # TODO: replace with `itbench revoke access` once grant/revoke are decided.
-          - name: remove-access-from-agent
-            template: run-playbook-step
-            depends: "remove-faults.Succeeded || remove-faults.Failed || remove-faults.Skipped"
-            when: "{{workflow.parameters.workflow_variant}} != setup"
-            arguments:
-              parameters:
-                - name: playbook
-                  value: manage_agent_access.yaml
-                - name: tags
-                  value: revoke_access
-
           - name: undeploy-environment
             template: run-itbench-step
-            depends: "remove-access-from-agent.Succeeded || remove-access-from-agent.Failed || remove-access-from-agent.Skipped"
+            depends: "remove-faults.Succeeded || remove-faults.Failed || remove-faults.Skipped"
             when: "{{workflow.parameters.workflow_variant}} != setup"
             arguments:
               parameters:
@@ -158,40 +132,6 @@ spec:
           - secretRef:
               name: aws-credentials
               optional: true
-        volumeMounts:
-          - name: kubeconfig-volume
-            mountPath: /etc/itbench
-            readOnly: true
-
-    # Playbooks that do not have a CLI command yet.
-    - name: run-playbook-step
-      inputs:
-        parameters:
-          - name: playbook
-          - name: tags
-            value: ""
-          - name: extra-vars
-            value: "{}"
-      container:
-        image: quay.io/it-bench/bench-runner:1.0.0
-        imagePullPolicy: IfNotPresent
-        command:
-          - /bin/sh
-          - -c
-        args:
-          - >-
-            python3 -c "
-            import json;
-            from itbench.utils.runner import run_playbook;
-            extra = json.loads('''{{inputs.parameters.extra-vars}}''');
-            tags = ['{{inputs.parameters.tags}}'] if '{{inputs.parameters.tags}}' else None;
-            run_playbook(playbook='{{inputs.parameters.playbook}}', extra_vars=extra, tags=tags, kubeconfig='/etc/itbench/kubeconfig');
-            "
-        env:
-          - name: KUBECONFIG
-            value: /etc/itbench/kubeconfig
-          - name: PYTHONUNBUFFERED
-            value: "1"
         volumeMounts:
           - name: kubeconfig-volume
             mountPath: /etc/itbench

@@ -193,32 +193,6 @@
                 - create
         state: present
 
-    - name: Create HTTPRoute for Prometheus
-      kubernetes.core.k8s:
-        resource_definition:
-          apiVersion: gateway.networking.k8s.io/v1
-          kind: HTTPRoute
-          metadata:
-            name: "{{ tools_helm_release_kube_prometheus_stack }}"
-            namespace: "{{ tools_namespace_itbench_observability }}"
-          spec:
-            parentRefs:
-              - name: "{{ tools_gateway }}"
-                namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
-            rules:
-              - backendRefs:
-                  - name: "{{ tools_helm_release_kube_prometheus_stack }}-prometheus"
-                    port: 8443
-                filters:
-                  - responseHeaderModifier:
-                      add: "{{ tools_response_headers_http }}"
-                    type: ResponseHeaderModifier
-                matches:
-                  - path:
-                      type: PathPrefix
-                      value: /observability/prometheus/
-        state: present
-
 - name: Install Prometheus on OpenShift
   when:
     - tools_cluster.platform == "openshift"

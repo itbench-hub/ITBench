@@ -3,15 +3,17 @@
 import click
 
 from itbench.cli.commands.generate.documentation import generate_documentation_command
+from itbench.cli.commands.generate.kubeconfig import generate_kubeconfig_command
 from itbench.cli.commands.generate.schemas import generate_schemas_command
 from itbench.cli.commands.generate.statistics import generate_statistics_command
 from itbench.cli.commands.generate.variables import variables_group
 
 
-@click.group(name="generate", help="Generate schemas, documentation, and asset artifacts.")
+@click.group(name="generate", help="Generate schemas, documentation, agent kubeconfigs, and asset artifacts.")
 def generate_group() -> None: ...
 
 
+generate_group.add_command(generate_kubeconfig_command)
 generate_group.add_command(generate_schemas_command)
 generate_group.add_command(generate_documentation_command)
 generate_group.add_command(generate_statistics_command)
