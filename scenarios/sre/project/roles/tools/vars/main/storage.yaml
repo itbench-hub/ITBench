@@ -1,0 +1,36 @@
+---
+tools_storage_s3_bucket: >-
+  {{
+    storage_s3_bucket |
+    ansible.builtin.default(
+      lookup("ansible.builtin.env", "ITBENCH_S3_BUCKET", default=undef())
+    )
+  }}
+tools_storage_s3_directory: >-
+  {{
+    storage_s3_directory |
+    ansible.builtin.default(
+      lookup("ansible.builtin.env", "ITBENCH_S3_DIRECTORY", default=undef())
+    )
+  }}
+tools_storage_s3_endpoint: >-
+  {{
+    storage_s3_endpoint |
+    ansible.builtin.default(
+      lookup("ansible.builtin.env", "ITBENCH_S3_ENDPOINT", default=undef())
+    )
+  }}
+tools_storage_s3_password: >- #pragma: allowlist secret
+  {{
+    aws_secret_access_key |
+    ansible.builtin.default(
+      lookup("ansible.builtin.env", "ITBENCH_S3_PASSWORD", default=undef())
+    )
+  }}
+tools_storage_s3_username: >-
+  {{
+    aws_access_key_id |
+    ansible.builtin.default(
+      lookup("ansible.builtin.env", "ITBENCH_S3_USERNAME", default=undef())
+    )
+  }}

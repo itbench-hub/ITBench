@@ -1,0 +1,55 @@
+---
+- name: Retrieve ServiceAccounts for agents
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ServiceAccount
+    label_selectors:
+      - "itbench.io/agent-mission in (diagnosis, remediation)"
+  register: applications_agent_service_accounts
+
+- name: Create RBAC for ServiceAccounts
+  when:
+    - applications_agent_service_accounts.resources | ansible.builtin.length > 0
+  block:
+    - name: Retrieve fault injectable application namespaces
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        label_selectors:
+          - "itbench.io/ansible-role=applications"
+          - "itbench.io/inject=true"
+      register: applications_agent_namespaces
+
+    - name: Create RoleBindings for agent ServiceAccounts in each application namespace
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            labels:
+              "itbench.io/agent-mission": "{{ agent_service_account.metadata.labels['itbench.io/agent-mission'] }}"
+              "itbench.io/ansible-role": applications
+              "itbench.io/layer": ai-integration
+            name: "{{ application_namespace.metadata.name ~ '-' ~ agent_service_account.metadata.labels['itbench.io/agent-mission'] }}"
+            namespace: "{{ application_namespace.metadata.name }}"
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: "{{ 'agent-' ~ agent_service_account.metadata.labels['itbench.io/agent-mission'] }}"
+          subjects:
+            - kind: ServiceAccount
+              name: "{{ agent_service_account.metadata.name }}"
+              namespace: "{{ agent_service_account.metadata.namespace }}"
+        state: present
+      loop: >-
+        {{
+          applications_agent_namespaces.resources |
+          ansible.builtin.product(applications_agent_service_accounts.resources) |
+          ansible.builtin.list
+        }}
+      loop_control:
+        label: rolebinding/{{ binding[0].metadata.name ~ "-" ~ binding[1].metadata.name }}
+        loop_var: binding
+      vars:
+        agent_service_account: "{{ binding[1] }}"
+        application_namespace: "{{ binding[0] }}"

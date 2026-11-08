@@ -2,31 +2,40 @@
 
 import click
 
-from rich import box
-from rich.console import Console
-from rich.table import Table
-
+from itbench.cli.commands.list._usage import USAGE_COLUMN, add_usage, usage_option
+from itbench.cli.render import Column, format_option, render_rows
 from itbench.models.waiter import WAITER_CATALOG
 
-console = Console()
+_COLUMNS = [
+    Column("id", "ID", style="cyan", no_wrap=True),
+    Column("name", "Name"),
+    Column("platforms", "Platforms", style="dim"),
+    Column("description", "Description"),
+]
 
 
 @click.command(name="waiters", help="List all built-in waiters.")
-def list_waiters() -> None:
+@usage_option
+@format_option
+def list_waiters(show_usage: bool, output_format: str) -> None:
     """List all built-in waiters."""
-    table = Table(
+    rows = [
+        {
+            "id": waiter_id,
+            "name": entry.name,
+            "platforms": list(entry.platforms),
+            "description": entry.description,
+        }
+        for waiter_id, entry in sorted(WAITER_CATALOG.items())
+    ]
+    if show_usage:
+        add_usage(rows, "id", "waiters")
+
+    render_rows(
+        rows,
+        [*_COLUMNS, USAGE_COLUMN] if show_usage else _COLUMNS,
         title="Waiters",
-        box=box.SIMPLE_HEAVY,
-        show_lines=False,
-        header_style="bold",
+        footer=f"{len(rows)} waiter(s) available.",
+        empty_message="[yellow]No waiters available.[/yellow]",
+        output_format=output_format,
     )
-    table.add_column("ID", style="cyan", no_wrap=True)
-    table.add_column("Name")
-    table.add_column("Platforms", style="dim")
-    table.add_column("Description")
-
-    for waiter_id, entry in WAITER_CATALOG.items():
-        table.add_row(waiter_id, entry.name, ", ".join(entry.platforms), entry.description)
-
-    console.print(table)
-    console.print(f"[dim]{len(WAITER_CATALOG)} waiter(s) available.[/dim]")

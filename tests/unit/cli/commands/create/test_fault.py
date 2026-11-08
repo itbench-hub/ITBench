@@ -1,8 +1,11 @@
 """Tests for the interactive create fault CLI command."""
 
+import io
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 import yaml
 
 from click.testing import CliRunner
@@ -28,43 +31,45 @@ def test_scaffold_ansible_task(tmp_path: Path) -> None:
     assert task_path.read_text(encoding="utf-8") == "custom content"
 
 
-def test_create_fault_command_abort_on_empty_name(tmp_path: Path) -> None:
+def test_create_fault_command_abort_on_empty_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, terminal_input: io.BytesIO
+) -> None:
     runner = CliRunner()
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
+    monkeypatch.setenv("ITBENCH_REPOSITORY_PATH", str(tmp_path))
+
     with patch("questionary.text") as mock_text:
         mock_text.return_value.ask.return_value = ""
 
-        result = runner.invoke(
-            create_fault_command,
-            [
-                "--library-dir",
-                str(tmp_path / "faults"),
-                "--tasks-dir",
-                str(tmp_path / "tasks"),
-            ],
-        )
+        result = runner.invoke(create_fault_command, [], input=terminal_input)
 
-        assert result.exit_code == 0
+        assert result.exit_code == 2
         assert "Fault name is required" in result.output
 
 
-def test_create_fault_command_success(tmp_path: Path) -> None:
+def test_create_fault_command_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, terminal_input: io.BytesIO
+) -> None:
     runner = CliRunner()
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
+    monkeypatch.setenv("ITBENCH_REPOSITORY_PATH", str(tmp_path))
+
     library_dir = tmp_path / "faults"
-    tasks_dir = tmp_path / "tasks"
 
     with (
         patch("questionary.text") as mock_text,
         patch("questionary.select") as mock_select,
         patch("questionary.checkbox") as mock_checkbox,
-        patch("questionary.confirm") as mock_confirm,
     ):
         mock_text.side_effect = [
             MagicMock(ask=MagicMock(return_value="Crash Pods")),  # name
             MagicMock(ask=MagicMock(return_value="Crashes all pods")),  # description
             MagicMock(ask=MagicMock(return_value="Pods in CrashLoop")),  # expectation
-            MagicMock(ask=MagicMock(return_value="https://example.com/docs")),  # resources
-            MagicMock(ask=MagicMock(return_value="Check pod status")),  # solution step 1
-            MagicMock(ask=MagicMock(return_value="kubectl get pods")),  # command 1
+            MagicMock(ask=MagicMock(return_value="https://example.com/docs")),  # resources link 1
+            MagicMock(ask=MagicMock(return_value="")),  # empty to finish resources
+            MagicMock(ask=MagicMock(return_value="Check pod status")),  # solution step 1 description
+            MagicMock(ask=MagicMock(return_value="kubectl get pods")),  # solution step 1 command
+            MagicMock(ask=MagicMock(return_value="")),  # empty to finish solutions
         ]
         mock_select.return_value.ask.return_value = "Kubernetes"
         mock_checkbox.side_effect = [
@@ -72,17 +77,8 @@ def test_create_fault_command_success(tmp_path: Path) -> None:
             MagicMock(ask=MagicMock(return_value=["KubePodCrashLooping"])),  # alerts
             MagicMock(ask=MagicMock(return_value=["Deployment"])),  # target kinds
         ]
-        mock_confirm.return_value.ask.return_value = False  # no extra solution steps
 
-        result = runner.invoke(
-            create_fault_command,
-            [
-                "--library-dir",
-                str(library_dir),
-                "--tasks-dir",
-                str(tasks_dir),
-            ],
-        )
+        result = runner.invoke(create_fault_command, [], input=terminal_input)
 
         assert result.exit_code == 0
         assert "Created fault at" in result.output
@@ -96,3 +92,15 @@ def test_create_fault_command_success(tmp_path: Path) -> None:
         assert data["alerts"] == ["KubePodCrashLooping"]
         assert data["targets"] == [{"kubernetes": "KubernetesWorkload"}]
         assert len(data["solution_templates"]["templates"][0]["steps"]) == 1
+
+
+def test_create_fault_command_non_tty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    runner = CliRunner()
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
+    monkeypatch.setenv("ITBENCH_REPOSITORY_PATH", str(tmp_path))
+
+    with patch("itbench.cli.commands.create.fault.sys.stdin") as mock_stdin:
+        mock_stdin.isatty.return_value = False
+        result = runner.invoke(create_fault_command, [])
+        assert result.exit_code == 1
+        assert "Input is not interactive" in result.output

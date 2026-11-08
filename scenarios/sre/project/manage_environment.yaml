@@ -1,0 +1,46 @@
+---
+- name: Manage ITBench Environment Cluster
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Import executables role
+      ansible.builtin.import_role:
+        name: executables
+      tags:
+        - always
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+  tasks:
+    - name: Import tools role (non-recorder)
+      ansible.builtin.import_role:
+        name: tools
+      vars:
+        tools_cluster:
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+      when:
+        - environment_tool_management_enabled | ansible.builtin.default(false)
+
+    - name: Import applications role
+      ansible.builtin.import_role:
+        name: applications
+      vars:
+        applications_cluster:
+          platform: "{{ cluster_platform }}"
+      when:
+        - environment_application_management_enabled | ansible.builtin.default(false)
+
+    - name: Import tools role (recorder)
+      ansible.builtin.import_role:
+        name: tools
+      vars:
+        tools_cluster:
+          platform: "{{ cluster_platform }}"
+          provider: "{{ cluster_provider }}"
+        tools_recorders_enabled: true
+      when:
+        - environment_recorder_management_enabled | ansible.builtin.default(false)

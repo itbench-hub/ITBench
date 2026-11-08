@@ -7,7 +7,7 @@ the normal unit-test run stays fast and cluster-free.
 
 Prerequisites (handled by the CI workflow or the developer):
 - A reachable kubeconfig path supplied via the ``KUBECONFIG`` env var.
-- The tools stack already deployed (``itbench deploy tools``).
+- The tools stack already deployed (``itbench deploy environment --only tools``).
 
 Fixtures:
   kubeconfig  -- path string from ``KUBECONFIG``; skips entire test if unset.
@@ -28,9 +28,7 @@ def pytest_configure(config: pytest.Config) -> None:
     )
 
 
-def pytest_collection_modifyitems(
-    config: pytest.Config, items: list[pytest.Item]
-) -> None:
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Skip integration tests unless --integration flag is passed."""
     if config.getoption("--integration", default=False):
         return

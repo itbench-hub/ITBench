@@ -1,8 +1,11 @@
 """Tests for the interactive create scenario CLI command."""
 
+import io
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 import yaml
 
 from click.testing import CliRunner
@@ -53,28 +56,26 @@ def test_ask_target_returns_fault_target() -> None:
             assert target.kubernetes.namespace == "default"
 
 
-def test_create_scenario_command_abort_no_apps(tmp_path: Path) -> None:
+def test_create_scenario_command_abort_no_apps(terminal_input: io.BytesIO) -> None:
     runner = CliRunner()
     with patch("questionary.checkbox") as mock_checkbox:
         mock_checkbox.return_value.ask.return_value = []
 
-        result = runner.invoke(
-            create_scenario_command,
-            ["--scenarios-dir", str(tmp_path / "scenarios")],
-        )
+        result = runner.invoke(create_scenario_command, [], input=terminal_input)
 
-        assert result.exit_code == 0
+        assert result.exit_code == 2
         assert "At least one application is required" in result.output
 
 
-def test_create_scenario_command_success(tmp_path: Path) -> None:
+def test_create_scenario_command_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, terminal_input: io.BytesIO
+) -> None:
     runner = CliRunner()
+    monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
     scenarios_dir = tmp_path / "scenarios"
     first_app_id = next(iter(APPLICATION_CATALOG.keys()))
     # TODO: Pick a fault that is guaranteed to have targets so the confirm sequence is deterministic.
-    fault_id_with_targets = next(
-        fid for fid, f in FAULT_CATALOG.items() if f.targets
-    )
+    fault_id_with_targets = next(fid for fid, f in FAULT_CATALOG.items() if f.targets)
 
     with (
         patch("questionary.checkbox") as mock_checkbox,
@@ -86,31 +87,28 @@ def test_create_scenario_command_success(tmp_path: Path) -> None:
     ):
         mock_checkbox.return_value.ask.return_value = [first_app_id]
         mock_select.side_effect = [
-            MagicMock(ask=MagicMock(return_value="sre")),        # domain
-            MagicMock(ask=MagicMock(return_value="Deployment")), # target kind
+            MagicMock(ask=MagicMock(return_value="sre")),  # domain
+            MagicMock(ask=MagicMock(return_value="Deployment")),  # target kind
         ]
         mock_autocomplete.side_effect = [
             MagicMock(ask=MagicMock(return_value=fault_id_with_targets)),
         ]
         mock_text.side_effect = [
             MagicMock(ask=MagicMock(return_value="app-deployment")),  # target name
-            MagicMock(ask=MagicMock(return_value="default")),         # target namespace
-            MagicMock(ask=MagicMock(return_value="replicas")),        # extra var key
-            MagicMock(ask=MagicMock(return_value="3")),               # extra var value
+            MagicMock(ask=MagicMock(return_value="default")),  # target namespace
+            MagicMock(ask=MagicMock(return_value="replicas")),  # extra var key
+            MagicMock(ask=MagicMock(return_value="3")),  # extra var value
         ]
         mock_confirm.side_effect = [
             MagicMock(ask=MagicMock(return_value=False)),  # no extra target for this injection
             MagicMock(ask=MagicMock(return_value=False)),  # no extra injection in block
             MagicMock(ask=MagicMock(return_value=False)),  # no extra fault blocks
-            MagicMock(ask=MagicMock(return_value=True)),   # yes, add extra_variables
+            MagicMock(ask=MagicMock(return_value=True)),  # yes, add extra_variables
             MagicMock(ask=MagicMock(return_value=False)),  # no extra variable
         ]
         mock_gt.return_value = scenarios_dir / "1" / "ground_truth.yaml"
 
-        result = runner.invoke(
-            create_scenario_command,
-            ["--scenarios-dir", str(scenarios_dir)],
-        )
+        result = runner.invoke(create_scenario_command, [], input=terminal_input)
 
         assert result.exit_code == 0
         assert "Created scenario →" in result.output
@@ -127,3 +125,12 @@ def test_create_scenario_command_success(tmp_path: Path) -> None:
         assert extra_vars_file.exists()
         ev_data = yaml.safe_load(extra_vars_file.read_text(encoding="utf-8"))
         assert ev_data["replicas"] == 3
+
+
+def test_create_scenario_command_non_tty() -> None:
+    runner = CliRunner()
+    with patch("itbench.cli.commands.create.scenario.sys.stdin") as mock_stdin:
+        mock_stdin.isatty.return_value = False
+        result = runner.invoke(create_scenario_command, [])
+        assert result.exit_code == 1
+        assert "Input is not interactive" in result.output

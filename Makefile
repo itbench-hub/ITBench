@@ -9,9 +9,28 @@ deps: ## Installs dependencies
 	$(UV) sync
 	$(UV) run ansible-galaxy install -r requirements.yaml --force
 
-.PHONY: lint
-lint: ## Lints files
+.PHONY: ansible-lint
+ansible-lint: ## Lints Ansible files
 	$(UV) run ansible-lint
+
+.PHONY: py-lint
+py-lint: ## Lints Python files
+	$(UV) run ruff check src tests
+
+.PHONY: lint
+lint: ansible-lint py-lint ## Lints all files
+
+.PHONY: molecule-test-faults
+molecule-test-faults: ## Runs Molecule tests for the Faults role
+	cd scenarios/sre/project/roles/faults && $(UV) run molecule test --all --report --command-borders
+
+.PHONY: molecule-test-waiters
+molecule-test-waiters: ## Runs Molecule tests for the Waiters role
+	cd scenarios/sre/project/roles/waiters && $(UV) run molecule test --all --report --command-borders
+
+.PHONY: pytest-unit
+pytest-unit: ## Runs Python Unit tests
+	$(UV) run --group dev pytest
 
 .PHONY: pre-commit-hooks
 pre-commit-hooks: ## Installs pre-commit hooks

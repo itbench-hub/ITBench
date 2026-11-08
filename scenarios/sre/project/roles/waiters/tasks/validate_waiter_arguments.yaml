@@ -1,14 +1,14 @@
 ---
-- name: Validate `kubernetesObject` fault argument
+- name: Validate `workload` waiter argument
   when:
-    - waiter_args.kubernetesObject is ansible.builtin.defined
+    - waiter_args.workload is ansible.builtin.defined
   block:
-    - name: Retrieve {{ waiter_args.kubernetesObject.kind | ansible.builtin.lower }}
+    - name: Retrieve {{ waiter_args.workload.kind | ansible.builtin.lower }}
       kubernetes.core.k8s_info:
-        api_version: "{{ waiter_args.kubernetesObject.apiVersion }}"
-        kind: "{{ waiter_args.kubernetesObject.kind }}"
-        name: "{{ waiter_args.kubernetesObject.metadata.name }}"
-        namespace: "{{ waiter_args.kubernetesObject.metadata.namespace | ansible.builtin.default(omit) }}"
+        api_version: "{{ waiter_args.workload.apiVersion }}"
+        kind: "{{ waiter_args.workload.kind }}"
+        name: "{{ waiter_args.workload.name }}"
+        namespace: "{{ waiter_args.workload.namespace | ansible.builtin.default(omit, true) }}"
       register: waiters_args_kubernetes_object
 
     - name: Fail playbook due to `kubernetes object not found` error
@@ -16,8 +16,8 @@
         msg: "{{ object.kind }}/{{ object.name }} not found. please ensure object exists before injecting this fault."
       vars:
         object:
-          kind: "{{ waiter_args.kubernetesObject.kind }}"
-          name: "{{ waiter_args.kubernetesObject.metadata.name }}"
+          kind: "{{ waiter_args.workload.kind }}"
+          name: "{{ waiter_args.workload.name }}"
       when:
         - not waiters_args_kubernetes_object.api_found
         - waiters_args_kubernetes_object.resources | ansible.builtin.length != 1

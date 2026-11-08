@@ -8,7 +8,7 @@ from itbench.cli.commands.list.scenarios import list_scenarios
 from itbench.cli.commands.list.waiters import list_waiters
 
 
-@click.group(name="list", help="List and search benchmark primitives (faults, waiters, apps, scenarios).")
+@click.group(name="list", help="List and search benchmark primitives (faults, waiters, applications, scenarios).")
 def list_group() -> None: ...
 
 

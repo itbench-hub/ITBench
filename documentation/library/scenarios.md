@@ -41,6 +41,6 @@ All benchmark scenarios available in ITBench.
 ## Usage
 
 ```bash
-itbench deploy applications --scenario <id>
+itbench deploy environment --scenario <id>
 itbench list scenarios
 ```

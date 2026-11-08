@@ -11,9 +11,9 @@ from itbench.models.waiter import (
     WaiterDeleteWorkloadPods,
     WaiterPauseExecution,
     WaiterRestartKubernetesWorkload,
+    Waiters,
     WaiterScaleKubernetesWorkload,
     WaiterUnassignWorkloadContainerResourceLimits,
-    Waiters,
 )
 
 

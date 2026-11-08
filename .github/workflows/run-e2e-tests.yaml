@@ -7,16 +7,21 @@ on:
     paths:
       - clusters/kind/go.*
       - scenarios/sre/project/roles/applications/tasks/install_*.yaml
-      - scenarios/sre/project/roles/cluster/vars/main/minimum_versions.yaml
+      - scenarios/sre/project/roles/cluster/**
       - scenarios/sre/project/roles/executables/vars/main/minimum_versions.yaml
+      - scenarios/sre/project/roles/faults/**
       - scenarios/sre/project/roles/tools/tasks/export*.yaml
       - scenarios/sre/project/roles/tools/tasks/install_*.yaml
-      - scenarios/sre/project/manage_applications.yaml
+      - scenarios/sre/project/roles/waiters/**
+      - scenarios/sre/project/manage_environment.yaml
       - scenarios/sre/project/manage_faults.yaml
-      - scenarios/sre/project/manage_recorders.yaml
-      - scenarios/sre/project/manage_tools.yaml
-      - scenarios/sre/scripts/inject_scenario_faults.py
       - scenarios/sre/Makefile
+      - src/itbench/cli/commands/deploy/**
+      - src/itbench/cli/commands/inject/**
+      - src/itbench/cli/commands/remove/**
+      - src/itbench/cli/commands/undeploy/**
+      - src/itbench/cli/playbook.py
+      - src/itbench/utils/runner.py
       - pyproject.toml
       - requirements.yaml
 
@@ -62,12 +67,10 @@ jobs:
           make -C scenarios/sre group-vars
       - name: Prepare cluster
         run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
-      - name: Start FinOps Scenario 37
-        run: |
-          SCENARIO_NUMBER=37 make -C scenarios/sre start-scenario
-      - name: Stop FinOps Scenario 37
-        run: |
-          SCENARIO_NUMBER=37 make -C scenarios/sre stop-scenario
+      - name: Deploy FinOps Scenario 37
+        run: uv run itbench deploy environment --scenario 37 --kubeconfig "$HOME/.kube/config"
+      - name: Undeploy FinOps Scenario 37
+        run: uv run itbench undeploy environment --yes --kubeconfig "$HOME/.kube/config"
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
@@ -108,12 +111,16 @@ jobs:
           make -C scenarios/sre group-vars
       - name: Prepare cluster
         run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
-      - name: Start SRE Scenario 60
-        run: |
-          SCENARIO_NUMBER=60 make -C scenarios/sre start-scenario
-      - name: Stop SRE Scenario 60
-        run: |
-          SCENARIO_NUMBER=60 make -C scenarios/sre stop-scenario
+      - name: Configure environment
+        run: uv run itbench configure environment --kubeconfig "$HOME/.kube/config"
+      - name: Deploy SRE Scenario 60
+        run: uv run itbench deploy environment --scenario 60 --kubeconfig "$HOME/.kube/config"
+      - name: Inject SRE Scenario 60 faults
+        run: uv run itbench inject faults --scenario 60 --kubeconfig "$HOME/.kube/config"
+      - name: Remove SRE Scenario 60 faults
+        run: uv run itbench remove faults --kubeconfig "$HOME/.kube/config"
+      - name: Undeploy SRE Scenario 60
+        run: uv run itbench undeploy environment --yes --kubeconfig "$HOME/.kube/config"
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster

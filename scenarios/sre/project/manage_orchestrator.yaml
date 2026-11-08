@@ -1,0 +1,24 @@
+---
+- name: Manage ITBench Orchestrator Cluster
+  hosts:
+    - localhost
+  pre_tasks:
+    - name: Import executables role
+      ansible.builtin.import_role:
+        name: executables
+      tags:
+        - always
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+      tags:
+        - always
+  tasks:
+    - name: Import argo role
+      ansible.builtin.import_role:
+        name: argo
+      vars:
+        argo_cluster:
+          provider: "{{ cluster_provider }}"
+        argo_environment_kubeconfigs: "{{ stack.environments.kubeconfigs | ansible.builtin.default([]) }}"

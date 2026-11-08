@@ -3,6 +3,7 @@
 import click
 
 from itbench.cli.commands.generate.variables.aws import variables_aws_command
+from itbench.cli.commands.generate.variables.localhost import variables_localhost_command
 from itbench.cli.commands.generate.variables.s3 import variables_s3_command
 
 
@@ -11,4 +12,5 @@ def variables_group() -> None: ...
 
 
 variables_group.add_command(variables_aws_command)
+variables_group.add_command(variables_localhost_command)
 variables_group.add_command(variables_s3_command)

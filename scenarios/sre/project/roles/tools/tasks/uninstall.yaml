@@ -10,7 +10,7 @@
 - name: Uninstall OpenCost Helm release
   kubernetes.core.helm:
     release_name: "{{ tools_helm_release_opencost }}"
-    release_namespace: "{{ tools_namespace_itbench_observability }}"
+    release_namespace: "{{ tools_namespace_opencost }}"
     release_state: absent
     wait: true
 
@@ -93,6 +93,24 @@
       loop_control:
         label: clusterserviceversion/{{ subscription.status.currentCSV }}
         loop_var: subscription
+
+- name: Delete ITBench related ValidatingAdmissionPolicyBindings
+  kubernetes.core.k8s:
+    api_version: admissionregistration.k8s.io/v1
+    kind: ValidatingAdmissionPolicyBinding
+    label_selectors:
+      - "itbench.io/ansible-role=tools"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related ValidatingAdmissionPolicies
+  kubernetes.core.k8s:
+    api_version: admissionregistration.k8s.io/v1
+    kind: ValidatingAdmissionPolicy
+    label_selectors:
+      - "itbench.io/ansible-role=tools"
+    state: absent
+    wait: true
 
 - name: Delete ITBench related ClusterRoleBindings
   kubernetes.core.k8s:

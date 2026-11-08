@@ -2,13 +2,13 @@
 
 import click
 
-from itbench.cli.commands.deploy.applications import deploy_applications
-from itbench.cli.commands.deploy.tools import deploy_tools
+from itbench.cli.commands.deploy.environment import deploy_environment
+from itbench.cli.commands.deploy.orchestrator import deploy_orchestrator
 
 
-@click.group(name="deploy", help="Deploy applications, tools, or full benchmark scenarios.")
+@click.group(name="deploy", help="Deploy environment or orchestrator stack onto the cluster.")
 def deploy_group() -> None: ...
 
 
-deploy_group.add_command(deploy_applications)
-deploy_group.add_command(deploy_tools)
+deploy_group.add_command(deploy_environment)
+deploy_group.add_command(deploy_orchestrator)

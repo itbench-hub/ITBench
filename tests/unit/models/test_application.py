@@ -1,5 +1,7 @@
 """Tests for Application model and catalog."""
 
+from collections.abc import Mapping
+
 import pytest
 
 from pydantic import ValidationError
@@ -53,7 +55,7 @@ def test_application_extra_fields_forbidden() -> None:
 
 
 def test_application_catalog_loaded() -> None:
-    assert isinstance(APPLICATION_CATALOG, dict)
+    assert isinstance(APPLICATION_CATALOG, Mapping)
     for app_id, app in APPLICATION_CATALOG.items():
         assert app.id == app_id
         assert isinstance(app, Application)

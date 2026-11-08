@@ -61,8 +61,7 @@ def export_fault_schema(fault: Any, output_path: Path) -> None:
 
     # KubernetesObjects is Annotated[Union[...], Field(...)]; unwrap to get the Union members.
     kube_classes: dict[str, type[KubernetesObject]] = {
-        cls.__name__: cls
-        for cls in get_args(get_args(KubernetesObjects)[0])
+        cls.__name__: cls for cls in get_args(get_args(KubernetesObjects)[0])
     }
 
     for class_name in kinds or list(kube_classes.keys()):

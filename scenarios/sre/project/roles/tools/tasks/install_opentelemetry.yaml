@@ -80,144 +80,6 @@
   ansible.builtin.import_tasks:
     file: set_internal_endpoints_clickhouse.yaml
 
-# NOTE: The gateway is the only Clickhouse writer for OTLP logs. Each source has its own
-#       named receiver (and port) with a dedicated pipeline, so no routing is required.
-
-- name: Install OpenTelemetry Collector for OTLP gateway
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: opentelemetry.io/v1beta1
-      kind: OpenTelemetryCollector
-      metadata:
-        name: itbench-otel-gateway
-        namespace: "{{ tools_namespace_itbench_observability }}"
-      spec:
-        config:
-          exporters:
-            clickhouse/istio:
-              database: istio
-              endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: access_logs
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            clickhouse/kubernetes_events:
-              database: kubernetes
-              endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: events
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            clickhouse/kubernetes_infrastructure:
-              database: kubernetes
-              endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: infrastructure
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            clickhouse/kubernetes_topology:
-              database: kubernetes
-              endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: topology
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            clickhouse/opentelemetry_demo:
-              database: opentelemetry_demo
-              endpoint: "{{ tools_clickhouse_endpoint.http }}"
-              logs_table_name: logs
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            debug: {}
-          processors:
-            batch:
-              send_batch_size: 8192
-              timeout: 1s
-          receivers:
-            otlp/istio:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:4319
-            otlp/kubernetes_events:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:4322
-            otlp/kubernetes_infrastructure:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:4323
-            otlp/kubernetes_topology:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:4321
-            otlp/opentelemetry_demo:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:4320
-          service:
-            pipelines:
-              logs/kubernetes_events:
-                exporters:
-                  - debug
-                  - clickhouse/kubernetes_events
-                processors:
-                  - batch
-                receivers:
-                  - otlp/kubernetes_events
-              logs/kubernetes_infrastructure:
-                exporters:
-                  - debug
-                  - clickhouse/kubernetes_infrastructure
-                processors:
-                  - batch
-                receivers:
-                  - otlp/kubernetes_infrastructure
-              logs/kubernetes_topology:
-                exporters:
-                  - debug
-                  - clickhouse/kubernetes_topology
-                processors:
-                  - batch
-                receivers:
-                  - otlp/kubernetes_topology
-              logs/istio:
-                exporters:
-                  - debug
-                  - clickhouse/istio
-                processors:
-                  - batch
-                receivers:
-                  - otlp/istio
-              logs/opentelemetry_demo:
-                exporters:
-                  - debug
-                  - clickhouse/opentelemetry_demo
-                processors:
-                  - batch
-                receivers:
-                  - otlp/opentelemetry_demo
-        envFrom:
-          - secretRef:
-              name: user-ingest-credentials
-        image: quay.io/it-bench/opentelemetry-collector:2.0.0
-        mode: deployment
-        observability:
-          metrics:
-            enableMetrics: true
-        ports:
-          - name: istio-grpc
-            port: 4319
-          - name: demo-grpc
-            port: 4320
-          - name: topology-grpc
-            port: 4321
-          - name: events-grpc
-            port: 4322
-          - name: infra-grpc
-            port: 4323
-    state: present
-    wait: true
-    wait_condition:
-      reason: Reconciled
-      status: "True"
-      type: Ready
-
 - name: Install OpenTelemetry Collector for Jaeger
   kubernetes.core.k8s:
     resource_definition:
@@ -292,28 +154,161 @@
       status: "True"
       type: Ready
 
-- name: Create HTTPRoute for Jaeger
+# NOTE: The gateway is the only Clickhouse writer for OTLP logs. Each source has its own
+#       named receiver (and port) with a dedicated pipeline, so no routing is required.
+
+- name: Install OpenTelemetry Collector for OTLP gateway
   kubernetes.core.k8s:
     resource_definition:
-      apiVersion: gateway.networking.k8s.io/v1
-      kind: HTTPRoute
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
       metadata:
-        name: jaeger
+        name: itbench-otel-gateway
         namespace: "{{ tools_namespace_itbench_observability }}"
       spec:
-        parentRefs:
-          - name: "{{ tools_gateway }}"
-            namespace: "{{ tools_namespace_itbench_kubernetes_gateway }}"
-        rules:
-          - backendRefs:
-              - name: jaeger-collector
-                port: 16686
-            filters:
-              - responseHeaderModifier:
-                  add: "{{ tools_response_headers_http }}"
-                type: ResponseHeaderModifier
-            matches:
-              - path:
-                  type: PathPrefix
-                  value: /observability/jaeger/
+        config:
+          exporters:
+            clickhouse/istio:
+              database: istio
+              endpoint: "{{ 'tcp://' ~ tools_clickhouse_endpoint.tcp }}"
+              logs_table_name: access_logs
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
+            clickhouse/kubernetes_events:
+              database: kubernetes
+              endpoint: "{{ 'tcp://' ~ tools_clickhouse_endpoint.tcp }}"
+              logs_table_name: events
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
+            clickhouse/kubernetes_infrastructure:
+              database: kubernetes
+              endpoint: "{{ 'tcp://' ~ tools_clickhouse_endpoint.tcp }}"
+              logs_table_name: infrastructure
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
+            clickhouse/kubernetes_topology:
+              database: kubernetes
+              endpoint: "{{ 'tcp://' ~ tools_clickhouse_endpoint.tcp }}"
+              logs_table_name: topology
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
+            clickhouse/opentelemetry_demo:
+              database: opentelemetry_demo
+              endpoint: "{{ 'tcp://' ~ tools_clickhouse_endpoint.tcp }}"
+              logs_table_name: logs
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
+            otlp/jaeger:
+              endpoint: "jaeger-collector:4317"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
+            debug: {}
+          processors:
+            batch:
+              send_batch_size: 8192
+              timeout: 1s
+          receivers:
+            otlp/istio:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4319
+            otlp/kubernetes_events:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4322
+            otlp/kubernetes_infrastructure:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4323
+            otlp/kubernetes_topology:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4321
+            otlp/opentelemetry_demo:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4320
+            otlp/traces:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4324
+          service:
+            pipelines:
+              logs/kubernetes_events:
+                exporters:
+                  - debug
+                  - clickhouse/kubernetes_events
+                processors:
+                  - batch
+                receivers:
+                  - otlp/kubernetes_events
+              logs/kubernetes_infrastructure:
+                exporters:
+                  - debug
+                  - clickhouse/kubernetes_infrastructure
+                processors:
+                  - batch
+                receivers:
+                  - otlp/kubernetes_infrastructure
+              logs/kubernetes_topology:
+                exporters:
+                  - debug
+                  - clickhouse/kubernetes_topology
+                processors:
+                  - batch
+                receivers:
+                  - otlp/kubernetes_topology
+              logs/istio:
+                exporters:
+                  - debug
+                  - clickhouse/istio
+                processors:
+                  - batch
+                receivers:
+                  - otlp/istio
+              logs/opentelemetry_demo:
+                exporters:
+                  - debug
+                  - clickhouse/opentelemetry_demo
+                processors:
+                  - batch
+                receivers:
+                  - otlp/opentelemetry_demo
+              traces/jaeger:
+                exporters:
+                  - otlp/jaeger
+                processors:
+                  - batch
+                receivers:
+                  - otlp/traces
+        envFrom:
+          - secretRef:
+              name: user-ingest-credentials
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0
+        mode: deployment
+        observability:
+          metrics:
+            enableMetrics: true
+        ports:
+          - name: istio-grpc
+            port: 4319
+          - name: demo-grpc
+            port: 4320
+          - name: topology-grpc
+            port: 4321
+          - name: events-grpc
+            port: 4322
+          - name: infra-grpc
+            port: 4323
+          - name: jaeger-grpc
+            port: 4324
     state: present
+    wait: true
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready

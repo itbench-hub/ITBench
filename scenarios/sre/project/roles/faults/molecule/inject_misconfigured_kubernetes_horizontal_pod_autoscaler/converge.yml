@@ -7,14 +7,11 @@
       ansible.builtin.import_role:
         name: faults
       vars:
-        faults_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
         faults_injection_tasks:
           - id: misconfigured-kubernetes-horizontal-pod-autoscaler
-            args:
-              kubernetesObject:
-                apiVersion: autoscaling/v2
-                kind: HorizontalPodAutoscaler
-                metadata:
+            targets:
+              - kubernetes:
+                  apiVersion: autoscaling/v2
+                  kind: HorizontalPodAutoscaler
                   name: test-workload-hpa
                   namespace: misconfigured-hpa-test

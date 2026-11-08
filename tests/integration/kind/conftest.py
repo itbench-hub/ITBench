@@ -8,13 +8,14 @@ dependency.
 """
 
 import subprocess
+
 from collections.abc import Generator
 
 import pytest
 
 
 @pytest.fixture(scope="session")
-def tools_stack(kubeconfig: str) -> Generator[None, None, None]:
+def tools_stack(kubeconfig: str) -> Generator[None]:
     """Deploy the tools stack once for the session; undeploy on teardown."""
     result = subprocess.run(
         ["uv", "run", "itbench", "deploy", "tools", "--scenario", "20", "--kubeconfig", kubeconfig],

@@ -8,118 +8,10 @@ help: ## Display this help.
 group-vars: ## Generates the group variables
 	echo "---\nansible_python_interpreter: $(shell $(UV) python find)" > inventory/group_vars/all/python.yaml
 	cp inventory/group_vars/all/storage.yaml.example inventory/group_vars/all/storage.yaml
-	cp inventory/group_vars/environment/applications.yaml.example inventory/group_vars/environment/applications.yaml
-	cp inventory/group_vars/environment/cluster.yaml.example inventory/group_vars/environment/cluster.yaml
-	cp inventory/group_vars/environment/tools.yaml.example inventory/group_vars/environment/tools.yaml
 	cp inventory/group_vars/orchestrator/agent.yaml.example inventory/group_vars/orchestrator/agent.yaml
 	cp inventory/group_vars/orchestrator/experiments.yaml.example inventory/group_vars/orchestrator/experiments.yaml
 	cp inventory/group_vars/orchestrator/github.yaml.example inventory/group_vars/orchestrator/github.yaml
 	cp inventory/group_vars/orchestrator/stack.yaml.example inventory/group_vars/orchestrator/stack.yaml
-
-.PHONY: deploy-tools
-deploy-tools: ## Deploys the observability and fault tools to cluster
-ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
-	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "install"
-endif
-
-.PHONY: display-endpoints
-display-endpoints: ## Shows the urls for accessing deployed tools in browser
-	$(UV) run ansible-playbook -i inventory project/display_gateway_endpoints.yaml
-
-.PHONY: undeploy-tools
-undeploy-tools: ## Undeploys the observability and fault tools from cluster
-ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
-	$(UV) run ansible-playbook -i inventory project/manage_tools.yaml --tags "uninstall"
-endif
-
-.PHONY: discover-applications
-discover-applications: ## Discovers components of applications
-	$(UV) run ansible-playbook -i inventory project/discover_applications.yaml --tags "discover"
-
-.PHONY: deploy-applications
-deploy-applications: ## Deploys the applications to cluster
-ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
-	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "install"
-endif
-
-.PHONY: undeploy-applications
-undeploy-applications: ## Undeploys the applications to cluster
-ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
-	$(UV) run ansible-playbook -i inventory project/manage_applications.yaml --tags "uninstall"
-endif
-
-.PHONY: deploy-recorders
-deploy-recorders: ## Deploys the data recorders to cluster
-ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "install"
-endif
-
-.PHONY: undeploy-recorders
-undeploy-recorders: ## Exports the data recorder records
-ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
-	$(UV) run ansible-playbook -i inventory project/manage_recorders.yaml --tags "export"
-endif
-
-.PHONY: inject-scenario-faults
-inject-scenario-faults: ## Injects the fault used in a specific scenario
-ifdef SCENARIO_NUMBER
-	$(UV) run scripts/inject_scenario_faults.py \
-		--private_project_directory $(abspath .) \
-		--scenario_id $(SCENARIO_NUMBER)
-else
-	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
-endif
-
-.PHONY: remove-fault-resources
-remove-fault-resources: ## Removes resources used during fault injection
-	$(UV) run ansible-playbook -i inventory project/manage_faults.yaml --tags "remove_faults"
-
-.PHONY: create-environment
-create-environment: deploy-tools deploy-applications ## Deploys tools and applications to cluster
-
-.PHONY: destroy-environment
-destroy-environment: undeploy-applications undeploy-tools ## Undeploys tools and applications to cluster
-
-.PHONY: start-scenario
-start-scenario: create-environment deploy-recorders inject-scenario-faults ## Starts an scenario by deploying a stack, applications, faults, and recorders
-
-.PHONY: stop-scenario
-stop-scenario: undeploy-recorders remove-fault-resources destroy-environment ## Stops an scenario by undeploying a stack, applications, faults, and recorders
-
-.PHONY: enable-agent-access
-enable-agent-access: ## Adds access controls for llm agent
-ifdef SCENARIO_NUMBER
-	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "grant_access" \
-		--extra-vars "scenario_id=$(SCENARIO_NUMBER)"
-else
-	@echo "Missing SCENARIO_NUMBER argument. Please run this command with this variable."
-endif
-
-.PHONY: disable-agent-access
-disable-agent-access: ## Removes access controls for llm agent
-	$(UV) run ansible-playbook -i inventory project/manage_agent_access.yaml --tags "revoke_access"
-
-.PHONY: test-molecule-agent
-test-molecule-agent: ## Runs Molecule tests for the Agent role
-	cd project/roles/agent && $(UV) run molecule test --all --report --command-borders
 
 .PHONY: test-molecule-faults
 test-molecule-faults: ## Runs Molecule tests for the Faults role
@@ -129,14 +21,14 @@ test-molecule-faults: ## Runs Molecule tests for the Faults role
 test-molecule-waiters: ## Runs Molecule tests for the Waiters role
 	cd project/roles/waiters && $(UV) run molecule test --all --report --command-borders
 
-.PHONY: generate-agent-bundle
-generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with
-	ANSIBLE_STDOUT_CALLBACK=ansible.posix.json $(UV) run ansible-playbook -i inventory project/generate_agent_bundle.yaml | jq -r '.plays[].tasks[] | select(.task.name == "Print agent bundle") | .hosts.localhost.msg'
+# .PHONY: generate-agent-bundle
+# generate-agent-bundle: ## Generates a bundle for an LLM Agent to interface with
+# 	ANSIBLE_STDOUT_CALLBACK=ansible.posix.json $(UV) run ansible-playbook -i inventory project/generate_agent_bundle.yaml | jq -r '.plays[].tasks[] | select(.task.name == "Print agent bundle") | .hosts.localhost.msg'
 
-.PHONY: generate-leaderboard-bundle-status
-generate-leaderboard-bundle-status: ## Generates a bundle status for Leaderboard to interface with
-	$(UV) run ansible-playbook -i inventory project/generate_leaderboard_bundle_status.yaml
+# .PHONY: generate-leaderboard-bundle-status
+# generate-leaderboard-bundle-status: ## Generates a bundle status for Leaderboard to interface with
+# 	$(UV) run ansible-playbook -i inventory project/generate_leaderboard_bundle_status.yaml
 
-.PHONY: generate-leaderboard-bundle
-generate-leaderboard-bundle: ## Generates a bundle of scenarios for the Leaderboard to interface
-	$(UV) run ansible-playbook -i inventory project/generate_leaderboard_bundle.yaml
+# .PHONY: generate-leaderboard-bundle
+# generate-leaderboard-bundle: ## Generates a bundle of scenarios for the Leaderboard to interface
+# 	$(UV) run ansible-playbook -i inventory project/generate_leaderboard_bundle.yaml

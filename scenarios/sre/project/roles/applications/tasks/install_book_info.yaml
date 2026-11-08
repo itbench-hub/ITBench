@@ -1,62 +1,48 @@
 ---
-- name: Create temporary directory for Git checkout
-  ansible.builtin.tempfile:
-    prefix: book_info
-    state: directory
-  register: applications_temporary_directory
+- name: Install Book Info
+  block:
+    - name: Create temporary directory for Git checkout
+      ansible.builtin.tempfile:
+        prefix: book_info
+        state: directory
+      register: applications_temporary_directory
 
-- name: Checkout Istio repository using Git
-  ansible.builtin.git:
-    depth: 1
-    dest: "{{ applications_temporary_directory.path }}"
-    repo: "https://github.com/istio/istio.git"
-    version: "1.30.3"
+    - name: Checkout Istio repository using Git
+      ansible.builtin.git:
+        depth: 1
+        dest: "{{ applications_temporary_directory.path }}"
+        repo: "https://github.com/istio/istio.git"
+        version: "1.30.3"
 
-- name: Create Namespace
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        labels:
-          "istio.io/dataplane-mode": ambient
-          "itbench.io/ansible-role": applications
-          "itbench.io/inject": "true"
-          "itbench.io/layer": application
-          "itbench.io/monitor": "true"
-          "itbench.io/record": "true"
-        name: "{{ applications_namespace_book_info }}"
-    state: present
+    - name: Create BookInfo Kubernetes objects
+      kubernetes.core.k8s:
+        namespace: "{{ applications_namespace_book_info }}"
+        src: "{{ applications_temporary_directory.path }}/{{ manifest_file_path }}"
+        state: present
+      loop:
+        - samples/bookinfo/platform/kube/bookinfo.yaml
+        - samples/bookinfo/platform/kube/bookinfo-versions.yaml
+        - samples/bookinfo/gateway-api/bookinfo-gateway.yaml
+      loop_control:
+        label: manifest/{{ manifest_file_path | ansible.builtin.basename }}
+        loop_var: manifest_file_path
 
-- name: Create BookInfo Kubernetes objects
-  kubernetes.core.k8s:
-    namespace: "{{ applications_namespace_book_info }}"
-    src: "{{ applications_temporary_directory.path }}/{{ manifest_file_path }}"
-    state: present
-  loop:
-    - samples/bookinfo/platform/kube/bookinfo.yaml
-    - samples/bookinfo/platform/kube/bookinfo-versions.yaml
-    - samples/bookinfo/gateway-api/bookinfo-gateway.yaml
-  loop_control:
-    label: manifest/{{ manifest_file_path | ansible.builtin.basename }}
-    loop_var: manifest_file_path
-
-- name: Wait for Kubernetes Gateway to be programmed
-  kubernetes.core.k8s_info:
-    api_version: gateway.networking.k8s.io/v1
-    kind: Gateway
-    name: bookinfo-gateway
-    namespace: "{{ applications_namespace_book_info }}"
-    wait: true
-    wait_condition:
-      reason: Programmed
-      status: "True"
-      type: Programmed
-
-- name: Delete the temporary directory
-  ansible.builtin.file:
-    path: "{{ applications_temporary_directory.path }}"
-    state: absent
+    - name: Wait for Kubernetes Gateway to be programmed
+      kubernetes.core.k8s_info:
+        api_version: gateway.networking.k8s.io/v1
+        kind: Gateway
+        name: bookinfo-gateway
+        namespace: "{{ applications_namespace_book_info }}"
+        wait: true
+        wait_condition:
+          reason: Programmed
+          status: "True"
+          type: Programmed
+  always:
+    - name: Delete the temporary directory
+      ansible.builtin.file:
+        path: "{{ applications_temporary_directory.path }}"
+        state: absent
 
 - name: Create Prometheus Pod Monitors
   kubernetes.core.k8s:

@@ -1,0 +1,422 @@
+---
+- name: Create ServiceAccounts for agent diagnosis and remediation
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      automountServiceAccountToken: false
+      metadata:
+        labels:
+          "itbench.io/agent-mission": "{{ mission }}"
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": ai-integration
+        name: "agent-{{ mission }}"
+        namespace: "{{ tools_namespace_itbench_agents }}"
+    state: present
+  loop:
+    - diagnosis
+    - remediation
+  loop_control:
+    label: serviceaccount/{{ mission }}
+    loop_var: mission
+
+# Namespaced, read-only access. Intentionally excludes Secrets, pods/exec, RBAC objects and ServiceAccount tokens.
+- name: Create ClusterRole for agent diagnosis
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          "itbench.io/agent-mission": diagnosis
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": ai-integration
+        name: agent-diagnosis
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - configmaps
+            - endpoints
+            - events
+            - limitranges
+            - persistentvolumeclaims
+            - pods
+            - pods/log
+            - resourcequotas
+            - services
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - apps
+          resources:
+            - daemonsets
+            - deployments
+            - replicasets
+            - statefulsets
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - autoscaling
+          resources:
+            - horizontalpodautoscalers
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - batch
+          resources:
+            - cronjobs
+            - jobs
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - discovery.k8s.io
+          resources:
+            - endpointslices
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - events.k8s.io
+          resources:
+            - events
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - gateway.networking.k8s.io
+          resources:
+            - httproutes
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - metrics.k8s.io
+          resources:
+            - pods
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - networking.istio.io
+          resources:
+            - destinationrules
+            - virtualservices
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - networking.k8s.io
+          resources:
+            - ingresses
+            - networkpolicies
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - policy
+          resources:
+            - poddisruptionbudgets
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - security.istio.io
+          resources:
+            - authorizationpolicies
+            - peerauthentications
+          verbs:
+            - get
+            - list
+            - watch
+    state: present
+
+# Everything in `agent-diagnosis` plus write access to the objects affected by faults.
+# Secrets are `get` only (no `list`/`watch`) so that they cannot be enumerated.
+- name: Create ClusterRole for agent remediation
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          "itbench.io/agent-mission": remediation
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": ai-integration
+        name: agent-remediation
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - configmaps
+            - persistentvolumeclaims
+            - services
+          verbs:
+            - create
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - ""
+          resources:
+            - endpoints
+            - events
+            - limitranges
+            - pods/log
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - ""
+          resources:
+            - pods
+          verbs:
+            - delete
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - ""
+          resources:
+            - resourcequotas
+          verbs:
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - ""
+          resources:
+            - secrets
+          verbs:
+            - get
+            - patch
+            - update
+        - apiGroups:
+            - apps
+          resources:
+            - daemonsets
+          verbs:
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - apps
+          resources:
+            - deployments
+            - statefulsets
+          verbs:
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - apps
+          resources:
+            - replicasets
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - apps
+          resources:
+            - deployments/scale
+            - statefulsets/scale
+          verbs:
+            - get
+            - patch
+            - update
+        - apiGroups:
+            - autoscaling
+          resources:
+            - horizontalpodautoscalers
+          verbs:
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - batch
+          resources:
+            - cronjobs
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - batch
+          resources:
+            - jobs
+          verbs:
+            - delete
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - discovery.k8s.io
+          resources:
+            - endpointslices
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - events.k8s.io
+          resources:
+            - events
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - gateway.networking.k8s.io
+          resources:
+            - httproutes
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - metrics.k8s.io
+          resources:
+            - pods
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - networking.istio.io
+          resources:
+            - destinationrules
+            - virtualservices
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - networking.k8s.io
+          resources:
+            - ingresses
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - networking.k8s.io
+          resources:
+            - networkpolicies
+          verbs:
+            - create
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - policy
+          resources:
+            - poddisruptionbudgets
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - security.istio.io
+          resources:
+            - authorizationpolicies
+            - peerauthentications
+          verbs:
+            - create
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+    state: present
+
+- name: Create ValidatingAdmissionPolicy restricting agent writes to fault injectable namespaces
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: admissionregistration.k8s.io/v1
+      kind: ValidatingAdmissionPolicy
+      metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": ai-integration
+        name: itbench-agent-inject-namespaces-only
+      spec:
+        failurePolicy: Fail
+        matchConditions:
+          - name: agent-service-accounts-only
+            expression: >-
+              request.userInfo.username.startsWith('system:serviceaccount:{{ tools_namespace_itbench_agents }}:agent-')
+          # Reviews are cluster-scoped, read-only questions (`kubectl auth can-i`, `kubectl auth whoami`).
+          - name: skip-reviews
+            expression: >-
+              !(request.resource.group in ['authentication.k8s.io', 'authorization.k8s.io'])
+        matchConstraints:
+          resourceRules:
+            - apiGroups:
+                - "*"
+              apiVersions:
+                - "*"
+              operations:
+                - CREATE
+                - UPDATE
+                - DELETE
+                - CONNECT
+              resources:
+                - "*/*"
+        validations:
+          - expression: >-
+              namespaceObject != null &&
+              has(namespaceObject.metadata.labels) &&
+              'itbench.io/inject' in namespaceObject.metadata.labels &&
+              namespaceObject.metadata.labels['itbench.io/inject'] == 'true'
+            message: Agents may only modify objects in namespaces labeled `itbench.io/inject=true`.
+            reason: Forbidden
+    state: present
+
+- name: Create ValidatingAdmissionPolicyBinding for agent restrictions
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: admissionregistration.k8s.io/v1
+      kind: ValidatingAdmissionPolicyBinding
+      metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": ai-integration
+        name: itbench-agent-inject-namespaces-only
+      spec:
+        policyName: itbench-agent-inject-namespaces-only
+        validationActions:
+          - Deny
+    state: present

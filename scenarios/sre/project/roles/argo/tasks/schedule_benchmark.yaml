@@ -1,0 +1,53 @@
+---
+- name: Retrieve Secrets registered by the configure tasks
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    label_selectors:
+      - "itbench.io/ansible-role=argo"
+      - "itbench.io/benchmark-role=environment"
+    namespace: "{{ argo_namespace }}"
+  no_log: true
+  register: argo_benchmark_secrets
+
+- name: Fail playbook with `orchestrator not configured` error
+  ansible.builtin.fail:
+    msg: The ITBench orchestrator has not been configured to interface with environment clusters. Please configure orchestrator.
+  when:
+    - argo_benchmark_secrets.resources | ansible.builtin.length == 0
+
+- name: Create Workflows for the benchmark trials
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: argoproj.io/v1alpha1
+      kind: Workflow
+      metadata:
+        labels:
+          "itbench.io/ansible-role": argo
+          "itbench.io/layer": orchestration
+          "itbench.io/scenario": "{{ argo_benchmark_scenario | ansible.builtin.string }}"
+          "itbench.io/trial": "{{ trial | ansible.builtin.string }}"
+        name: "itbench-scenario-{{ argo_benchmark_scenario }}-trial-{{ trial }}-{{ argo_benchmark_timestamp }}"
+        namespace: "{{ argo_namespace }}"
+      spec:
+        arguments:
+          parameters:
+            - name: scenario
+              value: "{{ argo_benchmark_scenario | ansible.builtin.string }}"
+            - name: workflow_variant
+              value: "{{ argo_benchmark_variant }}"
+            - name: environment_secret
+              value: "{{ argo_benchmark_secrets.resources[secret_index].metadata.name }}"
+            - name: trial
+              value: "{{ trial | ansible.builtin.string }}"
+            - name: s3_directory
+              value: "{{ [argo_benchmark_scenario, trial] | map('ansible.builtin.string') | ansible.builtin.path_join }}"
+        workflowTemplateRef:
+          name: itbench-scenario-execution
+    state: present
+  loop: "{{ range(1, argo_benchmark_trials + 1) | ansible.builtin.list }}"
+  loop_control:
+    label: workflow/scenario-trial-{{ trial }}
+    loop_var: trial
+  vars:
+    secret_index: "{{ (trial - 1) % (argo_benchmark_secrets.resources | ansible.builtin.length) }}"

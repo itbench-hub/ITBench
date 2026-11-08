@@ -22,8 +22,7 @@ def _resolve_step(step: FaultSolutionStep, obj: KubernetesObject) -> dict:
 
     def _sub(text: str) -> str:
         return (
-            text
-            .replace("{{ args.kubernetesObject.metadata.namespace }}", ns)
+            text.replace("{{ args.kubernetesObject.metadata.namespace }}", ns)
             .replace("{{ args.kubernetesObject.metadata.name }}", obj.name)
             .replace("{{ args.kubernetesObject.kind | lower }}", obj.kind.lower())
             .replace("{{ args.kubernetesObject.apiVersion }}", obj.api_version)
@@ -80,15 +79,40 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
             ns = obj.namespace or "default"
             match injection.id:
                 case "crashing-kubernetes-workload-init-container":
-                    entities_out.append({"apiVersion": "v1", "kind": "ConfigMap", "name": f"{obj.name}-config", "namespace": ns})
+                    entities_out.append(
+                        {"apiVersion": "v1", "kind": "ConfigMap", "name": f"{obj.name}-config", "namespace": ns}
+                    )
                 case "ingress-port-blocking-network-policy":
-                    entities_out.append({"apiVersion": "networking.k8s.io/v1", "kind": "NetworkPolicy", "name": f"{obj.name}-ingress", "namespace": ns})
+                    entities_out.append(
+                        {
+                            "apiVersion": "networking.k8s.io/v1",
+                            "kind": "NetworkPolicy",
+                            "name": f"{obj.name}-ingress",
+                            "namespace": ns,
+                        }
+                    )
                 case "insufficient-kubernetes-resource-quota":
-                    entities_out.append({"apiVersion": "v1", "kind": "ResourceQuota", "name": "strict-resource-quota", "namespace": ns})
+                    entities_out.append(
+                        {"apiVersion": "v1", "kind": "ResourceQuota", "name": "strict-resource-quota", "namespace": ns}
+                    )
                 case "strict-mutual-tls-istio-service-mesh-enforcement":
-                    entities_out.append({"apiVersion": "security.istio.io/v1", "kind": "PeerAuthentication", "name": "application", "namespace": ns})
+                    entities_out.append(
+                        {
+                            "apiVersion": "security.istio.io/v1",
+                            "kind": "PeerAuthentication",
+                            "name": "application",
+                            "namespace": ns,
+                        }
+                    )
                 case "traffic-denying-istio-gateway-authorization-policy":
-                    entities_out.append({"apiVersion": "security.istio.io/v1", "kind": "AuthorizationPolicy", "name": f"{obj.name}-policy", "namespace": ns})
+                    entities_out.append(
+                        {
+                            "apiVersion": "security.istio.io/v1",
+                            "kind": "AuthorizationPolicy",
+                            "name": f"{obj.name}-policy",
+                            "namespace": ns,
+                        }
+                    )
 
     solutions_out: list[list[dict]] = []
     for injection, targets in injections:
@@ -113,7 +137,8 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
     with out_path.open("w", encoding="utf-8") as f:
         f.write(schema_comment + "\n")
         yaml.dump(
-            doc, f,
+            doc,
+            f,
             Dumper=_IndentedYamlDumper,
             default_flow_style=False,
             explicit_start=True,

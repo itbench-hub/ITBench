@@ -1,5 +1,7 @@
 """Tests for Fault model, lifecycle statuses, and fault catalog."""
 
+from collections.abc import Mapping
+
 import pytest
 
 from pydantic import ValidationError
@@ -96,9 +98,7 @@ def test_active_fault_valid() -> None:
 
 
 def test_retired_fault_can_omit_alerts_tags_targets() -> None:
-    retired_status = FaultStatus(
-        retired=FaultRetiredStatus(version="1.4.0", reason="Replaced by new fault")
-    )
+    retired_status = FaultStatus(retired=FaultRetiredStatus(version="1.4.0", reason="Replaced by new fault"))
     fault = Fault(
         name="Old Retired Fault",
         description="Deprecated fault",
@@ -136,8 +136,83 @@ def test_converted_fault_status() -> None:
     assert fault.status.converted.id == "restart-kubernetes-workload"
 
 
+def test_fault_without_status_is_active() -> None:
+    fault = Fault(
+        name="Plain Fault",
+        description="d",
+        expectation="e",
+        platform=Platform.Kubernetes,
+        solution_templates=_sample_solution_templates(),
+        alerts=[FaultAlerts.KubePodCrashLooping],
+        tags=[FaultTags.Deployment],
+        targets=[FaultTargetReference(kubernetes=KubernetesObjectKind.KubernetesWorkload)],
+    )
+
+    assert not fault.is_retired
+    assert not fault.is_converted
+    assert not fault.is_inactive
+    assert fault.retired_reason is None
+
+
+def test_retired_fault_status_properties() -> None:
+    fault = Fault(
+        name="Old Retired Fault",
+        description="d",
+        expectation="e",
+        platform=Platform.Kubernetes,
+        solution_templates=_sample_solution_templates(),
+        status=FaultStatus(retired=FaultRetiredStatus(version="1.4.0", reason="Replaced by new fault")),
+    )
+
+    assert fault.is_retired
+    assert not fault.is_converted
+    assert fault.is_inactive
+    assert fault.retired_reason == "Replaced by new fault"
+
+
+def test_retired_fault_without_reason_has_no_retired_reason() -> None:
+    fault = Fault(
+        name="Old Retired Fault",
+        description="d",
+        expectation="e",
+        platform=Platform.Kubernetes,
+        solution_templates=_sample_solution_templates(),
+        status=FaultStatus(retired=FaultRetiredStatus(version="1.4.0")),
+    )
+
+    assert fault.is_retired
+    assert fault.retired_reason is None
+
+
+def test_converted_fault_status_properties() -> None:
+    fault = Fault(
+        name="Converted Fault",
+        description="d",
+        expectation="e",
+        platform=Platform.Kubernetes,
+        solution_templates=_sample_solution_templates(),
+        alerts=[FaultAlerts.KubePodCrashLooping],
+        tags=[FaultTags.Deployment],
+        targets=[FaultTargetReference(kubernetes=KubernetesObjectKind.KubernetesWorkload)],
+        status=FaultStatus(converted=FaultConvertedStatus(id="restart-kubernetes-workload", version="1.3.0")),
+    )
+
+    assert not fault.is_retired
+    assert fault.is_converted
+    assert fault.is_inactive
+    assert fault.retired_reason is None
+
+
+def test_status_properties_are_not_serialised() -> None:
+    fault = next(iter(FAULT_CATALOG.values()))
+
+    dumped = fault.model_dump(mode="json")
+
+    assert not {"is_retired", "is_converted", "is_inactive", "retired_reason"} & dumped.keys()
+
+
 def test_fault_catalog_loaded() -> None:
-    assert isinstance(FAULT_CATALOG, dict)
+    assert isinstance(FAULT_CATALOG, Mapping)
     for fault_id, fault in FAULT_CATALOG.items():
         assert fault.id == fault_id
         assert isinstance(fault, Fault)
