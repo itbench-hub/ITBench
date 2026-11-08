@@ -21,7 +21,7 @@ EXPIRES = datetime(2026, 1, 1, tzinfo=UTC)
 
 @pytest.fixture
 def mock_access():
-    bundle = ClusterAccessBundle(kubeconfig=KUBECONFIG, expires=EXPIRES, namespaces=["book-info", "otel-demo"])
+    bundle = ClusterAccessBundle(kubeconfig=KUBECONFIG, expires=EXPIRES, namespaces=["otel-demo"])
     with patch("itbench.cli.commands.generate.kubeconfig.create_agent_access", return_value=bundle) as mock:
         yield mock
 
@@ -52,7 +52,7 @@ def test_prints_kubeconfig_on_stdout_by_default(mock_access, scenarios) -> None:
 
     assert result.exit_code == 0
     assert yaml.safe_load(result.stdout) == KUBECONFIG
-    assert "book-info, otel-demo" in result.stderr
+    assert "otel-demo" in result.stderr
     mock_access.assert_called_once_with(kubeconfig="/kube.conf", mission="diagnosis", minutes=15)
 
 

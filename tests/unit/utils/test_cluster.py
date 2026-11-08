@@ -361,7 +361,7 @@ def _create_agent_access(core_api: MagicMock, settings: MagicMock, minutes: int 
 def test_create_agent_access_requests_token_and_builds_minimal_kubeconfig(tmp_path) -> None:
     ca_file = tmp_path / "ca.crt"
     ca_file.write_bytes(b"CERT")
-    core_api = _agent_core_api([_agent_service_account()], ["otel-demo", "book-info"])
+    core_api = _agent_core_api([_agent_service_account()], ["otel-demo"])
 
     access = _create_agent_access(core_api, _client_settings(ssl_ca_cert=str(ca_file), tls_server_name="api.internal"))
 
@@ -373,7 +373,7 @@ def test_create_agent_access_requests_token_and_builds_minimal_kubeconfig(tmp_pa
     assert (name, namespace) == ("agent-diagnosis", "itbench-agents")
     assert body.spec.expiration_seconds == 15 * 60
     assert body.spec.audiences is None
-    assert access.namespaces == ["book-info", "otel-demo"]
+    assert access.namespaces == ["otel-demo"]
     assert access.expires == "2026-01-01T00:00:00Z"
     assert access.kubeconfig == {
         "apiVersion": "v1",

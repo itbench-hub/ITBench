@@ -44,7 +44,7 @@ ITBench uses an in-cluster event-driven pipeline to build live topology graphs i
 ### 1. In-Cluster Collection
 
 During the `install` stage of the scenario lifecycle:
-- The `tools` Ansible role (with `tools_recorders_enabled`) discovers all namespaces labeled with `itbench.io/record=true` (such as `bookinfo` and `otel-demo`).
+- The `tools` Ansible role (with `tools_recorders_enabled`) discovers all namespaces labeled with `itbench.io/record=true` (such as `otel-demo`).
 - A dedicated, short-lived `OpenTelemetryCollector` instance is deployed into the `itbench-observability` namespace with RBAC permissions to watch resources.
 - The collector streams Kubernetes resource events through the OTLP gateway into the `kubernetes.topology` table.
 - A `topology-writer` deployment in `itbench-observability` polls `kubernetes.topology`, derives the topology graph, and writes delta rows into `kubernetes.topology_graph`.

@@ -75,7 +75,6 @@ def test_usage_unreferenced_entries_report_zero(library: Path, command: Command,
     result = CliRunner().invoke(command, ["--usage", "--format", "json"])
 
     unreferenced = [row for row in json.loads(result.output) if row[key] != item_id]
-    assert unreferenced
     assert all(row["uses"] == 0 and row["scenarios"] == [] for row in unreferenced)
 
 

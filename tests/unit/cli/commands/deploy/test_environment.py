@@ -110,7 +110,6 @@ def test_tools_wizard_preselects_choices_from_role_defaults() -> None:
 
 def test_applications_wizard_preselects_choices_from_role_defaults() -> None:
     defaults = {
-        "applications_book_info_enabled": False,
         "applications_opentelemetry_demo_enabled": True,
     }
 
@@ -126,7 +125,6 @@ def test_applications_wizard_preselects_choices_from_role_defaults() -> None:
 
     choices = mock_checkbox.call_args.kwargs["choices"]
     assert [(c.title, c.value, c.checked) for c in choices] == [
-        ("Book Info", "book_info", False),
         ("OpenTelemetry Demo", "opentelemetry_demo", True),
     ]
 
@@ -159,8 +157,6 @@ def test_tools_extra_vars_from_wizard_non_tty() -> None:
 
 def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
     defaults = {
-        "applications_book_info_enabled": False,
-        "applications_book_info_kubernetes_autoscaling_enabled": False,
         "applications_opentelemetry_demo_enabled": False,
         "applications_opentelemetry_demo_kubernetes_autoscaling_enabled": False,
         "applications_opentelemetry_demo_load_generator_browser_enabled": False,
@@ -187,7 +183,6 @@ def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
 
         result = _applications_extra_vars_from_wizard()
 
-    assert result["applications_book_info_enabled"] is False
     assert result["applications_opentelemetry_demo_enabled"] is True
     assert result["applications_opentelemetry_demo_kubernetes_autoscaling_enabled"] is True
     assert result["applications_opentelemetry_demo_load_generator_browser_enabled"] is False
@@ -195,34 +190,8 @@ def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
     assert result["applications_opentelemetry_demo_load_generator_spawn_rate"] == 4
 
 
-def test_applications_extra_vars_from_wizard_book_info_form() -> None:
-    defaults = {
-        "applications_book_info_enabled": False,
-        "applications_book_info_kubernetes_autoscaling_enabled": False,
-        "applications_opentelemetry_demo_enabled": False,
-    }
-
-    with (
-        patch("itbench.cli.commands.deploy.environment._load_applications_defaults", return_value=defaults),
-        patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
-        patch("questionary.checkbox") as mock_checkbox,
-        patch("questionary.confirm"),
-        patch("questionary.form") as mock_form,
-    ):
-        mock_stdin.isatty.return_value = True
-        mock_checkbox.return_value.ask.return_value = ["book_info"]
-        mock_form.return_value.ask.return_value = {"autoscaling": True}
-
-        result = _applications_extra_vars_from_wizard()
-
-    assert result["applications_book_info_enabled"] is True
-    assert result["applications_book_info_kubernetes_autoscaling_enabled"] is True
-    assert result["applications_opentelemetry_demo_enabled"] is False
-
-
 def test_applications_extra_vars_from_wizard_non_tty() -> None:
     defaults = {
-        "applications_book_info_enabled": False,
         "applications_opentelemetry_demo_enabled": False,
     }
 
@@ -247,7 +216,7 @@ def test_applications_extra_vars_from_wizard_non_tty() -> None:
 def test_deploy_environment_full_success(tmp_path: Path) -> None:
     runner = CliRunner()
     tools_defaults = {"tools_gateway_enabled": False, "tools_observability_enabled": False}
-    apps_defaults = {"applications_book_info_enabled": False}
+    apps_defaults = {"applications_opentelemetry_demo_enabled": False}
 
     with (
         patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=tools_defaults),
@@ -267,7 +236,7 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
         extra_vars={
             "tools_gateway_enabled": False,
             "tools_observability_enabled": False,
-            "applications_book_info_enabled": False,
+            "applications_opentelemetry_demo_enabled": False,
             "environment_tool_management_enabled": True,
             "environment_application_management_enabled": True,
             "environment_recorder_management_enabled": True,
@@ -303,7 +272,7 @@ def test_deploy_environment_only_tools(tmp_path: Path) -> None:
 def test_deploy_environment_only_applications(tmp_path: Path) -> None:
     runner = CliRunner()
     tools_defaults = {"tools_gateway_enabled": False}
-    apps_defaults = {"applications_book_info_enabled": True}
+    apps_defaults = {"applications_opentelemetry_demo_enabled": True}
 
     with (
         patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=tools_defaults),

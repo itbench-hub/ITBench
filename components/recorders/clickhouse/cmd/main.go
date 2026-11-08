@@ -34,7 +34,7 @@ func main() {
 		outputDir = "/records"
 	}
 
-	// NAMESPACES is a comma-separated list, e.g. "otel-demo,book-info".
+	// NAMESPACES is a comma-separated list, e.g. "otel-demo".
 	var namespaces []string
 	for _, ns := range strings.Split(os.Getenv("NAMESPACES"), ",") {
 		if ns = strings.TrimSpace(ns); ns != "" {

@@ -84,7 +84,7 @@ def test_list_scenarios_json_output(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         tmp_path,
         "7",
         {
-            "environment": {"applications": [{"id": "book-info"}], "domains": ["sre"]},
+            "environment": {"applications": [{"id": "opentelemetry-demo"}], "domains": ["sre"]},
             "faults": [{"injections": [{"id": "some-fault"}]}],
         },
     )
@@ -94,7 +94,7 @@ def test_list_scenarios_json_output(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
     assert result.exit_code == 0
     assert json.loads(result.output) == [
-        {"id": "7", "domains": ["sre"], "applications": ["book-info"], "faults": ["some-fault"]},
+        {"id": "7", "domains": ["sre"], "applications": ["opentelemetry-demo"], "faults": ["some-fault"]},
     ]
 
 

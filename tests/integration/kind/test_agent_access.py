@@ -208,7 +208,6 @@ def agent_environment(
                     "environment_tool_management_enabled": False,
                     "environment_application_management_enabled": True,
                     "environment_recorder_management_enabled": False,
-                    "applications_book_info_enabled": False,
                     "applications_opentelemetry_demo_enabled": False,
                 },
                 tags=["install"],

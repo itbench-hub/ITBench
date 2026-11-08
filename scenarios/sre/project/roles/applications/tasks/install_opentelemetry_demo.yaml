@@ -16,7 +16,7 @@
           "app.kubernetes.io/name": valkey-credentials
           "app.kubernetes.io/part-of": opentelemetry-demo
         name: valkey-credentials
-        namespace: "{{ applications_namespace_opentelemetry_demo }}"
+        namespace: "{{ applications_opentelemetry_demo_namespace }}"
       stringData:
         PASSWORD: "" # pragma: allowlist secret
     state: present
@@ -36,7 +36,7 @@
       kind: RoleBinding
       metadata:
         name: otel-demo-scc
-        namespace: "{{ applications_namespace_opentelemetry_demo }}"
+        namespace: "{{ applications_opentelemetry_demo_namespace }}"
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
@@ -44,7 +44,7 @@
       subjects:
         - kind: ServiceAccount
           name: "{{ applications_helm_release_opentelemetry_demo }}"
-          namespace: "{{ applications_namespace_opentelemetry_demo }}"
+          namespace: "{{ applications_opentelemetry_demo_namespace }}"
     state: present
   when:
     - applications_cluster.platform == "openshift"
@@ -54,7 +54,7 @@
     chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-demo"
     chart_version: "0.42.6"
     release_name: "{{ applications_helm_release_opentelemetry_demo }}"
-    release_namespace: "{{ applications_namespace_opentelemetry_demo }}"
+    release_namespace: "{{ applications_opentelemetry_demo_namespace }}"
     release_state: present
     release_values:
       components:
@@ -95,7 +95,7 @@
           connectors:
             span_metrics:
               dimensions:
-                - default: "{{ applications_namespace_opentelemetry_demo }}"
+                - default: "{{ applications_opentelemetry_demo_namespace }}"
                   name: namespace
           exporters:
             otlp/gateway-logs:
@@ -178,7 +178,7 @@
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Pod
-    namespace: "{{ applications_namespace_opentelemetry_demo }}"
+    namespace: "{{ applications_opentelemetry_demo_namespace }}"
   register: applications_otel_demo_pods
 
 - name: Wait for pods to reach ready state
@@ -201,7 +201,7 @@
   kubernetes.core.k8s_info:
     api_version: apps/v1
     kind: Deployment
-    namespace: "{{ applications_namespace_opentelemetry_demo }}"
+    namespace: "{{ applications_opentelemetry_demo_namespace }}"
   register: applications_otel_demo_deployments
 
 - name: Create HorizontalPodAutorscalers
@@ -267,7 +267,7 @@
       variable_end_string: "]]"
       variable_start_string: "[["
   vars:
-    application_namespace: "{{ applications_namespace_opentelemetry_demo }}"
+    application_namespace: "{{ applications_opentelemetry_demo_namespace }}"
     group_name: opentelemetrydemo
 
 - name: Create OpenTelemetry Demo PrometheusRules
