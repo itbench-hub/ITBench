@@ -1,5 +1,7 @@
 """Tests for itbench generate variables s3."""
 
+import io
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -92,40 +94,36 @@ def test_command_overwrites_existing_file_with_yes(output: Path) -> None:
     assert content["storage_s3_directory"] == "/custom/dir"
 
 
-def test_command_overwrites_existing_file_when_confirmed(output: Path) -> None:
+def test_command_overwrites_existing_file_when_confirmed(output: Path, terminal_input: io.BytesIO) -> None:
     output.parent.mkdir(parents=True)
     output.write_text("---\ns3_bucket: old-bucket\n", encoding="utf-8")
     runner = CliRunner()
 
     with (
         patch("itbench.cli.commands.generate.variables.s3.questionary") as mock_q,
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = True
         mock_q.text.side_effect = _mock_prompts(bucket="new-bucket")
 
-        runner.invoke(variables_s3_command, [])
+        runner.invoke(variables_s3_command, [], input=terminal_input)
 
     assert mock_confirm.call_args.args[0] == f"{output} already exists. Overwrite it?"
     assert yaml.safe_load(output.read_text())["storage_s3_bucket"] == "new-bucket"
 
 
-def test_command_keeps_existing_file_when_overwrite_declined(output: Path) -> None:
+def test_command_keeps_existing_file_when_overwrite_declined(output: Path, terminal_input: io.BytesIO) -> None:
     output.parent.mkdir(parents=True)
     output.write_text("---\ns3_bucket: old-bucket\n", encoding="utf-8")
     runner = CliRunner()
 
     with (
         patch("itbench.cli.commands.generate.variables.s3.questionary") as mock_q,
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = False
 
-        result = runner.invoke(variables_s3_command, [])
+        result = runner.invoke(variables_s3_command, [], input=terminal_input)
 
     assert result.exit_code == 0
     assert "Existing file kept" in result.output

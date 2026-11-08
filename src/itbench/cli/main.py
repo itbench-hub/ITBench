@@ -5,7 +5,6 @@ import click
 from itbench.cli.commands.configure import configure_group
 from itbench.cli.commands.create import create_group
 from itbench.cli.commands.deploy import deploy_group
-from itbench.cli.commands.discover import discover_group
 from itbench.cli.commands.explain import explain_group
 from itbench.cli.commands.export import export_group
 from itbench.cli.commands.generate import generate_group
@@ -34,7 +33,6 @@ cli.add_command(remove_group)
 cli.add_command(export_group)
 cli.add_command(schedule_group)
 cli.add_command(create_group)
-cli.add_command(discover_group)
 cli.add_command(explain_group)
 cli.add_command(generate_group)
 cli.add_command(list_group)

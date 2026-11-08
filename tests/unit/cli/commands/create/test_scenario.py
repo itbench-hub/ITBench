@@ -1,5 +1,7 @@
 """Tests for the interactive create scenario CLI command."""
 
+import io
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -54,22 +56,20 @@ def test_ask_target_returns_fault_target() -> None:
             assert target.kubernetes.namespace == "default"
 
 
-def test_create_scenario_command_abort_no_apps() -> None:
+def test_create_scenario_command_abort_no_apps(terminal_input: io.BytesIO) -> None:
     runner = CliRunner()
-    with (
-        patch("itbench.cli.commands.create.scenario.sys.stdin") as mock_stdin,
-        patch("questionary.checkbox") as mock_checkbox,
-    ):
-        mock_stdin.isatty.return_value = True
+    with patch("questionary.checkbox") as mock_checkbox:
         mock_checkbox.return_value.ask.return_value = []
 
-        result = runner.invoke(create_scenario_command, [])
+        result = runner.invoke(create_scenario_command, [], input=terminal_input)
 
         assert result.exit_code == 2
         assert "At least one application is required" in result.output
 
 
-def test_create_scenario_command_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_scenario_command_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, terminal_input: io.BytesIO
+) -> None:
     runner = CliRunner()
     monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
     scenarios_dir = tmp_path / "scenarios"
@@ -78,7 +78,6 @@ def test_create_scenario_command_success(tmp_path: Path, monkeypatch: pytest.Mon
     fault_id_with_targets = next(fid for fid, f in FAULT_CATALOG.items() if f.targets)
 
     with (
-        patch("itbench.cli.commands.create.scenario.sys.stdin") as mock_stdin,
         patch("questionary.checkbox") as mock_checkbox,
         patch("questionary.select") as mock_select,
         patch("questionary.autocomplete") as mock_autocomplete,
@@ -86,7 +85,6 @@ def test_create_scenario_command_success(tmp_path: Path, monkeypatch: pytest.Mon
         patch("questionary.text") as mock_text,
         patch("itbench.cli.commands.create.scenario.generate_ground_truth") as mock_gt,
     ):
-        mock_stdin.isatty.return_value = True
         mock_checkbox.return_value.ask.return_value = [first_app_id]
         mock_select.side_effect = [
             MagicMock(ask=MagicMock(return_value="sre")),  # domain
@@ -110,7 +108,7 @@ def test_create_scenario_command_success(tmp_path: Path, monkeypatch: pytest.Mon
         ]
         mock_gt.return_value = scenarios_dir / "1" / "ground_truth.yaml"
 
-        result = runner.invoke(create_scenario_command, [])
+        result = runner.invoke(create_scenario_command, [], input=terminal_input)
 
         assert result.exit_code == 0
         assert "Created scenario →" in result.output

@@ -7,15 +7,11 @@
       ansible.builtin.import_role:
         name: waiters
       vars:
-        waiters_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
         waiters_tasks:
           - id: scale-kubernetes-workload
-            args:
-              kubernetesObject:
-                apiVersion: apps/v1
-                kind: Deployment
-                metadata:
-                  name: test-workload
-                  namespace: scale-kubernetes-workload-test
-              replicas: 5
+            workload:
+              apiVersion: apps/v1
+              kind: Deployment
+              name: test-workload
+              namespace: scale-kubernetes-workload-test
+            replicas: 5

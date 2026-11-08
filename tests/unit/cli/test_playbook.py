@@ -26,7 +26,7 @@ def test_run_step_passes_arguments_to_the_runner() -> None:
         _run(verbose=True)
 
     mock_run.assert_called_once_with(
-        playbook="my.yaml", extra_vars={"k": "v"}, tags=["install"], run_id="abc", verbose=True
+        playbook="my.yaml", extra_vars={"k": "v"}, tags=["install"], run_id="abc", verbose=True, kubeconfig=None
     )
 
 

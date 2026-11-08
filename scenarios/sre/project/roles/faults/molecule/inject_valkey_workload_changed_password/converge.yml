@@ -7,14 +7,11 @@
       ansible.builtin.import_role:
         name: faults
       vars:
-        faults_cluster:
-          kubeconfig: "{{ cluster.kubeconfig }}"
         faults_injection_tasks:
           - id: valkey-workload-changed-password
-            args:
-              kubernetesObject:
-                apiVersion: v1
-                kind: Secret
-                metadata:
+            targets:
+              - kubernetes:
+                  apiVersion: v1
+                  kind: Secret
                   name: valkey-credentials
                   namespace: valkey-workload-changed-password-test

@@ -1,5 +1,7 @@
 """Tests for the interactive create fault CLI command."""
 
+import io
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -29,38 +31,36 @@ def test_scaffold_ansible_task(tmp_path: Path) -> None:
     assert task_path.read_text(encoding="utf-8") == "custom content"
 
 
-def test_create_fault_command_abort_on_empty_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_fault_command_abort_on_empty_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, terminal_input: io.BytesIO
+) -> None:
     runner = CliRunner()
     monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
     monkeypatch.setenv("ITBENCH_REPOSITORY_PATH", str(tmp_path))
 
-    with (
-        patch("itbench.cli.commands.create.fault.sys.stdin") as mock_stdin,
-        patch("questionary.text") as mock_text,
-    ):
-        mock_stdin.isatty.return_value = True
+    with patch("questionary.text") as mock_text:
         mock_text.return_value.ask.return_value = ""
 
-        result = runner.invoke(create_fault_command, [])
+        result = runner.invoke(create_fault_command, [], input=terminal_input)
 
         assert result.exit_code == 2
         assert "Fault name is required" in result.output
 
 
-def test_create_fault_command_success(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_fault_command_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, terminal_input: io.BytesIO
+) -> None:
     runner = CliRunner()
     monkeypatch.setenv("ITBENCH_LIBRARY_PATH", str(tmp_path))
     monkeypatch.setenv("ITBENCH_REPOSITORY_PATH", str(tmp_path))
 
-    library_dir = tmp_path / "library" / "faults"
+    library_dir = tmp_path / "faults"
 
     with (
-        patch("itbench.cli.commands.create.fault.sys.stdin") as mock_stdin,
         patch("questionary.text") as mock_text,
         patch("questionary.select") as mock_select,
         patch("questionary.checkbox") as mock_checkbox,
     ):
-        mock_stdin.isatty.return_value = True
         mock_text.side_effect = [
             MagicMock(ask=MagicMock(return_value="Crash Pods")),  # name
             MagicMock(ask=MagicMock(return_value="Crashes all pods")),  # description
@@ -78,7 +78,7 @@ def test_create_fault_command_success(tmp_path: Path, monkeypatch: pytest.Monkey
             MagicMock(ask=MagicMock(return_value=["Deployment"])),  # target kinds
         ]
 
-        result = runner.invoke(create_fault_command, [])
+        result = runner.invoke(create_fault_command, [], input=terminal_input)
 
         assert result.exit_code == 0
         assert "Created fault at" in result.output

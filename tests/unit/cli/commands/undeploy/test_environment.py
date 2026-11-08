@@ -1,5 +1,7 @@
 """Tests for the undeploy environment CLI command."""
 
+import io
+
 from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
@@ -46,19 +48,17 @@ def test_undeploy_environment_with_yes_flag_success() -> None:
     assert mock_run.call_args_list == [_APPLICATIONS_STEP, _TOOLS_STEP]
 
 
-def test_undeploy_environment_prompt_confirmed() -> None:
+def test_undeploy_environment_prompt_confirmed(terminal_input: io.BytesIO) -> None:
     runner = CliRunner()
 
     with (
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
         patch("itbench.cli.playbook.run_playbook") as mock_run,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = True
         mock_run.return_value = MagicMock()
 
-        result = runner.invoke(undeploy_environment, ["--kubeconfig", "/kube.conf"])
+        result = runner.invoke(undeploy_environment, ["--kubeconfig", "/kube.conf"], input=terminal_input)
 
     assert result.exit_code == 0
     assert "Environment undeployed successfully" in result.output
@@ -66,18 +66,16 @@ def test_undeploy_environment_prompt_confirmed() -> None:
     assert mock_confirm.call_args.args[0] == "Are you sure you want to undeploy the environment?"
 
 
-def test_undeploy_environment_prompt_cancelled() -> None:
+def test_undeploy_environment_prompt_cancelled(terminal_input: io.BytesIO) -> None:
     runner = CliRunner()
 
     with (
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
         patch("itbench.cli.playbook.run_playbook") as mock_run,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = False
 
-        result = runner.invoke(undeploy_environment, ["--kubeconfig", "/kube.conf"])
+        result = runner.invoke(undeploy_environment, ["--kubeconfig", "/kube.conf"], input=terminal_input)
 
     assert result.exit_code == 0
     assert "Undeployment cancelled" in result.output
@@ -100,19 +98,21 @@ def test_undeploy_environment_without_terminal_requires_yes() -> None:
     mock_run.assert_not_called()
 
 
-def test_undeploy_environment_only_applications_leaves_tools() -> None:
+def test_undeploy_environment_only_applications_leaves_tools(terminal_input: io.BytesIO) -> None:
     runner = CliRunner()
 
     with (
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
         patch("itbench.cli.playbook.run_playbook") as mock_run,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = True
         mock_run.return_value = MagicMock()
 
-        result = runner.invoke(undeploy_environment, ["--only", "applications", "--kubeconfig", "/kube.conf"])
+        result = runner.invoke(
+            undeploy_environment,
+            ["--only", "applications", "--kubeconfig", "/kube.conf"],
+            input=terminal_input,
+        )
 
     assert result.exit_code == 0
     assert mock_run.call_args_list == [_APPLICATIONS_STEP]

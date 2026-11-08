@@ -1,7 +1,7 @@
 """Tests for the deploy environment CLI command."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
@@ -172,6 +172,8 @@ def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
         patch("itbench.cli.commands.deploy.environment._load_applications_defaults", return_value=defaults),
         patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
         patch("questionary.checkbox") as mock_checkbox,
+        patch("questionary.confirm"),
+        patch("questionary.text"),
         patch("questionary.form") as mock_form,
     ):
         mock_stdin.isatty.return_value = True
@@ -204,6 +206,7 @@ def test_applications_extra_vars_from_wizard_book_info_form() -> None:
         patch("itbench.cli.commands.deploy.environment._load_applications_defaults", return_value=defaults),
         patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
         patch("questionary.checkbox") as mock_checkbox,
+        patch("questionary.confirm"),
         patch("questionary.form") as mock_form,
     ):
         mock_stdin.isatty.return_value = True
@@ -259,8 +262,7 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert "Environment deployed successfully" in result.output
-    assert mock_run.call_count == 2
-    assert mock_run.call_args_list[0] == call(
+    mock_run.assert_called_once_with(
         playbook="manage_environment.yaml",
         extra_vars={
             "tools_gateway_enabled": False,
@@ -268,23 +270,10 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
             "applications_book_info_enabled": False,
             "environment_tool_management_enabled": True,
             "environment_application_management_enabled": True,
+            "environment_recorder_management_enabled": True,
         },
         tags=["install"],
-        run_id=mock_run.call_args_list[0].kwargs["run_id"],
-        verbose=False,
-        kubeconfig="/kube.conf",
-    )
-    assert mock_run.call_args_list[1] == call(
-        playbook="manage_environment.yaml",
-        extra_vars={
-            "tools_gateway_enabled": False,
-            "tools_observability_enabled": False,
-            "tools_recorders_enabled": True,
-            "environment_tool_management_enabled": True,
-            "environment_application_management_enabled": False,
-        },
-        tags=["install"],
-        run_id=mock_run.call_args_list[1].kwargs["run_id"],
+        run_id=mock_run.call_args.kwargs["run_id"],
         verbose=False,
         kubeconfig="/kube.conf",
     )
@@ -349,14 +338,12 @@ def test_deploy_environment_only_recorders(tmp_path: Path) -> None:
         result = runner.invoke(deploy_environment, ["--only", "recorders", "--kubeconfig", "/kube.conf"])
 
     assert result.exit_code == 0
-    assert mock_run.call_count == 2
-    assert mock_run.call_args_list[0].kwargs["playbook"] == "manage_environment.yaml"
-    assert mock_run.call_args_list[0].kwargs["extra_vars"]["environment_tool_management_enabled"] is True
-    assert mock_run.call_args_list[0].kwargs["extra_vars"]["environment_application_management_enabled"] is False
-    assert mock_run.call_args_list[1].kwargs["playbook"] == "manage_environment.yaml"
-    assert mock_run.call_args_list[1].kwargs["extra_vars"]["environment_tool_management_enabled"] is True
-    assert mock_run.call_args_list[1].kwargs["extra_vars"]["environment_application_management_enabled"] is False
-    assert mock_run.call_args_list[1].kwargs["extra_vars"]["tools_recorders_enabled"] is True
+    assert mock_run.call_count == 1
+    extra_vars = mock_run.call_args.kwargs["extra_vars"]
+    assert mock_run.call_args.kwargs["playbook"] == "manage_environment.yaml"
+    assert extra_vars["environment_tool_management_enabled"] is True
+    assert extra_vars["environment_application_management_enabled"] is False
+    assert extra_vars["environment_recorder_management_enabled"] is True
 
 
 def test_deploy_environment_with_scenario(tmp_path: Path) -> None:
@@ -383,19 +370,20 @@ def test_deploy_environment_with_scenario(tmp_path: Path) -> None:
         )
 
     assert result.exit_code == 0
-    assert mock_run.call_count == 2
-    assert mock_run.call_args_list[0].kwargs["playbook"] == "manage_environment.yaml"
-    recorders_call = mock_run.call_args_list[1]
-    assert recorders_call.kwargs["playbook"] == "manage_environment.yaml"
-    assert recorders_call.kwargs["extra_vars"]["scenario_id"] == 5
-    assert recorders_call.kwargs["extra_vars"]["tools_recorders_enabled"] is True
-    assert recorders_call.kwargs["extra_vars"]["environment_tool_management_enabled"] is True
-    assert recorders_call.kwargs["extra_vars"]["environment_application_management_enabled"] is False
+    assert mock_run.call_count == 1
+    extra_vars = mock_run.call_args.kwargs["extra_vars"]
+    assert mock_run.call_args.kwargs["playbook"] == "manage_environment.yaml"
+    assert extra_vars["tools_gateway_enabled"] is True
+    assert extra_vars["tools_observability_enabled"] is True
+    assert extra_vars["applications_opentelemetry_demo_enabled"] is True
+    assert extra_vars["environment_tool_management_enabled"] is True
+    assert extra_vars["environment_application_management_enabled"] is True
+    assert extra_vars["environment_recorder_management_enabled"] is True
 
 
 def test_deploy_environment_missing_scenario_suggests_close_matches(tmp_path: Path) -> None:
     runner = CliRunner()
-    for scenario_id in ("10", "11"):
+    for scenario_id in ("120", "121"):
         scenario_dir = tmp_path / "library" / "scenarios" / scenario_id
         scenario_dir.mkdir(parents=True)
         (scenario_dir / "scenario.yaml").write_text("{}", encoding="utf-8")

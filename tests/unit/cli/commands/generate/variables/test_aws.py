@@ -1,5 +1,6 @@
 """Tests for itbench generate variables aws."""
 
+import io
 import os
 
 from pathlib import Path
@@ -122,7 +123,7 @@ def test_command_overwrites_existing_file_with_yes(output: Path) -> None:
     assert content["aws_region"] == "us-west-2"
 
 
-def test_command_overwrites_existing_file_when_confirmed(output: Path) -> None:
+def test_command_overwrites_existing_file_when_confirmed(output: Path, terminal_input: io.BytesIO) -> None:
     output.parent.mkdir(parents=True)
     output.write_text("---\naws_region: old-region\n", encoding="utf-8")
     runner = CliRunner()
@@ -130,33 +131,29 @@ def test_command_overwrites_existing_file_when_confirmed(output: Path) -> None:
     with (
         patch("itbench.cli.commands.generate.variables.aws.questionary") as mock_q,
         patch("itbench.cli.commands.generate.variables.aws.resolve_vault_password", return_value="vaultpass"),
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = True
         _mock_prompts(mock_q, region="us-west-2")
 
-        runner.invoke(variables_aws_command, [])
+        runner.invoke(variables_aws_command, [], input=terminal_input)
 
     assert mock_confirm.call_args.args[0] == f"{output} already exists. Overwrite it?"
     assert yaml.safe_load(output.read_text())["aws_region"] == "us-west-2"
 
 
-def test_command_keeps_existing_file_when_overwrite_declined(output: Path) -> None:
+def test_command_keeps_existing_file_when_overwrite_declined(output: Path, terminal_input: io.BytesIO) -> None:
     output.parent.mkdir(parents=True)
     output.write_text("---\naws_region: old-region\n", encoding="utf-8")
     runner = CliRunner()
 
     with (
         patch("itbench.cli.commands.generate.variables.aws.questionary") as mock_q,
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = False
 
-        result = runner.invoke(variables_aws_command, [])
+        result = runner.invoke(variables_aws_command, [], input=terminal_input)
 
     assert result.exit_code == 0
     assert "Existing file kept" in result.output

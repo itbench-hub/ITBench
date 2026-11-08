@@ -1,5 +1,7 @@
 """Tests for the undeploy orchestrator CLI command."""
 
+import io
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -29,37 +31,33 @@ def test_undeploy_orchestrator_with_yes_flag_success() -> None:
     )
 
 
-def test_undeploy_orchestrator_prompt_confirmed() -> None:
+def test_undeploy_orchestrator_prompt_confirmed(terminal_input: io.BytesIO) -> None:
     runner = CliRunner()
 
     with (
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
         patch("itbench.cli.playbook.run_playbook") as mock_run,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = True
         mock_run.return_value = MagicMock()
 
-        result = runner.invoke(undeploy_orchestrator, ["--kubeconfig", "/kube.conf"])
+        result = runner.invoke(undeploy_orchestrator, ["--kubeconfig", "/kube.conf"], input=terminal_input)
 
     assert result.exit_code == 0
     assert "Orchestrator undeployed successfully" in result.output
     mock_run.assert_called_once()
 
 
-def test_undeploy_orchestrator_prompt_cancelled() -> None:
+def test_undeploy_orchestrator_prompt_cancelled(terminal_input: io.BytesIO) -> None:
     runner = CliRunner()
 
     with (
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
         patch("itbench.cli.playbook.run_playbook") as mock_run,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = False
 
-        result = runner.invoke(undeploy_orchestrator, ["--kubeconfig", "/kube.conf"])
+        result = runner.invoke(undeploy_orchestrator, ["--kubeconfig", "/kube.conf"], input=terminal_input)
 
     assert result.exit_code == 0
     assert "Undeployment cancelled" in result.output

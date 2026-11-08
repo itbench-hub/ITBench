@@ -20,6 +20,18 @@ py-lint: ## Lints Python files
 .PHONY: lint
 lint: ansible-lint py-lint ## Lints all files
 
+.PHONY: molecule-test-faults
+molecule-test-faults: ## Runs Molecule tests for the Faults role
+	cd scenarios/sre/project/roles/faults && $(UV) run molecule test --all --report --command-borders
+
+.PHONY: molecule-test-waiters
+molecule-test-waiters: ## Runs Molecule tests for the Waiters role
+	cd scenarios/sre/project/roles/waiters && $(UV) run molecule test --all --report --command-borders
+
+.PHONY: pytest-unit
+pytest-unit: ## Runs Python Unit tests
+	$(UV) run --group dev pytest
+
 .PHONY: pre-commit-hooks
 pre-commit-hooks: ## Installs pre-commit hooks
 	$(UV) run pre-commit install

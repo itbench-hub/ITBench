@@ -13,8 +13,8 @@ from itbench.utils.runner import PlaybookError, run_playbook
 from itbench.utils.scenarios import known_scenario_ids
 
 
-def _fault_group_count(scenario_id: int) -> int:
-    """Return the number of fault groups in the scenario, exiting if the scenario is unknown or unreadable."""
+def _fault_groups(scenario_id: int) -> list[dict]:
+    """Return the fault groups of the scenario, exiting if the scenario is unknown or unreadable."""
     known = known_scenario_ids(repository.scenarios)
     if str(scenario_id) not in known:
         exit_not_found("Scenario", str(scenario_id), known, "itbench list scenarios")
@@ -24,15 +24,25 @@ def _fault_group_count(scenario_id: int) -> int:
         fail(f"[red]Scenario {scenario_id} has no scenario.yaml at {escape(str(scenario_path))}[/red]")
 
     data = yaml.safe_load(scenario_path.read_text(encoding="utf-8")) or {}
-    return len(data.get("faults") or [])
+    return data.get("faults") or []
 
 
-def _inject_group(scenario_id: int, index: int, kubeconfig: str, verbose: bool) -> PlaybookError | None:
+def _group_extra_vars(group: dict) -> dict:
+    """Build the playbook extra variables for one fault group of a scenario."""
+    wait_for = group.get("waitFor") or {}
+    return {
+        "injection_tasks": group.get("injections") or [],
+        "pre_injection_tasks": wait_for.get("preInjection") or [],
+        "post_injection_tasks": wait_for.get("postInjection") or [],
+    }
+
+
+def _inject_group(group: dict, kubeconfig: str, verbose: bool) -> PlaybookError | None:
     """Inject one fault group, returning the error instead of raising it so groups can run side by side."""
     try:
         run_playbook(
             playbook="manage_faults.yaml",
-            extra_vars={"scenario_id": scenario_id, "faults_index": index},
+            extra_vars=_group_extra_vars(group),
             tags=["inject_faults"],
             verbose=verbose,
             kubeconfig=kubeconfig,
@@ -65,13 +75,13 @@ def inject_faults(scenario_id: int, kubeconfig: str, verbose: bool) -> None:
         itbench inject faults --scenario 5 --kubeconfig ~/.kube/config
         itbench inject faults -v --scenario 5 --kubeconfig ~/.kube/config
     """
-    group_count = _fault_group_count(scenario_id)
-    if group_count == 0:
+    groups = _fault_groups(scenario_id)
+    if not groups:
         fail(f"[red]Scenario {scenario_id} does not define any faults.[/red]")
 
-    console.print(f"[dim]Injecting {group_count} fault group(s)…[/dim]")
-    with ThreadPoolExecutor(max_workers=group_count) as pool:
-        futures = [pool.submit(_inject_group, scenario_id, index, kubeconfig, verbose) for index in range(group_count)]
+    console.print(f"[dim]Injecting {len(groups)} fault group(s)…[/dim]")
+    with ThreadPoolExecutor(max_workers=len(groups)) as pool:
+        futures = [pool.submit(_inject_group, group, kubeconfig, verbose) for group in groups]
         errors = [future.result() for future in futures]
 
     failed = [(index, exc) for index, exc in enumerate(errors) if exc is not None]

@@ -1,5 +1,7 @@
 """Tests for itbench generate variables localhost."""
 
+import io
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -74,38 +76,34 @@ def test_command_overwrites_existing_file_with_yes(output: Path) -> None:
     assert yaml.safe_load(output.read_text(encoding="utf-8"))["storage_localhost_directory"] == "/new"
 
 
-def test_command_overwrites_existing_file_when_confirmed(output: Path) -> None:
+def test_command_overwrites_existing_file_when_confirmed(output: Path, terminal_input: io.BytesIO) -> None:
     output.parent.mkdir(parents=True)
     output.write_text(_OLD_CONTENT, encoding="utf-8")
 
     with (
         patch(_QUESTIONARY) as mock_q,
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = True
         mock_q.text.return_value = _mock_prompt("/new")
 
-        CliRunner().invoke(variables_localhost_command, [])
+        CliRunner().invoke(variables_localhost_command, [], input=terminal_input)
 
     assert mock_confirm.call_args.args[0] == f"{output} already exists. Overwrite it?"
     assert yaml.safe_load(output.read_text(encoding="utf-8"))["storage_localhost_directory"] == "/new"
 
 
-def test_command_keeps_existing_file_when_overwrite_declined(output: Path) -> None:
+def test_command_keeps_existing_file_when_overwrite_declined(output: Path, terminal_input: io.BytesIO) -> None:
     output.parent.mkdir(parents=True)
     output.write_text(_OLD_CONTENT, encoding="utf-8")
 
     with (
         patch(_QUESTIONARY) as mock_q,
-        patch("itbench.cli.render.sys.stdin") as mock_stdin,
         patch("itbench.cli.render.questionary.confirm") as mock_confirm,
     ):
-        mock_stdin.isatty.return_value = True
         mock_confirm.return_value.ask.return_value = False
 
-        result = CliRunner().invoke(variables_localhost_command, [])
+        result = CliRunner().invoke(variables_localhost_command, [], input=terminal_input)
 
     assert result.exit_code == 0
     assert "Existing file kept" in result.output

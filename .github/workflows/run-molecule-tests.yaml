@@ -116,11 +116,13 @@ jobs:
           sleep 10
       - name: Prepare cluster
         run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
+      - name: Configure environment
+        run: uv run itbench configure environment --kubeconfig "$HOME/.kube/config"
       - name: Run Molecule tests
         env:
           KUBECONFIG: /home/runner/.kube/config
         run: |
-          make -C scenarios/sre test-molecule-faults
+          make molecule-test-faults
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
@@ -147,11 +149,13 @@ jobs:
           make -C clusters/kind create-simple-cluster
       - name: Prepare cluster
         run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
+      - name: Configure environment
+        run: uv run itbench configure environment --kubeconfig "$HOME/.kube/config"
       - name: Run Molecule tests
         env:
           KUBECONFIG: /home/runner/.kube/config
         run: |
-          make -C scenarios/sre test-molecule-waiters
+          make molecule-test-waiters
       - name: Destroy Kind cluster
         run: |
           make -C clusters/kind destroy-simple-cluster
