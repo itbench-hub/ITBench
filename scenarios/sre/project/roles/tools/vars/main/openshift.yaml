@@ -1,0 +1,27 @@
+---
+tools_openshift_prometheus: prometheus-k8s
+tools_openshift_prometheus_port: 9000
+
+tools_openshift_thanos_querier: thanos-querier
+
+tools_openshift_namespace_kubernetes_gateway: openshift-ingress
+tools_openshift_namespace_monitoring: openshift-monitoring
+tools_openshift_namespace_user_workload_monitoring: openshift-user-workload-monitoring
+
+tools_openshift_fqdn_prometheus: >-
+  {{
+    "https://%s.%s.svc.cluster.local:%i" |
+    ansible.builtin.format(
+      tools_openshift_prometheus,
+      tools_openshift_namespace_monitoring,
+      tools_openshift_prometheus_port
+    )
+  }}
+tools_openshift_fqdn_thanos_querier: >-
+  {{
+    "https://%s.%s.svc.cluster.local:9091" |
+    ansible.builtin.format(
+      tools_openshift_thanos_querier,
+      tools_openshift_namespace_monitoring
+    )
+  }}

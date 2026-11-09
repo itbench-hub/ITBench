@@ -4,7 +4,7 @@
     chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-operator"
     chart_version: "0.129.0"
     release_name: "{{ tools_helm_release_opentelemetry_operator }}"
-    release_namespace: "{{ tools_namespace_itbench_observability }}"
+    release_namespace: "{{ tools_itbench_namespace_observability }}"
     release_state: present
     release_values:
       admissionWebhooks:
@@ -76,18 +76,14 @@
           type: CatalogSourcesUnhealthy
         wait_timeout: 300
 
-- name: Import Clickhouse endpoint variable setting tasks
-  ansible.builtin.import_tasks:
-    file: set_internal_endpoints_clickhouse.yaml
-
 - name: Install OpenTelemetry Collector for Jaeger
   kubernetes.core.k8s:
     resource_definition:
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: jaeger
-        namespace: "{{ tools_namespace_itbench_observability }}"
+        name: "{{ tools_itbench_jaeger }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
       spec:
         config:
           exporters:
@@ -96,7 +92,8 @@
               trace_storage: traces_store
           extensions:
             jaeger_query:
-              base_path: /jaeger
+              ai:
+                mcp: {}
               storage:
                 traces: traces_store
             jaeger_storage:
@@ -104,7 +101,7 @@
                 traces_store:
                   clickhouse:
                     addresses:
-                      - "{{ tools_clickhouse_endpoint.tcp }}"
+                      - "{{ tools_itbench_fqdn_clickhouse_observability_tcp }}"
                     auth:
                       basic:
                         password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
@@ -118,9 +115,7 @@
             otlp:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:4317
-                http:
-                  endpoint: 0.0.0.0:4318
+                  endpoint: 0.0.0.0:{{ tools_itbench_jaeger_collector_port }}
           service:
             extensions:
               - jaeger_storage
@@ -143,16 +138,42 @@
           metrics:
             enableMetrics: true
         ports:
-          - name: query-grpc
-            port: 16685
           - name: query-http
-            port: 16686
+            port: "{{ tools_itbench_jaeger_querier_port }}"
     state: present
     wait: true
     wait_condition:
       reason: Reconciled
       status: "True"
       type: Ready
+
+- name: Install HTTPRoute for Jaeger MCP
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ tools_itbench_jaeger ~ '-mcp' }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
+      spec:
+        parentRefs:
+          - name: "{{ tools_itbench_gateway_kubernetes }}"
+            namespace: "{{ tools_namespace_kubernetes_gateway_system }}"
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /mcp/jaeger
+            filters:
+              - type: URLRewrite
+                urlRewrite:
+                  path:
+                    type: ReplacePrefixMatch
+                    replacePrefixMatch: /api/ai/mcp/
+            backendRefs:
+              - name: "{{ tools_itbench_jaeger ~ '-collector' }}"
+                port: "{{ tools_itbench_jaeger_querier_port }}"
+      state: present
 
 # NOTE: The gateway is the only Clickhouse writer for OTLP logs. Each source has its own
 #       named receiver (and port) with a dedicated pipeline, so no routing is required.
@@ -163,43 +184,43 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: itbench-otel-gateway
-        namespace: "{{ tools_namespace_itbench_observability }}"
+        name: "{{ tools_itbench_gateway_opentelemetry }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
       spec:
         config:
           exporters:
             clickhouse/istio:
               database: istio
-              endpoint: "{{ 'tcp://' ~ tools_clickhouse_endpoint.tcp }}"
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
               logs_table_name: access_logs
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               username: ${env:CLICKHOUSE_USER}
             clickhouse/kubernetes_events:
               database: kubernetes
-              endpoint: "{{ 'tcp://' ~ tools_clickhouse_endpoint.tcp }}"
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
               logs_table_name: events
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               username: ${env:CLICKHOUSE_USER}
             clickhouse/kubernetes_infrastructure:
               database: kubernetes
-              endpoint: "{{ 'tcp://' ~ tools_clickhouse_endpoint.tcp }}"
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
               logs_table_name: infrastructure
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               username: ${env:CLICKHOUSE_USER}
             clickhouse/kubernetes_topology:
               database: kubernetes
-              endpoint: "{{ 'tcp://' ~ tools_clickhouse_endpoint.tcp }}"
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
               logs_table_name: topology
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               username: ${env:CLICKHOUSE_USER}
             clickhouse/opentelemetry_demo:
               database: opentelemetry_demo
-              endpoint: "{{ 'tcp://' ~ tools_clickhouse_endpoint.tcp }}"
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
               logs_table_name: logs
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               username: ${env:CLICKHOUSE_USER}
             otlp/jaeger:
-              endpoint: "jaeger-collector:4317"
+              endpoint: "{{ tools_itbench_fqdn_jaeger_collector }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -215,32 +236,31 @@
             otlp/istio:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:4319
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_istio }}
             otlp/kubernetes_events:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:4322
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_kubernetes_events }}
             otlp/kubernetes_infrastructure:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:4323
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_kubernetes_infrastructure }}
             otlp/kubernetes_topology:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:4321
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_kubernetes_topology }}
             otlp/opentelemetry_demo:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:4320
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_opentelemetry_demo }}
             otlp/traces:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:4324
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_traces }}
           service:
             pipelines:
               logs/kubernetes_events:
                 exporters:
-                  - debug
                   - clickhouse/kubernetes_events
                 processors:
                   - batch
@@ -248,7 +268,6 @@
                   - otlp/kubernetes_events
               logs/kubernetes_infrastructure:
                 exporters:
-                  - debug
                   - clickhouse/kubernetes_infrastructure
                 processors:
                   - batch
@@ -256,7 +275,6 @@
                   - otlp/kubernetes_infrastructure
               logs/kubernetes_topology:
                 exporters:
-                  - debug
                   - clickhouse/kubernetes_topology
                 processors:
                   - batch
@@ -264,7 +282,6 @@
                   - otlp/kubernetes_topology
               logs/istio:
                 exporters:
-                  - debug
                   - clickhouse/istio
                 processors:
                   - batch
@@ -272,7 +289,6 @@
                   - otlp/istio
               logs/opentelemetry_demo:
                 exporters:
-                  - debug
                   - clickhouse/opentelemetry_demo
                 processors:
                   - batch
@@ -294,18 +310,18 @@
           metrics:
             enableMetrics: true
         ports:
-          - name: istio-grpc
-            port: 4319
-          - name: demo-grpc
-            port: 4320
-          - name: topology-grpc
-            port: 4321
-          - name: events-grpc
-            port: 4322
-          - name: infra-grpc
-            port: 4323
-          - name: jaeger-grpc
-            port: 4324
+          - name: istio
+            port: "{{ tools_itbench_gateway_opentelemetry_port_istio }}"
+          - name: jaeger
+            port: "{{ tools_itbench_gateway_opentelemetry_port_traces }}"
+          - name: k8s-topology
+            port: "{{ tools_itbench_gateway_opentelemetry_port_kubernetes_topology }}"
+          - name: k8-events
+            port: "{{ tools_itbench_gateway_opentelemetry_port_kubernetes_events }}"
+          - name: k8s-infra
+            port: "{{ tools_itbench_gateway_opentelemetry_port_kubernetes_infrastructure }}"
+          - name: otel-demo
+            port: "{{ tools_itbench_gateway_opentelemetry_port_opentelemetry_demo }}"
     state: present
     wait: true
     wait_condition:

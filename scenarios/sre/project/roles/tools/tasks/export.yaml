@@ -1,8 +1,4 @@
 ---
-- name: Import internal endpoint setting tasks
-  ansible.builtin.import_tasks:
-    file: set_internal_endpoints.yaml
-
 - name: Retrieve Namespaces with record labels
   kubernetes.core.k8s_info:
     api_version: v1
@@ -11,14 +7,22 @@
       - "itbench.io/record=true"
   register: tools_recordable_namespaces
 
-- name: Import Clickhouse Recorder export tasks
-  ansible.builtin.import_tasks:
-    file: export_records_clickhouse.yaml
-  when:
-    - tools_clickhouse_endpoint.tcp is defined
+- name: Retrieve Namespace for observability tools
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    name: "{{ tools_itbench_namespace_observability }}"
+  register: tools_observabilty_namespaces
 
-- name: Import Prometheus Recorder export tasks
-  ansible.builtin.import_tasks:
-    file: export_records_prometheus.yaml
+- name: Export observability records
   when:
-    - tools_prometheus_endpoint.http is defined
+    - tools_observabilty_namespaces.resources | ansible.builtin.length == 1
+    - tools_recordable_namespaces.resources | ansible.builtin.length > 0
+  block:
+    - name: Import Clickhouse Recorder export tasks
+      ansible.builtin.import_tasks:
+        file: export_records_clickhouse.yaml
+
+    - name: Import Prometheus Recorder export tasks
+      ansible.builtin.import_tasks:
+        file: export_records_prometheus.yaml

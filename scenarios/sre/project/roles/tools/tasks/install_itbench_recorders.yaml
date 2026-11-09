@@ -1,12 +1,4 @@
 ---
-- name: Import Clickhouse endpoint setting tasks
-  ansible.builtin.import_tasks:
-    file: set_internal_endpoints_clickhouse.yaml
-
-- name: Import OTLP gateway endpoint setting tasks
-  ansible.builtin.import_tasks:
-    file: set_internal_endpoints_opentelemetry_gateway.yaml
-
 - name: Create ServiceAccount for topology collector
   kubernetes.core.k8s:
     resource_definition:
@@ -17,7 +9,7 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: kubernetes-topology
-        namespace: "{{ tools_namespace_itbench_observability }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
     state: present
 
 - name: Create ClusterRole for topology collector
@@ -120,7 +112,7 @@
       subjects:
         - kind: ServiceAccount
           name: kubernetes-topology
-          namespace: "{{ tools_namespace_itbench_observability }}"
+          namespace: "{{ tools_itbench_namespace_observability }}"
     state: present
 
 - name: Retrieve Namespaces with record labels
@@ -141,12 +133,12 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: kubernetes-topology
-        namespace: "{{ tools_namespace_itbench_observability }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
       spec:
         config:
           exporters:
             otlp/kubernetes-events:
-              endpoint: "{{ tools_otel_gateway_endpoint.kubernetes_events.grpc }}"
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_kubernetes_events }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -158,7 +150,7 @@
               tls:
                 insecure: true
             otlp/kubernetes-infrastructure:
-              endpoint: "{{ tools_otel_gateway_endpoint.kubernetes_infrastructure.grpc }}"
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_kubernetes_infrastructure }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -170,7 +162,7 @@
               tls:
                 insecure: true
             otlp/kubernetes-topology:
-              endpoint: "{{ tools_otel_gateway_endpoint.kubernetes_topology.grpc }}"
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_kubernetes_topology }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -433,7 +425,7 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: itbench-topology-writer
-        namespace: "{{ tools_namespace_itbench_observability }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
       spec:
         replicas: 1
         selector:
@@ -451,7 +443,7 @@
             containers:
               - env:
                   - name: CLICKHOUSE_HOST
-                    value: "{{ tools_clickhouse_endpoint.tcp }}"
+                    value: "{{ tools_itbench_fqdn_clickhouse_observability_tcp }}"
                   - name: RECORDING_START_TIMESTAMP
                     value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (tools_benchmark_duration_minutes * 60)) }}"
                   - name: POLL_INTERVAL_SECONDS

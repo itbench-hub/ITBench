@@ -4,7 +4,7 @@
     chart_ref: "oci://ghcr.io/altinity/clickhouse-operator-helm-chart/altinity-clickhouse-operator"
     chart_version: "0.27.4"
     release_name: "{{ tools_helm_release_alinity_clickhouse_operator }}"
-    release_namespace: "{{ tools_namespace_itbench_observability }}"
+    release_namespace: "{{ tools_itbench_namespace_observability }}"
     release_state: present
     release_values:
       serviceMonitor:
@@ -19,7 +19,7 @@
       kind: Secret
       metadata:
         name: "user-{{ clickhouse_user.name }}-credentials"
-        namespace: "{{ tools_namespace_itbench_observability }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
       stringData:
         CLICKHOUSE_PASSWORD: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_letters,digits length=32') }}" # pragma: allowlist secret
         CLICKHOUSE_USER: "{{ clickhouse_user.name }}"
@@ -45,8 +45,8 @@
         labels:
           "app.kubernetes.io/name": clickhouse
           app.kubernetes.io/version: 26.3.33.10001
-        name: main
-        namespace: "{{ tools_namespace_itbench_observability }}"
+        name: "{{ tools_itbench_clickhouse_observability }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
       spec:
         configuration:
           clusters:
@@ -195,8 +195,8 @@
   kubernetes.core.k8s_info:
     api_version: clickhouse.altinity.com/v1
     kind: ClickHouseInstallation
-    name: main
-    namespace: "{{ tools_namespace_itbench_observability }}"
+    name: "{{ tools_itbench_clickhouse_observability }}"
+    namespace: "{{ tools_itbench_namespace_observability }}"
   register: tools_chi
   retries: 10
   until:
@@ -213,7 +213,7 @@
         labels:
           "app.kubernetes.io/name": clickhouse-init
         name: clickhouse-init
-        namespace: "{{ tools_namespace_itbench_observability }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
       spec:
         backoffLimit: 5
         template:
@@ -240,7 +240,7 @@
                   - -c
                 env:
                   - name: CLICKHOUSE_HOST
-                    value: clickhouse-main
+                    value: "{{ 'clickhouse-' ~ tools_itbench_clickhouse_observability }}"
                   - name: CLICKHOUSE_USER
                     valueFrom:
                       secretKeyRef:
@@ -286,7 +286,7 @@
       kind: ServiceMonitor
       metadata:
         name: main
-        namespace: "{{ tools_namespace_itbench_observability }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
       spec:
         endpoints:
           - interval: 30s

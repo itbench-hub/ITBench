@@ -10,7 +10,7 @@
           kind: Issuer
           metadata:
             name: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-issuer' }}"
-            namespace: "{{ tools_namespace_itbench_observability }}"
+            namespace: "{{ tools_itbench_namespace_observability }}"
           spec:
             selfSigned: {}
         state: present
@@ -22,7 +22,7 @@
           kind: Certificate
           metadata:
             name: "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus-proxy-tls' }}"
-            namespace: "{{ tools_namespace_itbench_observability }}"
+            namespace: "{{ tools_itbench_namespace_observability }}"
           spec:
             dnsNames:
               - "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus' }}"
@@ -30,7 +30,7 @@
                 {{
                     [
                       tools_helm_release_kube_prometheus_stack ~ "-prometheus",
-                      tools_namespace_itbench_observability
+                      tools_itbench_namespace_observability
                     ] |
                     ansible.builtin.join(".")
                 }}
@@ -38,7 +38,7 @@
                 {{
                     [
                       tools_helm_release_kube_prometheus_stack ~ "-prometheus",
-                      tools_namespace_itbench_observability,
+                      tools_itbench_namespace_observability,
                       "svc",
                       "cluster",
                       "local"
@@ -65,7 +65,7 @@
         chart_ref: "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack"
         chart_version: "92.22.0"
         release_name: "{{ tools_helm_release_kube_prometheus_stack }}"
-        release_namespace: "{{ tools_namespace_itbench_observability }}"
+        release_namespace: "{{ tools_itbench_namespace_observability }}"
         release_state: present
         release_values:
           alertmanager:
@@ -100,7 +100,7 @@
             prometheusSpec:
               containers:
                 - args:
-                    - "--secure-listen-address=0.0.0.0:8443"
+                    - "--secure-listen-address=0.0.0.0:{{ tools_itbench_prometheus_proxy_port }}"
                     - "--upstream=http://127.0.0.1:9090/"
                     - "--tls-cert-file=/etc/tls/proxy/tls.crt"
                     - "--tls-private-key-file=/etc/tls/proxy/tls.key"
@@ -108,7 +108,7 @@
                   image: ghcr.io/kube-rbac-proxy/kube-rbac-proxy:v0.23.1@sha256:f723251bdd90a806b5331b6e9f9287cc2832d3dd9f9479378cdbbddb9856724f
                   name: kube-rbac-proxy
                   ports:
-                    - containerPort: 8443
+                    - containerPort: "{{ tools_itbench_prometheus_proxy_port }}"
                       name: http-proxy
                   volumeMounts:
                     - name: proxy-certs
@@ -120,7 +120,6 @@
                 matchLabels:
                   "itbench.io/monitor": "true"
               podMonitorSelectorNilUsesHelmValues: false
-              routePrefix: /observability/prometheus
               ruleNamespaceSelector:
                 matchLabels:
                   "itbench.io/monitor": "true"
@@ -136,8 +135,8 @@
             service:
               additionalPorts:
                 - name: http-proxy
-                  port: 8443
-                  targetPort: 8443
+                  port: "{{ tools_itbench_prometheus_proxy_port }}"
+                  targetPort: "{{ tools_itbench_prometheus_proxy_port }}"
               # NOTE: This is a workaround due to this issue: https://github.com/prometheus-operator/prometheus-operator/issues/8605
               #       The following line can be safely removed should the connected PR be accepted by the community.
               publishNotReadyAddresses: true
@@ -187,7 +186,7 @@
                 - watch
             - nonResourceURLs:
                 - /metrics
-                - /observability/prometheus*
+                - "*"
               verbs:
                 - get
                 - create
@@ -207,7 +206,7 @@
           kind: ConfigMap
           metadata:
             name: cluster-monitoring-config
-            namespace: "{{ tools_namespace_openshift_monitoring }}"
+            namespace: "{{ tools_openshift_namespace_monitoring }}"
         state: present
 
     - name: Create User Workload ConfigMap
@@ -221,7 +220,7 @@
           kind: ConfigMap
           metadata:
             name: user-workload-monitoring-config
-            namespace: "{{ tools_namespace_openshift_user_workload_monitoring }}"
+            namespace: "{{ tools_openshift_namespace_user_workload_monitoring }}"
         state: present
 
     - name: Wait for Prometheus workload pods to start
@@ -230,7 +229,7 @@
         label_selectors:
           - app.kubernetes.io/component = prometheus
           - app.kubernetes.io/instance = user-workload
-        namespace: "{{ tools_namespace_openshift_user_workload_monitoring }}"
+        namespace: "{{ tools_openshift_namespace_user_workload_monitoring }}"
         wait: true
         wait_condition:
           status: "True"

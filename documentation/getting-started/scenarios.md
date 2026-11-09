@@ -143,12 +143,12 @@ An **alert** is a notification that some threshold (set by the user) has been su
 
 ITBench uses [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) and [Prometheus](https://prometheus.io/docs/introduction/overview/) to collect metrics and configure alerts from an application and Kubernetes cluster. To access the dashboard, follow these steps:
 
-1. Use the following command to show the host address:
+1. Use `kubectl port-forward` to forward the Prometheus pod:
 ```shell
-make display-endpoints
+kubectl -n itbench-observability port-forward pod/prometheus-kube-prometheus-stack-prometheus-0 9090
 ```
 
-2. Enter the respective Prometheus address into the browser (`/alerts` for alerts dashboard and `/query` for the query dashboard)
+2. Open `http://localhost:9090` in your browser (`/alerts` for alerts dashboard and `/query` for the query dashboard). On OpenShift, the platform console serves as the dashboard.
 
 ### Traces
 
@@ -156,12 +156,12 @@ A **trace** is a debug tool that - typically - shows the progress of a request a
 
 ITBench uses [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) and [Jaeger](https://www.jaegertracing.io/docs/latest/) to collect traces from an application. To access the dashboard, follow these steps:
 
-1. Use the following command to show the host address:
+1. Use `kubectl port-forward` to forward the Jaeger Service:
 ```shell
-make display-endpoints
+kubectl -n itbench-observability port-forward svc/jaeger-collector 16686
 ```
 
-2. Enter the Jaeger address into the browser
+2. Open `http://localhost:16686/jaeger/` in your browser.
 
 ### Logs
 
@@ -169,40 +169,27 @@ A **log** is a tool that show some message. These messages are crafted by the ap
 
 ITBench uses [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/) to collect logs from application, which are then stored in Clickhouse. To access the dashboard, follow these steps:
 
-1. Use the following command to show the host address:
+1. Use `kubectl port-forward` to forward the ClickHouse Service:
 ```shell
-make display-endpoints
+kubectl -n itbench-observability port-forward svc/clickhouse-observability 8123
 ```
 
-2. Enter the Clickhouse address into the browser
+2. Open `http://localhost:8123/play` in your browser.
 
 ### Financial Metrics
 
 These metrics are more of a specification of a type of metric, [discussed earlier](#alerts--metrics).
 
-ITBench uses [OpenCost](https://opencost.io/docs/) to collect and analyze cost metrics of an application. These metrics themselves are supplied from [Promethues](https://prometheus.io/docs/introduction/overview/). To access the dashboard, follow these steps:
+ITBench uses [OpenCost](https://opencost.io/docs/) to collect and analyze cost metrics of an application. These metrics themselves are supplied from [Prometheus](https://prometheus.io/docs/introduction/overview/). To access the dashboard, follow these steps:
 
-1. Use the following command to show the host address:
+1. Use `kubectl port-forward` to forward the OpenCost Service:
 ```shell
-make display-endpoints
+kubectl -n opencost port-forward svc/opencost 9090
 ```
 
-2. Enter the OpenCost address into the browser
+2. Open `http://localhost:9090` in your browser.
 
 ## Troubleshooting
-
-### Displayed dashboard address is not applicable
-
-When using `make display-endpoints`, sometimes the value of the address given is `N/A`. Generally, this is the result of one of the following:
-
-1. The tool is not installed and thus was not connected to the gateway. To fix this, run `make deploy-tools` with the correct `SCENARIO_NUMBER` or `tools.yaml` group variable configuration.
-2. **Kind**: Cloud Provider Kind is not running. Please consult the [Troubleshooting section](../../clusters/kind/README.md#load-balancer-ip-address-is-unreacheable) for more information on how to fix this issue.
-3. **Minikube**: Minikube is not running a tunnel for the cluster, thus an external IP address is not being generated.
-4. **Cloud Provider**: Sometimes it takes some time for a cloud provider (ie: AWS, GCP, Azure, etc) to generate a domain name for the new load balancer. This should be made in time, but may need further debuging in their respective dashboards to fix.
-
-### Dashboard is unreachable
-
-When using the endpoints given by `make display-endpoints`, sometimes the address is not reachable or takes some time to reach. Generally, this is due to some slowness in doing the DNS registration. Wait for about two or so minutes after `make deploy-tools` has created the gateway before attempting to access the dashboard even if the address has already been reserved.
 
 ### Failure to Deploy Tools or Applications
 
