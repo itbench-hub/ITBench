@@ -5,6 +5,10 @@
 #       exporter instead to support both platforms until the functionality of
 #       Prometheus is the same on both platforms.
 
+- name: Include ITBench variables
+  ansible.builtin.include_vars:
+    file: "{{ [playbook_dir, 'roles', 'tools', 'vars', 'main', 'itbench.yaml'] | ansible.builtin.path_join }}"
+
 - name: Create valkey-credentials Secret
   kubernetes.core.k8s:
     resource_definition:
@@ -20,14 +24,6 @@
       stringData:
         PASSWORD: "" # pragma: allowlist secret
     state: present
-
-- name: Import tools role for variable setting tasks
-  ansible.builtin.import_role:
-    name: tools
-    tasks_from: set_internal_endpoints
-  vars:
-    tools_cluster:
-      platform: "{{ applications_cluster.platform }}"
 
 - name: Create RoleBinding for access to anyuid SecurityContextConstraint
   kubernetes.core.k8s:
@@ -99,7 +95,7 @@
                   name: namespace
           exporters:
             otlp/gateway-logs:
-              endpoint: "{{ tools_otel_gateway_endpoint.opentelemetry_demo.grpc }}"
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_opentelemetry_demo }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -107,7 +103,7 @@
               tls:
                 insecure: true
             otlp/gateway-traces:
-              endpoint: "{{ tools_otel_gateway_endpoint.jaeger.grpc }}"
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_traces }}"
               retry_on_failure:
                 enabled: true
               sending_queue:

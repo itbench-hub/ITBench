@@ -17,7 +17,7 @@
               "itbench.io/ansible-role": tools
               "itbench.io/layer": data
             name: itbench-aws-credentials
-            namespace: "{{ tools_namespace_itbench_observability }}"
+            namespace: "{{ tools_itbench_namespace_observability }}"
           stringData:
             AWS_ACCESS_KEY_ID: "{{ tools_storage_s3_username }}"
             AWS_ENDPOINT_URL_S3: "{{ tools_storage_s3_endpoint }}"
@@ -36,7 +36,7 @@
               "itbench.io/ansible-role": tools
               "itbench.io/layer": data
             name: "{{ recorder_persistent_volume_claim }}-s3-exporter"
-            namespace: "{{ tools_namespace_itbench_observability }}"
+            namespace: "{{ tools_itbench_namespace_observability }}"
           spec:
             backoffLimit: 3
             template:
@@ -136,7 +136,7 @@
               "itbench.io/ansible-role": tools
               "itbench.io/layer": data
             name: "{{ recorder_persistent_volume_claim }}-exporter"
-            namespace: "{{ tools_namespace_itbench_observability }}"
+            namespace: "{{ tools_itbench_namespace_observability }}"
           spec:
             containers:
               - args:
@@ -179,7 +179,7 @@
     - name: Copy records from pod
       kubernetes.core.k8s_cp:
         local_path: "{{ tools_local_directory.path }}"
-        namespace: "{{ tools_namespace_itbench_observability }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
         pod: "{{ recorder_persistent_volume_claim }}-exporter"
         remote_path: /opt/app-root/src/records
         state: from_pod
@@ -192,6 +192,6 @@
           kind: Pod
           metadata:
             name: "{{ recorder_persistent_volume_claim }}-exporter"
-            namespace: "{{ tools_namespace_itbench_observability }}"
+            namespace: "{{ tools_itbench_namespace_observability }}"
         state: absent
         wait: true

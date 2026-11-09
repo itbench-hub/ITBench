@@ -1,0 +1,119 @@
+---
+tools_itbench_clickhouse_observability: observability
+tools_itbench_clickhouse_observability_port_tcp: 9000
+
+tools_itbench_gateway_kubernetes: itbench-gateway
+tools_itbench_gateway_opentelemetry: itbench-otel-gateway
+tools_itbench_gateway_opentelemetry_port_istio: 4323
+tools_itbench_gateway_opentelemetry_port_kubernetes_events: 4320
+tools_itbench_gateway_opentelemetry_port_kubernetes_infrastructure: 4321
+tools_itbench_gateway_opentelemetry_port_kubernetes_topology: 4322
+tools_itbench_gateway_opentelemetry_port_opentelemetry_demo: 4324
+tools_itbench_gateway_opentelemetry_port_traces: 4319
+
+tools_itbench_jaeger: jaeger
+tools_itbench_jaeger_collector_port: 4317
+tools_itbench_jaeger_querier_port: 16686
+
+tools_itbench_namespace: itbench-system
+tools_itbench_namespace_agents: itbench-agents
+tools_itbench_namespace_observability: itbench-observability
+
+tools_itbench_prometheus_proxy_port: 8443
+
+tools_itbench_fqdn_clickhouse_observability: >-
+  {{
+    "clickhouse-%s.%s.svc.cluster.local" |
+    ansible.builtin.format(
+      tools_itbench_clickhouse_observability,
+      tools_itbench_namespace_observability
+    )
+  }}
+tools_itbench_fqdn_clickhouse_observability_tcp: >-
+  {{
+    "%s:%i" |
+    ansible.builtin.format(
+      tools_itbench_fqdn_clickhouse_observability,
+      tools_itbench_clickhouse_observability_port_tcp
+    )
+  }}
+tools_itbench_fqdn_gateway_opentelemetry: >-
+  {{
+    "%s-collector.%s.svc.cluster.local" |
+    ansible.builtin.format(
+      tools_itbench_gateway_opentelemetry,
+      tools_itbench_namespace_observability
+    )
+  }}
+tools_itbench_fqdn_gateway_opentelemetry_istio: >-
+  {{
+    "%s:%i" |
+    ansible.builtin.format(
+      tools_itbench_fqdn_gateway_opentelemetry,
+      tools_itbench_gateway_opentelemetry_port_istio
+    )
+  }}
+tools_itbench_fqdn_gateway_opentelemetry_opentelemetry_demo: >-
+  {{
+    "%s:%i" |
+    ansible.builtin.format(
+      tools_itbench_fqdn_gateway_opentelemetry,
+      tools_itbench_gateway_opentelemetry_port_opentelemetry_demo
+    )
+  }}
+tools_itbench_fqdn_gateway_opentelemetry_kubernetes_events: >-
+  {{
+    "%s:%i" |
+    ansible.builtin.format(
+      tools_itbench_fqdn_gateway_opentelemetry,
+      tools_itbench_gateway_opentelemetry_port_kubernetes_events
+    )
+  }}
+tools_itbench_fqdn_gateway_opentelemetry_kubernetes_infrastructure: >-
+  {{
+    "%s:%i" |
+    ansible.builtin.format(
+      tools_itbench_fqdn_gateway_opentelemetry,
+      tools_itbench_gateway_opentelemetry_port_kubernetes_infrastructure
+    )
+  }}
+tools_itbench_fqdn_gateway_opentelemetry_kubernetes_topology: >-
+  {{
+    "%s:%i" |
+    ansible.builtin.format(
+      tools_itbench_fqdn_gateway_opentelemetry,
+      tools_itbench_gateway_opentelemetry_port_kubernetes_topology
+    )
+  }}
+tools_itbench_fqdn_gateway_opentelemetry_traces: >-
+  {{
+    "%s:%i" |
+    ansible.builtin.format(
+      tools_itbench_fqdn_gateway_opentelemetry,
+      tools_itbench_gateway_opentelemetry_port_traces
+    )
+  }}
+tools_itbench_fqdn_jaeger: >-
+  {{
+    "%s-collector.%s.svc.cluster.local" |
+    ansible.builtin.format(
+      tools_itbench_jaeger,
+      tools_itbench_namespace_observability
+    )
+  }}
+tools_itbench_fqdn_jaeger_collector: >-
+  {{
+    "%s:%i" |
+    ansible.builtin.format(
+      tools_itbench_fqdn_jaeger,
+      tools_itbench_jaeger_collector_port
+    )
+  }}
+tools_itbench_fqdn_jaeger_querier: >-
+  {{
+    "http://%s:%i" |
+    ansible.builtin.format(
+      tools_itbench_fqdn_jaeger,
+      tools_itbench_jaeger_querier_port
+    )
+  }}

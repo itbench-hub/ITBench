@@ -53,7 +53,7 @@
           httpRoute:
             enabled: true
             parentRefs:
-              - name: "{{ tools_gateway }}"
+              - name: "{{ tools_itbench_gateway_kubernetes }}"
                 namespace: "{{ tools_namespace_kubernetes_gateway_system }}"
             rules:
               - backendRefs:
@@ -77,18 +77,24 @@
               {{
                 (tools_cluster.platform == "openshift") |
                 ansible.builtin.ternary(
-                  tools_namespace_openshift_monitoring,
-                  tools_namespace_itbench_observability
+                  tools_openshift_namespace_monitoring,
+                  tools_itbench_namespace_observability
                 )
               }}
-            path: "{{ '' if tools_cluster.platform == 'openshift' else '/observability/prometheus' }}"
-            port: 8443
+            port: >-
+              {{
+                (tools_cluster.platform == "openshift") |
+                ansible.builtin.ternary(
+                  tools_openshift_prometheus_port,
+                  tools_itbench_prometheus_proxy_port
+                )
+              }}
             scheme: https
             serviceName: >-
               {{
                 (tools_cluster.platform == "openshift") |
                 ansible.builtin.ternary(
-                  "prometheus-k8s",
+                  tools_openshift_prometheus,
                   tools_helm_release_kube_prometheus_stack ~ "-prometheus"
                 )
               }}
@@ -96,10 +102,10 @@
         thanos:
           enabled: "{{ tools_cluster.platform == 'openshift' }}"
           internal:
-            namespaceName: "{{ tools_namespace_openshift_monitoring }}"
+            namespaceName: "{{ tools_openshift_namespace_monitoring }}"
             port: 9091
             scheme: https
-            serviceName: thanos-querier
+            serviceName: "{{ tools_openshift_thanos_querier }}"
     timeout: 10m0s
     wait: true
 
