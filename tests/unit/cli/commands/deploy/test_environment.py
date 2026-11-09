@@ -62,7 +62,6 @@ def test_tools_extra_vars_from_wizard_checkbox() -> None:
         "tools_gateway_enabled": False,
         "tools_observability_enabled": False,
         "tools_service_mesh_enabled": False,
-        "tools_infrastructure_enabled": False,
     }
 
     with (
@@ -78,7 +77,6 @@ def test_tools_extra_vars_from_wizard_checkbox() -> None:
     assert result["tools_gateway_enabled"] is True
     assert result["tools_observability_enabled"] is True
     assert result["tools_service_mesh_enabled"] is False
-    assert result["tools_infrastructure_enabled"] is False
 
 
 def test_tools_wizard_preselects_choices_from_role_defaults() -> None:
@@ -86,7 +84,6 @@ def test_tools_wizard_preselects_choices_from_role_defaults() -> None:
         "tools_gateway_enabled": True,
         "tools_observability_enabled": False,
         "tools_service_mesh_enabled": True,
-        "tools_infrastructure_enabled": False,
     }
 
     with (
@@ -104,12 +101,12 @@ def test_tools_wizard_preselects_choices_from_role_defaults() -> None:
         ("Gateway", "tools_gateway_enabled", True),
         ("Observability", "tools_observability_enabled", False),
         ("Service Mesh", "tools_service_mesh_enabled", True),
-        ("Infrastructure", "tools_infrastructure_enabled", False),
     ]
 
 
 def test_applications_wizard_preselects_choices_from_role_defaults() -> None:
     defaults = {
+        "applications_microservices_demo_enabled": False,
         "applications_opentelemetry_demo_enabled": True,
     }
 
@@ -125,6 +122,7 @@ def test_applications_wizard_preselects_choices_from_role_defaults() -> None:
 
     choices = mock_checkbox.call_args.kwargs["choices"]
     assert [(c.title, c.value, c.checked) for c in choices] == [
+        ("Microservices Demo", "microservices_demo", False),
         ("OpenTelemetry Demo", "opentelemetry_demo", True),
     ]
 
@@ -134,7 +132,6 @@ def test_tools_extra_vars_from_wizard_non_tty() -> None:
         "tools_gateway_enabled": False,
         "tools_observability_enabled": False,
         "tools_service_mesh_enabled": False,
-        "tools_infrastructure_enabled": False,
     }
 
     with (
@@ -157,6 +154,7 @@ def test_tools_extra_vars_from_wizard_non_tty() -> None:
 
 def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
     defaults = {
+        "applications_microservices_demo_enabled": False,
         "applications_opentelemetry_demo_enabled": False,
         "applications_opentelemetry_demo_kubernetes_autoscaling_enabled": False,
         "applications_opentelemetry_demo_load_generator_browser_enabled": False,
@@ -183,6 +181,7 @@ def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
 
         result = _applications_extra_vars_from_wizard()
 
+    assert result["applications_microservices_demo_enabled"] is False
     assert result["applications_opentelemetry_demo_enabled"] is True
     assert result["applications_opentelemetry_demo_kubernetes_autoscaling_enabled"] is True
     assert result["applications_opentelemetry_demo_load_generator_browser_enabled"] is False
@@ -192,6 +191,7 @@ def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
 
 def test_applications_extra_vars_from_wizard_non_tty() -> None:
     defaults = {
+        "applications_microservices_demo_enabled": False,
         "applications_opentelemetry_demo_enabled": False,
     }
 
@@ -216,7 +216,10 @@ def test_applications_extra_vars_from_wizard_non_tty() -> None:
 def test_deploy_environment_full_success(tmp_path: Path) -> None:
     runner = CliRunner()
     tools_defaults = {"tools_gateway_enabled": False, "tools_observability_enabled": False}
-    apps_defaults = {"applications_opentelemetry_demo_enabled": False}
+    apps_defaults = {
+        "applications_microservices_demo_enabled": False,
+        "applications_opentelemetry_demo_enabled": False,
+    }
 
     with (
         patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=tools_defaults),
@@ -236,6 +239,7 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
         extra_vars={
             "tools_gateway_enabled": False,
             "tools_observability_enabled": False,
+            "applications_microservices_demo_enabled": False,
             "applications_opentelemetry_demo_enabled": False,
             "environment_tool_management_enabled": True,
             "environment_application_management_enabled": True,

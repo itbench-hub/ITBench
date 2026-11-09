@@ -235,44 +235,12 @@
                   group: rbac.authorization.k8s.io
                   mode: watch
                   name: clusterrolebindings
-            # CRD-backed kinds (Istio, Gateway API) live in their own receiver
-            # so that they are kept apart from the core kinds above.
-            k8sobjects/topology-crd:
+            # Gateway API CRDs are standard across all cluster types and always installed.
+            k8sobjects/topology-gateway:
               include_initial_state: true
               kube_api_burst: 20
               kube_api_qps: 10
               objects:
-                - exclude_watch_type: [BOOKMARK]
-                  group: networking.istio.io
-                  mode: watch
-                  name: virtualservices
-                  namespaces: "{{ topology_required_namespaces }}"
-                - exclude_watch_type: [BOOKMARK]
-                  group: networking.istio.io
-                  mode: watch
-                  name: destinationrules
-                  namespaces: "{{ topology_required_namespaces }}"
-                - exclude_watch_type: [BOOKMARK]
-                  group: networking.istio.io
-                  mode: watch
-                  name: serviceentries
-                  namespaces: "{{ topology_required_namespaces }}"
-                - exclude_watch_type: [BOOKMARK]
-                  group: networking.istio.io
-                  mode: watch
-                  name: gateways
-                  namespaces: "{{ topology_required_namespaces }}"
-                - exclude_watch_type: [BOOKMARK]
-                  group: security.istio.io
-                  mode: watch
-                  name: authorizationpolicies
-                  namespaces: "{{ topology_required_namespaces }}"
-                - exclude_watch_type: [BOOKMARK]
-                  group: security.istio.io
-                  mode: watch
-                  name: peerauthentications
-                  namespaces: "{{ topology_required_namespaces }}"
-                # The Gateway API CRDs are always installed, so these are not optional.
                 - exclude_watch_type: [BOOKMARK]
                   group: gateway.networking.k8s.io
                   mode: watch
@@ -393,7 +361,7 @@
                 receivers:
                   - k8sobjects/topology-namespaced
                   - k8sobjects/topology-cluster
-                  - k8sobjects/topology-crd
+                  - k8sobjects/topology-gateway
         image: quay.io/it-bench/opentelemetry-collector:2.0.0
         podSecurityContext:
           runAsNonRoot: true
@@ -413,6 +381,97 @@
       type: Ready
   vars:
     topology_required_namespaces: "{{ tools_recordable_namespaces.resources | map(attribute='metadata.name') }}"
+
+- name: Deploy Istio Topology Collector
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
+      metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": data
+        name: itbench-recorder-istio-topology
+        namespace: "{{ tools_itbench_namespace_observability }}"
+      spec:
+        config:
+          exporters:
+            otlp/kubernetes-topology:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_kubernetes_topology }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                batch:
+                  flush_timeout: 2s
+                  min_size: 2500
+                enabled: true
+                num_consumers: 5
+              tls:
+                insecure: true
+          receivers:
+            k8sobjects/topology-istio:
+              include_initial_state: true
+              kube_api_burst: 20
+              kube_api_qps: 10
+              objects:
+                - exclude_watch_type: [BOOKMARK]
+                  group: networking.istio.io
+                  mode: watch
+                  name: virtualservices
+                  namespaces: "{{ topology_required_namespaces }}"
+                - exclude_watch_type: [BOOKMARK]
+                  group: networking.istio.io
+                  mode: watch
+                  name: destinationrules
+                  namespaces: "{{ topology_required_namespaces }}"
+                - exclude_watch_type: [BOOKMARK]
+                  group: networking.istio.io
+                  mode: watch
+                  name: serviceentries
+                  namespaces: "{{ topology_required_namespaces }}"
+                - exclude_watch_type: [BOOKMARK]
+                  group: networking.istio.io
+                  mode: watch
+                  name: gateways
+                  namespaces: "{{ topology_required_namespaces }}"
+                - exclude_watch_type: [BOOKMARK]
+                  group: security.istio.io
+                  mode: watch
+                  name: authorizationpolicies
+                  namespaces: "{{ topology_required_namespaces }}"
+                - exclude_watch_type: [BOOKMARK]
+                  group: security.istio.io
+                  mode: watch
+                  name: peerauthentications
+                  namespaces: "{{ topology_required_namespaces }}"
+          service:
+            pipelines:
+              logs/topology:
+                exporters:
+                  - otlp/kubernetes-topology
+                receivers:
+                  - k8sobjects/topology-istio
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0
+        podSecurityContext:
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        serviceAccount: kubernetes-topology
+    state: present
+    wait: true
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready
+  vars:
+    topology_required_namespaces: "{{ tools_recordable_namespaces.resources | map(attribute='metadata.name') }}"
+  when:
+    - tools_service_mesh_enabled
 
 - name: Deploy topology writer
   kubernetes.core.k8s:

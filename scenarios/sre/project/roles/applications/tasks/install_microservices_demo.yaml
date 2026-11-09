@@ -1,0 +1,272 @@
+---
+- name: Create ServiceAccount for access to anyuid SecurityContextConstraint
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: default
+        namespace: "{{ applications_microservices_demo_namespace }}"
+    state: present
+
+- name: Create RoleBinding for access to anyuid SecurityContextConstraint
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: online-boutique-scc
+        namespace: "{{ applications_microservices_demo_namespace }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: system:openshift:scc:anyuid
+      subjects:
+        - kind: ServiceAccount
+          name: default
+          namespace: "{{ applications_microservices_demo_namespace }}"
+    state: present
+  when:
+    - applications_cluster.platform == "openshift"
+
+- name: Install Microservices Demo (Online Boutique)
+  kubernetes.core.helm:
+    chart_ref: "oci://us-docker.pkg.dev/online-boutique-ci/charts/onlineboutique"
+    chart_version: "0.10.7"
+    release_name: "{{ applications_helm_release_microservices_demo }}"
+    release_namespace: "{{ applications_microservices_demo_namespace }}"
+    release_state: present
+    release_values:
+      seccompProfile:
+        enable: true
+      serviceAccounts:
+        create: false
+    timeout: 10m0s
+    wait: false
+
+- name: Retrieve all Deployments
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ applications_microservices_demo_namespace }}"
+  register: applications_microservices_demo_deployments
+
+- name: Patch Deployments with sandbox tolerations
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ item.metadata.name }}"
+        namespace: "{{ item.metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            tolerations:
+              - effect: NoSchedule
+                key: itbench.io/sandbox
+                operator: Equal
+                value: "true"
+    state: patched
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Available
+  loop: "{{ applications_microservices_demo_deployments.resources }}"
+  loop_control:
+    label: "deployment/{{ item.metadata.name }}"
+
+- name: Deploy OpenTelemetry AutoInstrumentation for Microservices Demo
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1alpha1
+      kind: Instrumentation
+      metadata:
+        name: "{{ applications_helm_release_microservices_demo }}"
+        namespace: "{{ applications_microservices_demo_namespace }}"
+      spec:
+        java:
+          env: "{{ otel_env_vars }}"
+        python:
+          env: "{{ otel_env_vars }}"
+        nodejs:
+          env: "{{ otel_env_vars }}"
+        dotnet:
+          env: "{{ otel_env_vars }}"
+    state: present
+  vars:
+    otel_env_vars:
+      - name: OTEL_COLLECTOR_NAME
+        value: "{{ applications_helm_release_microservices_demo ~ '-collector' }}"
+      - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+        value: "http://$(OTEL_COLLECTOR_NAME):4317"
+      - name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
+        value: "http://$(OTEL_COLLECTOR_NAME):4318/v1/metrics"
+      - name: OTEL_LOGS_EXPORTER
+        value: otlp
+      - name: OTEL_METRICS_EXPORTER
+        value: otlhttp
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: "metadata.labels['app']"
+
+- name: Deploy OpenTelemetry Collector for Microservices Demo
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
+      metadata:
+        labels:
+          "itbench.io/ansible-role": applications
+          "itbench.io/layer": applications
+        name: "{{ applications_helm_release_microservices_demo }}"
+        namespace: "{{ applications_microservices_demo_namespace }}"
+      spec:
+        config:
+          exporters:
+            debug: {}
+            otlp/gateway-logs:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_microservices_demo }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
+            otlp/gateway-traces:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_traces }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
+            otlp/gateway-metrics:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_metrics }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
+          processors:
+            batch:
+              send_batch_size: 8192
+              timeout: 1s
+          receivers:
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4317
+                http:
+                  endpoint: 0.0.0.0:4318
+            redis:
+              endpoint: "redis-cart:6379"
+              collection_interval: 10s
+          service:
+            pipelines:
+              logs:
+                exporters:
+                  - debug
+                  - otlp/gateway-logs
+                processors:
+                  - batch
+                receivers:
+                  - otlp
+              metrics:
+                exporters:
+                  - debug
+                  - otlp/gateway-metrics
+                processors:
+                  - batch
+                receivers:
+                  - otlp
+                  - redis
+              traces:
+                exporters:
+                  - debug
+                  - otlp/gateway-traces
+                processors:
+                  - batch
+                receivers:
+                  - otlp
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0
+        mode: deployment
+        observability:
+          metrics:
+            enableMetrics: true
+    state: present
+    wait: true
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready
+
+- name: Annotate Microservices Demo services to instrument OpenTelemetry
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ deployment.name }}"
+        namespace: "{{ applications_microservices_demo_namespace }}"
+      spec:
+        template:
+          metadata:
+            annotations: "{{ { instrumentation_key: instrumentation_value } }}"
+          spec:
+            containers:
+              - name: server
+                env:
+                  - name: COLLECTOR_SERVICE_ADDR
+                    value: "{{ applications_helm_release_microservices_demo ~ '-collector:4317' }}"
+                  - name: ENABLE_TRACING
+                    value: "1"
+    state: patched
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Available
+  loop:
+    - name: adservice
+      language: java
+    - name: cartservice
+      language: dotnet
+    - name: currencyservice
+      language: nodejs
+    - name: emailservice
+      language: python
+    - name: paymentservice
+      language: nodejs
+    - name: recommendationservice
+      language: python
+  loop_control:
+    label: deployment/{{ deployment.name }}
+    loop_var: deployment
+  vars:
+    instrumentation_key: >-
+      {{
+        "instrumentation.opentelemetry.io/inject-%s" |
+        ansible.builtin.format(deployment.language)
+      }}
+    instrumentation_value: >-
+      {{
+        "%s/%s" |
+        ansible.builtin.format(
+          applications_helm_release_microservices_demo,
+          applications_microservices_demo_namespace
+        )
+      }}
+
+- name: Create Common PrometheusRules
+  kubernetes.core.k8s:
+    state: present
+    template:
+      path: templates/kubernetes/common/prometheusrules.j2
+      variable_end_string: "]]"
+      variable_start_string: "[["
+  vars:
+    application_namespace: "{{ applications_microservices_demo_namespace }}"
+    group_name: microservicesdemo

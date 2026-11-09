@@ -21,8 +21,8 @@ COPY --chmod=555 --from=certs /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem 
 
 WORKDIR /
 
-COPY --chmod=755 --from=builder /workspace/opentelemetry-collector/it-bench-otelcollector it-bench-otelcollector
+COPY --chmod=755 --from=builder /workspace/opentelemetry-collector/itbench-otelcollector itbench-otelcollector
 
-ENTRYPOINT ["/it-bench-otelcollector"]
+ENTRYPOINT ["/itbench-otelcollector"]
 
 EXPOSE 4317 4318

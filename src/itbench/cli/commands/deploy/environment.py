@@ -20,7 +20,6 @@ _TOOL_CHOICES = (
     ("Gateway", "tools_gateway_enabled"),
     ("Observability", "tools_observability_enabled"),
     ("Service Mesh", "tools_service_mesh_enabled"),
-    ("Infrastructure", "tools_infrastructure_enabled"),
 )
 _TOOLS_VARS = [var for _, var in _TOOL_CHOICES]
 

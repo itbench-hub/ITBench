@@ -2,28 +2,14 @@
 - name: Import infrastructure installation tasks
   ansible.builtin.import_tasks:
     file: install.yaml
-  when:
-    - not tools_recorders_enabled
   tags:
     - install
 
-- name: Import recorder specific tasks
-  when:
-    - tools_recorders_enabled
-  block:
-    - name: Import recorders installation tasks
-      ansible.builtin.import_tasks:
-        file: install_itbench_recorders.yaml
-      tags:
-        - install
-      when:
-        - tools_observability_enabled
-
-    - name: Import export tasks
-      ansible.builtin.import_tasks:
-        file: export.yaml
-      tags:
-        - export
+- name: Import export tasks
+  ansible.builtin.import_tasks:
+    file: export.yaml
+  tags:
+    - export
 
 - name: Import uninstallation tasks
   ansible.builtin.import_tasks:

@@ -1,4 +1,8 @@
 ---
+- name: Include ITBench variables
+  ansible.builtin.include_vars:
+    file: "{{ [playbook_dir, 'roles', 'tools', 'vars', 'main', 'itbench.yaml'] | ansible.builtin.path_join }}"
+
 - name: Create Namespaces for applications
   kubernetes.core.k8s:
     resource_definition:
@@ -14,6 +18,8 @@
         name: "{{ itbench_namespace.name }}"
     state: present
   loop:
+    - enabled: "{{ applications_microservices_demo_enabled }}"
+      name: "{{ applications_microservices_demo_namespace }}"
     - enabled: "{{ applications_opentelemetry_demo_enabled }}"
       name: "{{ applications_opentelemetry_demo_namespace }}"
   loop_control:
@@ -33,6 +39,8 @@
         name: "{{ itbench_namespace.name }}"
     state: patched
   loop:
+    - enabled: "{{ applications_microservices_demo_enabled and applications_microservices_demo_service_mesh_enabled }}"
+      name: "{{ applications_microservices_demo_namespace }}"
     - enabled: "{{ applications_opentelemetry_demo_enabled and applications_opentelemetry_demo_service_mesh_enabled }}"
       name: "{{ applications_opentelemetry_demo_namespace }}"
   loop_control:
@@ -40,6 +48,12 @@
     loop_var: itbench_namespace
   when:
     - itbench_namespace.enabled
+
+- name: Import Microservices Demo installation tasks
+  ansible.builtin.import_tasks:
+    file: install_microservices_demo.yaml
+  when:
+    - applications_microservices_demo_enabled
 
 - name: Import OpenTelemetry Demo installation tasks
   ansible.builtin.import_tasks:

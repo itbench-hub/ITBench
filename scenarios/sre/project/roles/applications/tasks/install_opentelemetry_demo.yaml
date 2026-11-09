@@ -5,10 +5,6 @@
 #       exporter instead to support both platforms until the functionality of
 #       Prometheus is the same on both platforms.
 
-- name: Include ITBench variables
-  ansible.builtin.include_vars:
-    file: "{{ [playbook_dir, 'roles', 'tools', 'vars', 'main', 'itbench.yaml'] | ansible.builtin.path_join }}"
-
 - name: Create valkey-credentials Secret
   kubernetes.core.k8s:
     resource_definition:
@@ -110,8 +106,14 @@
                 enabled: true
               tls:
                 insecure: true
-            prometheus:
-              endpoint: 0.0.0.0:8888
+            otlp/gateway-metrics:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_metrics }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
           service:
             pipelines:
               logs:
@@ -121,7 +123,7 @@
               metrics:
                 exporters:
                   - debug
-                  - prometheus
+                  - otlp/gateway-metrics
               traces:
                 exporters:
                   - debug
