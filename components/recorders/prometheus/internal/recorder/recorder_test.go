@@ -18,7 +18,7 @@ import (
 	"github.com/itbench-hub/ITBench/components/recorders/prometheus/internal/recorder"
 )
 
-const image = "quay.io/prometheus/prometheus:v3.15.1@sha256:fa3302279710be2f21a8301ec17a8b4f2301fd829bd113839b3b6b02b6f191a2"
+const image = "quay.io/prometheus/prometheus:v3.16.0@sha256:9332054523223e2ddc18d8101799d54a4a8d823b030c53216f063a6c117773cd"
 
 // prometheusConfig is a minimal Prometheus configuration that defines one
 // alerting rule which fires immediately (expr: 1 == 1), and scrapes itself with
