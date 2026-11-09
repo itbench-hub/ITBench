@@ -12,10 +12,28 @@ Use the release tag to run archived content. Use the links to read it. Each link
 
 ## Contents
 
+- [Book Info Scenarios](#book-info-scenarios)
 - [Chaos Mesh Faults and Scenarios](#chaos-mesh-faults-and-scenarios)
 - [Kubernetes API Server Request Surge Fault and Scenarios](#kubernetes-api-server-request-surge-fault-and-scenarios)
 - [Modified Kubernetes Workload Container Environment Variable Fault and Scenarios](#modified-kubernetes-workload-container-environment-variable-fault-and-scenarios)
 - [OpenTelemetry Demo Flagd Fault and Scenarios](#opentelemetry-demo-flagd-fault-and-scenarios)
+
+## Book Info Scenarios
+
+**Last Supported Release:** [`v1.4.1`](https://github.com/itbench-hub/ITBench/releases/tag/v1.4.1)
+
+**Reason:** Book Info scenarios were deprecated because the application they relied on was (1) not complex enough to provide a robust environment for benchmark scenarios and (2) required a custom load generator.
+
+**Related Files:**
+
+- [`book-info.yaml`](https://github.com/itbench-hub/ITBench/blob/9891d5b76016df9579898882cd4ba3e03952ce0c/library/applications/book-info.yaml)
+- [`book_info.yaml`](https://github.com/itbench-hub/ITBench/blob/9891d5b76016df9579898882cd4ba3e03952ce0c/scenarios/sre/project/roles/applications/defaults/main/book_info.yaml)
+- [`install_book_info.yaml`](https://github.com/itbench-hub/ITBench/blob/9891d5b76016df9579898882cd4ba3e03952ce0c/scenarios/sre/project/roles/applications/tasks/install_book_info.yaml)
+- [`book_info/prometheusrules.j2`](https://github.com/itbench-hub/ITBench/blob/9891d5b76016df9579898882cd4ba3e03952ce0c/scenarios/sre/project/roles/applications/templates/kubernetes/book_info/prometheusrules.j2)
+- [`namespace.yaml`](https://github.com/itbench-hub/ITBench/blob/9891d5b76016df9579898882cd4ba3e03952ce0c/scenarios/sre/project/roles/applications/vars/main/namespace.yaml)
+
+**Related Scenarios:** [36](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_36), [47](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_47), [48](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_48), [50](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_50), [53](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_53)
+
 
 ## Chaos Mesh Faults and Scenarios
 

@@ -14,10 +14,8 @@
         name: "{{ itbench_namespace.name }}"
     state: present
   loop:
-    - enabled: "{{ applications_book_info_enabled }}"
-      name: "{{ applications_namespace_book_info }}"
     - enabled: "{{ applications_opentelemetry_demo_enabled }}"
-      name: "{{ applications_namespace_opentelemetry_demo }}"
+      name: "{{ applications_opentelemetry_demo_namespace }}"
   loop_control:
     label: namespace/{{ itbench_namespace.name }}
     loop_var: itbench_namespace
@@ -35,21 +33,13 @@
         name: "{{ itbench_namespace.name }}"
     state: patched
   loop:
-    - enabled: "{{ applications_book_info_enabled }}"
-      name: "{{ applications_namespace_book_info }}"
     - enabled: "{{ applications_opentelemetry_demo_enabled and applications_opentelemetry_demo_service_mesh_enabled }}"
-      name: "{{ applications_namespace_opentelemetry_demo }}"
+      name: "{{ applications_opentelemetry_demo_namespace }}"
   loop_control:
     label: namespace/{{ itbench_namespace.name }}
     loop_var: itbench_namespace
   when:
     - itbench_namespace.enabled
-
-- name: Import Book Info installation tasks
-  ansible.builtin.import_tasks:
-    file: install_book_info.yaml
-  when:
-    - applications_book_info_enabled
 
 - name: Import OpenTelemetry Demo installation tasks
   ansible.builtin.import_tasks:

@@ -11,6 +11,7 @@ import yaml
 
 from itbench.cli.playbook import run_step
 from itbench.cli.render import console, exit_not_found, fail, kubeconfig_option, verbose_option
+from itbench.models.application import APPLICATION_CATALOG
 from itbench.paths import repository
 from itbench.utils.runner import create_run
 from itbench.utils.scenarios import known_scenario_ids
@@ -23,10 +24,13 @@ _TOOL_CHOICES = (
 )
 _TOOLS_VARS = [var for _, var in _TOOL_CHOICES]
 
-_APPLICATION_CHOICES = (
-    ("Book Info", "book_info"),
-    ("OpenTelemetry Demo", "opentelemetry_demo"),
-)
+
+def _application_choices() -> list[tuple[str, str]]:
+    """Return (name, ansible_var_slug) for all applications registered in the catalog."""
+    return [
+        (app.name, app.id.replace("-", "_"))
+        for app in sorted(APPLICATION_CATALOG.values(), key=lambda a: a.name)
+    ]
 
 # Which subsystems each ``--only`` value deploys, in order. Applications and recorders both need the tools.
 _STEPS: dict[str | None, tuple[str, ...]] = {
@@ -86,30 +90,18 @@ def _applications_extra_vars_from_wizard() -> dict[str, Any]:
     if not sys.stdin.isatty():
         return dict(defaults)
 
+    app_choices = _application_choices()
     choices = [
         questionary.Choice(title, value=slug, checked=defaults.get(f"applications_{slug}_enabled", False))
-        for title, slug in _APPLICATION_CHOICES
+        for title, slug in app_choices
     ]
     selected = questionary.checkbox("Select applications to deploy:", choices=choices).ask()
     if selected is None:
         raise click.Abort()
 
     extra_vars = dict(defaults)
-    for _, slug in _APPLICATION_CHOICES:
+    for _, slug in app_choices:
         extra_vars[f"applications_{slug}_enabled"] = slug in selected
-
-    if "book_info" in selected:
-        console.print("\n[dim]Configure Book Info:[/dim]")
-        book_form = questionary.form(
-            autoscaling=questionary.confirm(
-                "  Enable Kubernetes autoscaling for Book Info?",
-                default=defaults.get("applications_book_info_kubernetes_autoscaling_enabled", False),
-            ),
-        )
-        book_answers = book_form.ask()
-        if book_answers is None:
-            raise click.Abort()
-        extra_vars["applications_book_info_kubernetes_autoscaling_enabled"] = bool(book_answers.get("autoscaling"))
 
     if "opentelemetry_demo" in selected:
         console.print("\n[dim]Configure OpenTelemetry Demo:[/dim]")

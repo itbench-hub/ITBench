@@ -12,7 +12,6 @@ All benchmark scenarios available in ITBench.
 | 31 | sre | opentelemetry-demo | ingress-port-blocking-network-policy |
 | 33 | sre | opentelemetry-demo | nonexistent-kubernetes-workload-node, nonexistent-kubernetes-workload-node |
 | 34 | sre | opentelemetry-demo | valkey-workload-changed-password |
-| 36 | sre | book-info | invalid-kubernetes-service-selector |
 | 37 | finops | opentelemetry-demo |  |
 | 38 | finops | opentelemetry-demo | misconfigured-kubernetes-horizontal-pod-autoscaler, misconfigured-kubernetes-horizontal-pod-autoscaler, misconfigured-kubernetes-horizontal-pod-autoscaler |
 | 39 | sre | opentelemetry-demo | cordoned-kubernetes-worker-node |
@@ -22,11 +21,7 @@ All benchmark scenarios available in ITBench.
 | 44 | sre | opentelemetry-demo | unschedulable-kubernetes-workload-pod-anti-affinity-rule |
 | 45 | sre | opentelemetry-demo | hanging-kubernetes-workload-init-container |
 | 46 | sre | opentelemetry-demo | insufficient-kubernetes-workload-container-resources |
-| 47 | sre | book-info | traffic-denying-istio-gateway-authorization-policy |
-| 48 | sre | book-info | disabled-istio-ambient-mode-kubernetes-namespace |
 | 49 | sre | opentelemetry-demo | misconfigured-kubernetes-workload-container-readiness-probe |
-| 50 | sre | book-info | strict-mutual-tls-istio-service-mesh-enforcement |
-| 53 | sre | book-info | nonexistent-kubernetes-workload-persistent-volume-claim |
 | 56 | sre | opentelemetry-demo | nonexistent-kubernetes-workload-container-image |
 | 57 | sre | opentelemetry-demo | unsupported-architecture-kubernetes-workload-container-image |
 | 58 | sre | opentelemetry-demo | scaled-to-zero-kubernetes-workload |

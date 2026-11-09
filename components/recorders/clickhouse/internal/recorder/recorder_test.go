@@ -43,7 +43,7 @@ func TestRun(t *testing.T) {
 	}
 
 	outDir := t.TempDir()
-	namespaces := []string{"otel-demo", "book-info"}
+	namespaces := []string{"otel-demo"}
 	if err := recorder.Run(ctx, addr, "default", testPassword, outDir, namespaces); err != nil {
 		t.Fatalf("recorder.Run: %v", err)
 	}
