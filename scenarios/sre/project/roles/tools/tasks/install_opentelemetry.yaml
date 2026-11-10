@@ -107,6 +107,8 @@
                         password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
                         username: ${env:CLICKHOUSE_USER}
                     create_schema: true
+                    table_engine:
+                      merge_tree: {}
           processors:
             batch:
               send_batch_size: 8192
@@ -173,7 +175,7 @@
             backendRefs:
               - name: "{{ tools_itbench_jaeger ~ '-collector' }}"
                 port: "{{ tools_itbench_jaeger_querier_port }}"
-      state: present
+    state: present
 
 # NOTE: The gateway is the only Clickhouse writer for OTLP logs. Each source has its own
 #       named receiver (and port) with a dedicated pipeline, so no routing is required.
@@ -213,6 +215,12 @@
               logs_table_name: topology
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               username: ${env:CLICKHOUSE_USER}
+            clickhouse/microservices_demo:
+              database: microservices_demo
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              logs_table_name: logs
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
             clickhouse/opentelemetry_demo:
               database: opentelemetry_demo
               endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
@@ -227,6 +235,8 @@
                 enabled: true
               tls:
                 insecure: true
+            prometheus:
+              endpoint: 0.0.0.0:8889
             debug: {}
           processors:
             batch:
@@ -249,10 +259,18 @@
               protocols:
                 grpc:
                   endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_kubernetes_topology }}
+            otlp/microservices_demo:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_microservices_demo }}
             otlp/opentelemetry_demo:
               protocols:
                 grpc:
                   endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_opentelemetry_demo }}
+            otlp/metrics:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_metrics }}
             otlp/traces:
               protocols:
                 grpc:
@@ -287,6 +305,13 @@
                   - batch
                 receivers:
                   - otlp/istio
+              logs/microservices_demo:
+                exporters:
+                  - clickhouse/microservices_demo
+                processors:
+                  - batch
+                receivers:
+                  - otlp/microservices_demo
               logs/opentelemetry_demo:
                 exporters:
                   - clickhouse/opentelemetry_demo
@@ -294,6 +319,13 @@
                   - batch
                 receivers:
                   - otlp/opentelemetry_demo
+              metrics:
+                exporters:
+                  - prometheus
+                processors:
+                  - batch
+                receivers:
+                  - otlp/metrics
               traces/jaeger:
                 exporters:
                   - otlp/jaeger
@@ -320,6 +352,10 @@
             port: "{{ tools_itbench_gateway_opentelemetry_port_kubernetes_events }}"
           - name: k8s-infra
             port: "{{ tools_itbench_gateway_opentelemetry_port_kubernetes_infrastructure }}"
+          - name: micro-demo
+            port: "{{ tools_itbench_gateway_opentelemetry_port_microservices_demo }}"
+          - name: metrics
+            port: "{{ tools_itbench_gateway_opentelemetry_port_metrics }}"
           - name: otel-demo
             port: "{{ tools_itbench_gateway_opentelemetry_port_opentelemetry_demo }}"
     state: present
@@ -328,3 +364,23 @@
       reason: Reconciled
       status: "True"
       type: Ready
+
+- name: Create ServiceMonitor for OpenTelemetry Gateway Metrics
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": observability
+        name: "{{ tools_itbench_gateway_opentelemetry }}-metrics"
+        namespace: "{{ tools_itbench_namespace_observability }}"
+      spec:
+        endpoints:
+          - interval: 15s
+            port: metrics
+        selector:
+          matchLabels:
+            "app.kubernetes.io/name": "{{ tools_itbench_gateway_opentelemetry ~ '-collector' }}"
+    state: present

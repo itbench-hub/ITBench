@@ -145,6 +145,39 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir st
 		slog.Error("k8s infrastructure", "err", err)
 	}
 
+	if err := exportQuery(ctx, defaultDB, baseDir, "microservices_demo_logs",
+		fmt.Sprintf(`SELECT * FROM microservices_demo.logs WHERE %s ORDER BY Timestamp ASC`, timeFilter),
+		&filterHandler{
+			dir:    baseDir,
+			prefix: "microservices_demo_logs_filtered",
+			header: []string{
+				"timestamp", "trace_id", "span_id", "trace_flags",
+				"severity_text", "severity_number", "service_name",
+				"body", "resource_attributes", "log_attributes",
+			},
+			derive: func(colIdx map[string]int, vals []any) ([]string, bool) {
+				sevText := formatVal(vals[colIdx["SeverityText"]])
+				sevNum := toInt(vals[colIdx["SeverityNumber"]])
+				if sevText != "WARN" && sevText != "ERROR" && sevText != "FATAL" && sevNum < 13 {
+					return nil, false
+				}
+				return []string{
+					formatVal(vals[colIdx["Timestamp"]]),
+					formatVal(vals[colIdx["TraceId"]]),
+					formatVal(vals[colIdx["SpanId"]]),
+					formatVal(vals[colIdx["TraceFlags"]]),
+					sevText,
+					formatVal(vals[colIdx["SeverityNumber"]]),
+					formatVal(vals[colIdx["ServiceName"]]),
+					formatVal(vals[colIdx["Body"]]),
+					formatVal(vals[colIdx["ResourceAttributes"]]),
+					formatVal(vals[colIdx["LogAttributes"]]),
+				}, true
+			},
+		}); err != nil {
+		slog.Warn("microservices demo logs (table may not exist)", "err", err)
+	}
+
 	if err := exportQuery(ctx, defaultDB, baseDir, "otel_logs",
 		fmt.Sprintf(`SELECT * FROM opentelemetry_demo.logs WHERE %s ORDER BY Timestamp ASC`, timeFilter),
 		&filterHandler{
@@ -175,7 +208,7 @@ func exportSnapshot(ctx context.Context, defaultDB, jaegerDB *sql.DB, baseDir st
 				}, true
 			},
 		}); err != nil {
-		slog.Error("otel logs", "err", err)
+		slog.Warn("otel logs (table may not exist)", "err", err)
 	}
 
 	if err := exportQuery(ctx, jaegerDB, baseDir, "jaeger_spans",

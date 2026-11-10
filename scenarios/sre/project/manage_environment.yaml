@@ -15,7 +15,7 @@
       tags:
         - always
   tasks:
-    - name: Import tools role (non-recorder)
+    - name: Import tools role (non-recorders)
       ansible.builtin.import_role:
         name: tools
       vars:
@@ -34,13 +34,15 @@
       when:
         - environment_application_management_enabled | ansible.builtin.default(false)
 
-    - name: Import tools role (recorder)
+    - name: Import tools role (recorders)
       ansible.builtin.import_role:
         name: tools
+        tasks_from: install_itbench_recorders.yaml
+      tags:
+        - install
       vars:
         tools_cluster:
           platform: "{{ cluster_platform }}"
           provider: "{{ cluster_provider }}"
-        tools_recorders_enabled: true
       when:
         - environment_recorder_management_enabled | ansible.builtin.default(false)

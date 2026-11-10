@@ -1,6 +1,7 @@
 """Tests for itbench.utils.runner."""
 
 import json
+import sys
 
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
@@ -45,7 +46,7 @@ def test_run_playbook_passes_correct_args() -> None:
 
     _, kwargs = mock_run.call_args
     assert kwargs["playbook"] == "my.yaml"
-    assert kwargs["extravars"] == {"k": "v"}
+    assert kwargs["extravars"] == {"ansible_python_interpreter": sys.executable, "k": "v"}
     assert kwargs["cmdline"] == "--tags t1,t2"
     assert kwargs["artifact_dir"].endswith("abc")
 
@@ -78,7 +79,7 @@ def test_run_playbook_empty_extra_vars_defaults_to_dict() -> None:
         run_playbook(playbook="my.yaml")
 
     _, kwargs = mock_run.call_args
-    assert kwargs["extravars"] == {}
+    assert kwargs["extravars"] == {"ansible_python_interpreter": sys.executable}
 
 
 def test_run_playbook_generates_uuid_when_run_id_omitted() -> None:

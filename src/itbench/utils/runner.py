@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 import uuid
 
 from collections.abc import Mapping
@@ -97,11 +98,16 @@ def run_playbook(
     if kubeconfig:
         envvars["K8S_AUTH_KUBECONFIG"] = str(kubeconfig)
 
+    extravars = {
+        "ansible_python_interpreter": sys.executable,
+        **(extra_vars or {}),
+    }
+
     runner = ansible_runner.run(
         private_data_dir=str(repository.ansible_project),
         inventory=str(repository.inventory),
         playbook=playbook,
-        extravars=extra_vars or {},
+        extravars=extravars,
         cmdline=" ".join(cmdline_args) if cmdline_args else None,
         artifact_dir=str(artifact_dir),
         quiet=not verbose,
