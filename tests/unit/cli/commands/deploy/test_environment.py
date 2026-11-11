@@ -106,6 +106,7 @@ def test_tools_wizard_preselects_choices_from_role_defaults() -> None:
 
 def test_applications_wizard_preselects_choices_from_role_defaults() -> None:
     defaults = {
+        "applications_bank_of_anthos_enabled": False,
         "applications_microservices_demo_enabled": False,
         "applications_opentelemetry_demo_enabled": True,
     }
@@ -122,6 +123,7 @@ def test_applications_wizard_preselects_choices_from_role_defaults() -> None:
 
     choices = mock_checkbox.call_args.kwargs["choices"]
     assert [(c.title, c.value, c.checked) for c in choices] == [
+        ("Bank of Anthos", "bank_of_anthos", False),
         ("Microservices Demo", "microservices_demo", False),
         ("OpenTelemetry Demo", "opentelemetry_demo", True),
     ]
@@ -154,6 +156,7 @@ def test_tools_extra_vars_from_wizard_non_tty() -> None:
 
 def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
     defaults = {
+        "applications_bank_of_anthos_enabled": False,
         "applications_microservices_demo_enabled": False,
         "applications_opentelemetry_demo_enabled": False,
         "applications_opentelemetry_demo_kubernetes_autoscaling_enabled": False,
@@ -181,6 +184,7 @@ def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
 
         result = _applications_extra_vars_from_wizard()
 
+    assert result["applications_bank_of_anthos_enabled"] is False
     assert result["applications_microservices_demo_enabled"] is False
     assert result["applications_opentelemetry_demo_enabled"] is True
     assert result["applications_opentelemetry_demo_kubernetes_autoscaling_enabled"] is True
@@ -189,8 +193,33 @@ def test_applications_extra_vars_from_wizard_checkbox_and_subforms() -> None:
     assert result["applications_opentelemetry_demo_load_generator_spawn_rate"] == 4
 
 
+def test_applications_extra_vars_from_wizard_bank_of_anthos_selected() -> None:
+    defaults = {
+        "applications_bank_of_anthos_enabled": False,
+        "applications_microservices_demo_enabled": False,
+        "applications_opentelemetry_demo_enabled": False,
+    }
+
+    with (
+        patch("itbench.cli.commands.deploy.environment._load_applications_defaults", return_value=defaults),
+        patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
+        patch("questionary.checkbox") as mock_checkbox,
+        patch("questionary.form") as mock_form,
+    ):
+        mock_stdin.isatty.return_value = True
+        mock_checkbox.return_value.ask.return_value = ["bank_of_anthos"]
+
+        result = _applications_extra_vars_from_wizard()
+
+    mock_form.assert_not_called()
+    assert result["applications_bank_of_anthos_enabled"] is True
+    assert result["applications_microservices_demo_enabled"] is False
+    assert result["applications_opentelemetry_demo_enabled"] is False
+
+
 def test_applications_extra_vars_from_wizard_non_tty() -> None:
     defaults = {
+        "applications_bank_of_anthos_enabled": False,
         "applications_microservices_demo_enabled": False,
         "applications_opentelemetry_demo_enabled": False,
     }
@@ -217,6 +246,7 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
     runner = CliRunner()
     tools_defaults = {"tools_gateway_enabled": False, "tools_observability_enabled": False}
     apps_defaults = {
+        "applications_bank_of_anthos_enabled": False,
         "applications_microservices_demo_enabled": False,
         "applications_opentelemetry_demo_enabled": False,
     }
@@ -239,6 +269,7 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
         extra_vars={
             "tools_gateway_enabled": False,
             "tools_observability_enabled": False,
+            "applications_bank_of_anthos_enabled": False,
             "applications_microservices_demo_enabled": False,
             "applications_opentelemetry_demo_enabled": False,
             "environment_tool_management_enabled": True,

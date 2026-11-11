@@ -74,6 +74,7 @@
             admin/show_named_collections: 1
             admin/show_named_collections_secrets: 1
             agent/grants/query:
+              - GRANT SELECT ON bank_of_anthos.logs
               - GRANT SELECT ON jaeger.spans
               - GRANT SELECT ON kubernetes.events
               - GRANT SELECT ON kubernetes.infrastructure
@@ -88,6 +89,7 @@
                   key: CLICKHOUSE_PASSWORD
                   name: user-agent-credentials
             ingest/grants/query:
+              - GRANT CREATE, INSERT ON bank_of_anthos.*
               - GRANT CREATE, INSERT ON istio.*
               - GRANT CREATE, INSERT ON kubernetes.*
               - GRANT CREATE, INSERT ON microservices_demo.*
@@ -107,6 +109,7 @@
                   key: CLICKHOUSE_PASSWORD
                   name: user-jaeger-credentials
             recorder/grants/query:
+              - GRANT SELECT ON bank_of_anthos.*
               - GRANT SELECT ON jaeger.*
               - GRANT SELECT ON kubernetes.*
               - GRANT SELECT ON microservices_demo.*
@@ -233,6 +236,7 @@
                     --password "$CLICKHOUSE_PASSWORD"
                     --multiquery
                     --query "
+                      CREATE DATABASE IF NOT EXISTS bank_of_anthos;
                       CREATE DATABASE IF NOT EXISTS jaeger;
                       CREATE DATABASE IF NOT EXISTS istio;
                       CREATE DATABASE IF NOT EXISTS kubernetes;
