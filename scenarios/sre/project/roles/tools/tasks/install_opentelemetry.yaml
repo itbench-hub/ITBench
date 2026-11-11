@@ -191,6 +191,12 @@
       spec:
         config:
           exporters:
+            clickhouse/bank_of_anthos:
+              database: bank_of_anthos
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              logs_table_name: logs
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              username: ${env:CLICKHOUSE_USER}
             clickhouse/istio:
               database: istio
               endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
@@ -243,6 +249,10 @@
               send_batch_size: 8192
               timeout: 1s
           receivers:
+            otlp/bank_of_anthos:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_bank_of_anthos }}
             otlp/istio:
               protocols:
                 grpc:
@@ -277,6 +287,13 @@
                   endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_traces }}
           service:
             pipelines:
+              logs/bank_of_anthos:
+                exporters:
+                  - clickhouse/bank_of_anthos
+                processors:
+                  - batch
+                receivers:
+                  - otlp/bank_of_anthos
               logs/kubernetes_events:
                 exporters:
                   - clickhouse/kubernetes_events
@@ -342,6 +359,8 @@
           metrics:
             enableMetrics: true
         ports:
+          - name: bank-of-anthos
+            port: "{{ tools_itbench_gateway_opentelemetry_port_bank_of_anthos }}"
           - name: istio
             port: "{{ tools_itbench_gateway_opentelemetry_port_istio }}"
           - name: jaeger

@@ -1,0 +1,403 @@
+---
+- name: Create ServiceAccount for access to anyuid SecurityContextConstraint
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: bank-of-anthos
+        namespace: "{{ applications_bank_of_anthos_namespace }}"
+    state: present
+
+- name: Create RoleBinding for access to anyuid SecurityContextConstraint
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: bank-of-anthos-scc
+        namespace: "{{ applications_bank_of_anthos_namespace }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: system:openshift:scc:anyuid
+      subjects:
+        - kind: ServiceAccount
+          name: bank-of-anthos
+          namespace: "{{ applications_bank_of_anthos_namespace }}"
+    state: present
+  when:
+    - applications_cluster.platform == "openshift"
+
+- name: Install Bank of Anthos
+  block:
+    - name: Create temporary directory for install files
+      ansible.builtin.tempfile:
+        prefix: boa
+        state: directory
+      register: applications_bank_of_anthos_install_directory
+
+    - name: Download release tarball
+      ansible.builtin.get_url:
+        decompress: false
+        dest: "{{ [applications_bank_of_anthos_install_directory.path, 'boa-manifests.zip'] | ansible.builtin.path_join }}"
+        headers:
+          Accept: "application/vnd.github+json"
+        mode: "0644"
+        url: https://github.com/GoogleCloudPlatform/bank-of-anthos/archive/refs/tags/v0.6.11.zip
+      register: applications_bank_of_anthos_zipball
+
+    - name: Extract release tarball
+      ansible.builtin.unarchive:
+        dest: "{{ applications_bank_of_anthos_install_directory.path }}"
+        list_files: true
+        src: "{{ applications_bank_of_anthos_zipball.dest }}"
+      register: applications_bank_of_anthos_zipball_contents
+
+    # NOTE: Upstream ships the credentials as ConfigMaps. They are rewritten to Secrets of the
+    #       same name (data -> stringData) and every reference to them is switched to match.
+    #       Tracing and metrics are exported to Google Cloud by default and crash on start-up
+    #       without GCP credentials, so they are disabled in favour of OpenTelemetry
+    #       auto-instrumentation.
+    # NOTE: The (?m) flag is required for ^ to match at the start of each line.
+
+    - name: Install Bank of Anthos
+      kubernetes.core.k8s:
+        namespace: "{{ applications_bank_of_anthos_namespace }}"
+        resource_definition: >-
+          {{
+            query(
+              "ansible.builtin.file",
+              *(query("ansible.builtin.fileglob", manifest_paths))
+            ) |
+            map(
+              "ansible.builtin.regex_replace",
+              "(?m)^kind: ConfigMap\n(metadata:\n  name: demo-data-config\n)data:",
+              "kind: Secret\n\1stringData:"
+            ) |
+            map(
+              "ansible.builtin.regex_replace",
+              "(?m)^data:(\n(?:  .+\n)+)kind: ConfigMap\n(metadata:\n(?:  .+\n)*?  name: (?:accounts-db-config|demo-data-config|ledger-db-config)\n)",
+              "stringData:\1kind: Secret\n\2"
+            ) |
+            map(
+              "ansible.builtin.regex_replace",
+              "configMapKeyRef:(\n\s+key: \w+\n\s+name: demo-data-config\n)",
+              "secretKeyRef:\1"
+            ) |
+            map(
+              "ansible.builtin.regex_replace",
+              "configMapRef:(\n\s+name: (?:accounts-db-config|demo-data-config|ledger-db-config)\n)",
+              "secretRef:\1"
+            ) |
+            map(
+              "ansible.builtin.regex_replace",
+              '(name: ENABLE_(?:METRICS|TRACING)\n\s+value: )"true"',
+              '\1"false"'
+            ) |
+            map("ansible.builtin.from_yaml_all") |
+            ansible.builtin.flatten(1) |
+            ansible.builtin.unique
+          }}
+        state: present
+      vars:
+        manifest_paths: >-
+          {{
+            [
+              applications_bank_of_anthos_install_directory.path,
+              applications_bank_of_anthos_zipball_contents.files[0],
+              "kubernetes-manifests",
+              "*.yaml"
+            ] |
+            ansible.builtin.path_join
+          }}
+
+  always:
+    - name: Delete the temporary directory
+      ansible.builtin.file:
+        path: "{{ applications_bank_of_anthos_install_directory.path }}"
+        state: absent
+
+- name: Retrieve all StatefulSets
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    namespace: "{{ applications_bank_of_anthos_namespace }}"
+  register: applications_bank_of_anthos_statefulsets
+
+- name: Patch StatefulSets with sandbox tolerations
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: "{{ statefulset.metadata.name }}"
+        namespace: "{{ statefulset.metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            serviceAccountName: bank-of-anthos
+            tolerations:
+              - effect: NoSchedule
+                key: itbench.io/sandbox
+                operator: Equal
+                value: "true"
+    state: patched
+    wait: true
+  loop: "{{ applications_bank_of_anthos_statefulsets.resources }}"
+  loop_control:
+    label: statefulset/{{ statefulset.metadata.name }}
+    loop_var: statefulset
+
+- name: Retrieve all Deployments
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ applications_bank_of_anthos_namespace }}"
+  register: applications_bank_of_anthos_deployments
+
+- name: Patch Deployments with sandbox tolerations
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ deployment.metadata.name }}"
+        namespace: "{{ deployment.metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            serviceAccountName: bank-of-anthos
+            tolerations:
+              - effect: NoSchedule
+                key: itbench.io/sandbox
+                operator: Equal
+                value: "true"
+    state: patched
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Available
+  loop: "{{ applications_bank_of_anthos_deployments.resources }}"
+  loop_control:
+    label: deployment/{{ deployment.metadata.name }}
+    loop_var: deployment
+
+- name: Deploy OpenTelemetry AutoInstrumentation for Bank of Anthos
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1alpha1
+      kind: Instrumentation
+      metadata:
+        name: bank-of-anthos
+        namespace: "{{ applications_bank_of_anthos_namespace }}"
+      spec:
+        java:
+          env: "{{ otel_env_vars }}"
+        python:
+          env: "{{ otel_env_vars }}"
+    state: present
+  vars:
+    otel_env_vars:
+      - name: OTEL_COLLECTOR_NAME
+        value: bank-of-anthos-collector
+      - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+        value: "http://$(OTEL_COLLECTOR_NAME):4317"
+      - name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
+        value: "http://$(OTEL_COLLECTOR_NAME):4318/v1/metrics"
+      - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+        value: "http://$(OTEL_COLLECTOR_NAME):4317"
+      - name: OTEL_LOGS_EXPORTER
+        value: otlp
+      - name: OTEL_METRICS_EXPORTER
+        value: otlhttp
+      - name: OTEL_SERVICE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: "metadata.labels['app']"
+      - name: OTEL_TRACES_EXPORTER
+        value: otlp
+
+- name: Deploy OpenTelemetry Collector for Bank of Anthos
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
+      metadata:
+        labels:
+          "itbench.io/ansible-role": applications
+          "itbench.io/layer": applications
+        name: bank-of-anthos
+        namespace: "{{ applications_bank_of_anthos_namespace }}"
+      spec:
+        config:
+          exporters:
+            debug: {}
+            otlp/gateway-logs:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_bank_of_anthos }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
+            otlp/gateway-traces:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_traces }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
+            otlp/gateway-metrics:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_metrics }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
+          processors:
+            batch:
+              send_batch_size: 8192
+              timeout: 1s
+          receivers:
+            otlp:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:4317
+                http:
+                  endpoint: 0.0.0.0:4318
+            postgresql/accounts-db:
+              collection_interval: 10s
+              databases:
+                - accounts-db
+              endpoint: accounts-db:5432
+              password: ${env:ACCOUNTS_DB_PASSWORD} # pragma: allowlist secret
+              tls:
+                insecure: true
+              transport: tcp
+              username: ${env:ACCOUNTS_DB_USER}
+            postgresql/ledger-db:
+              collection_interval: 10s
+              databases:
+                - postgresdb
+              endpoint: ledger-db:5432
+              password: ${env:LEDGER_DB_PASSWORD} # pragma: allowlist secret
+              tls:
+                insecure: true
+              transport: tcp
+              username: ${env:LEDGER_DB_USER}
+          service:
+            pipelines:
+              logs:
+                exporters:
+                  - debug
+                  - otlp/gateway-logs
+                processors:
+                  - batch
+                receivers:
+                  - otlp
+              metrics:
+                exporters:
+                  - debug
+                  - otlp/gateway-metrics
+                processors:
+                  - batch
+                receivers:
+                  - otlp
+                  - postgresql/accounts-db
+                  - postgresql/ledger-db
+              traces:
+                exporters:
+                  - debug
+                  - otlp/gateway-traces
+                processors:
+                  - batch
+                receivers:
+                  - otlp
+        env:
+          - name: ACCOUNTS_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: POSTGRES_PASSWORD
+                name: accounts-db-config
+          - name: ACCOUNTS_DB_USER
+            valueFrom:
+              secretKeyRef:
+                key: POSTGRES_USER
+                name: accounts-db-config
+          - name: LEDGER_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: POSTGRES_PASSWORD
+                name: ledger-db-config
+          - name: LEDGER_DB_USER
+            valueFrom:
+              secretKeyRef:
+                key: POSTGRES_USER
+                name: ledger-db-config
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0
+        mode: deployment
+        observability:
+          metrics:
+            enableMetrics: true
+    state: present
+    wait: true
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready
+
+- name: Annotate Bank of Anthos services to instrument OpenTelemetry
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ deployment.name }}"
+        namespace: "{{ applications_bank_of_anthos_namespace }}"
+      spec:
+        template:
+          metadata:
+            annotations: "{{ {instrumentation_key: instrumentation_value} }}"
+    state: patched
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Available
+  loop:
+    - name: contacts
+      language: python
+    - name: balancereader
+      language: java
+    - name: frontend
+      language: python
+    - name: ledgerwriter
+      language: java
+    - name: transactionhistory
+      language: java
+    - name: userservice
+      language: python
+  loop_control:
+    label: deployment/{{ deployment.name }}
+    loop_var: deployment
+  vars:
+    instrumentation_key: >-
+      {{
+        "instrumentation.opentelemetry.io/inject-%s" |
+        ansible.builtin.format(deployment.language)
+      }}
+    instrumentation_value: "{{ applications_bank_of_anthos_namespace ~ '/bank-of-anthos' }}"
+
+- name: Create Common PrometheusRules
+  kubernetes.core.k8s:
+    state: present
+    template:
+      path: templates/kubernetes/common/prometheusrules.j2
+      variable_end_string: "]]"
+      variable_start_string: "[["
+  vars:
+    application_namespace: "{{ applications_bank_of_anthos_namespace }}"
+    group_name: bankofanthos

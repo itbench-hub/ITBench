@@ -18,6 +18,8 @@
         name: "{{ itbench_namespace.name }}"
     state: present
   loop:
+    - enabled: "{{ applications_bank_of_anthos_enabled }}"
+      name: "{{ applications_bank_of_anthos_namespace }}"
     - enabled: "{{ applications_microservices_demo_enabled }}"
       name: "{{ applications_microservices_demo_namespace }}"
     - enabled: "{{ applications_opentelemetry_demo_enabled }}"
@@ -39,6 +41,8 @@
         name: "{{ itbench_namespace.name }}"
     state: patched
   loop:
+    - enabled: "{{ applications_bank_of_anthos_enabled and applications_bank_of_anthos_service_mesh_enabled }}"
+      name: "{{ applications_bank_of_anthos_namespace }}"
     - enabled: "{{ applications_microservices_demo_enabled and applications_microservices_demo_service_mesh_enabled }}"
       name: "{{ applications_microservices_demo_namespace }}"
     - enabled: "{{ applications_opentelemetry_demo_enabled and applications_opentelemetry_demo_service_mesh_enabled }}"
@@ -48,6 +52,12 @@
     loop_var: itbench_namespace
   when:
     - itbench_namespace.enabled
+
+- name: Import Bank of Anthos installation tasks
+  ansible.builtin.import_tasks:
+    file: install_bank_of_anthos.yaml
+  when:
+    - applications_bank_of_anthos_enabled
 
 - name: Import Microservices Demo installation tasks
   ansible.builtin.import_tasks:
