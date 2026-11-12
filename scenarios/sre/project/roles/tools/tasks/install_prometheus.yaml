@@ -140,8 +140,41 @@
               # NOTE: This is a workaround due to this issue: https://github.com/prometheus-operator/prometheus-operator/issues/8605
               #       The following line can be safely removed should the connected PR be accepted by the community.
               publishNotReadyAddresses: true
+            # Prometheus only listens on 127.0.0.1 (listenLocal) behind kube-rbac-proxy, so the chart's
+            # self-scrape of the pod IP on 9090 is always refused. It is replaced by the ServiceMonitor
+            # below, which scrapes through the proxy.
+            serviceMonitor:
+              selfMonitor: false
         timeout: 10m0s
         wait: true
+
+    - name: Create ServiceMonitor for Prometheus through the proxy
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: monitoring.coreos.com/v1
+          kind: ServiceMonitor
+          metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": observability
+            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus-proxy' }}"
+            namespace: "{{ tools_itbench_namespace_observability }}"
+          spec:
+            endpoints:
+              - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+                path: /metrics
+                port: http-proxy
+                scheme: https
+                tlsConfig:
+                  insecureSkipVerify: true
+            namespaceSelector:
+              matchNames:
+                - "{{ tools_itbench_namespace_observability }}"
+            selector:
+              matchLabels:
+                app: kube-prometheus-stack-prometheus
+                release: "{{ tools_helm_release_kube_prometheus_stack }}"
+        state: present
 
     - name: Create ClusterRoleBinding for bearer token validation
       kubernetes.core.k8s:

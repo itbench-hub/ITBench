@@ -196,21 +196,27 @@
           env: "{{ otel_env_vars }}"
         python:
           env: "{{ otel_env_vars }}"
+        sampler:
+          type: parentbased_always_on
     state: present
   vars:
     otel_env_vars:
       - name: OTEL_COLLECTOR_NAME
         value: bank-of-anthos-collector
       - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-        value: "http://$(OTEL_COLLECTOR_NAME):4317"
+        value: "http://$(OTEL_COLLECTOR_NAME):4318/v1/logs"
       - name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
         value: "http://$(OTEL_COLLECTOR_NAME):4318/v1/metrics"
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
       - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
-        value: "http://$(OTEL_COLLECTOR_NAME):4317"
+        value: "http://$(OTEL_COLLECTOR_NAME):4318/v1/traces"
       - name: OTEL_LOGS_EXPORTER
         value: otlp
       - name: OTEL_METRICS_EXPORTER
-        value: otlhttp
+        value: otlp
+      - name: OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED
+        value: "true"
       - name: OTEL_SERVICE_NAME
         valueFrom:
           fieldRef:
@@ -233,25 +239,24 @@
       spec:
         config:
           exporters:
-            debug: {}
-            otlp/gateway-logs:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_bank_of_anthos }}"
+            otlp_grpc/gateway-logs:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_applications_bank_of_anthos }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
                 enabled: true
               tls:
                 insecure: true
-            otlp/gateway-traces:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_traces }}"
+            otlp_grpc/gateway-traces:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_applications_traces }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
                 enabled: true
               tls:
                 insecure: true
-            otlp/gateway-metrics:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_metrics }}"
+            otlp_grpc/gateway-metrics:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_applications_metrics }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -293,16 +298,14 @@
             pipelines:
               logs:
                 exporters:
-                  - debug
-                  - otlp/gateway-logs
+                  - otlp_grpc/gateway-logs
                 processors:
                   - batch
                 receivers:
                   - otlp
               metrics:
                 exporters:
-                  - debug
-                  - otlp/gateway-metrics
+                  - otlp_grpc/gateway-metrics
                 processors:
                   - batch
                 receivers:
@@ -311,8 +314,7 @@
                   - postgresql/ledger-db
               traces:
                 exporters:
-                  - debug
-                  - otlp/gateway-traces
+                  - otlp_grpc/gateway-traces
                 processors:
                   - batch
                 receivers:
@@ -390,6 +392,76 @@
         ansible.builtin.format(deployment.language)
       }}
     instrumentation_value: "{{ applications_bank_of_anthos_namespace ~ '/bank-of-anthos' }}"
+
+# The root filesystem is read-only with only /tmp writable, and gunicorn writes its control socket under
+# $HOME (/) otherwise, which logs "[Errno 30] Read-only file system: '/.gunicorn'".
+
+- name: Move the gunicorn control socket to the writable /tmp
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ deployment.name }}"
+        namespace: "{{ applications_bank_of_anthos_namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ deployment.container }}"
+                env:
+                  - name: XDG_RUNTIME_DIR
+                    value: /tmp
+    state: patched
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Available
+  loop:
+    - name: contacts
+      container: contacts
+    - name: frontend
+      container: front
+    - name: userservice
+      container: userservice
+  loop_control:
+    label: deployment/{{ deployment.name }}
+    loop_var: deployment
+
+# The agents add memory to the Python services. contacts was OOMKilled (exit 137) after about 27 minutes
+# with the chart's 128Mi limit, at 117Mi shortly after a restart. frontend has the same limit and agent.
+
+- name: Raise the memory of the instrumented Bank of Anthos Python services
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ deployment.name }}"
+        namespace: "{{ applications_bank_of_anthos_namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ deployment.container }}"
+                resources:
+                  limits:
+                    memory: 256Mi
+                  requests:
+                    memory: 128Mi
+    state: patched
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Available
+  loop:
+    - name: contacts
+      container: contacts
+    - name: frontend
+      container: front
+  loop_control:
+    label: deployment/{{ deployment.name }}
+    loop_var: deployment
 
 - name: Create Common PrometheusRules
   kubernetes.core.k8s:

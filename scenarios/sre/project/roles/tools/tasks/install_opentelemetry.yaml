@@ -87,7 +87,6 @@
       spec:
         config:
           exporters:
-            debug: {}
             jaeger_storage_exporter:
               trace_storage: traces_store
           extensions:
@@ -125,7 +124,6 @@
             pipelines:
               traces:
                 exporters:
-                  - debug
                   - jaeger_storage_exporter
                 processors:
                   - batch
@@ -177,16 +175,197 @@
                 port: "{{ tools_itbench_jaeger_querier_port }}"
     state: present
 
-# NOTE: The gateway is the only Clickhouse writer for OTLP logs. Each source has its own
+# NOTE: The two gateways are the only Clickhouse writers for OTLP logs. Each source has its own
 #       named receiver (and port) with a dedicated pipeline, so no routing is required.
+#         - infrastructure: Kubernetes recorders and Istio (fixed volume, one replica)
+#         - applications: Bank of Anthos, Microservices Demo and OpenTelemetry Demo
+#       Ports are only unique within a gateway, as each gateway is its own Service.
 
-- name: Install OpenTelemetry Collector for OTLP gateway
+- name: Install OpenTelemetry Collector for OTLP infrastructure gateway
   kubernetes.core.k8s:
     resource_definition:
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: "{{ tools_itbench_gateway_opentelemetry }}"
+        name: "{{ tools_itbench_gateway_opentelemetry_infrastructure }}"
+        namespace: "{{ tools_itbench_namespace_observability }}"
+      spec:
+        config:
+          exporters:
+            clickhouse/istio:
+              database: istio
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              logs_table_name: access_logs
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              retry_on_failure:
+                enabled: true
+                initial_interval: 5s
+                max_elapsed_time: 300s
+                max_interval: 30s
+              sending_queue:
+                enabled: true
+                queue_size: 1000
+              username: ${env:CLICKHOUSE_USER}
+            clickhouse/kubernetes_events:
+              database: kubernetes
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              logs_table_name: events
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              retry_on_failure:
+                enabled: true
+                initial_interval: 5s
+                max_elapsed_time: 300s
+                max_interval: 30s
+              sending_queue:
+                enabled: true
+                queue_size: 1000
+              username: ${env:CLICKHOUSE_USER}
+            clickhouse/kubernetes_infrastructure:
+              database: kubernetes
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              logs_table_name: infrastructure
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              retry_on_failure:
+                enabled: true
+                initial_interval: 5s
+                max_elapsed_time: 300s
+                max_interval: 30s
+              sending_queue:
+                enabled: true
+                queue_size: 1000
+              username: ${env:CLICKHOUSE_USER}
+            clickhouse/kubernetes_topology:
+              database: kubernetes
+              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              logs_table_name: topology
+              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              retry_on_failure:
+                enabled: true
+                initial_interval: 5s
+                max_elapsed_time: 300s
+                max_interval: 30s
+              sending_queue:
+                enabled: true
+                queue_size: 1000
+              username: ${env:CLICKHOUSE_USER}
+            otlp_grpc/jaeger:
+              endpoint: "{{ tools_itbench_fqdn_jaeger_collector }}"
+              retry_on_failure:
+                enabled: true
+              sending_queue:
+                enabled: true
+              tls:
+                insecure: true
+          processors:
+            batch:
+              send_batch_max_size: 16384
+              send_batch_size: 8192
+              timeout: 1s
+            memory_limiter:
+              check_interval: 1s
+              limit_mib: 400
+              spike_limit_mib: 100
+          receivers:
+            otlp/istio:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_infrastructure_port_istio }}
+            otlp/kubernetes_events:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_events }}
+            otlp/kubernetes_infrastructure:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_infrastructure }}
+            otlp/kubernetes_topology:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_topology }}
+            otlp/traces:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_infrastructure_port_traces }}
+          service:
+            pipelines:
+              logs/istio:
+                exporters:
+                  - clickhouse/istio
+                processors:
+                  - memory_limiter
+                  - batch
+                receivers:
+                  - otlp/istio
+              logs/kubernetes_events:
+                exporters:
+                  - clickhouse/kubernetes_events
+                processors:
+                  - memory_limiter
+                  - batch
+                receivers:
+                  - otlp/kubernetes_events
+              logs/kubernetes_infrastructure:
+                exporters:
+                  - clickhouse/kubernetes_infrastructure
+                processors:
+                  - memory_limiter
+                  - batch
+                receivers:
+                  - otlp/kubernetes_infrastructure
+              logs/kubernetes_topology:
+                exporters:
+                  - clickhouse/kubernetes_topology
+                processors:
+                  - memory_limiter
+                  - batch
+                receivers:
+                  - otlp/kubernetes_topology
+              traces/jaeger:
+                exporters:
+                  - otlp_grpc/jaeger
+                processors:
+                  - memory_limiter
+                  - batch
+                receivers:
+                  - otlp/traces
+        envFrom:
+          - secretRef:
+              name: user-ingest-credentials
+        image: quay.io/it-bench/opentelemetry-collector:2.0.0
+        mode: deployment
+        observability:
+          metrics:
+            enableMetrics: true
+        ports:
+          - name: istio
+            port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_istio }}"
+          - name: k8s-events
+            port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_events }}"
+          - name: k8s-infra
+            port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_infrastructure }}"
+          - name: k8s-topology
+            port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_topology }}"
+          - name: traces
+            port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_traces }}"
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            memory: 256Mi
+    state: present
+    wait: true
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready
+
+- name: Install OpenTelemetry Collector for OTLP applications gateway
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
+      metadata:
+        name: "{{ tools_itbench_gateway_opentelemetry_applications }}"
         namespace: "{{ tools_itbench_namespace_observability }}"
       spec:
         config:
@@ -196,44 +375,44 @@
               endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
               logs_table_name: logs
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            clickhouse/istio:
-              database: istio
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
-              logs_table_name: access_logs
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            clickhouse/kubernetes_events:
-              database: kubernetes
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
-              logs_table_name: events
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            clickhouse/kubernetes_infrastructure:
-              database: kubernetes
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
-              logs_table_name: infrastructure
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
-              username: ${env:CLICKHOUSE_USER}
-            clickhouse/kubernetes_topology:
-              database: kubernetes
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
-              logs_table_name: topology
-              password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              retry_on_failure:
+                enabled: true
+                initial_interval: 5s
+                max_elapsed_time: 300s
+                max_interval: 30s
+              sending_queue:
+                enabled: true
+                queue_size: 1000
               username: ${env:CLICKHOUSE_USER}
             clickhouse/microservices_demo:
               database: microservices_demo
               endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
               logs_table_name: logs
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              retry_on_failure:
+                enabled: true
+                initial_interval: 5s
+                max_elapsed_time: 300s
+                max_interval: 30s
+              sending_queue:
+                enabled: true
+                queue_size: 1000
               username: ${env:CLICKHOUSE_USER}
             clickhouse/opentelemetry_demo:
               database: opentelemetry_demo
               endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
               logs_table_name: logs
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+              retry_on_failure:
+                enabled: true
+                initial_interval: 5s
+                max_elapsed_time: 300s
+                max_interval: 30s
+              sending_queue:
+                enabled: true
+                queue_size: 1000
               username: ${env:CLICKHOUSE_USER}
-            otlp/jaeger:
+            otlp_grpc/jaeger:
               endpoint: "{{ tools_itbench_fqdn_jaeger_collector }}"
               retry_on_failure:
                 enabled: true
@@ -243,89 +422,51 @@
                 insecure: true
             prometheus:
               endpoint: 0.0.0.0:8889
-            debug: {}
           processors:
             batch:
+              send_batch_max_size: 16384
               send_batch_size: 8192
               timeout: 1s
+            memory_limiter:
+              check_interval: 1s
+              limit_mib: 800
+              spike_limit_mib: 200
           receivers:
             otlp/bank_of_anthos:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_bank_of_anthos }}
-            otlp/istio:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_istio }}
-            otlp/kubernetes_events:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_kubernetes_events }}
-            otlp/kubernetes_infrastructure:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_kubernetes_infrastructure }}
-            otlp/kubernetes_topology:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_kubernetes_topology }}
-            otlp/microservices_demo:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_microservices_demo }}
-            otlp/opentelemetry_demo:
-              protocols:
-                grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_opentelemetry_demo }}
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_applications_port_bank_of_anthos }}
             otlp/metrics:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_metrics }}
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_applications_port_metrics }}
+            otlp/microservices_demo:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_applications_port_microservices_demo }}
+            otlp/opentelemetry_demo:
+              protocols:
+                grpc:
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_applications_port_opentelemetry_demo }}
             otlp/traces:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_port_traces }}
+                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_applications_port_traces }}
           service:
             pipelines:
               logs/bank_of_anthos:
                 exporters:
                   - clickhouse/bank_of_anthos
                 processors:
+                  - memory_limiter
                   - batch
                 receivers:
                   - otlp/bank_of_anthos
-              logs/kubernetes_events:
-                exporters:
-                  - clickhouse/kubernetes_events
-                processors:
-                  - batch
-                receivers:
-                  - otlp/kubernetes_events
-              logs/kubernetes_infrastructure:
-                exporters:
-                  - clickhouse/kubernetes_infrastructure
-                processors:
-                  - batch
-                receivers:
-                  - otlp/kubernetes_infrastructure
-              logs/kubernetes_topology:
-                exporters:
-                  - clickhouse/kubernetes_topology
-                processors:
-                  - batch
-                receivers:
-                  - otlp/kubernetes_topology
-              logs/istio:
-                exporters:
-                  - clickhouse/istio
-                processors:
-                  - batch
-                receivers:
-                  - otlp/istio
               logs/microservices_demo:
                 exporters:
                   - clickhouse/microservices_demo
                 processors:
+                  - memory_limiter
                   - batch
                 receivers:
                   - otlp/microservices_demo
@@ -333,6 +474,7 @@
                 exporters:
                   - clickhouse/opentelemetry_demo
                 processors:
+                  - memory_limiter
                   - batch
                 receivers:
                   - otlp/opentelemetry_demo
@@ -340,13 +482,15 @@
                 exporters:
                   - prometheus
                 processors:
+                  - memory_limiter
                   - batch
                 receivers:
                   - otlp/metrics
               traces/jaeger:
                 exporters:
-                  - otlp/jaeger
+                  - otlp_grpc/jaeger
                 processors:
+                  - memory_limiter
                   - batch
                 receivers:
                   - otlp/traces
@@ -360,46 +504,25 @@
             enableMetrics: true
         ports:
           - name: bank-of-anthos
-            port: "{{ tools_itbench_gateway_opentelemetry_port_bank_of_anthos }}"
-          - name: istio
-            port: "{{ tools_itbench_gateway_opentelemetry_port_istio }}"
-          - name: jaeger
-            port: "{{ tools_itbench_gateway_opentelemetry_port_traces }}"
-          - name: k8s-topology
-            port: "{{ tools_itbench_gateway_opentelemetry_port_kubernetes_topology }}"
-          - name: k8-events
-            port: "{{ tools_itbench_gateway_opentelemetry_port_kubernetes_events }}"
-          - name: k8s-infra
-            port: "{{ tools_itbench_gateway_opentelemetry_port_kubernetes_infrastructure }}"
-          - name: micro-demo
-            port: "{{ tools_itbench_gateway_opentelemetry_port_microservices_demo }}"
+            port: "{{ tools_itbench_gateway_opentelemetry_applications_port_bank_of_anthos }}"
           - name: metrics
-            port: "{{ tools_itbench_gateway_opentelemetry_port_metrics }}"
+            port: "{{ tools_itbench_gateway_opentelemetry_applications_port_metrics }}"
+          - name: micro-demo
+            port: "{{ tools_itbench_gateway_opentelemetry_applications_port_microservices_demo }}"
           - name: otel-demo
-            port: "{{ tools_itbench_gateway_opentelemetry_port_opentelemetry_demo }}"
+            port: "{{ tools_itbench_gateway_opentelemetry_applications_port_opentelemetry_demo }}"
+          - name: prometheus
+            port: 8889
+          - name: traces
+            port: "{{ tools_itbench_gateway_opentelemetry_applications_port_traces }}"
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 512Mi
     state: present
     wait: true
     wait_condition:
       reason: Reconciled
       status: "True"
       type: Ready
-
-- name: Create ServiceMonitor for OpenTelemetry Gateway Metrics
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: monitoring.coreos.com/v1
-      kind: ServiceMonitor
-      metadata:
-        labels:
-          "itbench.io/ansible-role": tools
-          "itbench.io/layer": observability
-        name: "{{ tools_itbench_gateway_opentelemetry }}-metrics"
-        namespace: "{{ tools_itbench_namespace_observability }}"
-      spec:
-        endpoints:
-          - interval: 15s
-            port: metrics
-        selector:
-          matchLabels:
-            "app.kubernetes.io/name": "{{ tools_itbench_gateway_opentelemetry ~ '-collector' }}"
-    state: present

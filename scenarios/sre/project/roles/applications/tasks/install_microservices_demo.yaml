@@ -87,25 +87,31 @@
       spec:
         java:
           env: "{{ otel_env_vars }}"
-        python:
-          env: "{{ otel_env_vars }}"
         nodejs:
           env: "{{ otel_env_vars }}"
-        dotnet:
+        python:
           env: "{{ otel_env_vars }}"
+        sampler:
+          type: parentbased_always_on
     state: present
   vars:
     otel_env_vars:
       - name: OTEL_COLLECTOR_NAME
         value: "{{ applications_helm_release_microservices_demo ~ '-collector' }}"
       - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-        value: "http://$(OTEL_COLLECTOR_NAME):4317"
+        value: "http://$(OTEL_COLLECTOR_NAME):4318/v1/logs"
       - name: OTEL_EXPORTER_OTLP_METRICS_ENDPOINT
         value: "http://$(OTEL_COLLECTOR_NAME):4318/v1/metrics"
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+      - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+        value: "http://$(OTEL_COLLECTOR_NAME):4318/v1/traces"
       - name: OTEL_LOGS_EXPORTER
         value: otlp
       - name: OTEL_METRICS_EXPORTER
-        value: otlhttp
+        value: otlp
+      - name: OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED
+        value: "true"
       - name: OTEL_SERVICE_NAME
         valueFrom:
           fieldRef:
@@ -126,25 +132,24 @@
       spec:
         config:
           exporters:
-            debug: {}
-            otlp/gateway-logs:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_microservices_demo }}"
+            otlp_grpc/gateway-logs:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_applications_microservices_demo }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
                 enabled: true
               tls:
                 insecure: true
-            otlp/gateway-traces:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_traces }}"
+            otlp_grpc/gateway-traces:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_applications_traces }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
                 enabled: true
               tls:
                 insecure: true
-            otlp/gateway-metrics:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_metrics }}"
+            otlp_grpc/gateway-metrics:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_applications_metrics }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -169,16 +174,14 @@
             pipelines:
               logs:
                 exporters:
-                  - debug
-                  - otlp/gateway-logs
+                  - otlp_grpc/gateway-logs
                 processors:
                   - batch
                 receivers:
                   - otlp
               metrics:
                 exporters:
-                  - debug
-                  - otlp/gateway-metrics
+                  - otlp_grpc/gateway-metrics
                 processors:
                   - batch
                 receivers:
@@ -186,8 +189,7 @@
                   - redis
               traces:
                 exporters:
-                  - debug
-                  - otlp/gateway-traces
+                  - otlp_grpc/gateway-traces
                 processors:
                   - batch
                 receivers:
@@ -215,15 +217,17 @@
       spec:
         template:
           metadata:
-            annotations: "{{ {instrumentation_key: instrumentation_value} }}"
+            annotations: >-
+              {{ {instrumentation_key: instrumentation_value} }}
           spec:
             containers:
               - name: server
-                env:
-                  - name: COLLECTOR_SERVICE_ADDR
-                    value: "{{ applications_helm_release_microservices_demo ~ '-collector:4317' }}"
-                  - name: ENABLE_TRACING
-                    value: "1"
+                # The agents slow these services enough to miss the chart's 1s probe timeout.
+                livenessProbe:
+                  failureThreshold: 6
+                  timeoutSeconds: 5
+                readinessProbe:
+                  timeoutSeconds: 5
     state: patched
     wait: true
     wait_condition:
@@ -232,8 +236,6 @@
   loop:
     - name: adservice
       language: java
-    - name: cartservice
-      language: dotnet
     - name: currencyservice
       language: nodejs
     - name: emailservice
@@ -259,6 +261,61 @@
           applications_microservices_demo_namespace
         )
       }}
+
+# checkoutservice, frontend and productcatalogservice trace natively over OTLP gRPC. The chart only
+# sets these variables when its own Google Cloud collector is enabled, so set them here.
+# shippingservice has no native tracing and is left uninstrumented, since the Go agent needs a
+# privileged sidecar and fails on some of these binaries.
+
+- name: Enable built-in OpenTelemetry tracing for Microservices Demo Go services
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ deployment.name }}"
+        namespace: "{{ applications_microservices_demo_namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: server
+                env:
+                  - name: COLLECTOR_SERVICE_ADDR
+                    value: "{{ applications_helm_release_microservices_demo ~ '-collector:4317' }}"
+                  - name: ENABLE_TRACING
+                    value: "1"
+                  - name: OTEL_SERVICE_NAME
+                    valueFrom:
+                      fieldRef:
+                        apiVersion: v1
+                        fieldPath: "metadata.labels['app']"
+                  # Without these the spans carry only a service name, and "frontend" is also used by
+                  # Bank of Anthos and the OpenTelemetry Demo.
+                  - name: K8S_NAMESPACE_NAME
+                    valueFrom:
+                      fieldRef:
+                        apiVersion: v1
+                        fieldPath: metadata.namespace
+                  - name: K8S_POD_NAME
+                    valueFrom:
+                      fieldRef:
+                        apiVersion: v1
+                        fieldPath: metadata.name
+                  - name: OTEL_RESOURCE_ATTRIBUTES
+                    value: "k8s.namespace.name=$(K8S_NAMESPACE_NAME),k8s.pod.name=$(K8S_POD_NAME)"
+    state: patched
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Available
+  loop:
+    - name: checkoutservice
+    - name: frontend
+    - name: productcatalogservice
+  loop_control:
+    label: deployment/{{ deployment.name }}
+    loop_var: deployment
 
 - name: Create Common PrometheusRules
   kubernetes.core.k8s:

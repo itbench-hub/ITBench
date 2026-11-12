@@ -137,8 +137,8 @@
       spec:
         config:
           exporters:
-            otlp/kubernetes-events:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_kubernetes_events }}"
+            otlp_grpc/kubernetes-events:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_infrastructure_kubernetes_events }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -149,8 +149,8 @@
                 num_consumers: 5
               tls:
                 insecure: true
-            otlp/kubernetes-infrastructure:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_kubernetes_infrastructure }}"
+            otlp_grpc/kubernetes-infrastructure:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_infrastructure_kubernetes_infrastructure }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -161,8 +161,8 @@
                 num_consumers: 5
               tls:
                 insecure: true
-            otlp/kubernetes-topology:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_kubernetes_topology }}"
+            otlp_grpc/kubernetes-topology:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_infrastructure_kubernetes_topology }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -345,17 +345,17 @@
             pipelines:
               logs/events:
                 exporters:
-                  - otlp/kubernetes-events
+                  - otlp_grpc/kubernetes-events
                 receivers:
                   - k8sobjects/events
               logs/infrastructure:
                 exporters:
-                  - otlp/kubernetes-infrastructure
+                  - otlp_grpc/kubernetes-infrastructure
                 receivers:
                   - k8sobjects/infrastructure
               logs/topology:
                 exporters:
-                  - otlp/kubernetes-topology
+                  - otlp_grpc/kubernetes-topology
                 processors:
                   - transform/strip-secrets
                 receivers:
@@ -396,8 +396,8 @@
       spec:
         config:
           exporters:
-            otlp/kubernetes-topology:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_kubernetes_topology }}"
+            otlp_grpc/kubernetes-topology:
+              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_infrastructure_kubernetes_topology }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -448,7 +448,7 @@
             pipelines:
               logs/topology:
                 exporters:
-                  - otlp/kubernetes-topology
+                  - otlp_grpc/kubernetes-topology
                 receivers:
                   - k8sobjects/topology-istio
         image: quay.io/it-bench/opentelemetry-collector:2.0.0
