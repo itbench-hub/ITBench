@@ -89,29 +89,26 @@ Then describe what you want to create:
 ### Complete Workflow Example
 
 ```bash
-# 1. Start in the SRE scenarios directory
-cd scenarios/sre
-
-# 2. Scaffold a new fault
-make scaffold_fault
+# 1. Scaffold a new fault
+uv run itbench create fault
 # Follow prompts...
 
-# 3. Ask Claude to complete the TODOs
+# 2. Ask Claude to complete the TODOs
 # The fault-scaffolding skill will auto-activate
 > "Help me complete the fault TODOs for excessive-memory-consumption"
 
-# 4. Scaffold a scenario using that fault
-make scaffold_scenario
+# 3. Scaffold a scenario using that fault
+uv run itbench create scenario
 # Select the fault you just created...
 
-# 5. Ask Claude to complete the scenario
+# 4. Ask Claude to complete the scenario
 # The scenario-scaffolding skill will auto-activate
 > "Help me complete the scenario using the excessive-memory-consumption fault"
 
-# 6. Generate documentation
-make regenerate-scenario-files
+# 5. Generate documentation
+uv run itbench generate documentation
 
-# 7. Review the results
+# 6. Review the results
 cat docs/faults.md | grep -A 30 "Excessive Memory Consumption"
 cat docs/scenarios.md | grep -A 50 "Scenario [ID]"
 ```
@@ -233,7 +230,7 @@ The `settings.json` allows:
 
 1. Validate faults index: `jq . scenarios/sre/roles/documentation/files/library/faults/index.json`
 2. Validate scenarios index: `jq . scenarios/sre/roles/documentation/files/library/scenarios/index.json`
-3. Run linter: `cd scenarios/sre && make lint`
+3. Run linter: `mise run lint`
 
 ## 💡 Tips
 

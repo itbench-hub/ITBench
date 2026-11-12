@@ -1,0 +1,57 @@
+min_version = "2026.11.0"
+
+[tools]
+"aqua:helm" = "4.3.1"
+"aqua:uv" = "0.13.7"
+
+[tasks."install:dev"]
+description = "Install development dependencies and Ansible collections"
+run = [
+    "mise --env dev install",
+    "uv sync",
+    "uv run --no-sync ansible-galaxy install -r requirements.yaml --force",
+]
+
+[tasks."install:precommit:hooks"]
+description = "Install the pre-commit, commit-msg and pre-push git hooks"
+run = [
+    "uv run pre-commit install",
+    "uv run pre-commit install --hook-type commit-msg --hook-type pre-push",
+]
+
+[tasks.install]
+description = "Install runtime dependencies and Ansible collections"
+run = [
+    "uv sync --no-dev",
+    "uv run --no-dev ansible-galaxy install -r requirements.yaml --force",
+]
+
+[tasks."lint:ansible"]
+description = "Lint Ansible files"
+run = "uv run ansible-lint"
+
+[tasks."lint:python"]
+description = "Lint Python files"
+run = "uv run ruff check src tests"
+
+[tasks.lint]
+description = "Lint all files"
+depends = ["lint:ansible", "lint:python"]
+
+[tasks."test:molecule:faults"]
+description = "Run Molecule tests for the Faults role"
+dir = "{{config_root}}/scenarios/sre/project/roles/faults"
+run = "uv run molecule test --all --report --command-borders"
+
+[tasks."test:molecule:waiters"]
+description = "Run Molecule tests for the Waiters role"
+dir = "{{config_root}}/scenarios/sre/project/roles/waiters"
+run = "uv run molecule test --all --report --command-borders"
+
+[tasks."test:unit"]
+description = "Run Python unit tests"
+run = "uv run --group dev pytest"
+
+[tasks."update:secrets:baseline"]
+description = "Update the detect-secrets baseline file"
+run = "uv run detect-secrets scan --update .secrets.baseline"

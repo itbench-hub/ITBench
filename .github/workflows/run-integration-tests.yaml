@@ -7,7 +7,8 @@ on:
     paths:
       - components/recorders/**
       - components/telemetry/**
-      - clusters/kind/go.*
+      - clusters/kind/**
+      - mise*.toml
       - scenarios/sre/project/manage_environment.yaml
       - scenarios/sre/project/roles/applications/tasks/install.yaml
       - scenarios/sre/project/roles/applications/tasks/install_agent_rbac.yaml
@@ -20,16 +21,21 @@ concurrency:
   group: ci-integration-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  KUBECONFIG: ${{ github.workspace }}/clusters/kind/kubeconfigs/kind-environment
+  MISE_ENV: kind
+
 jobs:
   clickhouse-recorder:
     name: ClickHouse Recorder Integration Tests
     runs-on: ubuntu-26.04
+    env:
+      MISE_ENV: dev
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: jdx/mise-action@v5.2.7
         with:
-          go-version-file: components/recorders/clickhouse/go.mod
-          cache-dependency-path: components/recorders/clickhouse/go.sum
+          version: 2026.11.7
       - name: Vet
         run: go vet ./...
         working-directory: components/recorders/clickhouse
@@ -40,12 +46,13 @@ jobs:
   prometheus-recorder:
     name: Prometheus Recorder Integration Tests
     runs-on: ubuntu-26.04
+    env:
+      MISE_ENV: dev
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: jdx/mise-action@v5.2.7
         with:
-          go-version-file: components/recorders/prometheus/go.mod
-          cache-dependency-path: components/recorders/prometheus/go.sum
+          version: 2026.11.7
       - name: Vet
         run: go vet ./...
         working-directory: components/recorders/prometheus
@@ -56,12 +63,13 @@ jobs:
   topology-writer:
     name: Topology Writer Integration Tests
     runs-on: ubuntu-26.04
+    env:
+      MISE_ENV: dev
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: jdx/mise-action@v5.2.7
         with:
-          go-version-file: components/telemetry/topology/go.mod
-          cache-dependency-path: components/telemetry/topology/go.sum
+          version: 2026.11.7
       - name: Vet
         run: go vet ./...
         working-directory: components/telemetry/topology
@@ -74,42 +82,29 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@v5.2.7
         with:
-          version-file: pyproject.toml
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - uses: azure/setup-helm@v5.0.1
-        with:
-          version: v4.3.1
+          version: 2026.11.7
       - name: Install project dependencies
         run: |
-          make deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
+          mise run install:dev
       - name: Create Kind cluster
         run: |
-          make -C clusters/kind create-simple-cluster
+          mise run create:kind:environment
       - name: Run Cloud Provider
         run: |
-          make -C clusters/kind run-service-provider &
+          mise run run:kind:provider &
           sleep 10
-      - name: Prepare cluster
-        run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
       - name: Deploy tools stack
-        run: uv run itbench deploy environment --only tools --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench deploy environment --only tools
       - name: Run CLI integration tests
         run: uv run --group dev pytest --integration -m integration -v tests/integration/
         env:
-          KUBECONFIG: /home/runner/.kube/config
           ITBENCH_PLATFORM: kubernetes
       - name: Undeploy tools stack
         if: always()
-        run: uv run itbench undeploy environment --yes --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench undeploy environment --yes
       - name: Destroy Kind cluster
         if: always()
         run: |
-          make -C clusters/kind destroy-simple-cluster
+          mise run destroy:kind:environment

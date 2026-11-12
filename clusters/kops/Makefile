@@ -1,4 +1,4 @@
-UV = $(shell which uv)
+MISE := $(shell command -v mise)
 
 .PHONY: help
 help: ## Display this help.
@@ -6,11 +6,11 @@ help: ## Display this help.
 
 .PHONY: lint
 lint: ## Lints files
-	$(UV) run ansible-lint
+	$(MISE) exec -- uv run ansible-lint
 
 .PHONY: group-vars
 group-vars: ## Generates the group variables from templates
-	echo "---\nansible_python_interpreter: $(shell $(UV) python find)" > inventory/group_vars/all/python.yaml
+	echo "---\nansible_python_interpreter: $(shell $(MISE) exec -- uv python find)" > inventory/group_vars/all/python.yaml
 	cp inventory/group_vars/all/aws.yaml.example inventory/group_vars/all/aws.yaml
 	cp inventory/group_vars/all/cluster.yaml.example inventory/group_vars/all/cluster.yaml
 	cp inventory/group_vars/all/docker.yaml.example inventory/group_vars/all/docker.yaml
@@ -20,74 +20,74 @@ group-vars: ## Generates the group variables from templates
 
 .PHONY: create-cluster
 create-cluster: ## Creates a single cluster
-	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
-	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
 		--extra-vars "target=single-cluster"
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
 		--extra-vars "target=single-cluster"
 
 .PHONY: get-cluster-kubeconfig
 get-cluster-kubeconfig: ## Exports the kubeconfig of a single cluster
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
 		--extra-vars "target=single-cluster"
 
 .PHONY: install-cluster-docker-registry
 install-cluster-docker-registry: get-cluster-kubeconfig ## Installs docker registry into single cluster
-	$(UV) run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
 		--extra-vars "target=single-cluster"
 
 .PHONY: sync-cluster-group-vars
 sync-cluster-group-vars: get-cluster-kubeconfig ## Syncs the kubeconfig with the scenarios group variables
-	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=single-cluster"
-	cd ../../ && $(UV) run ansible-lint scenarios/sre/inventory/group_vars/environment --fix
+	cd ../../ && $(MISE) exec -- uv run ansible-lint scenarios/sre/inventory/group_vars/environment --fix
 
 .PHONY: destroy-cluster
 destroy-cluster: ## Deletes a single cluster
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
 		--extra-vars "target=single-cluster"
-	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
 		--extra-vars "target=single-cluster"
 
 .PHONY: create-stack
 create-stack: ## Creates an orchestrator and environment stack
-	$(UV) run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
-	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/check_machine_resources.yaml
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "create_clusters" \
 		--extra-vars "target=orchestrator-stack"
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "create_clusters" \
 		--extra-vars "target=orchestrator-stack"
 
 .PHONY: get-stack-kubeconfigs
 get-stack-kubeconfigs: ## Exports the kubeconfigs of all clusters used in a stack
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "export_clusters" \
 		--extra-vars "target=orchestrator-stack"
 
 .PHONY: install-stack-docker-registry
 install-stack-docker-registry: get-stack-kubeconfigs ## Installs docker registry into stack clusters
-	$(UV) run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/install_docker_registry.yaml \
 		--extra-vars "target=orchestrator-stack"
 
 .PHONY: sync-stack-group-vars
 sync-stack-group-vars: get-stack-kubeconfigs ## Syncs the kubeconfig with the scenarios group variables
-	$(UV) run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=orchestrator-stack"
-	cd ../../ && $(UV) run ansible-lint scenarios/sre/inventory/group_vars/orchestrator --fix
+	cd ../../ && $(MISE) exec -- uv run ansible-lint scenarios/sre/inventory/group_vars/orchestrator --fix
 
 .PHONY: destroy-stack
 destroy-stack: ## Destroy a stack
-	$(UV) run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/manage_kops_clusters.yaml --tags "delete_clusters" \
 		--extra-vars "target=orchestrator-stack"
-	$(UV) run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/manage_aws_resources.yaml --tags "delete_clusters" \
 		--extra-vars "target=orchestrator-stack"
 
 .PHONY: list-clusters
 list-clusters: ## Lists all active clusters
-	$(UV) run ansible-playbook -i inventory playbooks/list_kops_clusters.yaml
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/list_kops_clusters.yaml
 
 .PHONY: validate-cluster
 validate-cluster: ## Displays the validation status of a cluster
 ifdef CLUSTER_NAME
-	$(UV) run ansible-playbook -i inventory playbooks/validate_kops_cluster.yaml \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/validate_kops_cluster.yaml \
 		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
 else
 	@echo "Missing CLUSTER_NAME argument. Please run this command with this variable."
@@ -96,7 +96,7 @@ endif
 .PHONY: fix-cluster
 fix-cluster: ## Attempts to fix a failing cluster
 ifdef CLUSTER_NAME
-	$(UV) run ansible-playbook -i inventory playbooks/fix_kops_cluster.yaml \
+	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/fix_kops_cluster.yaml \
 		--extra-vars "kops_cluster_name=$(CLUSTER_NAME)"
 else
 	@echo "Missing CLUSTER_NAME argument. Please run this command with this variable."

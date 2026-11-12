@@ -1,0 +1,47 @@
+[tools]
+"aqua:kind" = "0.33.0"
+"aqua:kubernetes-sigs/cloud-provider-kind" = "0.12.0"
+
+[tasks."create:kind:environment"]
+description = "Create the local environment Kind cluster and export its kubeconfig"
+dir = "{{config_root}}/clusters/kind"
+run = [
+    "uv run itbench check resources localhost --only environment",
+    "mkdir -p kubeconfigs",
+    "kind create cluster --config configs/environment.yaml --kubeconfig kubeconfigs/kind-environment",
+    "uv run python scripts/approve_kubelet_csrs.py kubeconfigs/kind-environment",
+    'echo "Run the following command to access the cluster (kind-environment) using kubectl:"',
+    'echo "export KUBECONFIG=$PWD/kubeconfigs/kind-environment"',
+]
+
+[tasks."create:kind:orchestrator"]
+description = "Create the local orchestrator Kind cluster and export its kubeconfig"
+dir = "{{config_root}}/clusters/kind"
+run = [
+    "uv run itbench check resources localhost --only orchestrator",
+    "mkdir -p kubeconfigs",
+    "kind create cluster --config configs/orchestrator.yaml --kubeconfig kubeconfigs/kind-orchestrator",
+    "uv run python scripts/approve_kubelet_csrs.py kubeconfigs/kind-orchestrator",
+    'echo "Run the following command to access the cluster (kind-orchestrator) using kubectl:"',
+    'echo "export KUBECONFIG=$PWD/kubeconfigs/kind-orchestrator"',
+]
+
+[tasks."destroy:kind:environment"]
+description = "Delete the local environment Kind cluster and its exported kubeconfig"
+dir = "{{config_root}}/clusters/kind"
+run = [
+    "kind delete cluster --name kind-environment --kubeconfig kubeconfigs/kind-environment",
+    "rm -f kubeconfigs/kind-environment",
+]
+
+[tasks."destroy:kind:orchestrator"]
+description = "Delete the local orchestrator Kind cluster and its exported kubeconfig"
+dir = "{{config_root}}/clusters/kind"
+run = [
+    "kind delete cluster --name kind-orchestrator --kubeconfig kubeconfigs/kind-orchestrator",
+    "rm -f kubeconfigs/kind-orchestrator",
+]
+
+[tasks."run:kind:provider"]
+description = "Run Cloud Provider Kind in the foreground to allocate Load Balancer IP addresses"
+run = "cloud-provider-kind --gateway-channel disabled"

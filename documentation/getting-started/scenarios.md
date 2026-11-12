@@ -18,63 +18,27 @@ There is currently not a unifed running procedure that covers both CISO, FinOps,
 
 ## Required Software
 
-- [helm](https://helm.sh/docs/intro/install/)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
-- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- [mise](https://mise.jdx.dev/) (manages `uv`, `helm`, `kubectl` and runtime environments)
 
 ## Installation
 
-### MacOS ([Homebrew](https://brew.sh/))
-
-1. Download the following packages
+1. Install mise following the [official installation guide](https://mise.jdx.dev/getting-started.html):
 ```shell
-brew install helm
-brew install kubectl
-brew install uv
+# macOS / Linux
+curl https://mise.run | sh
+# Or via Homebrew on macOS
+brew install mise
 ```
 
-2. Download the following packages **(optional)**
+2. Install pinned tools and project dependencies:
 ```shell
-brew install python@3.14
-brew install openshift-cli
+mise install
+mise run install:dev
 ```
-
->[!TIP]
->Installing `python` through Homebrew is not required as `uv` will install a version of Python if one is not provided. However, it can be helpful from a dependency management perspective to just have Homebrew manage the installation.
-
->[!NOTE]
->The OpenShift CLI is only required if using an OpenShift cluster.
-
-### Linux
-
-1. Download the following packages
-    - **a.** Install Helm 4 by following the instructions [here](https://helm.sh/docs/intro/install#from-script)
-    - **b.** Install kubectl by following the instructions [here](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
-    - **c.** Install UV by following the instructions [here](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
-
-2. Download the following packages **(optional)**
-    - **a.** Install Python by downloading the package [here](https://www.python.org/downloads/source/)
-    - **b.** Install the OpenShift CLI by following the instructions [here](https://docs.redhat.com/en/documentation/openshift_container_platform/4.18/html/cli_tools/openshift-cli-oc#cli-installing-cli_cli-developer-commands)
-
->[!TIP]
->Python 3.14 can be downloaded and managed by various managers on Linux. However, some may not yet offer this version of python through the default package manager. To ensure that the correct version is used, the binary can either be downloaded through the link above or the `uv` version of Python 3.14 can be used. `uv` will automatically download its version of Python if it does not detect an available version on the machine.
-
->[!NOTE]
->The OpenShift CLI is only required if using an OpenShift cluster.
 
 ## Set Up
 
-1. From the root directory of this repository, run the following command:
-```shell
-make deps
-```
-
-2. Create a Kubernetes cluster. ITBench offers setup help for running a cluster on a local machine with [Kind](../../clusters/kind/README.md) or [Minikube](../../clusters/minikube/README.md) or on [AWS](../../clusters/kops/README.md).
-
-3. Run the following command from the root directory, to go to the scenarios directory:
-```shell
-cd scenarios/sre
-```
+1. Create a Kubernetes cluster. ITBench offers setup help for running a cluster on a local machine with [Kind](../../clusters/kind/README.md) or on [AWS](../../clusters/kops/README.md).
 
 ## Running Scenarios
 
@@ -95,30 +59,24 @@ This document functions as `quick-start` guide to running scenarios. Thus, it wi
 >[!TIP]
 >See [scenario library](../library/scenarios/README.md) for a full comprehensive list of runnable scenarios.
 
-1. Create and configure the group variables.
+### Deploying and Starting Scenarios
+
+1. Deploy the environment and applications for a scenario:
 ```shell
-make group-vars
+uv run itbench deploy environment --scenario 1
+```
+
+2. Inject scenario faults:
+```shell
+uv run itbench inject faults --scenario 1
 ```
 
 >[!TIP]
->If using [our kops setup](../../clusters/kops/README.md), use `make sync-cluster-group-vars` to export the kubeconfig files and configure the [`stack.yaml`](../../scenarios/sre/inventory/group_vars/runner/stack.yaml) group variables. If using [our kind setup](../../clusters/kind/README.md), the default group variables made at creation will suffice.
-
->[!WARNING]
->If the group variables were already created as a part of development or running the SRE and FinOps scenarios beforehand, skip this step. Running the command will override the existing files.
-
-### Starting Scenarios
-
-1. Use the following command to start running a scenario:
-```shell
-SCENARIO_NUMBER=1 make start-scenario
-```
-
->[!TIP]
->Switching to a different scenario can be done by changing the value of the `SCENARIO_NUMBER` variable. Documentation for the available scenarios can be found [here](../library/scenarios/README.md).
+>Switching to a different scenario can be done by changing the `--scenario` argument. Documentation for the available scenarios can be found [here](../library/scenarios/README.md).
 
 ### Running an Agent
 
-Once a scenario has started, one can begin runnning an agent to pull information from the cluster and the various observability tools so that it can attempt to diagnose and remidiate a problem.
+Once a scenario has started, one can begin running an agent to pull information from the cluster and the various observability tools so that it can attempt to diagnose and remediate a problem.
 
 >[!TIP]
 >If you don't have an agent yet, you can use the [SRE-Agent](https://github.com/itbench-hub/itbench-sre-agent) to see how it works.
@@ -128,9 +86,10 @@ Once a scenario has started, one can begin runnning an agent to pull information
 
 ### Stopping Scenarios
 
-1. Use the following command to stop running a scenario:
+1. Clean up and undeploy the scenario:
 ```shell
-SCENARIO_NUMBER=1 make stop-scenario
+uv run itbench remove faults
+uv run itbench undeploy environment --yes
 ```
 
 ## Observing Scenario Impact
@@ -193,7 +152,7 @@ kubectl -n opencost port-forward svc/opencost 9090
 
 ### Failure to Deploy Tools or Applications
 
-The `make deploy-tools` and `make deploy-applications` can be subject to temporary failures. Sometimes, the repository where the images for softwares (ie, GitHub, Quay, DockerHub) are having temporary outtages. Having a slow internet connection or strict firewalls can also cause failures in with this step.
+Deploying tools and applications can be subject to temporary failures. Sometimes, the repository where the images for softwares (ie, GitHub, Quay, DockerHub) are having temporary outages. Having a slow internet connection or strict firewalls can also cause failures with this step.
 
 There is a subcategory of this failure which are DockerHub specific. Since Docker enforces [rate limits by IP address](https://docs.docker.com/docker-hub/usage/), one can become unable to pull images from that repository for a time. The easiest way to circumvent this issue is to make a Docker account and deploy a secret with the access token to the cluster. To do so, follow these steps:
 

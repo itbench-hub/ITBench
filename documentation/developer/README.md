@@ -20,12 +20,13 @@ Please follow the instructions listed [here](../getting-started/scenarios.md#ins
 
 1. From the root directory of this repository, run the following command:
 ```shell
-make deps
+mise install
+mise run install:dev
 ```
 
 2. From the root directory of this repository, run the following command:
 ```shell
-make pre-commit-hooks
+mise run install:precommit:hooks
 ```
 
 ## Next Steps

@@ -43,6 +43,7 @@ For issues and support directly related to the software, it is often best to rea
 | kind | https://github.com/kubernetes-sigs/kind |
 | kubectl | https://github.com/kubernetes/kubectl |
 | Minikube | https://github.com/kubernetes/minikube |
+| mise | https://github.com/jdx/mise |
 | Molecule | https://github.com/ansible/molecule |
 | Podman | https://github.com/containers/podman |
 | pre-commit | https://github.com/pre-commit/pre-commit |
