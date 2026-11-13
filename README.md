@@ -45,7 +45,7 @@ ITBench measures the performance of AI agents across a wide variety of **complex
 ITBench enables researchers and developers to replicate real-world incidents in Kubernetes environments and develop AI agents to address them.
 
 **We provide:**
-1. **Push-button deployment tooling** for environment setup *(open-source)*
+1. **Push-button deployment tooling** for environment setup using [mise](https://mise.jdx.dev/) and the ITBench CLI *(open-source)*
 2. **Framework for recreating realistic IT scenarios using the deployment tooling:**
    - **6 SRE scenarios** and **21 mechanisms** *(open-source)*
    - **4 categories of CISO scenarios** *(open-source)*

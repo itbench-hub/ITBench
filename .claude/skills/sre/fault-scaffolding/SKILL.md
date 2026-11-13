@@ -266,14 +266,11 @@ Using the documentation URL from step 3.3:
    # Set the kubeconfig
    export KUBECONFIG=<path-from-user>
 
-   # Navigate to scenarios directory
-   cd scenarios/sre
-
    # Deploy tools - outputs will be displayed
-   make deploy-tools
+   uv run itbench deploy environment --only tools
 
    # Deploy applications - outputs will be displayed
-   make deploy-applications
+   uv run itbench deploy environment
    ```
 
    **Note**: Both commands will display their complete output including:

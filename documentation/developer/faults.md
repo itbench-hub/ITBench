@@ -23,15 +23,14 @@ Please follow the instructions listed [here](../getting-started/scenarios.md#set
 
 ### Generating Boilerplate
 
-1. Run the following command and respond to the prompts appropriately to create a new index in the fault library:
+1. Run the following command and respond to the prompts appropriately to create a new fault:
 ```shell
-make generate-fault-index
+uv run itbench create fault
 ```
 
-2. Run the following commands to generate the new files for the fault
+2. Generate the documentation and schemas for the fault:
 ```shell
-make generate-library
-make generate-resource-files
+uv run itbench generate documentation
 ```
 
 >[!NOTE]
@@ -59,19 +58,19 @@ make generate-resource-files
 
 3. Create a [Molecule test](../../scenarios/sre/project/roles/faults/molecule/) to test the fault. The name of directory should be the exact same name as the task file. Use the following command to run the fault test suite:
 ```shell
-make test-molecule-faults
+mise run test:molecule:faults
 ```
 
 ### Validating New Fault
 
 1. Run the following command to generate the documentation for the new fault:
 ```shell
-make generate-library
+uv run itbench generate documentation
 ```
 
-2. Run the following command to validate the structure of the new fault:
+2. Run unit tests to validate the structure of the new fault:
 ```shell
-make validate-library
+mise run test:unit
 ```
 
 3. Run your fault in a scenario and ensure that the alerts listed in the new fault configuration are firing appropriately.

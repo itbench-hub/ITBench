@@ -3,9 +3,9 @@
   hosts:
     - localhost
   pre_tasks:
-    - name: Import executables role
-      ansible.builtin.import_role:
-        name: executables
+    - name: Resolve helm binary path from mise
+      ansible.builtin.set_fact:
+        mise_helm_path: "{{ lookup('ansible.builtin.pipe', 'mise which helm') }}"
       tags:
         - always
 
@@ -18,6 +18,9 @@
     - name: Import argo role
       ansible.builtin.import_role:
         name: argo
+      module_defaults:
+        group/kubernetes.core.helm:
+          binary_path: "{{ mise_helm_path }}"
       vars:
         argo_cluster:
           provider: "{{ cluster_provider }}"

@@ -6,33 +6,17 @@ on:
       - main
 
 jobs:
-  lint-kind-playbooks:
-    name: Lint kind playbooks
-    runs-on: ubuntu-slim
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          version-file: pyproject.toml
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Lint kind playbooks
-        uses: ansible/ansible-lint@b74fb6f73d234bf92672372cb1c10768e4018d16 # v26.11.0
-        with:
-          setup_python: "false"
-          working_directory: clusters/kind
   lint-kops-playbooks:
     name: Lint kops playbooks
     runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@v5.2.7
         with:
-          version-file: pyproject.toml
+          version: 2026.11.7
       - name: Install project dependencies
         run: |
-          make deps
+          mise run install:dev
       - name: Lint kops playbooks
         uses: ansible/ansible-lint@b74fb6f73d234bf92672372cb1c10768e4018d16 # v26.11.0
         with:
@@ -43,12 +27,12 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@v5.2.7
         with:
-          version-file: pyproject.toml
+          version: 2026.11.7
       - name: Install project dependencies
         run: |
-          make deps
+          mise run install:dev
       - name: Lint kops playbooks
         uses: ansible/ansible-lint@b74fb6f73d234bf92672372cb1c10768e4018d16 # v26.11.0
         with:
@@ -59,12 +43,12 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@v5.2.7
         with:
-          version-file: pyproject.toml
+          version: 2026.11.7
       - name: Install project dependencies
         run: |
-          make deps
+          mise run install:dev
       - name: Lint scenario playbooks
         uses: ansible/ansible-lint@b74fb6f73d234bf92672372cb1c10768e4018d16 # v26.11.0
         with:

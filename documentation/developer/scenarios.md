@@ -21,9 +21,9 @@ Please follow the instructions listed [here](../getting-started/scenarios.md#set
 
 ### Generating Boilerplate
 
-1. Run the following command and respond to the prompts appropriately to create a new index in the fault library:
+1. Run the following command and respond to the prompts appropriately to create a new scenario:
 ```shell
-make generate-scenario-index
+uv run itbench create scenario
 ```
 
 >[!TIP]
@@ -41,10 +41,10 @@ make generate-scenario-index
 
 1. Run the following command to generate the documentation for the new scenario:
 ```shell
-make generate-library
+uv run itbench generate documentation
 ```
 
-2. Run the following command to validate the structure of the new scenario:
+2. Run unit tests to validate the structure of the new scenario:
 ```shell
-make validate-library
+mise run test:unit
 ```

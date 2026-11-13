@@ -51,8 +51,7 @@ Identify the closest existing fault as a reference template.
 If a new fault is needed:
 
 ```bash
-cd scenarios/sre
-make scaffold_fault
+uv run itbench create fault
 ```
 
 Guide the user through the interactive prompts:
@@ -117,8 +116,7 @@ Reference similar injection tasks for patterns.
 ## Step 5: Scaffold the Scenario
 
 ```bash
-cd scenarios/sre
-make scaffold_scenario
+uv run itbench create scenario
 ```
 
 Guide through prompts:
@@ -178,28 +176,27 @@ Remove the scaffolding hint:
 
 1. **Syntax check**:
 ```bash
-cd scenarios/sre
-make lint
+mise run lint
 ```
 
 2. **Generate documentation**:
 ```bash
-make regenerate-scenario-files
+uv run itbench generate documentation
 ```
 
 3. **Review generated docs**:
 ```bash
-cat docs/faults.md | grep -A 30 "New Fault Name"
-cat docs/scenarios.md | grep -A 50 "Scenario [ID]"
+cat documentation/library/faults/README.md
+cat documentation/library/scenarios/README.md
 ```
 
 4. **Integration test** (if cluster available):
 ```bash
 # Deploy application
-make deploy-applications
+uv run itbench deploy environment --scenario [new-id]
 
 # Inject fault
-SCENARIO_ID=[new-id] make inject-scenario-faults
+uv run itbench inject faults --scenario [new-id]
 
 # Verify fault manifests
 kubectl get pods -A
@@ -209,7 +206,8 @@ kubectl get events -A
 # ... execute solution steps ...
 
 # Cleanup
-make undeploy-applications
+uv run itbench remove faults
+uv run itbench undeploy environment --yes
 ```
 
 ## Step 8: Final Review

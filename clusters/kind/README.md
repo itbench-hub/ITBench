@@ -6,7 +6,7 @@
 
 ## Required Software
 
-- [Golang](https://go.dev/) **v1.24+**
+- [mise](https://mise.jdx.dev/)
 - [Podman](https://podman.io/) or [Docker](https://www.docker.com/)
 
 >[!NOTE]
@@ -18,7 +18,12 @@
 ## Installation
 
 >[!NOTE]
->Kind and Cloud Provider Kind are installed and managed by Golang. Thus, neither tool needs to be installed independently of this process.
+>Kind and Cloud Provider Kind are installed and managed by mise. Run the following command from the root of the repository to install them. Neither tool needs to be installed independently of this process.
+>```shell
+>mise -E kind install
+>```
+>
+>The `kind` environment can be made the default for a shell session with `export MISE_ENV=kind`, which allows the `-E kind` flag to be omitted from the commands below.
 
 ### MacOS ([Homebrew](https://brew.sh/))
 
@@ -27,7 +32,7 @@
 
 1. Download the following packages
 ```shell
-brew install go
+brew install mise
 brew install podman
 ```
 
@@ -43,7 +48,6 @@ brew install --cask podman-desktop
 1. Download the following packages
 ```shell
 dnf install lsof
-dnf install make
 dnf install podman
 ```
 
@@ -94,32 +98,41 @@ podman machine start
 
 Two configuration templates are provided in the `configs` directory:
 
+- [environment](./configs/environment.yaml)
 - [orchestrator](./configs/orchestrator.yaml)
-- [simple](./configs/simple.yaml)
 
-The `simple` configuration is for basic use cases, such as developing new faults or scenarios or running a single benchmark trial. This cluster will suffice for most needs. For management instructions for a Kind cluster based on the `simple` configuration, please see [here](#simple-cluster).
+The `environment` configuration is for basic use cases, such as developing new faults or scenarios or running a single benchmark trial. This cluster will suffice for most needs. For management instructions for a Kind cluster based on the `environment` configuration, please see [here](#environment-cluster).
 
-The `orchestrator` configuration is for advanced use cases which require orchestration to run multi-trial benchmarks across a cluster or clusters. This requires a machine with significantly more resources than the `simple` configuration. For management instructions for a Kind cluster based on the `orchestrator` configuration, please see [here](#orchestrator-cluster).
+The `orchestrator` configuration is for advanced use cases which require orchestration to run multi-trial benchmarks across a cluster or clusters. This requires a machine with significantly more resources than the `environment` configuration. For management instructions for a Kind cluster based on the `orchestrator` configuration, please see [here](#orchestrator-cluster).
 
-Regardless of the configuration used, once the cluster has been started, it can be accessed with kubectl using the following command:
+Each cluster's kubeconfig is written to the `kubeconfigs` directory (ie, `clusters/kind/kubeconfigs/kind-environment`) instead of `~/.kube/config`. The create commands print the `export KUBECONFIG=...` line to run so that kubectl and the `itbench` CLI use the cluster:
 
 ```shell
-export KUBECONFIG=~/.kube/config
+export KUBECONFIG=<path printed by the create command>
 kubectl cluster-info
+```
+
+### Resource Check
+
+The create commands first run `itbench check resources localhost` to compare the machine's CPUs and memory with the cluster's requirements. A shortfall is reported as a warning and does not stop the cluster from being created. The check can also be run on its own:
+
+```shell
+uv run itbench check resources localhost
+uv run itbench check resources localhost --only environment
 ```
 
 ### Orchestrator Cluster
 
 #### Creation
 
-1. Run the following command to create a Kind cluster:
+1. Run the following command from the root of the repository to create a Kind cluster:
 ```shell
-make create-orchestrator-cluster
+mise -E kind run create:kind:orchestrator
 ```
 
 2. Open a new terminal window and run the following command to start the Cloud Provider Kind
 ```shell
-make run-service-provider
+mise -E kind run run:kind:provider
 ```
 
 #### Deletion
@@ -128,21 +141,21 @@ make run-service-provider
 
 2. Run the following command to destroy a Kind cluster
 ```shell
-make destroy-orchestrator-cluster
+mise -E kind run destroy:kind:orchestrator
 ```
 
-### Simple Cluster
+### Environment Cluster
 
 #### Creation
 
-1. Run the following command to create a Kind cluster:
+1. Run the following command from the root of the repository to create a Kind cluster:
 ```shell
-make create-simple-cluster
+mise -E kind run create:kind:environment
 ```
 
 2. Open a new terminal window and run the following command to start the Cloud Provider Kind
 ```shell
-make run-service-provider
+mise -E kind run run:kind:provider
 ```
 
 #### Deletion
@@ -151,7 +164,21 @@ make run-service-provider
 
 2. Run the following command to destroy a Kind cluster
 ```shell
-make destroy-simple-cluster
+mise -E kind run destroy:kind:environment
+```
+
+## Testing
+
+The Kind integration tests live in [`tests/integration/kind`](../../tests/integration/kind). They need the following:
+
+- A running cluster, with `KUBECONFIG` exported.
+- Cloud Provider Kind running in another terminal (`test_load_balancers.py`).
+- The tools stack deployed with `uv run itbench deploy environment --only tools` (`test_agent_access.py`).
+
+Run them with:
+
+```shell
+uv run --group dev pytest --integration -m integration -v tests/integration/kind
 ```
 
 ## Troubleshooting
@@ -164,7 +191,7 @@ This section will mainly highlight key issues that one may encounter when runnin
 
 **Problem**: The IP address assigned to a Kubernetes service is not reachable via `curl` or the browser.
 
-**Solution**: The cause of this is explained in further detail [here](https://github.com/kubernetes-sigs/cloud-provider-kind?tab=readme-ov-file#enabling-load-balancer-port-mapping). After installing the service on the Kubernetes cluster (ie, after running `make deploy-tools` for the SRE scenarios), run the `make sync-network-group-vars` command. This will retrieve the host port from the container operating as the provider so that the service can be reached via `localhost`.
+**Solution**: The cause of this is explained in further detail [here](https://github.com/kubernetes-sigs/cloud-provider-kind?tab=readme-ov-file#enabling-load-balancer-port-mapping). On MacOS the host port mapped to the container operating as the provider must be used, so that the service can be reached via `localhost`.
 
 ### RHEL
 

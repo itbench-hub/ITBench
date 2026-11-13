@@ -5,17 +5,15 @@ on:
     branches:
       - main
     paths:
-      - clusters/kind/go.*
+      - mise*.toml
       - scenarios/sre/project/roles/applications/tasks/install_*.yaml
       - scenarios/sre/project/roles/cluster/**
-      - scenarios/sre/project/roles/executables/vars/main/minimum_versions.yaml
       - scenarios/sre/project/roles/faults/**
       - scenarios/sre/project/roles/tools/tasks/export*.yaml
       - scenarios/sre/project/roles/tools/tasks/install_*.yaml
       - scenarios/sre/project/roles/waiters/**
       - scenarios/sre/project/manage_environment.yaml
       - scenarios/sre/project/manage_faults.yaml
-      - scenarios/sre/Makefile
       - src/itbench/cli/commands/deploy/**
       - src/itbench/cli/commands/inject/**
       - src/itbench/cli/commands/remove/**
@@ -28,6 +26,10 @@ on:
 concurrency:
   group: ci-e2e-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  KUBECONFIG: ${{ github.workspace }}/clusters/kind/kubeconfigs/kind-environment
+  MISE_ENV: kind
 
 jobs:
   finops:
@@ -42,38 +44,26 @@ jobs:
           # Boost process-level descriptor capacity for the shell
           ulimit -n 65536
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@v5.2.7
         with:
-          version-file: pyproject.toml
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - uses: azure/setup-helm@v5.0.1
-        with:
-          version: v4.3.1
-      - name: Create Kind cluster
-        run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C clusters/kind run-service-provider &
-          sleep 10
+          version: 2026.11.7
       - name: Install project dependencies
         run: |
-          make deps
-      - name: Create group vars
+          mise run install
+      - name: Create Kind cluster
         run: |
-          make -C scenarios/sre group-vars
-      - name: Prepare cluster
-        run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
+          mise run create:kind:environment
+      - name: Run Cloud Provider
+        run: |
+          mise run run:kind:provider &
+          sleep 10
       - name: Deploy FinOps Scenario 37
-        run: uv run itbench deploy environment --scenario 37 --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench deploy environment --scenario 37
       - name: Undeploy FinOps Scenario 37
-        run: uv run itbench undeploy environment --yes --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench undeploy environment --yes
       - name: Destroy Kind cluster
         run: |
-          make -C clusters/kind destroy-simple-cluster
+          mise run destroy:kind:environment
   sre:
     runs-on: ubuntu-26.04
     steps:
@@ -86,41 +76,29 @@ jobs:
           # Boost process-level descriptor capacity for the shell
           ulimit -n 65536
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@v5.2.7
         with:
-          version-file: pyproject.toml
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - uses: azure/setup-helm@v5.0.1
-        with:
-          version: v4.3.1
-      - name: Create Kind cluster
-        run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C clusters/kind run-service-provider &
-          sleep 10
+          version: 2026.11.7
       - name: Install project dependencies
         run: |
-          make deps
-      - name: Create group vars
+          mise run install
+      - name: Create Kind cluster
         run: |
-          make -C scenarios/sre group-vars
-      - name: Prepare cluster
-        run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
+          mise run create:kind:environment
+      - name: Run Cloud Provider
+        run: |
+          mise run run:kind:provider &
+          sleep 10
       - name: Configure environment
-        run: uv run itbench configure environment --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench configure environment
       - name: Deploy SRE Scenario 60
-        run: uv run itbench deploy environment --scenario 60 --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench deploy environment --scenario 60
       - name: Inject SRE Scenario 60 faults
-        run: uv run itbench inject faults --scenario 60 --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench inject faults --scenario 60
       - name: Remove SRE Scenario 60 faults
-        run: uv run itbench remove faults --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench remove faults
       - name: Undeploy SRE Scenario 60
-        run: uv run itbench undeploy environment --yes --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench undeploy environment --yes
       - name: Destroy Kind cluster
         run: |
-          make -C clusters/kind destroy-simple-cluster
+          mise run destroy:kind:environment

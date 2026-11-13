@@ -85,14 +85,11 @@ grep -r "kind: StatefulSet" scenarios/sre/roles/applications/templates/kubernete
    # Set the kubeconfig
    export KUBECONFIG=<path-from-user>
 
-   # Navigate to scenarios directory
-   cd scenarios/sre
-
    # Deploy tools - outputs will be displayed
-   make deploy-tools
+   uv run itbench deploy environment --only tools
 
    # Deploy applications - outputs will be displayed
-   make deploy-applications
+   uv run itbench deploy environment
    ```
 
    **Note**: Both commands will display their complete output including:
@@ -776,8 +773,7 @@ spec:
 After creating both files manually, validate with:
 
 ```bash
-cd scenarios/sre
-make regenerate-scenario-files
+uv run itbench generate documentation
 ```
 
 This validates and generates:
@@ -868,7 +864,7 @@ propagations:
 - Define propagations showing fault spread
 - Predict alerts based on PrometheusRules
 - Use regex filters for pod groups
-- Test scenario generation with `make regenerate-scenario-files`
+- Test scenario generation with `uv run itbench generate documentation`
 - Remove `faultId` after using it to build disruptions
 - **Use non-obvious names for injected resources** (e.g., `app-config`, `recommendation-features`, `sidecar-processor`, `cache-helper`) - **Rationale**: Agents should diagnose issues based on symptoms and observability, not by discovering obviously-named fault injection resources
 
@@ -910,7 +906,7 @@ cat scenarios/sre/roles/scenarios/files/scenario_40/groundtruth_v1.yaml  # Code 
 4. **Map dependencies using the diagram** - Follow the architecture to see which services call the affected service
 5. **Predict observables** - Use the diagram to identify which services will be impacted and what alerts will fire
 6. **Define propagation chain** - Trace the fault spread through the architecture (root cause → dependencies → downstream effects)
-7. **Test generation** - Always run `make regenerate-scenario-files` to validate
+7. **Test generation** - Always run `uv run itbench generate documentation` to validate
 
 # Next Steps
 

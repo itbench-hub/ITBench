@@ -5,12 +5,10 @@ on:
     branches:
       - main
     paths:
-      - clusters/kind/**
       - clusters/minikube/**
       - scenarios/sre/project/roles/agent/**
       - scenarios/sre/project/roles/faults/**
       - scenarios/sre/project/roles/waiters/**
-      - '!clusters/kind/README.md'
       - '!clusters/minikube/README.md'
       - '!scenarios/sre/project/roles/faults/tasks/generate_files.yaml'
       - '!scenarios/sre/project/roles/waiters/tasks/generate_files.yaml'
@@ -20,50 +18,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  clusters-kind:
-    name: ITBench Kind Tests
-    runs-on: ubuntu-26.04
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
-        with:
-          version-file: pyproject.toml
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
-      - uses: azure/setup-helm@v5.0.1
-        with:
-          version: v4.3.1
-      - name: Install project dependencies
-        run: |
-          make deps
-      - name: Create Kind cluster
-        run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Run Cloud Provider
-        run: |
-          make -C clusters/kind run-service-provider &
-          sleep 10
-      - name: Prepare cluster
-        run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
-      - name: Run Molecule tests
-        run: |
-          make -C clusters/kind test-molecule
-      - name: Destroy Minikube cluster
-        run: |
-          make -C clusters/kind destroy-simple-cluster
   clusters-minikube:
     name: ITBench Minikube Tests
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@v5.2.7
         with:
-          version-file: pyproject.toml
-      - uses: azure/setup-helm@v5.0.1
-        with:
-          version: v4.3.1
+          version: 2026.11.7
       - uses: medyagh/setup-minikube@v0.0.21
         with:
           cache: false
@@ -75,7 +37,7 @@ jobs:
           start: false
       - name: Install project dependencies
         run: |
-          make deps
+          mise run install:dev
       - name: Create Minikube cluster
         run: |
           make -C clusters/minikube create-simple-cluster
@@ -92,70 +54,54 @@ jobs:
   sre-faults:
     name: SRE Fault Injection Tests
     runs-on: ubuntu-26.04
+    env:
+      KUBECONFIG: ${{ github.workspace }}/clusters/kind/kubeconfigs/kind-environment
+      MISE_ENV: kind
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@v5.2.7
         with:
-          version-file: pyproject.toml
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
+          version: 2026.11.7
       - name: Install project dependencies
         run: |
-          make deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
+          mise run install:dev
       - name: Create Kind cluster
         run: |
-          make -C clusters/kind create-simple-cluster
+          mise run create:kind:environment
       - name: Run Cloud Provider
         run: |
-          make -C clusters/kind run-service-provider &
+          mise run run:kind:provider &
           sleep 10
-      - name: Prepare cluster
-        run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
       - name: Configure environment
-        run: uv run itbench configure environment --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench configure environment
       - name: Run Molecule tests
-        env:
-          KUBECONFIG: /home/runner/.kube/config
         run: |
-          make molecule-test-faults
+          mise run test:molecule:faults
       - name: Destroy Kind cluster
         run: |
-          make -C clusters/kind destroy-simple-cluster
+          mise run destroy:kind:environment
   sre-waiters:
     name: SRE Waiters Tests
     runs-on: ubuntu-26.04
+    env:
+      KUBECONFIG: ${{ github.workspace }}/clusters/kind/kubeconfigs/kind-environment
+      MISE_ENV: kind
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - uses: jdx/mise-action@v5.2.7
         with:
-          version-file: pyproject.toml
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: clusters/kind/go.mod
-          cache-dependency-path: clusters/kind/go.sum
+          version: 2026.11.7
       - name: Install project dependencies
         run: |
-          make deps
-      - name: Create group vars
-        run: |
-          make -C scenarios/sre group-vars
+          mise run install:dev
       - name: Create Kind cluster
         run: |
-          make -C clusters/kind create-simple-cluster
-      - name: Prepare cluster
-        run: uv run itbench prepare cluster --kubeconfig "$HOME/.kube/config"
+          mise run create:kind:environment
       - name: Configure environment
-        run: uv run itbench configure environment --kubeconfig "$HOME/.kube/config"
+        run: uv run itbench configure environment
       - name: Run Molecule tests
-        env:
-          KUBECONFIG: /home/runner/.kube/config
         run: |
-          make molecule-test-waiters
+          mise run test:molecule:waiters
       - name: Destroy Kind cluster
         run: |
-          make -C clusters/kind destroy-simple-cluster
+          mise run destroy:kind:environment
