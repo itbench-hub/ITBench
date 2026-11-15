@@ -6,35 +6,82 @@
     release_name: "{{ tools_helm_release_kyverno }}"
     release_namespace: "{{ tools_namespace_kyverno }}"
     release_state: present
+    release_values:
+      admissionController:
+        certManager:
+          enabled: true
+        serviceMonitor:
+          enabled: true
+      backgroundController:
+        serviceMonitor:
+          enabled: true
+      cleanupController:
+        certManager:
+          enabled: true
+        serviceMonitor:
+          enabled: true
+      prometheusRule:
+        enabled: true
+      reportsController:
+        serviceMonitor:
+          enabled: true
     wait: true
 
-- name: Create ClusterPolicy for DaemonSets
+- name: Create MutatingPolicy for DaemonSets
   kubernetes.core.k8s:
     resource_definition:
-      apiVersion: kyverno.io/v1
-      kind: ClusterPolicy
+      apiVersion: policies.kyverno.io/v1
+      kind: MutatingPolicy
       metadata:
         labels:
           "itbench.io/ansible-role": tools
           "itbench.io/layer": governance
         name: itbench-fault-injection-toleration
       spec:
-        background: true
-        rules:
-          - match:
-              any:
-                - resources:
-                    kinds:
-                      - DaemonSet
-            mutate:
-              patchStrategicMerge:
-                spec:
-                  template:
-                    spec:
-                      tolerations:
-                        - key: itbench.io/sandbox
-                          operator: Equal
-                          value: "true"
-                          effect: NoSchedule
-            name: add-sandbox-toleration-to-daemonsets
+        matchConstraints:
+          resourceRules:
+            - apiGroups:
+                - apps
+              apiVersions:
+                - v1
+              operations:
+                - CREATE
+                - UPDATE
+              resources:
+                - daemonsets
+        matchConditions:
+          - name: skip-if-toleration-exists
+            expression: >-
+              !has(object.spec.template.spec.tolerations) ||
+              object.spec.template.spec.tolerations == null ||
+              !object.spec.template.spec.tolerations.exists(t, has(t.key) && t.key == "itbench.io/sandbox")
+        mutations:
+          - patchType: JSONPatch
+            jsonPatch:
+              expression: >-
+                (!has(object.spec.template.spec.tolerations) || object.spec.template.spec.tolerations == null) ?
+                [
+                  JSONPatch{
+                    op: "add",
+                    path: "/spec/template/spec/tolerations",
+                    value: [dyn({
+                      "key": "itbench.io/sandbox",
+                      "operator": "Equal",
+                      "value": "true",
+                      "effect": "NoSchedule"
+                    })]
+                  }
+                ] :
+                [
+                  JSONPatch{
+                    op: "add",
+                    path: "/spec/template/spec/tolerations/-",
+                    value: dyn({
+                      "key": "itbench.io/sandbox",
+                      "operator": "Equal",
+                      "value": "true",
+                      "effect": "NoSchedule"
+                    })
+                  }
+                ]
     state: present

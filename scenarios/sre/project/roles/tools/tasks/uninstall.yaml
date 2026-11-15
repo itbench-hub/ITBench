@@ -44,6 +44,15 @@
   when:
     - tools_cluster.platform == "kubernetes"
 
+- name: Delete ITBench related MutatingPolicy
+  kubernetes.core.k8s:
+    api_version: policies.kyverno.io/v1
+    kind: MutatingPolicy
+    label_selectors:
+      - "itbench.io/ansible-role=tools"
+    state: absent
+    wait: true
+
 - name: Uninstall Kyverno Helm release
   kubernetes.core.helm:
     release_name: "{{ tools_helm_release_kyverno }}"
