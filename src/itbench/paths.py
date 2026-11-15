@@ -77,12 +77,12 @@ class ITBenchRepository:
     @property
     def ansible_project(self) -> Path:
         """Ansible project containing the ``manage_*.yaml`` playbooks."""
-        return self.root / "scenarios" / "sre" / "project"
+        return self.root / "project"
 
     @property
     def inventory(self) -> Path:
         """Ansible inventory directory (``inventory.yaml``, ``group_vars`` and ``host_vars``)."""
-        return self.root / "scenarios" / "sre" / "inventory"
+        return self.root / "inventory"
 
     @property
     def group_vars(self) -> Path:

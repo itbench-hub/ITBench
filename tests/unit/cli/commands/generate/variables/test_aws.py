@@ -54,7 +54,7 @@ def test_build_doc_secret_access_key_is_encrypted() -> None:
 def output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point the repository root at a temporary directory and return the file the command writes."""
     monkeypatch.setenv("ITBENCH_REPOSITORY_PATH", str(tmp_path))
-    return tmp_path / "scenarios" / "sre" / "inventory" / "group_vars" / "all" / "aws.yaml"
+    return tmp_path / "inventory" / "group_vars" / "all" / "aws.yaml"
 
 
 def _mock_prompts(

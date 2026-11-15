@@ -26,7 +26,7 @@ def test_playbooks_run_from_the_sre_project() -> None:
         run_playbook(playbook="my.yaml")
 
     assert mock_run.call_args.kwargs["private_data_dir"] == str(repository.ansible_project)
-    assert repository.ansible_project.parts[-3:] == ("scenarios", "sre", "project")
+    assert repository.ansible_project.parts[-1:] == ("project",)
 
 
 def test_playbooks_use_the_sre_inventory_so_group_vars_apply() -> None:
@@ -34,7 +34,7 @@ def test_playbooks_use_the_sre_inventory_so_group_vars_apply() -> None:
         run_playbook(playbook="my.yaml")
 
     assert mock_run.call_args.kwargs["inventory"] == str(repository.inventory)
-    assert repository.inventory.parts[-3:] == ("scenarios", "sre", "inventory")
+    assert repository.inventory.parts[-1:] == ("inventory",)
     assert repository.group_vars == repository.inventory / "group_vars"
 
 

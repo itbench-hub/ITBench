@@ -42,14 +42,14 @@ mise run install:dev
 
 ## Running Scenarios
 
-ITBench uses [Ansible](https://docs.ansible.com/ansible/latest/getting_started/introduction.html) to manage the sandbox environment on a Kubernetes cluster. The playbooks feature a number of [group variables](../../scenarios/sre/inventory/group_vars/). Each one will be described here:
+ITBench uses [Ansible](https://docs.ansible.com/ansible/latest/getting_started/introduction.html) to manage the sandbox environment on a Kubernetes cluster. The playbooks feature a number of [group variables](../../inventory/group_vars/). Each one will be described here:
 
 | File Name | Function |
 | --- | --- |
-| [applications.yaml](../../scenarios/sre/inventory/group_vars/environment/applications.yaml.example) | Configures applications |
-| [cluster.yaml](../../scenarios/sre/inventory/group_vars/environment/cluster.yaml.example) | Configures the cluster |
-| [tools.yaml](../../scenarios/sre/inventory/group_vars/environment/tools.yaml.example) | Configures the tool stack |
-| [storage.yaml](../../scenarios/sre/inventory/group_vars/all/storage.yaml.example) | Configures the storage options for data files |
+| [applications.yaml](../../inventory/group_vars/environment/applications.yaml.example) | Configures applications |
+| [cluster.yaml](../../inventory/group_vars/environment/cluster.yaml.example) | Configures the cluster |
+| [tools.yaml](../../inventory/group_vars/environment/tools.yaml.example) | Configures the tool stack |
+| [storage.yaml](../../inventory/group_vars/all/storage.yaml.example) | Configures the storage options for data files |
 
 >[!NOTE]
 >Some of the yaml files have sections commented out. This is to show parameters which are optional. If they are not needed, leave them commented out. Otherwise, uncomment them and fill them out as needed.

@@ -35,13 +35,13 @@ Before creating new content, search existing implementations:
 
 ```bash
 # Find similar faults
-grep -r "similar-keyword" scenarios/sre/roles/faults/tasks/
+grep -r "similar-keyword" project/roles/faults/tasks/
 
 # Review fault index
-cat scenarios/sre/roles/documentation/files/library/faults/index.json | jq '.[] | select(.tags | contains(["keyword"]))'
+cat project/roles/documentation/files/library/faults/index.json | jq '.[] | select(.tags | contains(["keyword"]))'
 
 # Check scenario patterns
-cat scenarios/sre/roles/documentation/files/library/scenarios/index.json | jq '.[] | select(.category == "sre")'
+cat project/roles/documentation/files/library/scenarios/index.json | jq '.[] | select(.category == "sre")'
 ```
 
 Identify the closest existing fault as a reference template.
@@ -241,7 +241,7 @@ Present results in stages:
 ## Fault Created: [Fault Name]
 
 **ID**: `fault-id`
-**Location**: `scenarios/sre/roles/faults/tasks/inject_fault-id.yaml`
+**Location**: `project/roles/faults/tasks/inject_fault-id.yaml`
 
 **Summary**:
 - Arguments schema: ✅ Complete
