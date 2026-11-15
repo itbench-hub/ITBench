@@ -40,7 +40,7 @@ install-cluster-docker-registry: get-cluster-kubeconfig ## Installs docker regis
 sync-cluster-group-vars: get-cluster-kubeconfig ## Syncs the kubeconfig with the scenarios group variables
 	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=single-cluster"
-	cd ../../ && $(MISE) exec -- uv run ansible-lint scenarios/sre/inventory/group_vars/environment --fix
+	cd ../../ && $(MISE) exec -- uv run ansible-lint inventory/group_vars/environment --fix
 
 .PHONY: destroy-cluster
 destroy-cluster: ## Deletes a single cluster
@@ -71,7 +71,7 @@ install-stack-docker-registry: get-stack-kubeconfigs ## Installs docker registry
 sync-stack-group-vars: get-stack-kubeconfigs ## Syncs the kubeconfig with the scenarios group variables
 	$(MISE) exec -- uv run ansible-playbook -i inventory playbooks/sync_group_variables.yaml \
 		--extra-vars "target=orchestrator-stack"
-	cd ../../ && $(MISE) exec -- uv run ansible-lint scenarios/sre/inventory/group_vars/orchestrator --fix
+	cd ../../ && $(MISE) exec -- uv run ansible-lint inventory/group_vars/orchestrator --fix
 
 .PHONY: destroy-stack
 destroy-stack: ## Destroy a stack

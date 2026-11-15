@@ -26,6 +26,8 @@ RUN mise exec -- uv sync --frozen --no-dev --no-install-project
 
 # Copy project source and scenario data
 COPY src/ ./src/
+COPY inventory/ ./inventory/
+COPY project/ ./project/
 COPY scenarios/ ./scenarios/
 COPY library/ ./library/
 

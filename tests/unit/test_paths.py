@@ -20,8 +20,8 @@ def test_explicit_root_wins_over_env(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert repo.scenarios == tmp_path / "explicit" / "library" / "scenarios"
     assert repo.schemas == tmp_path / "explicit" / "schemas" / "json"
     assert repo.documentation == tmp_path / "explicit" / "documentation" / "library"
-    assert repo.ansible_project == tmp_path / "explicit" / "scenarios" / "sre" / "project"
-    assert repo.group_vars == tmp_path / "explicit" / "scenarios" / "sre" / "inventory" / "group_vars"
+    assert repo.ansible_project == tmp_path / "explicit" / "project"
+    assert repo.group_vars == tmp_path / "explicit" / "inventory" / "group_vars"
 
 
 def test_repository_path_env_var_is_read_on_every_access(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

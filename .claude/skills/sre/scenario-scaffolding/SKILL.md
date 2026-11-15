@@ -36,7 +36,7 @@ Before starting scenario scaffolding:
 ### 1.1 List Available Applications
 ```bash
 # Extract all application keys from managers.yaml
-grep -E "^  [a-z_]+:" scenarios/sre/roles/applications/defaults/main/managers.yaml | sed 's/://g' | awk '{print $1}'
+grep -E "^  [a-z_]+:" project/roles/applications/defaults/main/managers.yaml | sed 's/://g' | awk '{print $1}'
 ```
 
 **Application Preference:**
@@ -47,10 +47,10 @@ grep -E "^  [a-z_]+:" scenarios/sre/roles/applications/defaults/main/managers.ya
 ```bash
 # Replace <app-key> with your chosen application
 # Get namespace
-grep -A 15 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml | grep "namespace:" | awk '{print $2}'
+grep -A 15 "^  <app-key>:" project/roles/applications/defaults/main/managers.yaml | grep "namespace:" | awk '{print $2}'
 
 # Get documentation URL
-grep -A 15 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/managers.yaml | grep -E "url:|documentation:"
+grep -A 15 "^  <app-key>:" project/roles/applications/defaults/main/managers.yaml | grep -E "url:|documentation:"
 ```
 
 ### 1.3 Discover Services from Manifests
@@ -59,13 +59,13 @@ grep -A 15 "^  <app-key>:" scenarios/sre/roles/applications/defaults/main/manage
 NAMESPACE="<namespace>"
 
 # Find all Deployments in the application
-grep -r "kind: Deployment" scenarios/sre/roles/applications/templates/kubernetes/ | grep "$NAMESPACE" | grep -oP 'name: \K[a-z0-9-]+'
+grep -r "kind: Deployment" project/roles/applications/templates/kubernetes/ | grep "$NAMESPACE" | grep -oP 'name: \K[a-z0-9-]+'
 
 # Find all Services
-grep -r "kind: Service" scenarios/sre/roles/applications/templates/kubernetes/ | grep "$NAMESPACE" | grep -oP 'name: \K[a-z0-9-]+'
+grep -r "kind: Service" project/roles/applications/templates/kubernetes/ | grep "$NAMESPACE" | grep -oP 'name: \K[a-z0-9-]+'
 
 # Find all StatefulSets
-grep -r "kind: StatefulSet" scenarios/sre/roles/applications/templates/kubernetes/ | grep "$NAMESPACE" | grep -oP 'name: \K[a-z0-9-]+'
+grep -r "kind: StatefulSet" project/roles/applications/templates/kubernetes/ | grep "$NAMESPACE" | grep -oP 'name: \K[a-z0-9-]+'
 ```
 
 ### 1.3.1 Optional: Ground in Real Deployment
@@ -131,24 +131,24 @@ Consult the documentation URL from step 1.2 to understand:
 
 ## Step 2: Populate Scenario Files
 
-The scenario consists of multiple files in `scenarios/sre/roles/scenarios/files/scenario_<ID>/`:
+The scenario consists of multiple files in `project/roles/scenarios/files/scenario_<ID>/`:
 
 ### 2.1 Scenario Index Entry
 
-**File**: `scenarios/sre/roles/documentation/files/library/scenarios/index.json`
+**File**: `project/roles/documentation/files/library/scenarios/index.json`
 
 **Structure** (discovered dynamically):
 
 First, get available tags and platforms:
 ```bash
 # Get valid tags
-jq '.properties.tags.items.enum' scenarios/sre/roles/documentation/files/library/faults/schema.json
+jq '.properties.tags.items.enum' project/roles/documentation/files/library/faults/schema.json
 
 # Get valid platforms
-jq '.properties.platforms.items.enum' scenarios/sre/roles/documentation/files/library/faults/schema.json
+jq '.properties.platforms.items.enum' project/roles/documentation/files/library/faults/schema.json
 
 # Get valid categories
-jq '.properties.category.enum' scenarios/sre/roles/documentation/files/library/scenarios/schema.json
+jq '.properties.category.enum' project/roles/documentation/files/library/scenarios/schema.json
 ```
 
 Then construct the scenario entry:
@@ -224,12 +224,12 @@ Then construct the scenario entry:
 # Find scenarios using your chosen fault
 FAULT_ID="<your-fault-id>"
 jq --arg fault "$FAULT_ID" '.[] | select(.disruptions[].injections[].id == $fault) | {id, disruptions}' \
-  scenarios/sre/roles/documentation/files/library/scenarios/index.json
+  project/roles/documentation/files/library/scenarios/index.json
 
 # Examine a specific scenario's disruptions
 SCENARIO_ID="<scenario-number>"
 jq --arg id "$SCENARIO_ID" '.[] | select(.id == ($id | tonumber)) | .disruptions' \
-  scenarios/sre/roles/documentation/files/library/scenarios/index.json
+  project/roles/documentation/files/library/scenarios/index.json
 ```
 
 **Single Fault Injection** (template):
@@ -296,7 +296,7 @@ jq --arg id "$SCENARIO_ID" '.[] | select(.id == ($id | tonumber)) | .disruptions
 ```bash
 # Find scenarios using waitFor patterns
 jq '.[] | select(.disruptions[].waitFor != null) | {id, disruptions}' \
-  scenarios/sre/roles/documentation/files/library/scenarios/index.json | head -50
+  project/roles/documentation/files/library/scenarios/index.json | head -50
 ```
 
 ### 2.3 waitFor Patterns
@@ -317,7 +317,7 @@ jq '.[] | select(.disruptions[].waitFor != null) | {id, disruptions}' \
 # Get solutions from the fault entry
 FAULT_ID="<your-fault-id>"
 jq --arg fault "$FAULT_ID" '.[] | select(.id == $fault) | .solutions' \
-  scenarios/sre/roles/documentation/files/library/faults/index.json
+  project/roles/documentation/files/library/faults/index.json
 ```
 
 Adapt fault solutions to scenario context (replace Jinja2 templates with actual values):
@@ -354,12 +354,12 @@ Adapt fault solutions to scenario context (replace Jinja2 templates with actual 
 ```bash
 # Find scenarios with multi-step solutions
 jq '.[] | select(.solutions[][].steps | length > 1) | {id, solutions}' \
-  scenarios/sre/roles/documentation/files/library/scenarios/index.json | head -100
+  project/roles/documentation/files/library/scenarios/index.json | head -100
 ```
 
 ### 2.5 Determine Required Tools
 
-Based on disruptions, identify tools needed (captured by scaffolding from `scenarios/sre/roles/scaffolding/tasks/generate_new_scenario_files.yaml`):
+Based on disruptions, identify tools needed (captured by scaffolding from `project/roles/scaffolding/tasks/generate_new_scenario_files.yaml`):
 
 **Chaos Mesh Detection**:
 ```yaml
@@ -383,7 +383,7 @@ Scenarios require **two ground truth files** in different formats:
 
 ### 3.0 Create groundtruth.yaml (v2 API)
 
-**File**: `scenarios/sre/roles/scenarios/files/scenario_<ID>/groundtruth.yaml`
+**File**: `project/roles/scenarios/files/scenario_<ID>/groundtruth.yaml`
 
 This is a **simplified format** that focuses on affected entities and solutions.
 
@@ -418,10 +418,10 @@ spec:
 **Example** (find real examples dynamically):
 ```bash
 # View an existing groundtruth.yaml for reference
-cat scenarios/sre/roles/scenarios/files/scenario_20/groundtruth.yaml
+cat project/roles/scenarios/files/scenario_20/groundtruth.yaml
 
 # Or examine multiple scenarios
-ls scenarios/sre/roles/scenarios/files/scenario_*/groundtruth.yaml | head -5 | xargs -I {} sh -c 'echo "=== {} ===" && cat {}'
+ls project/roles/scenarios/files/scenario_*/groundtruth.yaml | head -5 | xargs -I {} sh -c 'echo "=== {} ===" && cat {}'
 ```
 
 **Template**:
@@ -457,7 +457,7 @@ spec:
 
 ### 3.1 Create groundtruth_v1.yaml (v1 API - DSL Format)
 
-**File**: `scenarios/sre/roles/scenarios/files/scenario_<ID>/groundtruth_v1.yaml`
+**File**: `project/roles/scenarios/files/scenario_<ID>/groundtruth_v1.yaml`
 
 Ground truth uses **DSL format (groups)** to define fault propagation chains.
 
@@ -532,10 +532,10 @@ spec:
 **Discover group patterns from existing scenarios:**
 ```bash
 # View groups from a specific scenario
-cat scenarios/sre/roles/scenarios/files/scenario_<ID>/groundtruth_v1.yaml | grep -A 10 "^  groups:"
+cat project/roles/scenarios/files/scenario_<ID>/groundtruth_v1.yaml | grep -A 10 "^  groups:"
 
 # Find scenarios with ConfigMap root causes
-grep -r "kind: ConfigMap" scenarios/sre/roles/scenarios/files/*/groundtruth_v1.yaml
+grep -r "kind: ConfigMap" project/roles/scenarios/files/*/groundtruth_v1.yaml
 ```
 
 **Pod group with filter** (template):
@@ -581,7 +581,7 @@ aliases:
 **Discover alias patterns:**
 ```bash
 # Find scenarios with aliases
-grep -A 5 "^  aliases:" scenarios/sre/roles/scenarios/files/*/groundtruth_v1.yaml | head -20
+grep -A 5 "^  aliases:" project/roles/scenarios/files/*/groundtruth_v1.yaml | head -20
 ```
 
 **Template**:
@@ -611,7 +611,7 @@ aliases:
 **Discover propagation patterns:**
 ```bash
 # Find propagation examples
-grep -A 10 "^  propagations:" scenarios/sre/roles/scenarios/files/*/groundtruth_v1.yaml | head -50
+grep -A 10 "^  propagations:" project/roles/scenarios/files/*/groundtruth_v1.yaml | head -50
 ```
 
 **Template**:
@@ -642,12 +642,12 @@ propagations:
 
    **OpenTelemetry Demo:**
    ```bash
-   cat scenarios/sre/roles/applications/templates/kubernetes/otel_demo/prometheusrules.j2
+   cat project/roles/applications/templates/kubernetes/otel_demo/prometheusrules.j2
    ```
 
    **BookInfo:**
    ```bash
-   cat scenarios/sre/roles/applications/templates/kubernetes/book_info/prometheusrules.j2
+   cat project/roles/applications/templates/kubernetes/book_info/prometheusrules.j2
    ```
 
 2. **Kubernetes Platform Alerts** - Check:
@@ -655,7 +655,7 @@ propagations:
    a. **Local schema** (available alerts in ITBench):
    ```bash
    jq '.properties.alerts.properties.application.items.enum' \
-     scenarios/sre/roles/documentation/files/library/faults/schema.json
+     project/roles/documentation/files/library/faults/schema.json
    ```
 
    b. **Prometheus Community Rules** (canonical source):
@@ -685,12 +685,12 @@ alerts:
 **View real examples dynamically:**
 ```bash
 # View a complete groundtruth_v1.yaml file
-cat scenarios/sre/roles/scenarios/files/scenario_20/groundtruth_v1.yaml
+cat project/roles/scenarios/files/scenario_20/groundtruth_v1.yaml
 
 # Compare multiple scenarios for patterns
 for scenario in 20 30 40; do
   echo "=== Scenario $scenario ==="
-  cat "scenarios/sre/roles/scenarios/files/scenario_${scenario}/groundtruth_v1.yaml" 2>/dev/null || echo "Not found"
+  cat "project/roles/scenarios/files/scenario_${scenario}/groundtruth_v1.yaml" 2>/dev/null || echo "Not found"
   echo ""
 done
 ```
@@ -791,13 +791,13 @@ This validates and generates:
 # Get all scenarios for a specific application
 APP_ID="opentelemetry-demo"  # Prefer opentelemetry-demo over book-info
 jq --arg app "$APP_ID" '.[] | select(.environment.applications[].id == $app) | {id, description}' \
-  scenarios/sre/roles/documentation/files/library/scenarios/index.json
+  project/roles/documentation/files/library/scenarios/index.json
 
 # Analyze groundtruth patterns for that application
 for scenario_id in $(jq --arg app "$APP_ID" '.[] | select(.environment.applications[].id == $app) | .id' \
-  scenarios/sre/roles/documentation/files/library/scenarios/index.json); do
+  project/roles/documentation/files/library/scenarios/index.json); do
   echo "=== Scenario $scenario_id ==="
-  cat "scenarios/sre/roles/scenarios/files/scenario_${scenario_id}/groundtruth_v1.yaml" | grep -E "^  (groups|propagations):" -A 20
+  cat "project/roles/scenarios/files/scenario_${scenario_id}/groundtruth_v1.yaml" | grep -E "^  (groups|propagations):" -A 20
 done
 ```
 
@@ -806,10 +806,10 @@ done
 **Find typical propagation chains:**
 ```bash
 # Find Pod → Service propagations
-grep -A 4 "source:.*pod" scenarios/sre/roles/scenarios/files/*/groundtruth_v1.yaml | grep "target:" | head -10
+grep -A 4 "source:.*pod" project/roles/scenarios/files/*/groundtruth_v1.yaml | grep "target:" | head -10
 
 # Find Service → Service propagations
-grep -A 4 "source:.*service" scenarios/sre/roles/scenarios/files/*/groundtruth_v1.yaml | grep "target:" | head -10
+grep -A 4 "source:.*service" project/roles/scenarios/files/*/groundtruth_v1.yaml | grep "target:" | head -10
 ```
 
 **Generic propagation chain template:**
@@ -822,7 +822,7 @@ grep -A 4 "source:.*service" scenarios/sre/roles/scenarios/files/*/groundtruth_v
 **Discover ConfigMap scenarios:**
 ```bash
 # Find scenarios with ConfigMap root causes
-grep -r "kind: ConfigMap" scenarios/sre/roles/scenarios/files/*/groundtruth_v1.yaml -l | \
+grep -r "kind: ConfigMap" project/roles/scenarios/files/*/groundtruth_v1.yaml -l | \
   xargs -I {} sh -c 'echo "=== {} ===" && cat {} | head -50'
 ```
 
@@ -875,27 +875,27 @@ propagations:
 ```bash
 # Find simple scenarios (low complexity)
 jq '.[] | select(.complexity == "low") | {id, description, faults: [.disruptions[].injections[].id]}' \
-  scenarios/sre/roles/documentation/files/library/scenarios/index.json | head -50
+  project/roles/documentation/files/library/scenarios/index.json | head -50
 
 # Find complex scenarios (high complexity)
 jq '.[] | select(.complexity == "high") | {id, description, faults: [.disruptions[].injections[].id]}' \
-  scenarios/sre/roles/documentation/files/library/scenarios/index.json | head -50
+  project/roles/documentation/files/library/scenarios/index.json | head -50
 
 # Find scenarios using specific fault mechanisms
 FAULT_ID="<your-fault-id>"
 jq --arg fault "$FAULT_ID" '.[] | select(.disruptions[].injections[].id == $fault) | {id, description}' \
-  scenarios/sre/roles/documentation/files/library/scenarios/index.json
+  project/roles/documentation/files/library/scenarios/index.json
 ```
 
 **View groundtruth files for reference:**
 ```bash
 # List all available groundtruth files
-ls scenarios/sre/roles/scenarios/files/scenario_*/groundtruth_v1.yaml | sort -V
+ls project/roles/scenarios/files/scenario_*/groundtruth_v1.yaml | sort -V
 
 # View specific scenarios
-cat scenarios/sre/roles/scenarios/files/scenario_1/groundtruth_v1.yaml   # Feature flag pattern
-cat scenarios/sre/roles/scenarios/files/scenario_20/groundtruth_v1.yaml  # Image pull error
-cat scenarios/sre/roles/scenarios/files/scenario_40/groundtruth_v1.yaml  # Code change pattern
+cat project/roles/scenarios/files/scenario_1/groundtruth_v1.yaml   # Feature flag pattern
+cat project/roles/scenarios/files/scenario_20/groundtruth_v1.yaml  # Image pull error
+cat project/roles/scenarios/files/scenario_40/groundtruth_v1.yaml  # Code change pattern
 ```
 
 # Tips

@@ -21,7 +21,7 @@ from itbench.cli.commands.generate.variables.s3 import variables_s3_command
 def output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point the repository root at a temporary directory and return the file the command writes."""
     monkeypatch.setenv("ITBENCH_REPOSITORY_PATH", str(tmp_path))
-    return tmp_path / "scenarios" / "sre" / "inventory" / "group_vars" / "storage" / "s3.yaml"
+    return tmp_path / "inventory" / "group_vars" / "storage" / "s3.yaml"
 
 
 def _mock_prompts(bucket="my-bucket", endpoint="https://s3.example.com", directory="/custom/dir"):

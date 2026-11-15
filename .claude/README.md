@@ -216,7 +216,7 @@ The `settings.json` allows:
 ### Skills Not Activating
 
 1. Check `skill-rules.json` syntax: `jq . .claude/skills/skill-rules.json`
-2. Verify file patterns match: `ls -la scenarios/sre/roles/documentation/files/library/faults/index.json`
+2. Verify file patterns match: `ls -la project/roles/documentation/files/library/faults/index.json`
 3. Check hook is executable: `ls -la .claude/hooks/`
 4. Review hook output: Check for skill suggestions in responses
 
@@ -228,8 +228,8 @@ The `settings.json` allows:
 
 ### JSON Validation Errors
 
-1. Validate faults index: `jq . scenarios/sre/roles/documentation/files/library/faults/index.json`
-2. Validate scenarios index: `jq . scenarios/sre/roles/documentation/files/library/scenarios/index.json`
+1. Validate faults index: `jq . project/roles/documentation/files/library/faults/index.json`
+2. Validate scenarios index: `jq . project/roles/documentation/files/library/scenarios/index.json`
 3. Run linter: `mise run lint`
 
 ## 💡 Tips

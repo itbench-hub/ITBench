@@ -20,7 +20,7 @@ _OLD_CONTENT = "---\nstorage_localhost_directory: /old\n"
 def output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Point the repository root at a temporary directory and return the file the command writes."""
     monkeypatch.setenv("ITBENCH_REPOSITORY_PATH", str(tmp_path))
-    return tmp_path / "scenarios" / "sre" / "inventory" / "group_vars" / "storage" / "localhost.yaml"
+    return tmp_path / "inventory" / "group_vars" / "storage" / "localhost.yaml"
 
 
 def _mock_prompt(directory: str = "/data/records") -> MagicMock:
