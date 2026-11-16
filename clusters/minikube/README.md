@@ -4,6 +4,7 @@
 
 ## Required Software
 
+- [mise](https://mise.jdx.dev/)
 - [Minikube](https://minikube.sigs.k8s.io/)
 - [Podman](https://podman.io/) or [Docker](https://www.docker.com/)
 
@@ -15,11 +16,19 @@
 
 ## Installation
 
+>[!NOTE]
+>Minikube is installed and managed by mise. Run the following command from the root of the repository to install it. It does not need to be installed independently of this process.
+>```shell
+>mise -E minikube install
+>```
+>
+>The `minikube` environment can be made the default for a shell session with `export MISE_ENV=minikube`, which allows the `-E minikube` flag to be omitted from the commands below.
+
 ### MacOS ([Homebrew](https://brew.sh/))
 
 1. Download the following packages
 ```shell
-brew install minikube
+brew install mise
 brew install podman
 ```
 
@@ -33,31 +42,28 @@ brew install --cask podman-desktop
 1. Download the following packages
 ```shell
 dnf install lsof
-dnf install make
 dnf install podman
 ```
 
-2. Follow the instructions listed [here](https://minikube.sigs.k8s.io/docs/start/) to install `minikube`
-
-3. Edit the `/etc/sysctl.conf` to avoid common errors (ie, `Pod errors due to “too many open files"`, `vm.max_map_count`, etc.) by adding the following lines:
+2. Edit the `/etc/sysctl.conf` to avoid common errors (ie, `Pod errors due to “too many open files"`, `vm.max_map_count`, etc.) by adding the following lines:
 ```
 fs.inotify.max_user_watches = 524288
 fs.inotify.max_user_instances = 512
 vm.max_map_count = 262144
 ```
 
-4. Run the following command to apply the changes made in the previous step:
+3. Run the following command to apply the changes made in the previous step:
 ```shell
 sudo sysctl -p
 ```
 
-5. If the cluster will be used to run Chaos Mesh faults, edit the `/etc/modules-load.d/ebtables.conf` file by adding the following lines:
+4. If the cluster will be used to run Chaos Mesh faults, edit the `/etc/modules-load.d/ebtables.conf` file by adding the following lines:
 ```
 ebtable_broute
 ebtable_nat
 ```
 
-6. Run the following command to apply the changes made in the previous step. **This only has to be done if the machine has not been rebooted as the changes will be applied automatically the next time it boots**:
+5. Run the following command to apply the changes made in the previous step. **This only has to be done if the machine has not been rebooted as the changes will be applied automatically the next time it boots**:
 ```bash
 sudo modprobe ebtable_broute
 sudo modprobe ebtable_nat
@@ -92,25 +98,34 @@ podman machine start
 
 ## Cluster Management
 
-Once the cluster has been started, it can be accessed with kubectl using the following command:
+Each cluster's kubeconfig is written to the `kubeconfigs` directory (ie, `clusters/minikube/kubeconfigs/minikube-environment`) instead of `~/.kube/config`. The create commands print the `export KUBECONFIG=...` line to run so that kubectl and the `itbench` CLI use the cluster:
 
 ```shell
-export KUBECONFIG=~/.kube/config
+export KUBECONFIG=<path printed by the create command>
 kubectl cluster-info
+```
+
+### Resource Check
+
+The create commands first run `itbench check resources localhost` to compare the machine's CPUs and memory with the cluster's requirements. A shortfall is reported as a warning and does not stop the cluster from being created. The check can also be run on its own:
+
+```shell
+uv run itbench check resources localhost
+uv run itbench check resources localhost --only environment
 ```
 
 ### Orchestrator Cluster
 
 #### Creation
 
-1. Run the following command to create a Minikube cluster:
+1. Run the following command from the root of the repository to create a Minikube cluster:
 ```shell
-make create-orchestrator-cluster
+mise -E minikube run create:minikube:orchestrator
 ```
 
 2. Open a new terminal window and run the following command to start the Minikube tunnel
 ```shell
-make start-orchestrator-tunnel
+mise -E minikube run run:minikube:tunnel
 ```
 
 #### Deletion
@@ -119,21 +134,21 @@ make start-orchestrator-tunnel
 
 2. Run the following command to destroy a Minikube cluster
 ```shell
-make destroy-orchestrator-cluster
+mise -E minikube run destroy:minikube:orchestrator
 ```
 
-### Simple Cluster
+### Environment Cluster
 
 #### Creation
 
-1. Run the following command to create a Minikube cluster:
+1. Run the following command from the root of the repository to create a Minikube cluster:
 ```shell
-make create-simple-cluster
+mise -E minikube run create:minikube:environment
 ```
 
 2. Open a new terminal window and run the following command to start the Minikube tunnel
 ```shell
-make start-simple-tunnel
+mise -E minikube run run:minikube:tunnel
 ```
 
 #### Deletion
@@ -142,7 +157,20 @@ make start-simple-tunnel
 
 2. Run the following command to destroy a Minikube cluster
 ```shell
-make destroy-simple-cluster
+mise -E minikube run destroy:minikube:environment
+```
+
+## Testing
+
+The Minikube integration tests live in [`tests/integration/minikube`](../../tests/integration/minikube). They need the following:
+
+- A running cluster, with `KUBECONFIG` exported.
+- Minikube tunnel running in another terminal (`test_load_balancers.py`).
+
+Run them with:
+
+```shell
+mise -E minikube run test:integration:minikube
 ```
 
 ## Troubleshooting

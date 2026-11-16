@@ -1,0 +1,48 @@
+[tools]
+"aqua:minikube" = "1.39.0"
+
+[tasks."create:minikube:environment"]
+description = "Create the local environment Minikube cluster and export its kubeconfig"
+dir = "{{config_root}}/clusters/minikube"
+run = [
+    "uv run itbench check resources localhost --only environment",
+    "mkdir -p kubeconfigs",
+    'KUBECONFIG=kubeconfigs/minikube-environment minikube start -p minikube-environment --nodes 2 --extra-config=kube-proxy.metrics-bind-address="0.0.0.0:10249" --extra-config=controller-manager.bind-address="0.0.0.0" --extra-config=controller-manager.authorization-always-allow-paths="/metrics" --extra-config=scheduler.bind-address="0.0.0.0" --extra-config=scheduler.authorization-always-allow-paths="/metrics"',
+    'echo "Run the following command to access the cluster (minikube-environment) using kubectl:"',
+    'echo "export KUBECONFIG=$PWD/kubeconfigs/minikube-environment"',
+]
+
+[tasks."create:minikube:orchestrator"]
+description = "Create the local orchestrator Minikube cluster and export its kubeconfig"
+dir = "{{config_root}}/clusters/minikube"
+run = [
+    "uv run itbench check resources localhost --only orchestrator",
+    "mkdir -p kubeconfigs",
+    'KUBECONFIG=kubeconfigs/minikube-orchestrator minikube start -p minikube-orchestrator --nodes 2 --extra-config=kube-proxy.metrics-bind-address="0.0.0.0:10249" --extra-config=controller-manager.bind-address="0.0.0.0" --extra-config=controller-manager.authorization-always-allow-paths="/metrics" --extra-config=scheduler.bind-address="0.0.0.0" --extra-config=scheduler.authorization-always-allow-paths="/metrics"',
+    'echo "Run the following command to access the cluster (minikube-orchestrator) using kubectl:"',
+    'echo "export KUBECONFIG=$PWD/kubeconfigs/minikube-orchestrator"',
+]
+
+[tasks."destroy:minikube:environment"]
+description = "Delete the local environment Minikube cluster and its exported kubeconfig"
+dir = "{{config_root}}/clusters/minikube"
+run = [
+    "KUBECONFIG=kubeconfigs/minikube-environment minikube delete -p minikube-environment",
+    "rm -f kubeconfigs/minikube-environment",
+]
+
+[tasks."destroy:minikube:orchestrator"]
+description = "Delete the local orchestrator Minikube cluster and its exported kubeconfig"
+dir = "{{config_root}}/clusters/minikube"
+run = [
+    "KUBECONFIG=kubeconfigs/minikube-orchestrator minikube delete -p minikube-orchestrator",
+    "rm -f kubeconfigs/minikube-orchestrator",
+]
+
+[tasks."run:minikube:tunnel"]
+description = "Run the Minikube tunnel in the foreground to allocate Load Balancer IP addresses"
+run = "minikube tunnel -p minikube-environment"
+
+[tasks."test:integration:minikube"]
+description = "Run integration tests against the Minikube cluster"
+run = "uv run --group dev pytest --integration -m integration -v tests/integration/minikube"

@@ -1,13 +1,11 @@
 """Shared fixtures and markers for ITBench integration tests.
 
 Integration tests are marked with ``@pytest.mark.integration`` and require a
-live Kind cluster with the full ITBench tools stack deployed.  They are
-**skipped** by default when ``--integration`` is not passed to pytest so that
-the normal unit-test run stays fast and cluster-free.
+live Kubernetes cluster.  They are **skipped** by default when ``--integration``
+is not passed to pytest so that the normal unit-test run stays fast and cluster-free.
 
 Prerequisites (handled by the CI workflow or the developer):
 - A reachable kubeconfig path supplied via the ``KUBECONFIG`` env var.
-- The tools stack already deployed (``itbench deploy environment --only tools``).
 
 Fixtures:
   kubeconfig  -- path string from ``KUBECONFIG``; skips entire test if unset.
@@ -24,7 +22,7 @@ from click.testing import CliRunner
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
-        "integration: marks tests as integration tests (require a live Kind cluster)",
+        "integration: marks tests as integration tests (require a live Kubernetes cluster)",
     )
 
 
@@ -43,7 +41,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "--integration",
         action="store_true",
         default=False,
-        help="Run integration tests against a live Kind cluster.",
+        help="Run integration tests against a live Kubernetes cluster.",
     )
 
 
