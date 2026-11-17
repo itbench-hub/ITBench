@@ -173,12 +173,11 @@ The Kind integration tests live in [`tests/integration/kind`](../../tests/integr
 
 - A running cluster, with `KUBECONFIG` exported.
 - Cloud Provider Kind running in another terminal (`test_load_balancers.py`).
-- The tools stack deployed with `uv run itbench deploy environment --only tools` (`test_agent_access.py`).
 
 Run them with:
 
 ```shell
-uv run --group dev pytest --integration -m integration -v tests/integration/kind
+mise -E kind run test:integration:kind
 ```
 
 ## Troubleshooting

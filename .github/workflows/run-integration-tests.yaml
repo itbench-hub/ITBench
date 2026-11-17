@@ -8,6 +8,7 @@ on:
       - components/recorders/**
       - components/telemetry/**
       - clusters/kind/**
+      - clusters/minikube/**
       - mise*.toml
       - project/manage_environment.yaml
       - project/roles/applications/tasks/install.yaml
@@ -91,20 +92,68 @@ jobs:
       - name: Create Kind cluster
         run: |
           mise run create:kind:environment
-      - name: Run Cloud Provider
-        run: |
-          mise run run:kind:provider &
-          sleep 10
-      - name: Deploy tools stack
-        run: uv run itbench deploy environment --only tools
       - name: Run CLI integration tests
-        run: uv run --group dev pytest --integration -m integration -v tests/integration/
+        run: mise run test:integration:cli
         env:
           ITBENCH_PLATFORM: kubernetes
-      - name: Undeploy tools stack
-        if: always()
-        run: uv run itbench undeploy environment --yes
       - name: Destroy Kind cluster
         if: always()
         run: |
           mise run destroy:kind:environment
+
+  kind:
+    name: Kind Integration Tests
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          version: 2026.11.7
+      - name: Install project dependencies
+        run: |
+          mise run install:dev
+      - name: Create Kind cluster
+        run: |
+          mise run create:kind:environment
+      - name: Run Cloud Provider
+        run: |
+          mise run run:kind:provider &
+          sleep 10
+      - name: Run Kind integration tests
+        run: mise run test:integration:kind
+        env:
+          ITBENCH_PLATFORM: kubernetes
+      - name: Destroy Kind cluster
+        if: always()
+        run: |
+          mise run destroy:kind:environment
+
+  minikube:
+    name: Minikube Integration Tests
+    runs-on: ubuntu-26.04
+    env:
+      KUBECONFIG: ${{ github.workspace }}/clusters/minikube/kubeconfigs/minikube-environment
+      MISE_ENV: minikube
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          version: 2026.11.7
+      - name: Install project dependencies
+        run: |
+          mise run install:dev
+      - name: Create Minikube cluster
+        run: |
+          mise run create:minikube:environment
+      - name: Start Minikube tunnel
+        run: |
+          mise run run:minikube:tunnel &
+          sleep 10
+      - name: Run Minikube integration tests
+        run: mise run test:integration:minikube
+        env:
+          ITBENCH_PLATFORM: kubernetes
+      - name: Destroy Minikube cluster
+        if: always()
+        run: |
+          mise run destroy:minikube:environment

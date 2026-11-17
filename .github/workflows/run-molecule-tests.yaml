@@ -5,11 +5,9 @@ on:
     branches:
       - main
     paths:
-      - clusters/minikube/**
       - project/roles/agent/**
       - project/roles/faults/**
       - project/roles/waiters/**
-      - '!clusters/minikube/README.md'
       - '!project/roles/faults/tasks/generate_files.yaml'
       - '!project/roles/waiters/tasks/generate_files.yaml'
 
@@ -18,39 +16,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  clusters-minikube:
-    name: ITBench Minikube Tests
-    runs-on: ubuntu-26.04
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
-        with:
-          version: 2026.11.7
-      - uses: medyagh/setup-minikube@v0.0.21
-        with:
-          cache: false
-          cni: cilium
-          container-runtime: containerd
-          driver: docker
-          kubernetes-version: v1.35.0
-          minikube-version: 1.38.1
-          start: false
-      - name: Install project dependencies
-        run: |
-          mise run install:dev
-      - name: Create Minikube cluster
-        run: |
-          make -C clusters/minikube create-simple-cluster
-      - name: Start Minikube tunnel
-        run: |
-          make -C clusters/minikube start-simple-tunnel &
-          sleep 10
-      - name: Run Molecule tests
-        run: |
-          make -C clusters/minikube test-molecule
-      - name: Destroy Minikube cluster
-        run: |
-          make -C clusters/minikube destroy-simple-cluster
   sre-faults:
     name: SRE Fault Injection Tests
     runs-on: ubuntu-26.04
