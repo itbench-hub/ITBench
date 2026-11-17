@@ -1,3 +1,46 @@
 [tools]
 "aqua:kubectl" = "1.37.2"
+"aqua:lefthook" = "2.2.2"
 go = "1.27.4"
+
+[tasks."install:lefthook"]
+description = "Install the pre-commit, commit-msg and pre-push git hooks"
+run = "lefthook install"
+
+[tasks."lint:go:clickhouse-recorder"]
+description = "Vet and format-check the ClickHouse recorder"
+dir = "{{config_root}}/components/recorders/clickhouse"
+run = ["go vet ./...", 'test -z "$(gofmt -l .)"']
+
+[tasks."lint:go:prometheus-recorder"]
+description = "Vet and format-check the Prometheus recorder"
+dir = "{{config_root}}/components/recorders/prometheus"
+run = ["go vet ./...", 'test -z "$(gofmt -l .)"']
+
+[tasks."lint:go:topology"]
+description = "Vet and format-check the topology service"
+dir = "{{config_root}}/components/telemetry/topology"
+run = ["go vet ./...", 'test -z "$(gofmt -l .)"']
+
+[tasks."lint:go"]
+description = "Lint all Go modules"
+depends = ["lint:go:clickhouse-recorder", "lint:go:prometheus-recorder", "lint:go:topology"]
+
+[tasks."test:integration:clickhouse-recorder"]
+description = "Run the ClickHouse recorder integration tests"
+dir = "{{config_root}}/components/recorders/clickhouse"
+run = "go test -count=1 ./..."
+
+[tasks."test:integration:prometheus-recorder"]
+description = "Run the Prometheus recorder integration tests"
+dir = "{{config_root}}/components/recorders/prometheus"
+run = "go test -count=1 ./..."
+
+[tasks."test:integration:topology"]
+description = "Run the topology service integration tests"
+dir = "{{config_root}}/components/telemetry/topology"
+run = "go test -count=1 ./..."
+
+[tasks."test:integration"]
+description = "Run all Go module tests"
+depends = ["test:integration:clickhouse-recorder", "test:integration:prometheus-recorder", "test:integration:topology"]

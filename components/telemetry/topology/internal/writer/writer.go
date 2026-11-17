@@ -41,15 +41,15 @@ type EventBody struct {
 }
 
 type TopologyWriter struct {
-	conn             driver.Conn
-	builder          *builder.KubernetesGraphBuilder
-	state            map[string]map[string]any
-	lastNodes        map[string]model.Node
-	lastEdges        map[string]model.Edge
-	lastSeenTS       time.Time
-	pollInterval     time.Duration
-	batchSeq         uint64
-	minStartTS       time.Time
+	conn         driver.Conn
+	builder      *builder.KubernetesGraphBuilder
+	state        map[string]map[string]any
+	lastNodes    map[string]model.Node
+	lastEdges    map[string]model.Edge
+	lastSeenTS   time.Time
+	pollInterval time.Duration
+	batchSeq     uint64
+	minStartTS   time.Time
 }
 
 func NewTopologyWriter(conn driver.Conn, minStartTS time.Time, pollInterval time.Duration) *TopologyWriter {

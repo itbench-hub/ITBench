@@ -1,0 +1,48 @@
+pre-commit:
+  commands:
+    check-added-large-files:
+      run: uv run --no-sync check-added-large-files {staged_files}
+    check-merge-conflict:
+      run: uv run --no-sync check-merge-conflict {staged_files}
+    check-yaml:
+      glob: "*.{yaml,yml}"
+      run: uv run --no-sync check-yaml --allow-multiple-documents {staged_files}
+    detect-secrets:
+      run: uv run --no-sync detect-secrets-hook --baseline .secrets.baseline {staged_files}
+    end-of-file-fixer:
+      run: uv run --no-sync end-of-file-fixer {staged_files}
+      stage_fixed: true
+    ruff:
+      glob: "*.py"
+      run: uv run --no-sync ruff check {staged_files}
+    trailing-whitespace:
+      run: uv run --no-sync trailing-whitespace-fixer {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  commands:
+    commitizen:
+      run: uv run --no-sync cz check --allow-abort --commit-msg-file {1}
+
+pre-push:
+  commands:
+    commitizen-branch:
+      run: uv run --no-sync cz check --rev-range origin/HEAD..HEAD
+    lint-go-clickhouse-recorder:
+      glob:
+        - "components/recorders/clickhouse/go.{mod,sum}"
+        - "components/recorders/clickhouse/*.go"
+        - "components/recorders/clickhouse/**/*.go"
+      run: mise --env dev run lint:go:clickhouse-recorder
+    lint-go-prometheus-recorder:
+      glob:
+        - "components/recorders/prometheus/go.{mod,sum}"
+        - "components/recorders/prometheus/*.go"
+        - "components/recorders/prometheus/**/*.go"
+      run: mise --env dev run lint:go:prometheus-recorder
+    lint-go-topology:
+      glob:
+        - "components/telemetry/topology/go.{mod,sum}"
+        - "components/telemetry/topology/*.go"
+        - "components/telemetry/topology/**/*.go"
+      run: mise --env dev run lint:go:topology

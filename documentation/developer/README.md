@@ -26,7 +26,7 @@ mise run install:dev
 
 2. From the root directory of this repository, run the following command:
 ```shell
-mise run install:precommit:hooks
+mise --env dev run install:lefthook
 ```
 
 ## Next Steps
