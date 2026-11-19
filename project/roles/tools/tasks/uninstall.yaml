@@ -5,12 +5,12 @@
 
 - name: Import Kubernetes Gateway uninstallation tasks
   ansible.builtin.import_tasks:
-    file: uninstall_kubernetes_gateway.yaml
+    file: uninstall_kubernetes_gateway_controller.yaml
 
 - name: Uninstall OpenCost Helm release
   kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_opencost }}"
-    release_namespace: "{{ tools_namespace_opencost }}"
+    release_name: "{{ helm_release_opencost.name }}"
+    release_namespace: "{{ helm_release_opencost.namespace }}"
     release_state: absent
     wait: true
 
@@ -28,8 +28,8 @@
 
 - name: Uninstall Kubernetes Metrics Server Helm release
   kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_kubernetes_metrics_server }}"
-    release_namespace: "{{ tools_namespace_kubernetes_metrics_server }}"
+    release_name: "{{ helm_release_kubernetes_metrics_server.name }}"
+    release_namespace: "{{ helm_release_kubernetes_metrics_server.namespace }}"
     release_state: absent
     wait: true
   when:
@@ -37,8 +37,8 @@
 
 - name: Uninstall cert-manager Helm release
   kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_cert_manager }}"
-    release_namespace: "{{ tools_itbench_namespace }}"
+    release_name: "{{ helm_release_cert_manager.name }}"
+    release_namespace: "{{ itbench_namespaces.system }}"
     release_state: absent
     wait: true
   when:
@@ -55,8 +55,8 @@
 
 - name: Uninstall Kyverno Helm release
   kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_kyverno }}"
-    release_namespace: "{{ tools_namespace_kyverno }}"
+    release_name: "{{ helm_release_kyverno.name }}"
+    release_namespace: "{{ helm_release_kyverno.namespace }}"
     release_state: absent
     wait: true
 

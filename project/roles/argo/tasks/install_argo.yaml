@@ -16,9 +16,9 @@
 
 - name: Install Argo Workflows
   kubernetes.core.helm:
-    chart_ref: "oci://ghcr.io/argoproj/argo-helm/argo-workflows"
-    chart_version: "2.0.16"
-    release_name: "{{ argo_helm_release_argo_workflows }}"
+    chart_ref: "{{ helm_chart_argo_workflows.reference }}"
+    chart_version: "{{ helm_chart_argo_workflows.version }}"
+    release_name: "{{ helm_release_argo_workflows.name }}"
     release_namespace: "{{ argo_namespace }}"
     release_state: present
     release_values:
@@ -30,35 +30,25 @@
     timeout: 10m0s
     wait: true
 
-- name: Install Argo Events
-  kubernetes.core.helm:
-    chart_ref: "oci://ghcr.io/argoproj/argo-helm/argo-events"
-    chart_version: "2.4.27"
-    release_name: "{{ argo_helm_release_argo_events }}"
-    release_namespace: "{{ argo_namespace }}"
-    release_state: present
-    timeout: 10m0s
-    wait: true
-
 - name: Create HTTPRoute for Argo Workflows
   kubernetes.core.k8s:
     resource_definition:
       apiVersion: gateway.networking.k8s.io/v1
       kind: HTTPRoute
       metadata:
-        name: "{{ argo_helm_release_argo_workflows }}"
+        name: "{{ helm_release_argo_workflows.name }}"
         namespace: "{{ argo_namespace }}"
       spec:
         parentRefs:
-          - name: "{{ tools_itbench_gateway_kubernetes }}"
-            namespace: "{{ tools_namespace_kubernetes_gateway_system }}"
+          - name: "{{ itbench_kubernetes_gateways.argo.name }}"
+            namespace: "{{ itbench_kubernetes_gateways.argo.namespace }}"
         rules:
           - backendRefs:
-              - name: "{{ argo_helm_release_argo_workflows }}-server"
+              - name: "{{ helm_release_argo_workflows.name }}-server"
                 port: 2746
             filters:
               - responseHeaderModifier:
-                  add: "{{ tools_response_headers_http }}"
+                  add: "{{ argo_response_headers_http }}"
                 type: ResponseHeaderModifier
             matches:
               - path:

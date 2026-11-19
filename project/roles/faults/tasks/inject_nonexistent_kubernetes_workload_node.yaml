@@ -9,7 +9,7 @@
 
 - name: Select an available worker node randomly
   ansible.builtin.set_fact:
-    faults_node: "{{ faults_sandbox_nodes | ansible.builtin.random }}"
+    faults_node: "{{ faults_sandbox_nodes | ansible.builtin.random(seed=random_fault_injection_seed) }}"
 
 - name: Update workload node selector
   kubernetes.core.k8s:
@@ -37,5 +37,5 @@
       {{
         range(1, (faults_node.metadata.name | ansible.builtin.length)) |
         ansible.builtin.list |
-        ansible.builtin.random
+        ansible.builtin.random(seed=random_fault_injection_seed)
       }}

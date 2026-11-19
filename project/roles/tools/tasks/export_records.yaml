@@ -17,7 +17,7 @@
               "itbench.io/ansible-role": tools
               "itbench.io/layer": data
             name: itbench-aws-credentials
-            namespace: "{{ tools_itbench_namespace_observability }}"
+            namespace: "{{ itbench_namespaces.observability }}"
           stringData:
             AWS_ACCESS_KEY_ID: "{{ tools_storage_s3_username }}"
             AWS_ENDPOINT_URL_S3: "{{ tools_storage_s3_endpoint }}"
@@ -36,7 +36,7 @@
               "itbench.io/ansible-role": tools
               "itbench.io/layer": data
             name: "{{ recorder_persistent_volume_claim }}-s3-exporter"
-            namespace: "{{ tools_itbench_namespace_observability }}"
+            namespace: "{{ itbench_namespaces.observability }}"
           spec:
             backoffLimit: 3
             template:
@@ -75,7 +75,7 @@
                     envFrom:
                       - secretRef:
                           name: itbench-aws-credentials
-                    image: public.ecr.aws/aws-cli/aws-cli:2.40.4@sha256:eaf444b45380050f920ab07492754aa76223dd90234e51c1f92c2e9391b5ee6b
+                    image: "{{ container_image_aws_cli_aws_cli }}"
                     name: exporter
                     resources:
                       limits:
@@ -136,7 +136,7 @@
               "itbench.io/ansible-role": tools
               "itbench.io/layer": data
             name: "{{ recorder_persistent_volume_claim }}-exporter"
-            namespace: "{{ tools_itbench_namespace_observability }}"
+            namespace: "{{ itbench_namespaces.observability }}"
           spec:
             containers:
               - args:
@@ -144,7 +144,7 @@
                   - "sleep infinity"
                 command:
                   - /bin/sh
-                image: registry.access.redhat.com/ubi10/ubi@sha256:73ea54bfbfb586075bd3d45df6483a7f68875233c8cc7cebcf9b2bb42306c308
+                image: "{{ container_image_ubi10_ubi }}"
                 name: exporter
                 resources:
                   limits:
@@ -179,7 +179,7 @@
     - name: Copy records from pod
       kubernetes.core.k8s_cp:
         local_path: "{{ tools_local_directory.path }}"
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
         pod: "{{ recorder_persistent_volume_claim }}-exporter"
         remote_path: /opt/app-root/src/records
         state: from_pod
@@ -192,6 +192,6 @@
           kind: Pod
           metadata:
             name: "{{ recorder_persistent_volume_claim }}-exporter"
-            namespace: "{{ tools_itbench_namespace_observability }}"
+            namespace: "{{ itbench_namespaces.observability }}"
         state: absent
         wait: true

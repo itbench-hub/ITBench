@@ -32,11 +32,13 @@ def _application_choices() -> list[tuple[str, str]]:
     ]
 
 # Which subsystems each ``--only`` value deploys, in order. Applications and recorders both need the tools.
+# Agents run right after the tools and applications, because they patch what those install.
 _STEPS: dict[str | None, tuple[str, ...]] = {
-    None: ("tools", "applications", "recorders"),
+    None: ("tools", "applications", "agents", "recorders"),
     "tools": ("tools",),
     "applications": ("tools", "applications"),
     "recorders": ("tools", "recorders"),
+    "agents": ("tools", "applications", "agents"),
 }
 
 
@@ -168,6 +170,7 @@ def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | Non
 
     tools_vars: dict[str, Any] = {}
     applications_vars: dict[str, Any] = {}
+    agents_vars: dict[str, Any] = {}
 
     if scenario_id is not None:
         known = known_scenario_ids(repository.scenarios)
@@ -182,6 +185,8 @@ def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | Non
         tools_vars = {k: v for k, v in scenario_vars.items() if k in _TOOLS_VARS}
         if "applications" in steps:
             applications_vars = {k: v for k, v in scenario_vars.items() if k.startswith("applications_")}
+        if "agents" in steps:
+            agents_vars = {k: v for k, v in scenario_vars.items() if k.startswith("agents_")}
     else:
         tools_vars = _tools_extra_vars_from_wizard()
         if "applications" in steps:
@@ -190,8 +195,10 @@ def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | Non
     environment_vars = {
         **tools_vars,
         **applications_vars,
+        **agents_vars,
         "environment_tool_management_enabled": True,
         "environment_application_management_enabled": "applications" in steps,
+        "environment_agent_management_enabled": "agents" in steps,
         "environment_recorder_management_enabled": "recorders" in steps,
     }
 

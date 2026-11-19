@@ -2,6 +2,10 @@
 "aqua:kind" = "0.33.0"
 "aqua:kubernetes-sigs/cloud-provider-kind" = "0.12.0"
 
+[env]
+# renovate: datasource=docker depName=quay.io/cilium/charts/cilium
+CILIUM_VERSION = "1.20.4"
+
 [tasks."create:kind:environment"]
 description = "Create the local environment Kind cluster and export its kubeconfig"
 dir = "{{config_root}}/clusters/kind"
@@ -9,6 +13,7 @@ run = [
     "uv run itbench check resources localhost --only environment",
     "mkdir -p kubeconfigs",
     "kind create cluster --config configs/environment.yaml --kubeconfig kubeconfigs/kind-environment",
+    "helm install cilium oci://quay.io/cilium/charts/cilium --version $CILIUM_VERSION --namespace kube-system --set ipam.mode=kubernetes",
     "uv run python scripts/approve_kubelet_csrs.py kubeconfigs/kind-environment",
     'echo "Run the following command to access the cluster (kind-environment) using kubectl:"',
     'echo "export KUBECONFIG=$PWD/kubeconfigs/kind-environment"',
@@ -21,6 +26,7 @@ run = [
     "uv run itbench check resources localhost --only orchestrator",
     "mkdir -p kubeconfigs",
     "kind create cluster --config configs/orchestrator.yaml --kubeconfig kubeconfigs/kind-orchestrator",
+    "helm install cilium oci://quay.io/cilium/charts/cilium --version $CILIUM_VERSION --namespace kube-system --set ipam.mode=kubernetes",
     "uv run python scripts/approve_kubelet_csrs.py kubeconfigs/kind-orchestrator",
     'echo "Run the following command to access the cluster (kind-orchestrator) using kubectl:"',
     'echo "export KUBECONFIG=$PWD/kubeconfigs/kind-orchestrator"',
@@ -30,6 +36,7 @@ run = [
 description = "Delete the local environment Kind cluster and its exported kubeconfig"
 dir = "{{config_root}}/clusters/kind"
 run = [
+    "helm uninstall cilium --namespace kube-system",
     "kind delete cluster --name kind-environment --kubeconfig kubeconfigs/kind-environment",
     "rm -f kubeconfigs/kind-environment",
 ]
@@ -38,6 +45,7 @@ run = [
 description = "Delete the local orchestrator Kind cluster and its exported kubeconfig"
 dir = "{{config_root}}/clusters/kind"
 run = [
+    "helm uninstall cilium --namespace kube-system",
     "kind delete cluster --name kind-orchestrator --kubeconfig kubeconfigs/kind-orchestrator",
     "rm -f kubeconfigs/kind-orchestrator",
 ]

@@ -18,21 +18,24 @@
           }}
         name: "{{ itbench_namespace.name }}"
   loop:
-    - name: "{{ tools_namespace_kyverno }}"
+    - name: "{{ helm_release_kyverno.namespace }}"
       labels:
         "itbench.io/layer": governance
-    - name: "{{ tools_itbench_namespace }}"
+    - name: "{{ itbench_namespaces.system }}"
       labels:
         "itbench.io/layer": infrastructure
-    - name: "{{ tools_itbench_namespace_agents }}"
+    - name: "{{ itbench_namespaces.agents }}"
       labels:
         "itbench.io/gateway-access": shared
         "itbench.io/layer": ai-integration
-    - name: "{{ tools_itbench_namespace_observability }}"
+    - name: "{{ itbench_namespaces.observability }}"
       labels:
         "itbench.io/gateway-access": shared
         "itbench.io/layer": observability
-    - name: "{{ tools_namespace_opencost }}"
+    - name: "{{ itbench_namespaces.operators }}"
+      labels:
+        "itbench.io/layer": infrastructure
+    - name: "{{ helm_release_opencost.namespace }}"
       labels:
         "itbench.io/gateway-access": shared
         "itbench.io/layer": observability
@@ -43,6 +46,10 @@
 - name: Import Custom Resource Definitions installation tasks
   ansible.builtin.import_tasks:
     file: install_custom_resource_definitions.yaml
+
+- name: Import Gateway installation tasks
+  ansible.builtin.import_tasks:
+    file: install_kubernetes_gateway_controller.yaml
 
 - name: Import cert-manager installation tasks
   ansible.builtin.import_tasks:
@@ -57,8 +64,8 @@
     chart_ref: metrics-server
     chart_repo_url: "https://kubernetes-sigs.github.io/metrics-server/"
     chart_version: "3.14.0"
-    release_name: "{{ tools_helm_release_kubernetes_metrics_server }}"
-    release_namespace: "{{ tools_namespace_kubernetes_metrics_server }}"
+    release_name: "{{ helm_release_kubernetes_metrics_server.name }}"
+    release_namespace: "{{ helm_release_kubernetes_metrics_server.namespace }}"
     release_state: present
     release_values:
       apiService:
@@ -89,14 +96,6 @@
     - name: Import OpenCost installation tasks
       ansible.builtin.import_tasks:
         file: install_opencost.yaml
-
-- name: Install Gateway tools
-  when:
-    - tools_gateway_enabled
-  block:
-    - name: Import Gateway installation tasks
-      ansible.builtin.import_tasks:
-        file: install_kubernetes_gateway.yaml
 
 - name: Install service mesh tools
   when:

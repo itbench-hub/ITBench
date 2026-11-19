@@ -14,15 +14,15 @@
               "itbench.io/inject": "false"
               "itbench.io/layer": networking
               "itbench.io/monitor": "true"
-            name: "{{ tools_namespace_istio }}"
+            name: "{{ helm_release_istio_base.namespace }}"
         state: present
 
     - name: Install Istio Base (CRDs)
       kubernetes.core.helm:
-        chart_ref: "oci://ghcr.io/istio/release/charts/base"
-        chart_version: "1.32.0"
-        release_name: "{{ tools_helm_release_istio_base }}"
-        release_namespace: "{{ tools_namespace_istio }}"
+        chart_ref: "{{ helm_chart_istio_base.reference }}"
+        chart_version: "{{ helm_chart_istio_base.version }}"
+        release_name: "{{ helm_release_istio_base.name }}"
+        release_namespace: "{{ helm_release_istio_base.namespace }}"
         release_state: present
         release_values:
           profile: ambient
@@ -30,9 +30,9 @@
 
     - name: Install Istiod Control Plane
       kubernetes.core.helm:
-        chart_ref: "oci://ghcr.io/istio/release/charts/istiod"
-        chart_version: "1.32.0"
-        release_name: "{{ tools_helm_release_istio_istiod }}"
+        chart_ref: "{{ helm_chart_istio_istiod.reference }}"
+        chart_version: "{{ helm_chart_istio_istiod.version }}"
+        release_name: "{{ helm_release_istio_istiod.name }}"
         release_namespace: "{{ tools_namespace_istio_istiod }}"
         release_state: present
         release_values:
@@ -42,20 +42,20 @@
             extensionProviders:
               - name: jaeger
                 opentelemetry:
-                  port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_traces }}"
-                  service: "{{ tools_itbench_fqdn_gateway_opentelemetry_infrastructure }}"
+                  port: "{{ itbench_opentelemetry_gateways.infrastructure.ports.traces }}"
+                  service: "{{ _fqdn_itbench_opentelemetry_gateway_infrastructure }}"
               - envoyOtelAls:
-                  port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_istio }}"
-                  service: "{{ tools_itbench_fqdn_gateway_opentelemetry_infrastructure }}"
+                  port: "{{ itbench_opentelemetry_gateways.infrastructure.ports.istio }}"
+                  service: "{{ _fqdn_itbench_opentelemetry_gateway_infrastructure }}"
                 name: opentelemetry
           profile: ambient
         wait: true
 
     - name: Install Istio CNI Node Agent
       kubernetes.core.helm:
-        chart_ref: "oci://ghcr.io/istio/release/charts/cni"
-        chart_version: "1.32.0"
-        release_name: "{{ tools_helm_release_istio_cni }}"
+        chart_ref: "{{ helm_chart_istio_cni.reference }}"
+        chart_version: "{{ helm_chart_istio_cni.version }}"
+        release_name: "{{ helm_release_istio_cni.name }}"
         release_namespace: "{{ tools_namespace_istio_cni }}"
         release_state: present
         release_values:
@@ -65,9 +65,9 @@
 
     - name: Install Istio ZTunnel
       kubernetes.core.helm:
-        chart_ref: "oci://ghcr.io/istio/release/charts/ztunnel"
-        chart_version: "1.32.0"
-        release_name: "{{ tools_helm_release_istio_ztunnel }}"
+        chart_ref: "{{ helm_chart_istio_ztunnel.reference }}"
+        chart_version: "{{ helm_chart_istio_ztunnel.version }}"
+        release_name: "{{ helm_release_istio_ztunnel.name }}"
         release_namespace: "{{ tools_namespace_istio_ztunnel }}"
         release_state: present
         release_values:
@@ -75,9 +75,6 @@
         wait: true
 
 - name: Install Service Mesh on OpenShift
-  vars:
-    operator_namespace: openshift-operators
-    subscription: servicemeshoperator3
   when:
     - tools_cluster.platform == "openshift"
   block:
@@ -116,14 +113,14 @@
             labels:
               "itbench.io/ansible-role": tools
               "itbench.io/layer": networking
-            name: "{{ subscription }}"
-            namespace: "{{ operator_namespace }}"
+            name: "{{ openshift_service_mesh3_subscription.name }}"
+            namespace: "{{ openshift_service_mesh3_subscription.namespace }}"
           spec:
-            channel: stable
-            installPlanApproval: Automatic
-            name: "{{ subscription }}"
-            source: redhat-operators
-            sourceNamespace: openshift-marketplace
+            channel: "{{ openshift_service_mesh3_subscription.channel }}"
+            installPlanApproval: "{{ openshift_operator_subscription_install_plan_approval }}"
+            name: "{{ openshift_service_mesh3_subscription.name }}"
+            source: "{{ openshift_operator_subscription_source }}"
+            sourceNamespace: "{{ openshift_operator_subscription_source_namespace }}"
         state: present
         wait: true
         wait_condition:
@@ -140,7 +137,7 @@
             labels:
               "itbench.io/ansible-role": tools
               "itbench.io/layer": networking
-            name: default
+            name: "{{ openshift_service_mesh3_istio.name }}"
           spec:
             namespace: "{{ tools_namespace_istio_istiod }}"
             profile: ambient
@@ -164,7 +161,7 @@
             labels:
               "itbench.io/ansible-role": tools
               "itbench.io/layer": networking
-            name: default
+            name: "{{ openshift_service_mesh3_istio_cni.name }}"
           spec:
             namespace: "{{ tools_namespace_istio_cni }}"
             profile: ambient
@@ -182,7 +179,7 @@
             labels:
               "itbench.io/ansible-role": tools
               "itbench.io/layer": networking
-            name: default
+            name: "{{ openshift_service_mesh3_istio_ztunnel.name }}"
           spec:
             namespace: "{{ tools_namespace_istio_ztunnel }}"
             profile: ambient
@@ -214,7 +211,7 @@
       apiVersion: monitoring.coreos.com/v1
       kind: ServiceMonitor
       metadata:
-        name: "{{ tools_helm_release_istio_istiod }}"
+        name: "{{ helm_release_istio_istiod.name }}"
         namespace: "{{ tools_namespace_istio_istiod }}"
       spec:
         endpoints:
@@ -222,7 +219,7 @@
             port: http-monitoring
         selector:
           matchLabels:
-            "app.kubernetes.io/name": "{{ tools_helm_release_istio_istiod }}"
+            "app.kubernetes.io/name": "{{ helm_release_istio_istiod.name }}"
             "app.kubernetes.io/part-of": istio
     state: present
 
@@ -232,7 +229,7 @@
       apiVersion: monitoring.coreos.com/v1
       kind: PodMonitor
       metadata:
-        name: "{{ tools_helm_release_istio_cni }}"
+        name: "{{ helm_release_istio_cni.name }}"
         namespace: "{{ tools_namespace_istio_cni }}"
       spec:
         podMetricsEndpoints:
@@ -240,7 +237,7 @@
             port: metrics
         selector:
           matchLabels:
-            "app.kubernetes.io/name": "{{ tools_helm_release_istio_cni }}"
+            "app.kubernetes.io/name": "{{ helm_release_istio_cni.name }}"
             "app.kubernetes.io/part-of": istio
     state: present
 
@@ -250,7 +247,7 @@
       apiVersion: monitoring.coreos.com/v1
       kind: PodMonitor
       metadata:
-        name: "{{ tools_helm_release_istio_ztunnel }}"
+        name: "{{ helm_release_istio_ztunnel.name }}"
         namespace: "{{ tools_namespace_istio_ztunnel }}"
       spec:
         podMetricsEndpoints:
@@ -258,6 +255,6 @@
             port: ztunnel-stats
         selector:
           matchLabels:
-            "app.kubernetes.io/name": "{{ tools_helm_release_istio_ztunnel }}"
+            "app.kubernetes.io/name": "{{ helm_release_istio_ztunnel.name }}"
             "app.kubernetes.io/part-of": istio
     state: present

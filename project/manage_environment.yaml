@@ -40,6 +40,18 @@
       when:
         - environment_application_management_enabled | ansible.builtin.default(false)
 
+    - name: Import agents role
+      ansible.builtin.import_role:
+        name: agents
+      module_defaults:
+        group/kubernetes.core.helm:
+          binary_path: "{{ mise_helm_path }}"
+      vars:
+        agents_cluster:
+          platform: "{{ cluster_platform }}"
+      when:
+        - environment_agent_management_enabled | ansible.builtin.default(false)
+
     - name: Import tools role (recorders)
       ansible.builtin.import_role:
         name: tools

@@ -274,6 +274,7 @@ def test_deploy_environment_full_success(tmp_path: Path) -> None:
             "applications_opentelemetry_demo_enabled": False,
             "environment_tool_management_enabled": True,
             "environment_application_management_enabled": True,
+            "environment_agent_management_enabled": True,
             "environment_recorder_management_enabled": True,
         },
         tags=["install"],
@@ -302,6 +303,7 @@ def test_deploy_environment_only_tools(tmp_path: Path) -> None:
     assert mock_run.call_args.kwargs["playbook"] == "manage_environment.yaml"
     assert mock_run.call_args.kwargs["extra_vars"]["environment_tool_management_enabled"] is True
     assert mock_run.call_args.kwargs["extra_vars"]["environment_application_management_enabled"] is False
+    assert mock_run.call_args.kwargs["extra_vars"]["environment_agent_management_enabled"] is False
 
 
 def test_deploy_environment_only_applications(tmp_path: Path) -> None:
@@ -325,6 +327,7 @@ def test_deploy_environment_only_applications(tmp_path: Path) -> None:
     assert mock_run.call_args.kwargs["playbook"] == "manage_environment.yaml"
     assert mock_run.call_args.kwargs["extra_vars"]["environment_tool_management_enabled"] is True
     assert mock_run.call_args.kwargs["extra_vars"]["environment_application_management_enabled"] is True
+    assert mock_run.call_args.kwargs["extra_vars"]["environment_agent_management_enabled"] is False
 
 
 def test_deploy_environment_only_recorders(tmp_path: Path) -> None:
@@ -347,6 +350,7 @@ def test_deploy_environment_only_recorders(tmp_path: Path) -> None:
     assert mock_run.call_args.kwargs["playbook"] == "manage_environment.yaml"
     assert extra_vars["environment_tool_management_enabled"] is True
     assert extra_vars["environment_application_management_enabled"] is False
+    assert extra_vars["environment_agent_management_enabled"] is False
     assert extra_vars["environment_recorder_management_enabled"] is True
 
 
@@ -383,6 +387,36 @@ def test_deploy_environment_with_scenario(tmp_path: Path) -> None:
     assert extra_vars["environment_tool_management_enabled"] is True
     assert extra_vars["environment_application_management_enabled"] is True
     assert extra_vars["environment_recorder_management_enabled"] is True
+
+
+def test_deploy_environment_with_scenario_forwards_agents_variables(tmp_path: Path) -> None:
+    runner = CliRunner()
+    scenario_dir = tmp_path / "library" / "scenarios" / "5"
+    scenario_dir.mkdir(parents=True)
+    (scenario_dir / "scenario.yaml").write_text("{}", encoding="utf-8")
+    extra_vars = {
+        "tools_gateway_enabled": True,
+        "agents_diagnosis_enabled": True,
+        "agents_remediation_enabled": False,
+    }
+    (scenario_dir / "extra_variables.yaml").write_text(yaml.dump(extra_vars), encoding="utf-8")
+
+    with (
+        patch.dict("os.environ", {"ITBENCH_LIBRARY_PATH": str(tmp_path / "library")}),
+        patch("itbench.cli.playbook.run_playbook") as mock_run,
+    ):
+        mock_run.return_value = MagicMock()
+
+        result = runner.invoke(
+            deploy_environment,
+            ["--scenario", "5", "--kubeconfig", "/kube.conf"],
+        )
+
+    assert result.exit_code == 0
+    extra_vars = mock_run.call_args.kwargs["extra_vars"]
+    assert extra_vars["agents_diagnosis_enabled"] is True
+    assert extra_vars["agents_remediation_enabled"] is False
+    assert extra_vars["environment_agent_management_enabled"] is True
 
 
 def test_deploy_environment_missing_scenario_suggests_close_matches(tmp_path: Path) -> None:

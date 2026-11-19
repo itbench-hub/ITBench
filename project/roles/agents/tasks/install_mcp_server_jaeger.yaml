@@ -1,0 +1,86 @@
+---
+- name: Install Jaeger MCP Server
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: opentelemetry.io/v1beta1
+      kind: OpenTelemetryCollector
+      metadata:
+        name: "{{ itbench_mcp_servers.jaeger.name }}"
+        namespace: "{{ itbench_mcp_servers.jaeger.namespace }}"
+      spec:
+        config:
+          exporters:
+            jaeger_storage_exporter:
+              trace_storage: traces_store
+          extensions:
+            jaeger_query:
+              ai:
+                mcp: {}
+              storage:
+                traces: traces_store
+            jaeger_storage:
+              backends:
+                traces_store:
+                  clickhouse:
+                    addresses:
+                      - "{{ fqdn_itbench_clickhouse_database_observability.tcp }}"
+                    auth:
+                      basic:
+                        password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
+                        username: ${env:CLICKHOUSE_USER}
+                    create_schema: false
+                    table_engine:
+                      merge_tree: {}
+          processors:
+            batch:
+              send_batch_size: 8192
+              timeout: 1s
+          service:
+            extensions:
+              - jaeger_storage
+              - jaeger_query
+        envFrom:
+          - secretRef:
+              name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.agent.name }}"
+        image: "{{ container_image_jaegertracing_jaeger }}"
+        mode: deployment
+        observability:
+          metrics:
+            enableMetrics: true
+        ports:
+          - name: query-http
+            port: "{{ itbench_opentelemetry_collectors.jaeger.ports.querier }}"
+    state: present
+    wait: true
+    wait_condition:
+      reason: Reconciled
+      status: "True"
+      type: Ready
+
+- name: Install HTTPRoute for Jaeger MCP
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: HTTPRoute
+      metadata:
+        name: "{{ itbench_mcp_servers.jaeger.name }}"
+        namespace: "{{ itbench_mcp_servers.jaeger.namespace }}"
+      spec:
+        parentRefs:
+          - name: "{{ itbench_kubernetes_gateways.mcp.name }}"
+            namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+        rules:
+          - matches:
+              - path:
+                  type: PathPrefix
+                  value: /mcp/jaeger
+            filters:
+              - type: URLRewrite
+                urlRewrite:
+                  path:
+                    type: ReplacePrefixMatch
+                    replacePrefixMatch: /api/ai/mcp/
+            backendRefs:
+              - name: "{{ itbench_opentelemetry_collectors.jaeger.name ~ '-collector' }}"
+                port: "{{ itbench_opentelemetry_collectors.jaeger.ports.querier }}"
+    state: present

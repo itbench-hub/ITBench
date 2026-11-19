@@ -9,7 +9,7 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: kubernetes-topology
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
     state: present
 
 - name: Create ClusterRole for topology collector
@@ -112,7 +112,7 @@
       subjects:
         - kind: ServiceAccount
           name: kubernetes-topology
-          namespace: "{{ tools_itbench_namespace_observability }}"
+          namespace: "{{ itbench_namespaces.observability }}"
     state: present
 
 - name: Retrieve Namespaces with record labels
@@ -133,12 +133,12 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: kubernetes-topology
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         config:
           exporters:
             otlp_grpc/kubernetes-events:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_infrastructure_kubernetes_events }}"
+              endpoint: "{{ fqdn_itbench_opentelemetry_gateway_infrastructure.kubernetes_events }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -150,7 +150,7 @@
               tls:
                 insecure: true
             otlp_grpc/kubernetes-infrastructure:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_infrastructure_kubernetes_infrastructure }}"
+              endpoint: "{{ fqdn_itbench_opentelemetry_gateway_infrastructure.kubernetes_infrastructure }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -162,7 +162,7 @@
               tls:
                 insecure: true
             otlp_grpc/kubernetes-topology:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_infrastructure_kubernetes_topology }}"
+              endpoint: "{{ fqdn_itbench_opentelemetry_gateway_infrastructure.kubernetes_topology }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -392,12 +392,12 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: itbench-recorder-istio-topology
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         config:
           exporters:
             otlp_grpc/kubernetes-topology:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_infrastructure_kubernetes_topology }}"
+              endpoint: "{{ fqdn_itbench_opentelemetry_gateway_infrastructure.kubernetes_topology }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -484,7 +484,7 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: itbench-topology-writer
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         replicas: 1
         selector:
@@ -502,14 +502,14 @@
             containers:
               - env:
                   - name: CLICKHOUSE_HOST
-                    value: "{{ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+                    value: "{{ fqdn_itbench_clickhouse_database_observability.tcp }}"
                   - name: RECORDING_START_TIMESTAMP
                     value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (tools_benchmark_duration_minutes * 60)) }}"
                   - name: POLL_INTERVAL_SECONDS
                     value: "2"
                 envFrom:
                   - secretRef:
-                      name: user-topology-credentials
+                      name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.topology.name }}"
                 image: quay.io/it-bench/topology-writer:1.0.0
                 imagePullPolicy: IfNotPresent
                 name: writer

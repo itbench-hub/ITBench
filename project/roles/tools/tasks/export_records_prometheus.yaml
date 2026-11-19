@@ -9,7 +9,7 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: itbench-prometheus-records
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         accessModes:
           - ReadWriteOnce
@@ -29,7 +29,7 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: itbench-prometheus-recorder
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
     state: present
 
 - name: Create ClusterRoleBinding for Prometheus recorder
@@ -49,7 +49,7 @@
       subjects:
         - kind: ServiceAccount
           name: itbench-prometheus-recorder
-          namespace: "{{ tools_itbench_namespace_observability }}"
+          namespace: "{{ itbench_namespaces.observability }}"
     state: present
 
 - name: Create PersistentVolumeClaim for Prometheus Recorder
@@ -62,7 +62,7 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: itbench-prometheus-recorder-records
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         accessModes:
           - ReadWriteOnce
@@ -82,7 +82,7 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: itbench-prometheus-recorder
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         template:
           spec:
@@ -91,7 +91,14 @@
                   - name: OUTPUT_DIR
                     value: /records
                   - name: PROMETHEUS_ENDPOINT
-                    value: "{{ tools_openshift_fqdn_thanos_querier if tools_cluster.platform == 'openshift' else kubernetes_fqdn_prometheus }}"
+                    value: >-
+                      {{
+                        (tools_cluster.platform == 'openshift') |
+                        ansible.builtin.ternary(
+                          fqdn_openshift_monitoring_thanos_querier,
+                          _fqdn_prometheus
+                        )
+                      }}
                   - name: RECORDING_START_TIMESTAMP
                     value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (tools_benchmark_duration_minutes * 60)) }}"
                   - name: RECORDING_END_TIMESTAMP
@@ -140,13 +147,13 @@
       type: Complete
     wait_timeout: 300
   vars:
-    kubernetes_fqdn_prometheus: >-
+    _fqdn_prometheus: >-
       {{
         "https://%s-prometheus.%s.svc.cluster.local:%i" |
         ansible.builtin.format(
-          tools_helm_release_kube_prometheus_stack,
-          tools_itbench_namespace_observability,
-          tools_itbench_prometheus_proxy_port
+          helm_release_kube_prometheus_stack.name,
+          tools_namespace_prometheus,
+          itbench_prometheus_proxy.ports.https
         )
       }}
 

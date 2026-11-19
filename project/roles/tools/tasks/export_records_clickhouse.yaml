@@ -9,7 +9,7 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: itbench-clickhouse-records
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         accessModes:
           - ReadWriteOnce
@@ -29,14 +29,14 @@
           "itbench.io/ansible-role": tools
           "itbench.io/layer": data
         name: itbench-clickhouse-recorder
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         template:
           spec:
             containers:
               - env:
                   - name: CLICKHOUSE_HOST
-                    value: "{{ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+                    value: "{{ fqdn_itbench_clickhouse_database_observability.tcp }}"
                   - name: NAMESPACES
                     value: >-
                       {{
@@ -54,7 +54,7 @@
                     value: "300"
                 envFrom:
                   - secretRef:
-                      name: user-recorder-credentials
+                      name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.recorder.name }}"
                 image: quay.io/it-bench/clickhouse-recorder:1.0.0
                 name: recorder
                 resources:

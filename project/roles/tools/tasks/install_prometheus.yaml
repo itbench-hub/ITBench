@@ -9,8 +9,8 @@
           apiVersion: cert-manager.io/v1
           kind: Issuer
           metadata:
-            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-issuer' }}"
-            namespace: "{{ tools_itbench_namespace_observability }}"
+            name: "{{ helm_release_kube_prometheus_stack.name ~ '-proxy-issuer' }}"
+            namespace: "{{ itbench_namespaces.observability }}"
           spec:
             selfSigned: {}
         state: present
@@ -21,24 +21,24 @@
           apiVersion: cert-manager.io/v1
           kind: Certificate
           metadata:
-            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus-proxy-tls' }}"
-            namespace: "{{ tools_itbench_namespace_observability }}"
+            name: "{{ helm_release_kube_prometheus_stack.name ~ '-prometheus-proxy-tls' }}"
+            namespace: "{{ itbench_namespaces.observability }}"
           spec:
             dnsNames:
-              - "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus' }}"
+              - "{{ helm_release_kube_prometheus_stack.name ~ '-prometheus' }}"
               - >-
                 {{
                     [
-                      tools_helm_release_kube_prometheus_stack ~ "-prometheus",
-                      tools_itbench_namespace_observability
+                      helm_release_kube_prometheus_stack.name ~ "-prometheus",
+                      itbench_namespaces.observability
                     ] |
                     ansible.builtin.join(".")
                 }}
               - >-
                 {{
                     [
-                      tools_helm_release_kube_prometheus_stack ~ "-prometheus",
-                      tools_itbench_namespace_observability,
+                      helm_release_kube_prometheus_stack.name ~ "-prometheus",
+                      itbench_namespaces.observability,
                       "svc",
                       "cluster",
                       "local"
@@ -48,13 +48,13 @@
             duration: 2160h
             isCA: false
             issuerRef:
-              name: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-issuer' }}"
+              name: "{{ helm_release_kube_prometheus_stack.name ~ '-proxy-issuer' }}"
               kind: Issuer
             privateKey:
               algorithm: RSA
               size: 2048
             renewBefore: 360h
-            secretName: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-cert' }}"
+            secretName: "{{ helm_release_kube_prometheus_stack.name ~ '-proxy-cert' }}"
             usages:
               - server auth
               - client auth
@@ -62,10 +62,10 @@
 
     - name: Install Prometheus Operator and Prometheus
       kubernetes.core.helm:
-        chart_ref: "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack"
-        chart_version: "93.3.1"
-        release_name: "{{ tools_helm_release_kube_prometheus_stack }}"
-        release_namespace: "{{ tools_itbench_namespace_observability }}"
+        chart_ref: "{{ helm_chart_kube_prometheus_stack.reference }}"
+        chart_version: "{{ helm_chart_kube_prometheus_stack.version }}"
+        release_name: "{{ helm_release_kube_prometheus_stack.name }}"
+        release_namespace: "{{ itbench_namespaces.observability }}"
         release_state: present
         release_values:
           alertmanager:
@@ -100,7 +100,7 @@
             prometheusSpec:
               containers:
                 - args:
-                    - "--secure-listen-address=0.0.0.0:{{ tools_itbench_prometheus_proxy_port }}"
+                    - "--secure-listen-address=0.0.0.0:{{ itbench_prometheus_proxy.ports.https }}"
                     - "--upstream=http://127.0.0.1:9090/"
                     - "--tls-cert-file=/etc/tls/proxy/tls.crt"
                     - "--tls-private-key-file=/etc/tls/proxy/tls.key"
@@ -108,7 +108,7 @@
                   image: ghcr.io/kube-rbac-proxy/kube-rbac-proxy:v0.23.1@sha256:f723251bdd90a806b5331b6e9f9287cc2832d3dd9f9479378cdbbddb9856724f
                   name: kube-rbac-proxy
                   ports:
-                    - containerPort: "{{ tools_itbench_prometheus_proxy_port }}"
+                    - containerPort: "{{ itbench_prometheus_proxy.ports.https }}"
                       name: http-proxy
                   volumeMounts:
                     - name: proxy-certs
@@ -131,50 +131,23 @@
               volumes:
                 - name: proxy-certs
                   secret:
-                    secretName: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-cert' }}"
+                    secretName: "{{ helm_release_kube_prometheus_stack.name ~ '-proxy-cert' }}"
             service:
               additionalPorts:
                 - name: http-proxy
-                  port: "{{ tools_itbench_prometheus_proxy_port }}"
-                  targetPort: "{{ tools_itbench_prometheus_proxy_port }}"
+                  port: "{{ itbench_prometheus_proxy.ports.https }}"
+                  targetPort: "{{ itbench_prometheus_proxy.ports.https }}"
               # NOTE: This is a workaround due to this issue: https://github.com/prometheus-operator/prometheus-operator/issues/8605
               #       The following line can be safely removed should the connected PR be accepted by the community.
               publishNotReadyAddresses: true
-            # Prometheus only listens on 127.0.0.1 (listenLocal) behind kube-rbac-proxy, so the chart's
-            # self-scrape of the pod IP on 9090 is always refused. It is replaced by the ServiceMonitor
-            # below, which scrapes through the proxy.
             serviceMonitor:
-              selfMonitor: false
+              bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+              port: http-proxy
+              scheme: https
+              tlsConfig:
+                insecureSkipVerify: true
         timeout: 10m0s
         wait: true
-
-    - name: Create ServiceMonitor for Prometheus through the proxy
-      kubernetes.core.k8s:
-        resource_definition:
-          apiVersion: monitoring.coreos.com/v1
-          kind: ServiceMonitor
-          metadata:
-            labels:
-              "itbench.io/ansible-role": tools
-              "itbench.io/layer": observability
-            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus-proxy' }}"
-            namespace: "{{ tools_itbench_namespace_observability }}"
-          spec:
-            endpoints:
-              - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-                path: /metrics
-                port: http-proxy
-                scheme: https
-                tlsConfig:
-                  insecureSkipVerify: true
-            namespaceSelector:
-              matchNames:
-                - "{{ tools_itbench_namespace_observability }}"
-            selector:
-              matchLabels:
-                app: kube-prometheus-stack-prometheus
-                release: "{{ tools_helm_release_kube_prometheus_stack }}"
-        state: present
 
     - name: Create ClusterRoleBinding for bearer token validation
       kubernetes.core.k8s:
@@ -184,10 +157,10 @@
           metadata:
             labels:
               "itbench.io/layer": observability
-            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-token-reviews' }}"
+            name: "{{ helm_release_kube_prometheus_stack.name ~ '-proxy-token-reviews' }}"
           subjects:
             - kind: ServiceAccount
-              name: "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus' }}"
+              name: "{{ helm_release_kube_prometheus_stack.name ~ '-prometheus' }}"
               namespace: itbench-observability
           roleRef:
             kind: ClusterRole
@@ -238,8 +211,8 @@
               enableUserWorkload: true
           kind: ConfigMap
           metadata:
-            name: cluster-monitoring-config
-            namespace: "{{ tools_openshift_namespace_monitoring }}"
+            name: "{{ openshift_monitoring_config_map }}"
+            namespace: "{{ openshift_monitoring_namespace }}"
         state: present
 
     - name: Create User Workload ConfigMap
@@ -252,8 +225,8 @@
                 enabled: false
           kind: ConfigMap
           metadata:
-            name: user-workload-monitoring-config
-            namespace: "{{ tools_openshift_namespace_user_workload_monitoring }}"
+            name: "{{ openshift_user_workload_monitoring_config_map }}"
+            namespace: "{{ openshift_user_workload_monitoring_namespace }}"
         state: present
 
     - name: Wait for Prometheus workload pods to start
@@ -262,7 +235,7 @@
         label_selectors:
           - app.kubernetes.io/component = prometheus
           - app.kubernetes.io/instance = user-workload
-        namespace: "{{ tools_openshift_namespace_user_workload_monitoring }}"
+        namespace: "{{ openshift_user_workload_monitoring_namespace }}"
         wait: true
         wait_condition:
           status: "True"

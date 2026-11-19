@@ -1,0 +1,37 @@
+---
+- name: Retrieve OpenCost Helm Release
+  kubernetes.core.helm_info:
+    release_name: "{{ helm_release_opencost.name }}"
+    release_namespace: "{{ helm_release_opencost.namespace }}"
+    release_state: ["deployed"]
+  register: agents_helm_release_opencost
+
+- name: Update OpenCost Helm Release with MCP enablement
+  kubernetes.core.helm:
+    chart_ref: "{{ helm_chart_opencost.reference }}"
+    chart_version: "{{ helm_chart_opencost.version }}"
+    release_name: "{{ helm_release_opencost.name }}"
+    release_namespace: "{{ helm_release_opencost.namespace }}"
+    release_state: present
+    release_values:
+      opencost:
+        mcp:
+          enabled: true
+          httpRoute:
+            enabled: true
+            parentRefs:
+              - name: "{{ itbench_kubernetes_gateways.mcp.name }}"
+                namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+            rules:
+              - backendRefs:
+                  - name: ""
+                matches:
+                  - path:
+                      type: PathPrefix
+                      value: /mcp/opencost
+    reset_values: false
+    reuse_values: true
+    timeout: 10m0s
+    wait: true
+  when:
+    - agents_helm_release_opencost.status is ansible.builtin.defined

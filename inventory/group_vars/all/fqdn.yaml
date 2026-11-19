@@ -1,0 +1,143 @@
+---
+_fqdn_itbench_clickhouse_database_observability: >-
+  {{
+    "clickhouse-%s.%s.svc.cluster.local" |
+    ansible.builtin.format(
+      itbench_clickhouse_databases.observability.name,
+      itbench_clickhouse_databases.observability.namespace
+    )
+  }}
+_fqdn_itbench_opentelemetry_collectors_jaeger: >-
+  {{
+    "%s-collector.%s.svc.cluster.local" |
+    ansible.builtin.format(
+      itbench_opentelemetry_collectors.jaeger.name,
+      itbench_opentelemetry_collectors.jaeger.namespace
+    )
+  }}
+_fqdn_itbench_opentelemetry_gateway_applications: >-
+  {{
+    "%s-collector.%s.svc.cluster.local" |
+    ansible.builtin.format(
+      itbench_opentelemetry_gateways.applications.name,
+      itbench_opentelemetry_gateways.applications.namespace
+    )
+  }}
+_fqdn_itbench_opentelemetry_gateway_infrastructure: >-
+  {{
+    "%s-collector.%s.svc.cluster.local" |
+    ansible.builtin.format(
+      itbench_opentelemetry_gateways.infrastructure.name,
+      itbench_opentelemetry_gateways.infrastructure.namespace
+    )
+  }}
+
+fqdn_itbench_clickhouse_database_observability:
+  tcp: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_clickhouse_database_observability,
+        itbench_clickhouse_databases.observability.ports.tcp
+      )
+    }}
+fqdn_itbench_opentelemetry_collectors_jaeger:
+  collector: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_collectors_jaeger,
+        itbench_opentelemetry_collectors.jaeger.ports.collector
+      )
+    }}
+  querier: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_collectors_jaeger,
+        itbench_opentelemetry_collectors.jaeger.ports.querier
+      )
+    }}
+fqdn_itbench_opentelemetry_gateway_applications:
+  bank_of_anthos: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_gateway_applications,
+        itbench_opentelemetry_gateways.applications.ports.bank_of_anthos
+      )
+    }}
+  metrics: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_gateway_applications,
+        itbench_opentelemetry_gateways.applications.ports.metrics
+      )
+    }}
+  microservices_demo: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_gateway_applications,
+        itbench_opentelemetry_gateways.applications.ports.microservices_demo
+      )
+    }}
+  opentelemetry_demo: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_gateway_applications,
+        itbench_opentelemetry_gateways.applications.ports.opentelemetry_demo
+      )
+    }}
+  traces: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_gateway_applications,
+        itbench_opentelemetry_gateways.applications.ports.traces
+      )
+    }}
+fqdn_itbench_opentelemetry_gateway_infrastructure:
+  kubernetes_events: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_gateway_infrastructure,
+        itbench_opentelemetry_gateways.infrastructure.ports.kubernetes_events
+      )
+    }}
+  kubernetes_infrastructure: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_gateway_infrastructure,
+        itbench_opentelemetry_gateways.infrastructure.ports.kubernetes_infrastructure
+      )
+    }}
+  kubernetes_topology: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_gateway_infrastructure,
+        itbench_opentelemetry_gateways.infrastructure.ports.kubernetes_topology
+      )
+    }}
+  traces: >-
+    {{
+      "%s:%i" |
+      ansible.builtin.format(
+        _fqdn_itbench_opentelemetry_gateway_infrastructure,
+        itbench_opentelemetry_gateways.infrastructure.ports.traces
+      )
+    }}
+fqdn_openshift_monitoring_thanos_querier: >-
+  {{
+    "https://%s.%s.svc.cluster.local:%i" |
+    ansible.builtin.format(
+      openshift_monitoring_thanos_querier.name,
+      openshift_monitoring_namespace,
+      openshift_monitoring_thanos_querier.port
+    )
+  }}

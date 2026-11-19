@@ -16,15 +16,15 @@
       subjects:
         - kind: ServiceAccount
           name: opencost
-          namespace: "{{ tools_namespace_opencost }}"
+          namespace: "{{ helm_release_opencost.namespace }}"
     state: present
 
 - name: Install OpenCost
   kubernetes.core.helm:
-    chart_ref: "oci://ghcr.io/opencost/charts/opencost"
-    chart_version: "2.5.34"
-    release_name: "{{ tools_helm_release_opencost }}"
-    release_namespace: "{{ tools_namespace_opencost }}"
+    chart_ref: "{{ helm_chart_opencost.reference }}"
+    chart_version: "{{ helm_chart_opencost.version }}"
+    release_name: "{{ helm_release_opencost.name }}"
+    release_namespace: "{{ helm_release_opencost.namespace }}"
     release_state: present
     release_values:
       opencost:
@@ -50,22 +50,7 @@
           serviceMonitor:
             enabled: true
         mcp:
-          httpRoute:
-            enabled: true
-            parentRefs:
-              - name: "{{ tools_itbench_gateway_kubernetes }}"
-                namespace: "{{ tools_namespace_kubernetes_gateway_system }}"
-            rules:
-              - backendRefs:
-                  - name: ""
-                filters:
-                  - responseHeaderModifier:
-                      add: "{{ tools_response_headers_http }}"
-                    type: ResponseHeaderModifier
-                matches:
-                  - path:
-                      type: PathPrefix
-                      value: /mcp/opencost
+          enabled: false
         platforms:
           openshift:
             enabled: "{{ tools_cluster.platform == 'openshift' }}"
@@ -77,16 +62,16 @@
               {{
                 (tools_cluster.platform == "openshift") |
                 ansible.builtin.ternary(
-                  tools_openshift_namespace_monitoring,
-                  tools_itbench_namespace_observability
+                  openshift_monitoring_namespace,
+                  itbench_namespaces.observability
                 )
               }}
             port: >-
               {{
                 (tools_cluster.platform == "openshift") |
                 ansible.builtin.ternary(
-                  tools_openshift_prometheus_port,
-                  tools_itbench_prometheus_proxy_port
+                  openshift_monitoring_prometheus.port,
+                  itbench_prometheus_proxy.ports.https
                 )
               }}
             scheme: https
@@ -94,18 +79,18 @@
               {{
                 (tools_cluster.platform == "openshift") |
                 ansible.builtin.ternary(
-                  tools_openshift_prometheus,
-                  tools_helm_release_kube_prometheus_stack ~ "-prometheus"
+                  openshift_monitoring_prometheus.name,
+                  helm_release_kube_prometheus_stack.name ~ "-prometheus"
                 )
               }}
           kubeRBACProxy: true
         thanos:
           enabled: "{{ tools_cluster.platform == 'openshift' }}"
           internal:
-            namespaceName: "{{ tools_openshift_namespace_monitoring }}"
-            port: 9091
+            namespaceName: "{{ openshift_monitoring_namespace }}"
+            port: "{{ openshift_monitoring_thanos_querier.port }}"
             scheme: https
-            serviceName: "{{ tools_openshift_thanos_querier }}"
+            serviceName: "{{ openshift_monitoring_thanos_querier.name }}"
     timeout: 10m0s
     wait: true
 

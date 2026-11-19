@@ -1,0 +1,139 @@
+---
+itbench_namespaces:
+  agents: itbench-agents
+  ingress: itbench-ingress
+  mcp_servers: itbench-mcp-servers
+  observability: itbench-observability
+  operators: itbench-operators
+  system: itbench-system
+
+itbench_clickhouse_databases:
+  observability:
+    name: observability
+    namespace: "{{ itbench_namespaces.observability }}"
+    ports:
+      tcp: 9000
+    users:
+      admin:
+        name: admin
+        password: >- # pragma: allowlist secret
+          {{
+            lookup(
+              "ansible.builtin.password",
+              "/dev/null",
+              chars=["ascii_letters", "digits"],
+              length=32,
+              seed=random_password_creation_seed ~ "cu0"
+            )
+          }}
+      agent:
+        name: agent
+        password: >- # pragma: allowlist secret
+          {{
+            lookup(
+              "ansible.builtin.password",
+              "/dev/null",
+              chars=["ascii_letters", "digits"],
+              length=32,
+              seed=random_password_creation_seed ~ "cu1"
+            )
+          }}
+      jaeger:
+        name: itbench-jaeger
+        password: >- # pragma: allowlist secret
+          {{
+            lookup(
+              "ansible.builtin.password",
+              "/dev/null",
+              chars=["ascii_letters", "digits"],
+              length=32,
+              seed=random_password_creation_seed ~ "cu2"
+            )
+          }}
+      observability:
+        name: itbench-observability
+        password: >- # pragma: allowlist secret
+          {{
+            lookup(
+              "ansible.builtin.password",
+              "/dev/null",
+              chars=["ascii_letters", "digits"],
+              length=32,
+              seed=random_password_creation_seed ~ "cu3"
+            )
+          }}
+      recorder:
+        name: itbench-recorder
+        password: >- # pragma: allowlist secret
+          {{
+            lookup(
+              "ansible.builtin.password",
+              "/dev/null",
+              chars=["ascii_letters", "digits"],
+              length=32,
+              seed=random_password_creation_seed ~ "cu4"
+            )
+          }}
+      topology:
+        name: itbench-topology
+        password: >- # pragma: allowlist secret
+          {{
+            lookup(
+              "ansible.builtin.password",
+              "/dev/null",
+              chars=["ascii_letters", "digits"],
+              length=32,
+              seed=random_password_creation_seed ~ "cu5"
+            )
+          }}
+
+itbench_kubernetes_gateways:
+  argo:
+    name: itbench-argo
+    namespace: "{{ itbench_namespaces.ingress }}"
+  mcp:
+    name: itbench-mcp
+    namespace: "{{ itbench_namespaces.mcp_servers }}"
+
+itbench_mcp_servers:
+  jaeger:
+    name: jaeger-mcp
+    namespace: "{{ itbench_namespaces.observability }}"
+  opencost: # OpenCost MCP is part of OpenCost Helm Release, noted here for transparency
+    name: ""
+    namespace: ""
+  prometheus:
+    name: prometheus-mcp
+    namespace: "{{ itbench_namespaces.mcp_servers }}"
+
+itbench_prometheus_proxy:
+  ports:
+    https: 8443
+
+itbench_opentelemetry_collectors:
+  jaeger:
+    name: jaeger
+    namespace: "{{ itbench_namespaces.observability }}"
+    ports:
+      collector: 4317
+      querier: 16686
+
+itbench_opentelemetry_gateways:
+  applications:
+    name: itbench-otel-gateway-applications
+    namespace: "{{ itbench_namespaces.observability }}"
+    ports:
+      bank_of_anthos: 4322
+      metrics: 4319
+      microservices_demo: 4321
+      opentelemetry_demo: 4320
+      traces: 4317
+  infrastructure:
+    name: itbench-otel-gateway-infrastructure
+    namespace: "{{ itbench_namespaces.observability }}"
+    ports:
+      istio: 4323
+      kubernetes_events: 4320
+      kubernetes_infrastructure: 4321
+      kubernetes_topology: 4322
+      traces: 4317
