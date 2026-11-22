@@ -50,7 +50,23 @@
           serviceMonitor:
             enabled: true
         mcp:
-          enabled: false
+          enabled: true
+          httpRoute:
+            enabled: true
+            parentRefs:
+              - name: "{{ itbench_kubernetes_gateways.mcp.name }}"
+                namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+            rules:
+              - backendRefs:
+                  - name: ""
+                matches:
+                  - headers:
+                      - name: Authorization
+                        type: Exact
+                        value: "{{ 'Bearer ' ~ itbench_kubernetes_gateways.mcp.token }}"
+                    path:
+                      type: PathPrefix
+                      value: /mcp/opencost
         platforms:
           openshift:
             enabled: "{{ tools_cluster.platform == 'openshift' }}"

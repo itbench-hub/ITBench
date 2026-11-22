@@ -1,0 +1,98 @@
+---
+# The `itbench-mcp-servers` namespace belongs to the `tools` role, so what `agents` put in it is removed by label.
+- name: Delete ITBench related Gateways
+  kubernetes.core.k8s:
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    label_selectors:
+      - "itbench.io/ansible-role=agents"
+    namespace: "{{ itbench_namespaces.mcp_servers }}"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related Certificates
+  kubernetes.core.k8s:
+    api_version: cert-manager.io/v1
+    kind: Certificate
+    label_selectors:
+      - "itbench.io/ansible-role=agents"
+    namespace: "{{ itbench_namespaces.mcp_servers }}"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related Issuers
+  kubernetes.core.k8s:
+    api_version: cert-manager.io/v1
+    kind: Issuer
+    label_selectors:
+      - "itbench.io/ansible-role=agents"
+    namespace: "{{ itbench_namespaces.mcp_servers }}"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related Secrets
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Secret
+    label_selectors:
+      - "itbench.io/ansible-role=agents"
+    namespace: "{{ itbench_namespaces.mcp_servers }}"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related ConfigMaps
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: ConfigMap
+    label_selectors:
+      - "itbench.io/ansible-role=agents"
+    namespace: "{{ itbench_namespaces.mcp_servers }}"
+    state: absent
+    wait: true
+
+
+- name: Delete ITBench related ValidatingAdmissionPolicyBindings
+  kubernetes.core.k8s:
+    api_version: admissionregistration.k8s.io/v1
+    kind: ValidatingAdmissionPolicyBinding
+    label_selectors:
+      - "itbench.io/ansible-role=agents"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related ValidatingAdmissionPolicies
+  kubernetes.core.k8s:
+    api_version: admissionregistration.k8s.io/v1
+    kind: ValidatingAdmissionPolicy
+    label_selectors:
+      - "itbench.io/ansible-role=agents"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related ClusterRoleBindings
+  kubernetes.core.k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    label_selectors:
+      - "itbench.io/ansible-role=agents"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related ClusterRoles
+  kubernetes.core.k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    label_selectors:
+      - "itbench.io/ansible-role=agents"
+    state: absent
+    wait: true
+
+- name: Delete all agent integration namespaces
+  kubernetes.core.k8s:
+    api_version: v1
+    delete_all: true
+    kind: Namespace
+    label_selectors:
+      - "itbench.io/ansible-role=agents"
+    state: absent
+    wait: true

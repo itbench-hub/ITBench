@@ -12,17 +12,18 @@ from itbench.cli.render import confirm_or_cancel, console, kubeconfig_option, ve
     "--only",
     type=click.Choice(["applications"]),
     default=None,
-    help="Remove only the applications and leave the tools deployed.",
+    help="Remove only the applications and leave the agents and tools deployed.",
 )
 @verbose_option
 @click.option(
     "-y", "--yes", is_flag=True, default=False, help="Skip confirmation prompt and proceed with undeployment."
 )
 def undeploy_environment(kubeconfig: str, only: str | None, verbose: bool, yes: bool) -> None:
-    """Undeploy the benchmark environment stack (applications and tools) from the cluster.
+    """Undeploy the benchmark environment stack (applications, agents and tools) from the cluster.
 
-    Applications are always removed first. Tools (and the recorders that run with them) cannot be
-    removed on their own, so they are only removed when `--only` is not given.
+    Applications are always removed first. The agents (their access controls, admission policies and
+    MCP servers) and the tools (and the recorders that run with them) cannot be removed on their own,
+    so they are only removed, agents first, when `--only` is not given.
 
     Examples:
 
@@ -40,7 +41,6 @@ def undeploy_environment(kubeconfig: str, only: str | None, verbose: bool, yes: 
     run_step(
         playbook="manage_environment.yaml",
         extra_vars={
-            "environment_tool_management_enabled": False,
             "environment_application_management_enabled": True,
         },
         tags=["uninstall"],
@@ -54,8 +54,31 @@ def undeploy_environment(kubeconfig: str, only: str | None, verbose: bool, yes: 
         run_step(
             playbook="manage_environment.yaml",
             extra_vars={
+                "environment_agent_management_enabled": True,
+            },
+            tags=["uninstall"],
+            status="Undeploying agents…",
+            failure="Environment undeploy",
+            verbose=verbose,
+            kubeconfig=kubeconfig,
+        )
+
+        run_step(
+            playbook="manage_environment.yaml",
+            extra_vars={
+                "environment_recorder_management_enabled": True,
+            },
+            tags=["uninstall"],
+            status="Undeploying recorders…",
+            failure="Environment undeploy",
+            verbose=verbose,
+            kubeconfig=kubeconfig,
+        )
+
+        run_step(
+            playbook="manage_environment.yaml",
+            extra_vars={
                 "environment_tool_management_enabled": True,
-                "environment_application_management_enabled": False,
             },
             tags=["uninstall"],
             status="Undeploying tools…",

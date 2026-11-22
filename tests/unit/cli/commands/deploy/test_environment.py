@@ -354,6 +354,31 @@ def test_deploy_environment_only_recorders(tmp_path: Path) -> None:
     assert extra_vars["environment_recorder_management_enabled"] is True
 
 
+def test_deploy_environment_only_agents(tmp_path: Path) -> None:
+    runner = CliRunner()
+    tools_defaults = {"tools_gateway_enabled": False}
+    apps_defaults = {"applications_opentelemetry_demo_enabled": False}
+
+    with (
+        patch("itbench.cli.commands.deploy.environment._load_tools_defaults", return_value=tools_defaults),
+        patch("itbench.cli.commands.deploy.environment._load_applications_defaults", return_value=apps_defaults),
+        patch("itbench.cli.commands.deploy.environment.sys.stdin") as mock_stdin,
+        patch("itbench.cli.playbook.run_playbook") as mock_run,
+    ):
+        mock_stdin.isatty.return_value = False
+        mock_run.return_value = MagicMock()
+
+        result = runner.invoke(deploy_environment, ["--only", "agents", "--kubeconfig", "/kube.conf"])
+
+    assert result.exit_code == 0
+    assert mock_run.call_count == 1
+    extra_vars = mock_run.call_args.kwargs["extra_vars"]
+    assert extra_vars["environment_tool_management_enabled"] is True
+    assert extra_vars["environment_application_management_enabled"] is True
+    assert extra_vars["environment_agent_management_enabled"] is True
+    assert extra_vars["environment_recorder_management_enabled"] is False
+
+
 def test_deploy_environment_with_scenario(tmp_path: Path) -> None:
     runner = CliRunner()
     scenario_dir = tmp_path / "library" / "scenarios" / "5"

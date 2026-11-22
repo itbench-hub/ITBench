@@ -1,0 +1,30 @@
+---
+- name: Install Custom Resource Definitions on Kubernetes
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Create temporary directory for install files
+      ansible.builtin.tempfile:
+        prefix: k8s_gateway
+        state: directory
+      register: tools_standards_gateway_install_directory
+
+    - name: Download Gateway API files from standard release channel
+      ansible.builtin.get_url:
+        dest: "{{ tools_standards_gateway_install_directory.path }}"
+        mode: "0644"
+        url: "{{ github_release_kubernetes_gateway_api.standard_install_manifests.url }}"
+
+    - name: Apply Custom Resource Definitions to cluster
+      kubernetes.core.k8s:
+        apply: true
+        server_side_apply:
+          field_manager: ansible
+        src: "{{ [tools_standards_gateway_install_directory.path, 'standard-install.yaml'] | ansible.builtin.path_join }}"
+        state: present
+
+  always:
+    - name: Delete the temporary directory
+      ansible.builtin.file:
+        path: "{{ tools_standards_gateway_install_directory.path }}"
+        state: absent

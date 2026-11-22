@@ -1,0 +1,361 @@
+---
+- name: Create ValidatingAdmissionPolicy restricting agent writes to fault injectable namespaces
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: admissionregistration.k8s.io/v1
+      kind: ValidatingAdmissionPolicy
+      metadata:
+        labels:
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: itbench-agent-inject-namespaces-only
+      spec:
+        failurePolicy: Fail
+        matchConditions:
+          - name: agent-service-accounts-only
+            expression: >-
+              request.userInfo.username.startsWith('system:serviceaccount:{{ itbench_namespaces.agents }}:agent-')
+          # Reviews are cluster-scoped, read-only questions (`kubectl auth can-i`, `kubectl auth whoami`).
+          - name: skip-reviews
+            expression: >-
+              !(request.resource.group in ['authentication.k8s.io', 'authorization.k8s.io'])
+          # Nodes are cluster-scoped, so they have no namespace. `itbench-agent-node-guard` limits what an agent may change on them.
+          - name: skip-nodes
+            expression: >-
+              !(request.resource.group == '' && request.resource.resource == 'nodes' && request.subResource == '')
+        matchConstraints:
+          resourceRules:
+            - apiGroups:
+                - "*"
+              apiVersions:
+                - "*"
+              operations:
+                - CREATE
+                - UPDATE
+                - DELETE
+                - CONNECT
+              resources:
+                - "*/*"
+        validations:
+          - expression: >-
+              namespaceObject != null &&
+              has(namespaceObject.metadata.labels) &&
+              'itbench.io/inject' in namespaceObject.metadata.labels &&
+              namespaceObject.metadata.labels['itbench.io/inject'] == 'true'
+            message: Agents may only modify objects in namespaces labeled `itbench.io/inject=true`.
+            reason: Forbidden
+    state: present
+
+- name: Create ValidatingAdmissionPolicyBinding restricting agent writes to fault injectable namespaces
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: admissionregistration.k8s.io/v1
+      kind: ValidatingAdmissionPolicyBinding
+      metadata:
+        labels:
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: itbench-agent-inject-namespaces-only
+      spec:
+        policyName: itbench-agent-inject-namespaces-only
+        validationActions:
+          - Deny
+    state: present
+
+- name: Install admission policies for agent remediation
+  when:
+    - agents_remediation_enabled
+  block:
+    # The node guard lets an agent only uncordon: `spec.unschedulable` must end up false or absent, and labels and taints must not change.
+    # Labels and taints are left alone because the sandbox taint keeps tools pods off the sandbox nodes, and other faults rely on node labels.
+    - name: Create ValidatingAdmissionPolicy limiting agent node updates to uncordoning
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingAdmissionPolicy
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-node-guard
+          spec:
+            failurePolicy: Fail
+            matchConditions:
+              - name: agent-service-accounts-only
+                expression: >-
+                  request.userInfo.username.startsWith('system:serviceaccount:{{ itbench_namespaces.agents }}:agent-')
+            matchConstraints:
+              resourceRules:
+                - apiGroups:
+                    - ""
+                  apiVersions:
+                    - "*"
+                  operations:
+                    - UPDATE
+                  resources:
+                    - nodes
+            validations:
+              - expression: >-
+                  !object.spec.?unschedulable.orValue(false) &&
+                  object.metadata.?labels.orValue({}) == oldObject.metadata.?labels.orValue({}) &&
+                  object.metadata.?annotations.orValue({}) == oldObject.metadata.?annotations.orValue({}) &&
+                  object.spec.?taints.orValue([]) == oldObject.spec.?taints.orValue([])
+                message: Agents may only uncordon nodes, and may not change their labels, annotations or taints.
+                reason: Forbidden
+        state: present
+
+    - name: Create ValidatingAdmissionPolicyBinding limiting agent node updates to uncordoning
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingAdmissionPolicyBinding
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-node-guard
+          spec:
+            policyName: itbench-agent-node-guard
+            validationActions:
+              - Deny
+        state: present
+
+    # NetworkPolicies are additive, so an agent that can create an egress policy could undo the containment of `install_network_policies.yaml`.
+    # Ingress-only policies stay editable, which the ingress port blocking fault needs.
+    - name: Create ValidatingAdmissionPolicy protecting agent network containment
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingAdmissionPolicy
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-network-policy-guard
+          spec:
+            failurePolicy: Fail
+            matchConditions:
+              - name: agent-service-accounts-only
+                expression: >-
+                  request.userInfo.username.startsWith('system:serviceaccount:{{ itbench_namespaces.agents }}:agent-')
+            matchConstraints:
+              resourceRules:
+                - apiGroups:
+                    - networking.k8s.io
+                  apiVersions:
+                    - "*"
+                  operations:
+                    - CREATE
+                    - DELETE
+                    - UPDATE
+                  resources:
+                    - networkpolicies
+            validations:
+              - expression: >-
+                  request.operation == 'DELETE' ||
+                  !('Egress' in object.spec.?policyTypes.orValue([]) || has(object.spec.egress))
+                message: Agents may not create or change egress NetworkPolicies.
+                reason: Forbidden
+              - expression: >-
+                  request.operation == 'CREATE' ||
+                  oldObject.metadata.?labels.orValue({})[?'itbench.io/protected'].orValue('') != 'true'
+                message: Agents may not change or delete protected NetworkPolicies.
+                reason: Forbidden
+        state: present
+
+    - name: Create ValidatingAdmissionPolicyBinding protecting agent network containment
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingAdmissionPolicyBinding
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-network-policy-guard
+          spec:
+            policyName: itbench-agent-network-policy-guard
+            validationActions:
+              - Deny
+        state: present
+
+    # Agents may only create or manage ClusterIP Services without externalIPs. NodePort, LoadBalancer, and ExternalName are banned.
+    - name: Create ValidatingAdmissionPolicy restricting agent Service types to ClusterIP
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingAdmissionPolicy
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-service-guard
+          spec:
+            failurePolicy: Fail
+            matchConditions:
+              - name: agent-service-accounts-only
+                expression: >-
+                  request.userInfo.username.startsWith('system:serviceaccount:{{ itbench_namespaces.agents }}:agent-')
+            matchConstraints:
+              resourceRules:
+                - apiGroups:
+                    - ""
+                  apiVersions:
+                    - "*"
+                  operations:
+                    - CREATE
+                    - UPDATE
+                  resources:
+                    - services
+            validations:
+              - expression: >-
+                  (object.spec.?type.orValue('ClusterIP') == 'ClusterIP' ||
+                  (oldObject != null && object.spec.?type.orValue('ClusterIP') == oldObject.spec.?type.orValue('ClusterIP'))) &&
+                  object.spec.?externalIPs.orValue([]).size() == 0
+                message: Agents may only create or update ClusterIP Services and may not set externalIPs.
+                reason: Forbidden
+        state: present
+
+    - name: Create ValidatingAdmissionPolicyBinding restricting agent Service types to ClusterIP
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingAdmissionPolicyBinding
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-service-guard
+          spec:
+            policyName: itbench-agent-service-guard
+            validationActions:
+              - Deny
+        state: present
+
+    - name: Retrieve Pods in fault injectable application namespaces for image allowlist snapshot
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: "{{ application_namespace.metadata.name }}"
+      loop: "{{ agents_injectable_namespaces.resources }}"
+      loop_control:
+        label: namespace/{{ application_namespace.metadata.name }}
+        loop_var: application_namespace
+      register: agents_injectable_pods
+
+    - name: Set snapshot images for fault injectable application namespaces
+      ansible.builtin.set_fact:
+        agents_snapshot_images: >-
+          {{
+            (
+              agents_injectable_pods.results
+              | map(attribute='resources')
+              | flatten
+              | map(attribute='spec.containers', default=[])
+              | flatten
+              | map(attribute='image', default='')
+              | list
+              +
+              agents_injectable_pods.results
+              | map(attribute='resources')
+              | flatten
+              | map(attribute='spec.initContainers', default=[])
+              | flatten
+              | map(attribute='image', default='')
+              | list
+            )
+            | reject('equalto', '')
+            | unique
+            | sort
+          }}
+
+    # Only images that were in use in the inject namespaces before fault injection, or that are already on the object, may be set.
+    # No ConfigMap or an empty list denies every image change (`parameterNotFoundAction: Deny`).
+    # The message is fixed on purpose: it must never print the list, because that would reveal the original image.
+    - name: Create ConfigMap with the agent image allowlist
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: ConfigMap
+          data:
+            images: >-
+              {{ agents_snapshot_images | ansible.builtin.join("\n") }}
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-images
+            namespace: "{{ itbench_namespaces.mcp_servers }}"
+        state: present
+
+    - name: Create ValidatingAdmissionPolicy restricting agent container images to the allowlist
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingAdmissionPolicy
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-images-allowlist
+          spec:
+            failurePolicy: Fail
+            matchConditions:
+              - name: agent-service-accounts-only
+                expression: >-
+                  request.userInfo.username.startsWith('system:serviceaccount:{{ itbench_namespaces.agents }}:agent-')
+            matchConstraints:
+              resourceRules:
+                - apiGroups:
+                    - apps
+                  apiVersions:
+                    - "*"
+                  operations:
+                    - CREATE
+                    - UPDATE
+                  resources:
+                    - daemonsets
+                    - deployments
+                    - statefulsets
+            paramKind:
+              apiVersion: v1
+              kind: ConfigMap
+            variables:
+              - name: allowed
+                expression: >-
+                  params.?data.?images.orValue('').split('\n')
+              - name: current
+                expression: >-
+                  object.spec.template.spec.containers.map(c, c.image) +
+                  object.spec.template.spec.?initContainers.orValue([]).map(c, c.image)
+              - name: previous
+                expression: >-
+                  oldObject == null ? [] :
+                  oldObject.spec.template.spec.containers.map(c, c.image) +
+                  oldObject.spec.template.spec.?initContainers.orValue([]).map(c, c.image)
+            validations:
+              - expression: >-
+                  variables.current.all(image, image in variables.allowed || image in variables.previous)
+                message: Agents may only use container images that the scenario allows.
+                reason: Forbidden
+        state: present
+
+    - name: Create ValidatingAdmissionPolicyBinding restricting agent container images to the allowlist
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingAdmissionPolicyBinding
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-images-allowlist
+          spec:
+            paramRef:
+              name: itbench-agent-images
+              namespace: "{{ itbench_namespaces.mcp_servers }}"
+              parameterNotFoundAction: Deny
+            policyName: itbench-agent-images-allowlist
+            validationActions:
+              - Deny
+        state: present

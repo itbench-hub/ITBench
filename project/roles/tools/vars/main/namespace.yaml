@@ -1,7 +1,7 @@
 ---
 tools_namespace_istio_cni: >-
   {{
-    (cluster_platform == 'openshift') |
+    (tools_cluster.platform == 'openshift') |
     ansible.builtin.ternary(
       openshift_service_mesh3_istio_cni.namespace,
       helm_release_istio_cni.namespace
@@ -9,7 +9,7 @@ tools_namespace_istio_cni: >-
   }}
 tools_namespace_istio_istiod: >-
   {{
-    (cluster_platform == 'openshift') |
+    (tools_cluster.platform == 'openshift') |
     ansible.builtin.ternary(
       openshift_service_mesh3_istio.namespace,
       helm_release_istio_istiod.namespace
@@ -17,17 +17,9 @@ tools_namespace_istio_istiod: >-
   }}
 tools_namespace_istio_ztunnel: >-
   {{
-    (cluster_platform == 'openshift') |
+    (tools_cluster.platform == 'openshift') |
     ansible.builtin.ternary(
       openshift_service_mesh3_istio_ztunnel.namespace,
       helm_release_istio_ztunnel.namespace
-    )
-  }}
-tools_namespace_prometheus: >-
-  {{
-    (cluster_platform == 'openshift') |
-    ansible.builtin.ternary(
-      openshift_monitoring_namespace,
-      itbench_namespaces.observability
     )
   }}

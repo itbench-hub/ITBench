@@ -1,0 +1,98 @@
+---
+# Egress is limited to other inject namespaces, cluster DNS in kube-system, and the OTLP gateway collectors in the observability namespace.
+# Ingress is not restricted (no `Ingress` in `policyTypes`).
+# The `itbench.io/protected` label stops an agent from changing or deleting the policy (`itbench-agent-network-policy-guard`).
+- name: Create NetworkPolicies restricting egress of fault injectable application namespaces
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        labels:
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+          "itbench.io/protected": "true"
+        name: itbench-agent-egress
+        namespace: "{{ application_namespace.metadata.name }}"
+      spec:
+        egress:
+          # Allow egress to other fault injectable application namespaces
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    "itbench.io/inject": "true"
+          # Allow egress to DNS in kube-system
+          - ports:
+              - port: 53
+                protocol: UDP
+              - port: 53
+                protocol: TCP
+            to:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: kube-system
+                podSelector:
+                  matchExpressions:
+                    - key: k8s-app
+                      operator: In
+                      values:
+                        - kube-dns
+                        - coredns
+          # Allow egress to OTLP gateway collectors in observability namespace
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    "itbench.io/layer": observability
+                podSelector:
+                  matchLabels:
+                    "app.kubernetes.io/managed-by": opentelemetry-operator
+        podSelector: {}
+        policyTypes:
+          - Egress
+    state: present
+  loop: "{{ agents_injectable_namespaces.resources }}"
+  loop_control:
+    label: networkpolicy/{{ application_namespace.metadata.name }}/itbench-agent-egress
+    loop_var: application_namespace
+
+- name: Retrieve CiliumNetworkPolicy CustomResourceDefinition
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: ciliumnetworkpolicies.cilium.io
+  register: agents_cilium_network_policy_crd
+
+# Cilium allows restricting DNS queries by name pattern to prevent data exfiltration via DNS tunneling.
+- name: Create CiliumNetworkPolicies restricting DNS resolution to cluster domain
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: cilium.io/v2
+      kind: CiliumNetworkPolicy
+      metadata:
+        labels:
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+          "itbench.io/protected": "true"
+        name: itbench-agent-dns-egress
+        namespace: "{{ application_namespace.metadata.name }}"
+      spec:
+        endpointSelector: {}
+        egress:
+          - toEndpoints:
+              - matchLabels:
+                  "k8s:io.kubernetes.pod.namespace": kube-system
+                  "k8s:k8s-app": kube-dns
+            toPorts:
+              - ports:
+                  - port: "53"
+                    protocol: ANY
+                rules:
+                  dns:
+                    - matchPattern: "*.cluster.local"
+    state: present
+  loop: "{{ agents_injectable_namespaces.resources }}"
+  loop_control:
+    label: ciliumnetworkpolicy/{{ application_namespace.metadata.name }}/itbench-agent-dns-egress
+    loop_var: application_namespace
+  when:
+    - agents_cilium_network_policy_crd.api_found

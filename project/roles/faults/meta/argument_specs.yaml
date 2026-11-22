@@ -3,30 +3,42 @@ argument_specs:
   main:
     author:
       - Gerard Vanloo
+    short_description: Inject faults into, and remove faults from, an ITBench environment.
+    description:
+      - Each injection task runs `tasks/inject_<id>.yaml`, with dashes in the `id` replaced by underscores.
+      - Removal reverses only what a fault changed outside the application namespaces; the rest is deleted with the namespace.
     options:
       faults_injection_tasks:
         default: []
+        description: The faults to inject, in order.
         elements: dict
         options:
           id:
+            description: Fault identifier, for example `nonexistent-kubernetes-workload-container-image`.
             required: true
             type: str
           targets:
             default: []
+            description: Objects the fault applies to. Most faults support exactly one target.
             elements: dict
             options:
               kubernetes:
+                description: A Kubernetes object, which must exist before the fault is injected.
                 options:
                   apiVersion:
+                    description: API version of the object, for example `apps/v1`.
                     required: true
                     type: str
                   kind:
+                    description: Kind of the object, for example `Deployment`.
                     required: true
                     type: str
                   name:
+                    description: Name of the object.
                     required: true
                     type: str
                   namespace:
+                    description: Namespace of the object. Omit for cluster-scoped objects.
                     required: false
                     type: str
                 required: true

@@ -44,6 +44,7 @@ def test_default_is_source_checkout(monkeypatch: pytest.MonkeyPatch) -> None:
     assert repo.group_vars.is_dir()
     assert repo.tools_defaults.is_dir()
     assert repo.applications_defaults.is_dir()
+    assert repo.recorders_defaults.is_dir()
     assert repo.faults.is_dir()
     assert repo.applications.is_dir()
     assert repo.scenarios.is_dir()

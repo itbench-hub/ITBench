@@ -87,13 +87,33 @@ itbench_clickhouse_databases:
             )
           }}
 
+itbench_data_recorders:
+  clickhouse:
+    name: itbench-clickhouse-recorder
+    namespace: "{{ itbench_namespaces.observability }}"
+    persistent_volume_claim: itbench-clickhouse-records
+  prometheus:
+    name: itbench-prometheus-recorder
+    namespace: "{{ itbench_namespaces.observability }}"
+    persistent_volume_claim: itbench-prometheus-records
+
 itbench_kubernetes_gateways:
   argo:
     name: itbench-argo
-    namespace: "{{ itbench_namespaces.ingress }}"
+    namespace: "{{ helm_release_argo_workflows.namespace }}"
   mcp:
     name: itbench-mcp
     namespace: "{{ itbench_namespaces.mcp_servers }}"
+    token: >-
+      {{
+        lookup(
+          "ansible.builtin.password",
+          "/dev/null",
+          chars=["ascii_letters", "digits"],
+          length=32,
+          seed=random_password_creation_seed ~ "mcp_token"
+        )
+      }}
 
 itbench_mcp_servers:
   jaeger:
@@ -137,3 +157,11 @@ itbench_opentelemetry_gateways:
       kubernetes_infrastructure: 4321
       kubernetes_topology: 4322
       traces: 4317
+
+itbench_topology_managers:
+  kubernetes:
+    name: kubernetes-topology
+    namespace: "{{ itbench_namespaces.observability }}"
+  scenario:
+    name: itbench-topology-writer
+    namespace: "{{ itbench_namespaces.observability }}"

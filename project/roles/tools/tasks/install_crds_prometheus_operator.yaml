@@ -1,0 +1,12 @@
+---
+- name: Install Prometheus Operator Custom Resource Definitions
+  kubernetes.core.helm:
+    chart_ref: "{{ helm_chart_prometheus_operator_crds.reference }}"
+    chart_version: "{{ helm_chart_prometheus_operator_crds.version }}"
+    release_name: "{{ helm_release_prometheus_operator_crds.name }}"
+    release_namespace: "{{ itbench_namespaces.operators }}"
+    release_state: present
+    timeout: 10m0s
+    wait: true
+  when:
+    - tools_cluster.platform == "kubernetes"

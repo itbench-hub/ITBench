@@ -4,6 +4,7 @@ Handles node partitioning for workloads and tools, clearing events, and issuing 
 """
 
 import base64
+import json
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -13,6 +14,8 @@ from typing import Any
 from kubernetes import client, config  # type: ignore[import-untyped]
 
 AGENT_MISSION_LABEL = "itbench.io/agent-mission"
+AGENT_BUNDLE_SECRET = "itbench-agent-bundle"  # pragma: allowlist secret
+AGENT_BUNDLE_NAMESPACE = "itbench-mcp-servers"
 INJECT_NAMESPACE_LABEL_SELECTOR = "itbench.io/inject=true"
 MIN_TOKEN_MINUTES = 10  # The API server rejects shorter ServiceAccount token lifetimes.
 SANDBOX_NODE_TAINT_KEY = "itbench.io/sandbox"
@@ -29,6 +32,15 @@ class ClusterAccessBundle:
     kubeconfig: dict[str, Any]
     expires: datetime
     namespaces: list[str]
+
+
+@dataclass(frozen=True)
+class AgentEndpoints:
+    """What the agent runner needs to reach the MCP servers, as written by the ``agents`` role."""
+
+    mcp_servers: dict[str, str | None]
+    ca_certificate: str
+    token: str
 
 
 def taint_sandbox_nodes() -> None:
@@ -164,4 +176,45 @@ def create_agent_access(kubeconfig: str, mission: str, minutes: int) -> ClusterA
         },
         expires=token_request.status.expiration_timestamp,
         namespaces=namespaces,
+    )
+
+
+def read_agent_endpoints(kubeconfig: str) -> AgentEndpoints:
+    """Read the MCP endpoints, CA certificate and bearer token that the ``agents`` role stored in the cluster.
+
+    Args:
+        kubeconfig: Path to the (administrator) kubeconfig file. The current context is used.
+
+    Returns:
+        The MCP server addresses (``None`` for a server that was not installed), the PEM CA certificate
+        and the bearer token for the ``Authorization`` header.
+
+    Raises:
+        RuntimeError: If the bundle Secret does not exist or is incomplete.
+    """
+    config.load_kube_config(config_file=kubeconfig)
+    core_api = client.CoreV1Api()
+
+    try:
+        secret = core_api.read_namespaced_secret(AGENT_BUNDLE_SECRET, AGENT_BUNDLE_NAMESPACE)
+    except client.ApiException as exc:
+        if exc.status != 404:
+            raise
+        raise RuntimeError(
+            f"Secret '{AGENT_BUNDLE_NAMESPACE}/{AGENT_BUNDLE_SECRET}' not found. "
+            "Run `itbench deploy environment` with the agents step to create it."
+        ) from exc
+
+    data = secret.data or {}
+    missing = [key for key in ("mcp_servers", "ca.crt", "token") if key not in data]
+    if missing:
+        raise RuntimeError(f"Secret '{AGENT_BUNDLE_NAMESPACE}/{AGENT_BUNDLE_SECRET}' lacks: {', '.join(missing)}.")
+
+    def decode(key: str) -> str:
+        return base64.b64decode(data[key]).decode()
+
+    return AgentEndpoints(
+        mcp_servers=json.loads(decode("mcp_servers")),
+        ca_certificate=decode("ca.crt"),
+        token=decode("token"),
     )

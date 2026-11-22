@@ -149,7 +149,7 @@ def _applications_extra_vars_from_wizard() -> dict[str, Any]:
 @kubeconfig_option
 @click.option(
     "--only",
-    type=click.Choice(["tools", "applications", "recorders"]),
+    type=click.Choice(["tools", "applications", "recorders", "agents"]),
     default=None,
     help="Limit deployment to a specific subsystem.",
 )
@@ -164,6 +164,7 @@ def deploy_environment(scenario_id: int | None, kubeconfig: str, only: str | Non
         itbench deploy environment --scenario 5 --kubeconfig ~/.kube/config
         itbench deploy environment --only tools --kubeconfig ~/.kube/config
         itbench deploy environment --only applications --kubeconfig ~/.kube/config
+        itbench deploy environment --only agents --kubeconfig ~/.kube/config
         itbench deploy environment -v --kubeconfig ~/.kube/config
     """
     steps = _STEPS[only]

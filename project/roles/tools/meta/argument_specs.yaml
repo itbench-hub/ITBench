@@ -3,37 +3,41 @@ argument_specs:
   main:
     author:
       - Gerard Vanloo
+    short_description: Install or uninstall the infrastructure tools of an ITBench environment.
+    description:
+      - Installs the Gateway controller, cert-manager and the Prometheus Operator CRDs, and optionally governance, observability and service mesh tools.
+      - Uninstall removes everything labeled `itbench.io/ansible-role=tools`.
     options:
       tools_cluster:
+        description: The cluster the tools are installed on.
         options:
           platform:
             choices:
               - kubernetes
               - openshift
+            description: Platform of the cluster, as detected by the `cluster` role.
             required: true
             type: str
           provider:
+            description: >-
+              Cloud or distribution provider of the cluster (the prefix of the node `providerID`,
+              for example `kind`, `aws` or `unknown`), as detected by the `cluster` role.
             required: true
             type: str
         required: true
         type: dict
-      tools_storage_local:
+      tools_governance_enabled:
+        default: false
+        description: Install Kyverno.
         required: false
-        type: dict
-        options:
-          directory:
-            required: true
-            type: str
-      tools_storage_s3:
+        type: bool
+      tools_observability_enabled:
+        default: false
+        description: Install Prometheus, ClickHouse, OpenTelemetry, OpenCost and the MCP servers.
         required: false
-        type: dict
-        options:
-          bucket:
-            required: true
-            type: str
-          directory:
-            required: true
-            type: str
-          endpoint:
-            required: true
-            type: str
+        type: bool
+      tools_service_mesh_enabled:
+        default: false
+        description: Install Istio in ambient mode.
+        required: false
+        type: bool

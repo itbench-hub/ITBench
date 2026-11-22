@@ -11,6 +11,9 @@
           "itbench.io/layer": application
           "itbench.io/monitor": "true"
           "itbench.io/record": "true"
+          "pod-security.kubernetes.io/audit": baseline
+          "pod-security.kubernetes.io/enforce": baseline
+          "pod-security.kubernetes.io/warn": baseline
         name: "{{ itbench_namespace.name }}"
     state: present
   loop:
@@ -66,7 +69,3 @@
     file: install_opentelemetry_demo.yaml
   when:
     - applications_opentelemetry_demo_enabled
-
-- name: Import agent RBAC installation tasks
-  ansible.builtin.import_tasks:
-    file: install_agent_rbac.yaml

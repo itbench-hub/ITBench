@@ -1,0 +1,39 @@
+---
+# Cluster-scoped, read-only. Shared by both missions, which each bind it to their own ServiceAccount.
+- name: Create ClusterRole for agent cluster-scoped reads
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: agent-cluster-read
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - namespaces
+            - nodes
+            - persistentvolumes
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - metrics.k8s.io
+          resources:
+            - nodes
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - storage.k8s.io
+          resources:
+            - storageclasses
+          verbs:
+            - get
+            - list
+            - watch
+    state: present

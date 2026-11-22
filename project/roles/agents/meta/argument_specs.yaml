@@ -3,14 +3,32 @@ argument_specs:
   main:
     author:
       - Gerard Vanloo
+    short_description: Install or uninstall what an AI agent is given to work on an ITBench environment.
+    description:
+      - Installs the MCP Gateway, the agent RBAC, admission policies, network policies and the `itbench-agent-bundle` Secret.
+      - >-
+        Run after the `tools` and `applications` roles, because the RBAC, network policies and image allowlist
+        are built from the application namespaces that exist at that moment.
     options:
       agents_cluster:
-        required: false
-        type: dict
+        description: The cluster the agents work on.
         options:
           platform:
             choices:
               - kubernetes
               - openshift
+            description: Platform of the cluster, as detected by the `cluster` role.
             required: true
             type: str
+        required: true
+        type: dict
+      agents_diagnosis_enabled:
+        default: true
+        description: Create the read-only `agent-diagnosis` ServiceAccount and its RBAC.
+        required: false
+        type: bool
+      agents_remediation_enabled:
+        default: false
+        description: Create the `agent-remediation` ServiceAccount, its RBAC, and the admission and network policies that contain it.
+        required: false
+        type: bool
