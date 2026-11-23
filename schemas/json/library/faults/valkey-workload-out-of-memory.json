@@ -184,7 +184,7 @@
                     "$ref": "#/$defs/KubernetesObjectKind",
                     "description": "Name of the Kubernetes object model this fault targets (e.g. KubernetesWorkload, KubernetesService).",
                     "enum": [
-                        "KubernetesWorkload"
+                        "KubernetesService"
                     ]
                 }
             },
@@ -207,25 +207,21 @@
             "title": "KubernetesObjectKind",
             "type": "string"
         },
-        "KubernetesWorkload": {
+        "KubernetesService": {
             "additionalProperties": false,
-            "description": "Reference to a Kubernetes workload (DaemonSet, Deployment, or StatefulSet).",
+            "description": "Reference to a Kubernetes Service.",
             "properties": {
                 "apiVersion": {
-                    "const": "apps/v1",
-                    "default": "apps/v1",
-                    "description": "API version of the Kubernetes workload resource. Always apps/v1.",
+                    "const": "v1",
+                    "default": "v1",
+                    "description": "API version of the Kubernetes Service resource. Always v1.",
                     "title": "Apiversion",
                     "type": "string"
                 },
                 "kind": {
-                    "default": "Deployment",
-                    "description": "Kind of the Kubernetes workload. One of DaemonSet, Deployment, or StatefulSet.",
-                    "enum": [
-                        "DaemonSet",
-                        "Deployment",
-                        "StatefulSet"
-                    ],
+                    "const": "Service",
+                    "default": "Service",
+                    "description": "Kind of the Kubernetes resource. Always Service.",
                     "title": "Kind",
                     "type": "string"
                 },
@@ -235,7 +231,7 @@
                     "type": "string"
                 },
                 "namespace": {
-                    "description": "Namespace of the workload.",
+                    "description": "Namespace of the Service.",
                     "title": "Namespace",
                     "type": "string"
                 }
@@ -244,7 +240,7 @@
                 "name",
                 "namespace"
             ],
-            "title": "KubernetesWorkload",
+            "title": "KubernetesService",
             "type": "object"
         },
         "Platform": {
@@ -260,7 +256,7 @@
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "additionalProperties": false,
-    "description": "This fault adds a code change to a Valkey workload. This modifies the container to also contain a process which will consume memory.",
+    "description": "This fault configures a Valkey instance to use a 1MB memory limit with the noeviction policy by running a short-lived Kubernetes Job. Under normal traffic, Valkey memory fills up and rejects all subsequent writes.",
     "properties": {
         "alerts": {
             "description": "Alerts triggered by this fault.",

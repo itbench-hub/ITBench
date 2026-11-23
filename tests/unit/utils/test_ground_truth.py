@@ -133,7 +133,7 @@ def test_generate_ground_truth_creates_file(tmp_path: Path) -> None:
     assert out.exists()
     content = out.read_text(encoding="utf-8")
     # Verify 2-space indentation on lists
-    assert "entities:\n  - apiVersion:" in content
+    assert "entities:\n  faulted:\n    kubernetes:\n      - apiVersion:" in content
 
 
 def test_generate_ground_truth_file_starts_with_schema_comment(tmp_path: Path) -> None:
@@ -198,7 +198,7 @@ def test_generate_ground_truth_entities_contain_target(tmp_path: Path) -> None:
         out = generate_ground_truth(scenario, tmp_path)
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
-    entity = doc["entities"][0]
+    entity = doc["entities"]["faulted"]["kubernetes"][0]
     assert entity["name"] == "frontend"
     assert entity["namespace"] == "prod"
     assert entity["kind"] == "Deployment"
@@ -225,9 +225,10 @@ def test_generate_ground_truth_companion_entities(tmp_path: Path) -> None:
         out = generate_ground_truth(scenario, tmp_path)
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
-    assert len(doc["entities"]) == 2
-    assert doc["entities"][0] == {"apiVersion": "apps/v1", "kind": "Deployment", "name": "ad", "namespace": "otel-demo"}
-    assert doc["entities"][1] == {
+    faulted = doc["entities"]["faulted"]["kubernetes"]
+    assert len(faulted) == 2
+    assert faulted[0] == {"apiVersion": "apps/v1", "kind": "Deployment", "name": "ad", "namespace": "otel-demo"}
+    assert faulted[1] == {
         "apiVersion": "v1",
         "kind": "ResourceQuota",
         "name": "strict-resource-quota",
@@ -258,7 +259,18 @@ def test_generate_ground_truth_entities_omit_namespace_when_none(tmp_path: Path)
         out = generate_ground_truth(scenario, tmp_path)
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
-    assert "namespace" not in doc["entities"][0]
+    assert "namespace" not in doc["entities"]["faulted"]["kubernetes"][0]
+
+
+def test_generate_ground_truth_does_not_emit_impacted_or_unchanged(tmp_path: Path) -> None:
+    fault = _make_fault()
+    scenario = _make_scenario(fault.id, _make_workload())
+
+    with patch("itbench.utils.ground_truth.FAULT_CATALOG", {fault.id: fault}):
+        out = generate_ground_truth(scenario, tmp_path)
+
+    doc = yaml.safe_load(out.read_text(encoding="utf-8"))
+    assert list(doc["entities"]) == ["faulted"]
 
 
 def test_generate_ground_truth_solutions_resolve_placeholders(tmp_path: Path) -> None:
@@ -289,5 +301,5 @@ def test_generate_ground_truth_unknown_fault_id_skipped(tmp_path: Path) -> None:
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
     assert doc["alerts"] == []
-    assert doc["entities"] == []
+    assert doc["entities"] == {"faulted": {"kubernetes": []}}
     assert doc["solutions"] == []

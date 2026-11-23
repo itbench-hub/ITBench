@@ -42,7 +42,9 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
 
     - **alerts** — union of every ``fault.alerts`` value across all injections,
       deduplicated in first-seen order, each written as ``{name: <alert>, labels: {}}``.
-    - **entities** — one entry per injection target in order.
+    - **entities** — ``faulted.kubernetes`` lists one object per injection target in order, plus
+      the companion objects a fault creates or changes. ``impacted`` and ``unchanged`` are not
+      generated.
     - **solutions** — one group per injection; each group is a list of alternative
       remediation paths (one per solution template), with Jinja placeholders resolved
       against the first target of that injection.
@@ -67,23 +69,23 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
                 seen_alerts.add(alert_name)
                 alerts_out.append({"name": alert_name, "labels": {}})
 
-    entities_out: list[dict] = []
+    faulted_out: list[dict] = []
     for injection, targets in injections:
         for obj in targets:
             entry: dict = {"apiVersion": obj.api_version, "kind": obj.kind, "name": obj.name}
             if obj.namespace is not None:
                 entry["namespace"] = obj.namespace
-            entities_out.append(entry)
+            faulted_out.append(entry)
 
-            # Add companion entities created/targeted by specific fault injections
+            # Add companion objects created/targeted by specific fault injections
             ns = obj.namespace or "default"
             match injection.id:
                 case "crashing-kubernetes-workload-init-container":
-                    entities_out.append(
+                    faulted_out.append(
                         {"apiVersion": "v1", "kind": "ConfigMap", "name": f"{obj.name}-config", "namespace": ns}
                     )
                 case "ingress-port-blocking-network-policy":
-                    entities_out.append(
+                    faulted_out.append(
                         {
                             "apiVersion": "networking.k8s.io/v1",
                             "kind": "NetworkPolicy",
@@ -92,11 +94,11 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
                         }
                     )
                 case "insufficient-kubernetes-resource-quota":
-                    entities_out.append(
+                    faulted_out.append(
                         {"apiVersion": "v1", "kind": "ResourceQuota", "name": "strict-resource-quota", "namespace": ns}
                     )
                 case "strict-mutual-tls-istio-service-mesh-enforcement":
-                    entities_out.append(
+                    faulted_out.append(
                         {
                             "apiVersion": "security.istio.io/v1",
                             "kind": "PeerAuthentication",
@@ -105,7 +107,7 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
                         }
                     )
                 case "traffic-denying-istio-gateway-authorization-policy":
-                    entities_out.append(
+                    faulted_out.append(
                         {
                             "apiVersion": "security.istio.io/v1",
                             "kind": "AuthorizationPolicy",
@@ -128,7 +130,7 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
 
     doc: dict = {
         "alerts": alerts_out,
-        "entities": entities_out,
+        "entities": {"faulted": {"kubernetes": faulted_out}},
         "solutions": solutions_out,
     }
 

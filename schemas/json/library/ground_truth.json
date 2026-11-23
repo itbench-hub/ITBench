@@ -85,12 +85,35 @@
             "title": "GroundTruthAlert",
             "type": "object"
         },
-        "GroundTruthEntity": {
+        "GroundTruthEntities": {
             "additionalProperties": false,
-            "description": "A Kubernetes object entity involved in a fault.",
+            "description": "Entities of a scenario, grouped by their relationship to the fault.",
+            "properties": {
+                "faulted": {
+                    "$ref": "#/$defs/GroundTruthEntityGroup",
+                    "description": "Entities the fault acts on directly, including objects it creates."
+                },
+                "impacted": {
+                    "$ref": "#/$defs/GroundTruthEntityGroup",
+                    "description": "Entities affected by cascade from the faulted ones."
+                },
+                "unchanged": {
+                    "$ref": "#/$defs/GroundTruthUnchangedEntityGroup",
+                    "description": "Entities that must stay unchanged."
+                }
+            },
+            "required": [
+                "faulted"
+            ],
+            "title": "GroundTruthEntities",
+            "type": "object"
+        },
+        "GroundTruthEntityGroup": {
+            "additionalProperties": false,
+            "description": "Entities of one relationship to the fault, grouped by entity type.",
             "properties": {
                 "kubernetes": {
-                    "description": "One or more Kubernetes objects involved in this fault.",
+                    "description": "Kubernetes objects in this group.",
                     "items": {
                         "$ref": "#/$defs/KubernetesObject"
                     },
@@ -99,12 +122,97 @@
                     "uniqueItems": true
                 }
             },
-            "required": [
-                "kubernetes"
-            ],
-            "title": "GroundTruthEntity",
+            "title": "GroundTruthEntityGroup",
             "type": "object"
         },
+        "GroundTruthField": {
+            "additionalProperties": false,
+            "description": "A single field of an object that must keep an expected value.",
+            "properties": {
+                "path": {
+                    "description": "JSON key path of the field, e.g. spec.template.spec.containers[0].name.",
+                    "title": "Path",
+                    "type": "string"
+                },
+                "value": {
+                    "$ref": "#/$defs/JsonValue",
+                    "description": "Value the field is expected to hold, e.g. server."
+                }
+            },
+            "required": [
+                "path",
+                "value"
+            ],
+            "title": "GroundTruthField",
+            "type": "object"
+        },
+        "GroundTruthUnchangedEntityGroup": {
+            "additionalProperties": false,
+            "description": "Entities that must stay as they are, grouped by entity type.",
+            "properties": {
+                "kubernetes": {
+                    "description": "Kubernetes objects the fault does not touch and the agent must not change.",
+                    "items": {
+                        "$ref": "#/$defs/GroundTruthUnchangedKubernetesObject"
+                    },
+                    "title": "Kubernetes",
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "title": "GroundTruthUnchangedEntityGroup",
+            "type": "object"
+        },
+        "GroundTruthUnchangedKubernetesObject": {
+            "additionalProperties": false,
+            "description": "A Kubernetes object that the fault does not touch and the agent must not change.",
+            "properties": {
+                "apiVersion": {
+                    "default": "v1",
+                    "description": "API version of the Kubernetes resource (e.g. v1, apps/v1).",
+                    "title": "Apiversion",
+                    "type": "string"
+                },
+                "fields": {
+                    "description": "Fields that must keep the given value. When empty, the whole object must be unchanged.",
+                    "items": {
+                        "$ref": "#/$defs/GroundTruthField"
+                    },
+                    "title": "Fields",
+                    "type": "array"
+                },
+                "kind": {
+                    "description": "Kind of the Kubernetes resource (e.g. Deployment, Service, Node).",
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Kubernetes resource.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "namespace": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Namespace of the resource (if namespaced).",
+                    "title": "Namespace"
+                }
+            },
+            "required": [
+                "kind",
+                "name"
+            ],
+            "title": "GroundTruthUnchangedKubernetesObject",
+            "type": "object"
+        },
+        "JsonValue": {},
         "KubernetesObject": {
             "additionalProperties": false,
             "description": "Base model for a Kubernetes object reference.",
@@ -161,16 +269,11 @@
             "uniqueItems": true
         },
         "entities": {
-            "description": "Kubernetes objects directly involved in the fault.",
-            "items": {
-                "$ref": "#/$defs/GroundTruthEntity"
-            },
-            "title": "Entities",
-            "type": "array",
-            "uniqueItems": true
+            "$ref": "#/$defs/GroundTruthEntities",
+            "description": "Entities involved in the fault, grouped by their relationship to it."
         },
         "solutions": {
-            "description": "One or more alternative solution groups, each comprising an ordered list of remediation steps.",
+            "description": "One entry per fault injection, each containing one or more alternative remediation paths (solution templates) for that injection.",
             "items": {
                 "items": {
                     "$ref": "#/$defs/FaultSolution"

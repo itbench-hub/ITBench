@@ -83,10 +83,35 @@ def _render_faults(faults: list[dict[str, Any]]) -> None:
     console.print(table)
 
 
+_ENTITY_GROUPS = (
+    ("faulted", "Faulted entities"),
+    ("impacted", "Impacted entities"),
+    ("unchanged", "Entities that must stay unchanged"),
+)
+
+
+def _render_entities(entities: dict[str, Any]) -> None:
+    """Print each non-empty entity group (faulted, impacted, unchanged) by entity type."""
+    for group_key, heading in _ENTITY_GROUPS:
+        group: dict[str, list[dict[str, Any]]] = entities.get(group_key) or {}
+        objects = [obj for kind_objects in group.values() for obj in kind_objects or []]
+        if not objects:
+            continue
+        console.print(f"  [bold]{heading}[/bold]")
+        for obj in objects:
+            parts = [f"[dim]{escape(str(obj.get('apiVersion', '')))}[/dim]", escape(str(obj.get("kind", "?")))]
+            parts.append(escape(str(obj.get("name", "?"))))
+            if obj.get("namespace"):
+                parts.append(f"({escape(str(obj['namespace']))})")
+            console.print(f"    • {' '.join(parts)}")
+            for field in obj.get("fields") or []:
+                console.print(f"        {escape(str(field.get('path', '?')))} = {escape(str(field.get('value')))}")
+
+
 def _render_solution(ground_truth: dict[str, Any]) -> None:
-    """Print the ground-truth alerts, affected entities and solution steps."""
+    """Print the ground-truth alerts, entities and solution steps."""
     alerts: list[dict[str, Any]] = ground_truth.get("alerts") or []
-    entities: list[dict[str, Any]] = ground_truth.get("entities") or []
+    entities: dict[str, Any] = ground_truth.get("entities") or {}
     solutions: list[list[dict[str, Any]]] = ground_truth.get("solutions") or []
 
     console.print("[bold magenta]SOLUTION[/bold magenta]\n")
@@ -96,14 +121,7 @@ def _render_solution(ground_truth: dict[str, Any]) -> None:
         for alert in alerts:
             console.print(f"    • {escape(str(alert.get('name', '?')))}")
 
-    if entities:
-        console.print("  [bold]Affected entities[/bold]")
-        for entity in entities:
-            parts = [f"[dim]{escape(str(entity.get('apiVersion', '')))}[/dim]", escape(str(entity.get("kind", "?")))]
-            parts.append(escape(str(entity.get("name", "?"))))
-            if entity.get("namespace"):
-                parts.append(f"({escape(str(entity['namespace']))})")
-            console.print(f"    • {' '.join(parts)}")
+    _render_entities(entities)
 
     if not solutions:
         console.print("  [dim]No solutions recorded for this scenario.[/dim]\n")

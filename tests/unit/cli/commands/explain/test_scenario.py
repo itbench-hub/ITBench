@@ -40,7 +40,13 @@ _SCENARIO: dict[str, Any] = {
 
 _GROUND_TRUTH: dict[str, Any] = {
     "alerts": [{"name": "KubePodNotReady", "labels": {}}],
-    "entities": [{"apiVersion": "apps/v1", "kind": "Deployment", "name": "recommendation", "namespace": "otel-demo"}],
+    "entities": {
+        "faulted": {
+            "kubernetes": [
+                {"apiVersion": "apps/v1", "kind": "Deployment", "name": "recommendation", "namespace": "otel-demo"}
+            ]
+        }
+    },
     "solutions": [[{"steps": [{"text": "Edit the manifest.", "command": "kubectl edit deployment recommendation"}]}]],
 }
 
@@ -167,12 +173,55 @@ def test_explain_scenario_multiple_variants_and_faults_labeled(tmp_path: Path) -
 
 
 def test_explain_scenario_no_solutions_recorded(tmp_path: Path) -> None:
-    _write_scenario(tmp_path, "1", ground_truth={"alerts": [], "entities": [], "solutions": []})
+    _write_scenario(
+        tmp_path, "1", ground_truth={"alerts": [], "entities": {"faulted": {"kubernetes": []}}, "solutions": []}
+    )
 
     result = _invoke(tmp_path, ["1"])
 
     assert result.exit_code == 0
     assert "No solutions recorded" in result.output
+
+
+def test_explain_scenario_renders_entity_groups(tmp_path: Path) -> None:
+    ground_truth = {
+        "alerts": [],
+        "entities": {
+            "faulted": {"kubernetes": [{"apiVersion": "apps/v1", "kind": "Deployment", "name": "frontend"}]},
+            "impacted": {"kubernetes": [{"apiVersion": "v1", "kind": "Service", "name": "frontend-svc"}]},
+            "unchanged": {
+                "kubernetes": [
+                    {
+                        "apiVersion": "policies.kyverno.io/v1",
+                        "kind": "NamespacedValidatingPolicy",
+                        "name": "require-non-root",
+                        "fields": [{"path": "spec.template.spec.containers[0].name", "value": "server"}],
+                    }
+                ]
+            },
+        },
+        "solutions": [],
+    }
+    _write_scenario(tmp_path, "16", ground_truth=ground_truth)
+
+    result = _invoke(tmp_path, ["16"])
+
+    assert result.exit_code == 0
+    assert "Faulted entities" in result.output
+    assert "Impacted entities" in result.output
+    assert "Entities that must stay unchanged" in result.output
+    assert "NamespacedValidatingPolicy require-non-root" in result.output
+    assert "spec.template.spec.containers[0].name = server" in result.output
+
+
+def test_explain_scenario_omits_empty_entity_groups(tmp_path: Path) -> None:
+    _write_scenario(tmp_path, "16", ground_truth=_GROUND_TRUTH)
+
+    result = _invoke(tmp_path, ["16"])
+
+    assert "Faulted entities" in result.output
+    assert "Impacted entities" not in result.output
+    assert "must stay unchanged" not in result.output
 
 
 def test_explain_scenario_without_ground_truth_file(tmp_path: Path) -> None:
@@ -190,7 +239,9 @@ def test_explain_scenario_ground_truth_with_schema_comment(tmp_path: Path) -> No
         "# yaml-language-server: $schema=../../../schemas/json/library/ground_truth.json\n"
         "---\n"
         "alerts: []\n"
-        "entities: []\n"
+        "entities:\n"
+        "  faulted:\n"
+        "    kubernetes: []\n"
         "solutions: []\n",
         encoding="utf-8",
     )

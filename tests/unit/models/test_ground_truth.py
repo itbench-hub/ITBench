@@ -12,7 +12,11 @@ from itbench.models.fault import (
 from itbench.models.ground_truth import (
     GroundTruth,
     GroundTruthAlert,
-    GroundTruthEntity,
+    GroundTruthEntities,
+    GroundTruthEntityGroup,
+    GroundTruthField,
+    GroundTruthUnchangedEntityGroup,
+    GroundTruthUnchangedKubernetesObject,
 )
 from itbench.models.kubernetes import KubernetesWorkload
 
@@ -25,8 +29,8 @@ def test_ground_truth_valid() -> None:
                 labels={"namespace": "default", "app": "frontend"},
             )
         ],
-        entities=[
-            GroundTruthEntity(
+        entities=GroundTruthEntities(
+            faulted=GroundTruthEntityGroup(
                 kubernetes=[
                     KubernetesWorkload(
                         kind="Deployment",
@@ -35,7 +39,7 @@ def test_ground_truth_valid() -> None:
                     )
                 ]
             )
-        ],
+        ),
         solutions=[
             [
                 FaultSolution(
@@ -51,8 +55,94 @@ def test_ground_truth_valid() -> None:
     )
     assert len(gt.alerts) == 1
     assert gt.alerts[0].name == FaultAlerts.KubePodCrashLooping
-    assert len(gt.entities) == 1
+    assert len(gt.entities.faulted.kubernetes) == 1
+    assert gt.entities.impacted.kubernetes == []
+    assert gt.entities.unchanged.kubernetes == []
     assert len(gt.solutions) == 1
+
+
+def test_ground_truth_entities_from_dict() -> None:
+    gt = GroundTruth.model_validate(
+        {
+            "entities": {
+                "faulted": {
+                    "kubernetes": [
+                        {"apiVersion": "apps/v1", "kind": "Deployment", "name": "frontend", "namespace": "default"}
+                    ]
+                },
+                "impacted": {"kubernetes": []},
+            },
+            "solutions": [],
+        }
+    )
+    assert gt.entities.faulted.kubernetes[0].api_version == "apps/v1"
+    assert gt.entities.impacted.kubernetes == []
+
+
+def test_ground_truth_entities_requires_faulted() -> None:
+    with pytest.raises(ValidationError):
+        GroundTruth.model_validate({"entities": {}, "solutions": []})
+
+
+def test_ground_truth_flat_entity_list_rejected() -> None:
+    with pytest.raises(ValidationError):
+        GroundTruth.model_validate(
+            {
+                "entities": [{"apiVersion": "apps/v1", "kind": "Deployment", "name": "frontend"}],
+                "solutions": [],
+            }
+        )
+
+
+def test_ground_truth_entities_extra_group_forbidden() -> None:
+    with pytest.raises(ValidationError):
+        GroundTruth.model_validate(
+            {
+                "entities": {"faulted": {"kubernetes": []}, "primary": {"kubernetes": []}},
+                "solutions": [],
+            }
+        )
+
+
+def test_ground_truth_entity_group_unknown_type_forbidden() -> None:
+    with pytest.raises(ValidationError):
+        GroundTruthEntityGroup.model_validate({"host": []})
+
+
+def test_ground_truth_unchanged_fields() -> None:
+    group = GroundTruthUnchangedEntityGroup.model_validate(
+        {
+            "kubernetes": [
+                {
+                    "apiVersion": "apps/v1",
+                    "kind": "Deployment",
+                    "name": "frontend",
+                    "namespace": "default",
+                    "fields": [{"path": "spec.template.spec.containers[0].name", "value": "server"}],
+                },
+                {"apiVersion": "v1", "kind": "ConfigMap", "name": "settings", "namespace": "default"},
+            ]
+        }
+    )
+    with_fields, without_fields = group.kubernetes
+    assert with_fields.fields == [GroundTruthField(path="spec.template.spec.containers[0].name", value="server")]
+    assert without_fields.fields == []
+
+
+def test_ground_truth_unchanged_field_accepts_json_values() -> None:
+    obj = GroundTruthUnchangedKubernetesObject.model_validate(
+        {
+            "kind": "Deployment",
+            "name": "frontend",
+            "fields": [{"path": "spec.selector", "value": {"matchLabels": {"app": "frontend"}}}],
+        }
+    )
+    assert obj.fields[0].value == {"matchLabels": {"app": "frontend"}}
+
+
+def test_ground_truth_unchanged_field_requires_path_and_value() -> None:
+    with pytest.raises(ValidationError):
+        GroundTruthField.model_validate({"path": "spec.replicas"})
 
 
 def test_ground_truth_extra_fields_forbidden() -> None:
