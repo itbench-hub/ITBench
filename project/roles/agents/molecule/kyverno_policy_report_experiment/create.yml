@@ -1,0 +1,86 @@
+---
+# Throwaway experiment for holes 7 and 8 of ciso-plan.md. Delete this scenario once the results are recorded.
+# This run installs Kyverno the way an environment does: cert-manager and the Prometheus Operator CRDs first, then the
+# tools role's own install_kyverno.yaml (cert-manager certificates, ServiceMonitors and the PrometheusRule enabled).
+- name: Install Kyverno with the values the tools role uses
+  hosts:
+    - localhost
+  vars:
+    tools_cluster:
+      platform: kubernetes
+      provider: kind
+  tasks:
+    - name: Create namespaces
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ namespace_name }}"
+        state: present
+      loop:
+        - "{{ itbench_namespaces.system }}"
+        - "{{ itbench_namespaces.operators }}"
+        - "{{ helm_release_kyverno.namespace }}"
+        - kyverno-report-test
+      loop_control:
+        loop_var: namespace_name
+
+    - name: Import tools role Prometheus Operator CRD installation tasks
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: install_crds_prometheus_operator.yaml
+
+    - name: Import tools role cert-manager installation tasks
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: install_cert_manager.yaml
+
+    - name: Import tools role Kyverno installation tasks
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: install_kyverno.yaml
+
+    - name: Wait for the Kyverno CRDs to be established
+      kubernetes.core.k8s_info:
+        api_version: apiextensions.k8s.io/v1
+        kind: CustomResourceDefinition
+        name: "{{ crd_name }}"
+        wait: true
+        wait_condition:
+          status: "True"
+          type: Established
+        wait_timeout: 120
+      loop:
+        - namespacedvalidatingpolicies.policies.kyverno.io
+        - policyreports.wgpolicyk8s.io
+      loop_control:
+        loop_var: crd_name
+
+    - name: Retrieve the Kyverno objects the values enable
+      kubernetes.core.k8s_info:
+        api_version: "{{ object.api_version }}"
+        kind: "{{ object.kind }}"
+        namespace: "{{ helm_release_kyverno.namespace }}"
+      loop:
+        - api_version: monitoring.coreos.com/v1
+          kind: ServiceMonitor
+        - api_version: monitoring.coreos.com/v1
+          kind: PrometheusRule
+        - api_version: cert-manager.io/v1
+          kind: Certificate
+      loop_control:
+        label: "{{ object.kind }}"
+        loop_var: object
+      register: experiment_kyverno_objects
+
+    - name: Show the Kyverno objects the values enable
+      ansible.builtin.debug:
+        msg: >-
+          {{
+            experiment_kyverno_objects.results |
+            map(attribute='resources') |
+            flatten |
+            map(attribute='metadata.name') |
+            list
+          }}

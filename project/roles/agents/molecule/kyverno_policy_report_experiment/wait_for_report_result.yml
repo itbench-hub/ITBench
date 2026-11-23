@@ -1,0 +1,59 @@
+---
+- name: Poll the PolicyReports in the namespace
+  kubernetes.core.k8s_info:
+    api_version: "{{ experiment_report_api_version }}"
+    kind: PolicyReport
+    namespace: "{{ experiment_namespace }}"
+  register: experiment_reports
+  # The policy value in a result may or may not carry the namespace, so match by name as a regex.
+  until:
+    - >-
+      experiment_reports.resources |
+      map(attribute='results', default=[]) |
+      flatten |
+      selectattr('policy', 'search', experiment_policy) |
+      selectattr('result', 'equalto', experiment_expected_result) |
+      list | length > 0
+  retries: "{{ experiment_timeout_retries }}"
+  delay: "{{ experiment_timeout_delay }}"
+  failed_when: false
+
+- name: Compute the elapsed time
+  ansible.builtin.set_fact:
+    experiment_elapsed: "{{ (now(utc=true).timestamp() | float) - (experiment_started | float) }}"
+    experiment_observed_results: >-
+      {{
+        experiment_reports.resources |
+        map(attribute='results', default=[]) |
+        flatten |
+        selectattr('policy', 'search', experiment_policy) |
+        list
+      }}
+
+- name: Show the result of this step
+  ansible.builtin.debug:
+    msg:
+      step: "{{ experiment_step }}"
+      expected: "{{ experiment_expected_result }}"
+      seconds_until_observed_or_timeout: "{{ experiment_elapsed | float | round(1) }}"
+      polling_attempts: "{{ experiment_reports.attempts | default(1) }}"
+      matching_results: "{{ experiment_observed_results }}"
+      reports_in_namespace: "{{ experiment_reports.resources | length }}"
+
+- name: Show the full reports when no matching result appeared
+  ansible.builtin.debug:
+    msg: "{{ experiment_reports.resources | ansible.builtin.to_nice_json }}"
+  when:
+    - experiment_observed_results | length == 0
+
+- name: Validate that the expected result was observed
+  ansible.builtin.assert:
+    that:
+      - experiment_observed_results | length > 0
+      - experiment_observed_results | map(attribute='result') | list | first == experiment_expected_result
+    fail_msg: >-
+      Step '{{ experiment_step }}': expected a '{{ experiment_expected_result }}' result for
+      policy '{{ experiment_policy }}' within {{ experiment_elapsed | float | round(1) }} seconds.
+    success_msg: >-
+      Step '{{ experiment_step }}': observed '{{ experiment_expected_result }}' after
+      {{ experiment_elapsed | float | round(1) }} seconds.

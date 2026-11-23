@@ -1,0 +1,37 @@
+---
+- name: Install agent remediation access controls
+  hosts:
+    - localhost
+  vars:
+    agents_cluster:
+      platform: kubernetes
+    agents_remediation_enabled: true
+  tasks:
+    - name: Retrieve fault injectable application namespaces
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        label_selectors:
+          - "itbench.io/ansible-role=applications"
+          - "itbench.io/inject=true"
+      register: agents_injectable_namespaces
+
+    - name: Import agents role cluster-scoped read RBAC tasks
+      ansible.builtin.import_role:
+        name: agents
+        tasks_from: install_rbac_cluster_read.yaml
+
+    - name: Import agents role remediation RBAC tasks
+      ansible.builtin.import_role:
+        name: agents
+        tasks_from: install_rbac_remediation.yaml
+
+    - name: Import agents role admission policies tasks
+      ansible.builtin.import_role:
+        name: agents
+        tasks_from: install_admission_policies.yaml
+
+    # A ValidatingAdmissionPolicy is enforced only after the API server has synced the policy and its binding.
+    - name: Wait for admission policies to be enforced
+      ansible.builtin.pause:
+        seconds: 15

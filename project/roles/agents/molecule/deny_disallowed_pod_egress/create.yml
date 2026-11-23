@@ -1,0 +1,98 @@
+---
+- name: Create Kubernetes objects
+  hosts:
+    - localhost
+  tasks:
+    - name: Create agents namespace
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+            name: "{{ itbench_namespaces.agents }}"
+        state: present
+
+    - name: Create MCP servers namespace
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ itbench_namespaces.mcp_servers }}"
+        state: present
+
+    - name: Create fault injectable namespace
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            labels:
+              "itbench.io/ansible-role": applications
+              "itbench.io/inject": "true"
+            name: deny-disallowed-pod-egress-test
+        state: present
+
+    - name: Create namespace that is not fault injectable
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: deny-disallowed-pod-egress-external-test
+        state: present
+
+    - name: Create HTTP server pods
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            labels:
+              "app.kubernetes.io/name": http-server
+            name: http-server
+            namespace: "{{ http_server_namespace }}"
+          spec:
+            containers:
+              - name: server
+                image: "{{ container_image_ubi10_python314_minimal }}"
+                command:
+                  - python
+                args:
+                  - -m
+                  - http.server
+                  - "8080"
+                ports:
+                  - containerPort: 8080
+                    protocol: TCP
+        state: present
+        wait: true
+      loop:
+        - deny-disallowed-pod-egress-test
+        - deny-disallowed-pod-egress-external-test
+      loop_control:
+        loop_var: http_server_namespace
+
+    - name: Create client pod in fault injectable namespace
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            labels:
+              "app.kubernetes.io/name": http-client
+            name: http-client
+            namespace: deny-disallowed-pod-egress-test
+          spec:
+            containers:
+              - name: client
+                image: "{{ container_image_ubi10_python314_minimal }}"
+                command:
+                  - python
+                args:
+                  - -c
+                  - "import time; time.sleep(3600)"
+        state: present
+        wait: true

@@ -16,6 +16,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  agents:
+    name: Agent Access Control Tests
+    runs-on: ubuntu-26.04
+    env:
+      KUBECONFIG: ${{ github.workspace }}/clusters/kind/kubeconfigs/kind-environment
+      MISE_ENV: kind
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
+        with:
+          version: 2026.11.7
+      - name: Install project dependencies
+        run: |
+          mise run install:dev
+      - name: Create Kind cluster
+        run: |
+          mise run create:kind:environment
+      - name: Configure environment
+        run: uv run itbench configure environment
+      - name: Run Molecule tests
+        run: |
+          mise run test:molecule:agents
+      - name: Destroy Kind cluster
+        run: |
+          mise run destroy:kind:environment
   sre-faults:
     name: SRE Fault Injection Tests
     runs-on: ubuntu-26.04
