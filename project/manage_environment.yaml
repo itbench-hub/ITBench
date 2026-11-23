@@ -15,7 +15,7 @@
       tags:
         - always
   tasks:
-    - name: Import tools role (non-recorders)
+    - name: Import tools role
       ansible.builtin.import_role:
         name: tools
       module_defaults:
@@ -40,15 +40,23 @@
       when:
         - environment_application_management_enabled | ansible.builtin.default(false)
 
-    - name: Import tools role (recorders)
+    - name: Import agents role
       ansible.builtin.import_role:
-        name: tools
-        tasks_from: install_itbench_recorders.yaml
-      tags:
-        - install
+        name: agents
+      module_defaults:
+        group/kubernetes.core.helm:
+          binary_path: "{{ mise_helm_path }}"
       vars:
-        tools_cluster:
+        agents_cluster:
           platform: "{{ cluster_platform }}"
-          provider: "{{ cluster_provider }}"
+      when:
+        - environment_agent_management_enabled | ansible.builtin.default(false)
+
+    - name: Import recorders role
+      ansible.builtin.import_role:
+        name: recorders
+      vars:
+        recorders_cluster:
+          platform: "{{ cluster_platform }}"
       when:
         - environment_recorder_management_enabled | ansible.builtin.default(false)

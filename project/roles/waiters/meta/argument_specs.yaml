@@ -3,34 +3,47 @@ argument_specs:
   main:
     author:
       - Gerard Vanloo
+    short_description: Wait for a condition before or after faults are injected.
+    description:
+      - Each waiter runs `tasks/wait_<id>.yaml`, with dashes in the `id` replaced by underscores.
     options:
       waiters_tasks:
+        description: The waiters to run, in order.
         elements: dict
         options:
           container:
+            description: Container of the workload, for waiters that act on one container.
             required: false
             type: str
           id:
+            description: Waiter identifier, for example `pause-execution`.
             required: true
             type: str
           replicas:
+            description: Replica count to wait for, for waiters that wait on scale.
             required: false
             type: int
           seconds:
+            description: Seconds to pause, for the `pause-execution` waiter.
             required: false
             type: int
           workload:
+            description: The workload to wait on, which must exist before the waiter runs.
             options:
               apiVersion:
+                description: API version of the workload, for example `apps/v1`.
                 required: true
                 type: str
               kind:
+                description: Kind of the workload, for example `Deployment`.
                 required: true
                 type: str
               name:
+                description: Name of the workload.
                 required: true
                 type: str
               namespace:
+                description: Namespace of the workload.
                 required: false
                 type: str
             required: false

@@ -12,7 +12,8 @@ on:
       - mise*.toml
       - project/manage_environment.yaml
       - project/roles/applications/tasks/install.yaml
-      - project/roles/applications/tasks/install_agent_rbac.yaml
+      - project/roles/agents/**
+      - project/roles/recorders/**
       - project/roles/tools/**
       - src/**
       - tests/integration/**
@@ -86,6 +87,10 @@ jobs:
       - name: Create Kind cluster
         run: |
           mise run create:kind:environment
+      - name: Run Cloud Provider
+        run: |
+          mise run run:kind:provider &
+          sleep 10
       - name: Run CLI integration tests
         run: mise run test:integration:cli
         env:

@@ -1,10 +1,10 @@
 ---
 - name: Install Kyverno
   kubernetes.core.helm:
-    chart_ref: "oci://ghcr.io/kyverno/charts/kyverno"
-    chart_version: "3.10.0"
-    release_name: "{{ tools_helm_release_kyverno }}"
-    release_namespace: "{{ tools_namespace_kyverno }}"
+    chart_ref: "{{ helm_chart_kyverno.reference }}"
+    chart_version: "{{ helm_chart_kyverno.version }}"
+    release_name: "{{ helm_release_kyverno.name }}"
+    release_namespace: "{{ helm_release_kyverno.namespace }}"
     release_state: present
     release_values:
       admissionController:
@@ -26,62 +26,3 @@
         serviceMonitor:
           enabled: true
     wait: true
-
-- name: Create MutatingPolicy for DaemonSets
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: policies.kyverno.io/v1
-      kind: MutatingPolicy
-      metadata:
-        labels:
-          "itbench.io/ansible-role": tools
-          "itbench.io/layer": governance
-        name: itbench-fault-injection-toleration
-      spec:
-        matchConstraints:
-          resourceRules:
-            - apiGroups:
-                - apps
-              apiVersions:
-                - v1
-              operations:
-                - CREATE
-                - UPDATE
-              resources:
-                - daemonsets
-        matchConditions:
-          - name: skip-if-toleration-exists
-            expression: >-
-              !has(object.spec.template.spec.tolerations) ||
-              object.spec.template.spec.tolerations == null ||
-              !object.spec.template.spec.tolerations.exists(t, has(t.key) && t.key == "itbench.io/sandbox")
-        mutations:
-          - patchType: JSONPatch
-            jsonPatch:
-              expression: >-
-                (!has(object.spec.template.spec.tolerations) || object.spec.template.spec.tolerations == null) ?
-                [
-                  JSONPatch{
-                    op: "add",
-                    path: "/spec/template/spec/tolerations",
-                    value: [dyn({
-                      "key": "itbench.io/sandbox",
-                      "operator": "Equal",
-                      "value": "true",
-                      "effect": "NoSchedule"
-                    })]
-                  }
-                ] :
-                [
-                  JSONPatch{
-                    op: "add",
-                    path: "/spec/template/spec/tolerations/-",
-                    value: dyn({
-                      "key": "itbench.io/sandbox",
-                      "operator": "Equal",
-                      "value": "true",
-                      "effect": "NoSchedule"
-                    })
-                  }
-                ]
-    state: present

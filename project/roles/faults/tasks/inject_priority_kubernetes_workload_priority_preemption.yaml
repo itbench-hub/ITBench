@@ -9,7 +9,7 @@
 
 - name: Select an available worker node randomly
   ansible.builtin.set_fact:
-    faults_node: "{{ faults_sandbox_nodes | ansible.builtin.random }}"
+    faults_node: "{{ faults_sandbox_nodes | ansible.builtin.random(seed=random_fault_injection_seed) }}"
 
 - name: Create PriorityClass (high priority)
   kubernetes.core.k8s:
@@ -96,7 +96,7 @@
                   - "sleep infinity"
                 command:
                   - /bin/sh
-                image: registry.access.redhat.com/ubi10/ubi-minimal@sha256:fb2f7f857cc60d88e3fad19da505083a682ca4569d7b55a61f64aaa43641f741
+                image: "{{ container_image_ubi10_ubi_minimal }}"
                 name: worker
                 resources:
                   requests:

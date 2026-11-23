@@ -35,7 +35,7 @@
         name: system:openshift:scc:anyuid
       subjects:
         - kind: ServiceAccount
-          name: "{{ applications_helm_release_opentelemetry_demo }}"
+          name: "{{ helm_release_opentelemetry_demo.name }}"
           namespace: "{{ applications_opentelemetry_demo_namespace }}"
     state: present
   when:
@@ -43,9 +43,9 @@
 
 - name: Install OpenTelemetry Demo (Astronomy Shop)
   kubernetes.core.helm:
-    chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-demo"
-    chart_version: "0.42.6"
-    release_name: "{{ applications_helm_release_opentelemetry_demo }}"
+    chart_ref: "{{ helm_chart_opentelemetry_demo.reference }}"
+    chart_version: "{{ helm_chart_opentelemetry_demo.version }}"
+    release_name: "{{ helm_release_opentelemetry_demo.name }}"
     release_namespace: "{{ applications_opentelemetry_demo_namespace }}"
     release_state: present
     release_values:
@@ -91,7 +91,7 @@
                   name: namespace
           exporters:
             otlp/gateway-logs:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_applications_opentelemetry_demo }}"
+              endpoint: "{{ fqdn_itbench_opentelemetry_gateway_applications.opentelemetry_demo }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -99,7 +99,7 @@
               tls:
                 insecure: true
             otlp/gateway-traces:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_applications_traces }}"
+              endpoint: "{{ fqdn_itbench_opentelemetry_gateway_applications.traces }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -107,7 +107,7 @@
               tls:
                 insecure: true
             otlp/gateway-metrics:
-              endpoint: "{{ tools_itbench_fqdn_gateway_opentelemetry_applications_metrics }}"
+              endpoint: "{{ fqdn_itbench_opentelemetry_gateway_applications.metrics }}"
               retry_on_failure:
                 enabled: true
               sending_queue:

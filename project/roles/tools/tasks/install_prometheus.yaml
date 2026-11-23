@@ -9,8 +9,8 @@
           apiVersion: cert-manager.io/v1
           kind: Issuer
           metadata:
-            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-issuer' }}"
-            namespace: "{{ tools_itbench_namespace_observability }}"
+            name: "{{ helm_release_kube_prometheus_stack.name ~ '-proxy-issuer' }}"
+            namespace: "{{ itbench_namespaces.observability }}"
           spec:
             selfSigned: {}
         state: present
@@ -21,24 +21,24 @@
           apiVersion: cert-manager.io/v1
           kind: Certificate
           metadata:
-            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus-proxy-tls' }}"
-            namespace: "{{ tools_itbench_namespace_observability }}"
+            name: "{{ helm_release_kube_prometheus_stack.name ~ '-prometheus-proxy-tls' }}"
+            namespace: "{{ itbench_namespaces.observability }}"
           spec:
             dnsNames:
-              - "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus' }}"
+              - "{{ helm_release_kube_prometheus_stack.name ~ '-prometheus' }}"
               - >-
                 {{
                     [
-                      tools_helm_release_kube_prometheus_stack ~ "-prometheus",
-                      tools_itbench_namespace_observability
+                      helm_release_kube_prometheus_stack.name ~ "-prometheus",
+                      itbench_namespaces.observability
                     ] |
                     ansible.builtin.join(".")
                 }}
               - >-
                 {{
                     [
-                      tools_helm_release_kube_prometheus_stack ~ "-prometheus",
-                      tools_itbench_namespace_observability,
+                      helm_release_kube_prometheus_stack.name ~ "-prometheus",
+                      itbench_namespaces.observability,
                       "svc",
                       "cluster",
                       "local"
@@ -48,13 +48,13 @@
             duration: 2160h
             isCA: false
             issuerRef:
-              name: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-issuer' }}"
+              name: "{{ helm_release_kube_prometheus_stack.name ~ '-proxy-issuer' }}"
               kind: Issuer
             privateKey:
-              algorithm: RSA
-              size: 2048
+              algorithm: ECDSA
+              size: 256
             renewBefore: 360h
-            secretName: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-cert' }}"
+            secretName: "{{ helm_release_kube_prometheus_stack.name ~ '-proxy-cert' }}"
             usages:
               - server auth
               - client auth
@@ -62,10 +62,10 @@
 
     - name: Install Prometheus Operator and Prometheus
       kubernetes.core.helm:
-        chart_ref: "oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack"
-        chart_version: "93.3.1"
-        release_name: "{{ tools_helm_release_kube_prometheus_stack }}"
-        release_namespace: "{{ tools_itbench_namespace_observability }}"
+        chart_ref: "{{ helm_chart_kube_prometheus_stack.reference }}"
+        chart_version: "{{ helm_chart_kube_prometheus_stack.version }}"
+        release_name: "{{ helm_release_kube_prometheus_stack.name }}"
+        release_namespace: "{{ itbench_namespaces.observability }}"
         release_state: present
         release_values:
           alertmanager:
@@ -100,15 +100,15 @@
             prometheusSpec:
               containers:
                 - args:
-                    - "--secure-listen-address=0.0.0.0:{{ tools_itbench_prometheus_proxy_port }}"
+                    - "--secure-listen-address=0.0.0.0:{{ itbench_prometheus_proxy.ports.https }}"
                     - "--upstream=http://127.0.0.1:9090/"
                     - "--tls-cert-file=/etc/tls/proxy/tls.crt"
                     - "--tls-private-key-file=/etc/tls/proxy/tls.key"
                     - "--v=10"
-                  image: ghcr.io/kube-rbac-proxy/kube-rbac-proxy:v0.23.1@sha256:f723251bdd90a806b5331b6e9f9287cc2832d3dd9f9479378cdbbddb9856724f
+                  image: "{{ container_image_kube_rbac_proxy_kube_rbac_proxy }}"
                   name: kube-rbac-proxy
                   ports:
-                    - containerPort: "{{ tools_itbench_prometheus_proxy_port }}"
+                    - containerPort: "{{ itbench_prometheus_proxy.ports.https }}"
                       name: http-proxy
                   volumeMounts:
                     - name: proxy-certs
@@ -131,50 +131,23 @@
               volumes:
                 - name: proxy-certs
                   secret:
-                    secretName: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-cert' }}"
+                    secretName: "{{ helm_release_kube_prometheus_stack.name ~ '-proxy-cert' }}"
             service:
               additionalPorts:
                 - name: http-proxy
-                  port: "{{ tools_itbench_prometheus_proxy_port }}"
-                  targetPort: "{{ tools_itbench_prometheus_proxy_port }}"
+                  port: "{{ itbench_prometheus_proxy.ports.https }}"
+                  targetPort: "{{ itbench_prometheus_proxy.ports.https }}"
               # NOTE: This is a workaround due to this issue: https://github.com/prometheus-operator/prometheus-operator/issues/8605
               #       The following line can be safely removed should the connected PR be accepted by the community.
               publishNotReadyAddresses: true
-            # Prometheus only listens on 127.0.0.1 (listenLocal) behind kube-rbac-proxy, so the chart's
-            # self-scrape of the pod IP on 9090 is always refused. It is replaced by the ServiceMonitor
-            # below, which scrapes through the proxy.
             serviceMonitor:
-              selfMonitor: false
+              bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+              port: http-proxy
+              scheme: https
+              tlsConfig:
+                insecureSkipVerify: true
         timeout: 10m0s
         wait: true
-
-    - name: Create ServiceMonitor for Prometheus through the proxy
-      kubernetes.core.k8s:
-        resource_definition:
-          apiVersion: monitoring.coreos.com/v1
-          kind: ServiceMonitor
-          metadata:
-            labels:
-              "itbench.io/ansible-role": tools
-              "itbench.io/layer": observability
-            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus-proxy' }}"
-            namespace: "{{ tools_itbench_namespace_observability }}"
-          spec:
-            endpoints:
-              - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-                path: /metrics
-                port: http-proxy
-                scheme: https
-                tlsConfig:
-                  insecureSkipVerify: true
-            namespaceSelector:
-              matchNames:
-                - "{{ tools_itbench_namespace_observability }}"
-            selector:
-              matchLabels:
-                app: kube-prometheus-stack-prometheus
-                release: "{{ tools_helm_release_kube_prometheus_stack }}"
-        state: present
 
     - name: Create ClusterRoleBinding for bearer token validation
       kubernetes.core.k8s:
@@ -183,11 +156,12 @@
           kind: ClusterRoleBinding
           metadata:
             labels:
+              "itbench.io/ansible-role": tools
               "itbench.io/layer": observability
-            name: "{{ tools_helm_release_kube_prometheus_stack ~ '-proxy-token-reviews' }}"
+            name: "{{ helm_release_kube_prometheus_stack.name ~ '-proxy-token-reviews' }}"
           subjects:
             - kind: ServiceAccount
-              name: "{{ tools_helm_release_kube_prometheus_stack ~ '-prometheus' }}"
+              name: "{{ helm_release_kube_prometheus_stack.name ~ '-prometheus' }}"
               namespace: itbench-observability
           roleRef:
             kind: ClusterRole
@@ -202,8 +176,8 @@
           kind: ClusterRole
           metadata:
             labels:
+              "itbench.io/ansible-role": tools
               "itbench.io/layer": observability
-              "itbench.io/install-role": tools
             name: monitoring-prometheus-api-reader
           rules:
             - apiGroups:
@@ -238,8 +212,8 @@
               enableUserWorkload: true
           kind: ConfigMap
           metadata:
-            name: cluster-monitoring-config
-            namespace: "{{ tools_openshift_namespace_monitoring }}"
+            name: "{{ openshift_monitoring_config_map }}"
+            namespace: "{{ openshift_monitoring_namespace }}"
         state: present
 
     - name: Create User Workload ConfigMap
@@ -252,8 +226,8 @@
                 enabled: false
           kind: ConfigMap
           metadata:
-            name: user-workload-monitoring-config
-            namespace: "{{ tools_openshift_namespace_user_workload_monitoring }}"
+            name: "{{ openshift_user_workload_monitoring_config_map }}"
+            namespace: "{{ openshift_user_workload_monitoring_namespace }}"
         state: present
 
     - name: Wait for Prometheus workload pods to start
@@ -262,111 +236,9 @@
         label_selectors:
           - app.kubernetes.io/component = prometheus
           - app.kubernetes.io/instance = user-workload
-        namespace: "{{ tools_openshift_namespace_user_workload_monitoring }}"
+        namespace: "{{ openshift_user_workload_monitoring_namespace }}"
         wait: true
         wait_condition:
           status: "True"
           type: Ready
         wait_timeout: 300
-
-    # Note: OpenShift's built-in Prometheus does not include the community alert
-    #       rules bundled with kube-prometheus-stack (used on Kubernetes). These
-    #       rules are required for scenario evaluation consistency across platforms.
-    #       The label openshift.io/prometheus-rule-evaluation-scope: leaf-prometheus
-    #       is required for PrometheusRule objects to be picked up by the user
-    #       workload Prometheus instance in OpenShift.
-
-    # - name: Install community Prometheus alert rules on OpenShift
-    #   kubernetes.core.k8s:
-    #     kubeconfig: "{{ tools_cluster.kubeconfig }}"
-    #     resource_definition:
-    #       apiVersion: monitoring.coreos.com/v1
-    #       kind: PrometheusRule
-    #       metadata:
-    #         name: itbench-community-rules
-    #         namespace: "{{ tools_releases.kube_prometheus_stack.namespace.openshift }}"
-    #         labels:
-    #           openshift.io/prometheus-rule-evaluation-scope: leaf-prometheus
-    #       spec:
-    #         groups:
-    #           - name: kubernetes-resources
-    #             rules:
-    #               - alert: KubePodNotReady
-    #                 expr: |
-    #                   sum by (namespace, pod) (
-    #                     max by (namespace, pod, phase) (
-    #                       kube_pod_status_phase{phase=~"Pending|Unknown|Failed"}
-    #                     ) * on(namespace, pod) group_left(owner_kind)
-    #                     topk by(namespace, pod) (
-    #                       1,
-    #                       max by(namespace, pod, owner_kind) (
-    #                         kube_pod_owner{owner_kind!="Job"}
-    #                       )
-    #                     )
-    #                   ) > 0
-    #                 for: 5m
-    #                 labels:
-    #                   severity: warning
-    #                 annotations:
-    #                   description: >-
-    #                     Pod {{ $labels.namespace }}/{{ $labels.pod }} has been
-    #                     in a non-ready state for more than 5 minutes.
-    #               - alert: KubePodCrashLooping
-    #                 expr: |
-    #                   max_over_time(
-    #                     kube_pod_container_status_waiting_reason{
-    #                       reason="CrashLoopBackOff"
-    #                     }[5m]
-    #                   ) >= 1
-    #                 for: 5m
-    #                 labels:
-    #                   severity: warning
-    #                 annotations:
-    #                   description: >-
-    #                     Pod {{ $labels.namespace }}/{{ $labels.pod }}
-    #                     ({{ $labels.container }}) is in CrashLoopBackOff.
-    #               - alert: KubeContainerWaiting
-    #                 expr: |
-    #                   sum by (namespace, pod, container) (
-    #                     kube_pod_container_status_waiting_reason{
-    #                       reason!~"ContainerCreating|PodInitializing|Completed"
-    #                     }
-    #                   ) > 0
-    #                 for: 5m
-    #                 labels:
-    #                   severity: warning
-    #                 annotations:
-    #                   description: >-
-    #                     Pod {{ $labels.namespace }}/{{ $labels.pod }}
-    #                     ({{ $labels.container }}) has been in a waiting state
-    #                     for more than 5 minutes.
-    #               - alert: KubeDeploymentRolloutStuck
-    #                 expr: |
-    #                   kube_deployment_status_condition{
-    #                     condition="Progressing",
-    #                     status="false"
-    #                   } != 0
-    #                 for: 5m
-    #                 labels:
-    #                   severity: warning
-    #                 annotations:
-    #                   description: >-
-    #                     Rollout of Deployment {{ $labels.namespace }}/{{ $labels.deployment }}
-    #                     is not progressing.
-    #               - alert: KubeHpaMaxedOut
-    #                 expr: |
-    #                   kube_horizontalpodautoscaler_status_current_replicas{
-    #                     job="kube-state-metrics"
-    #                   }
-    #                     ==
-    #                   kube_horizontalpodautoscaler_spec_max_replicas{
-    #                     job="kube-state-metrics"
-    #                   }
-    #                 for: 5m
-    #                 labels:
-    #                   severity: warning
-    #                 annotations:
-    #                   description: >-
-    #                     HPA {{ $labels.namespace }}/{{ $labels.horizontalpodautoscaler }}
-    #                     has been running at max replicas for longer than 5 minutes.
-    #     state: present

@@ -1,9 +1,22 @@
 ---
-- name: Install orchestrator infrastructure via tools role
-  ansible.builtin.import_role:
-    name: tools
-  vars:
-    tools_gateway_enabled: true
+- name: Create Argo namespace
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: "{{ 'project.openshift.io/v1' if argo_cluster.platform == 'openshift' else 'v1' }}"
+      kind: "{{ 'Project' if argo_cluster.platform == 'openshift' else 'Namespace' }}"
+      metadata:
+        labels:
+          "itbench.io/ansible-role": argo
+          "itbench.io/gateway-access": shared
+          "itbench.io/inject": "false"
+          "itbench.io/layer": orchestration
+          "itbench.io/monitor": "true"
+        name: "{{ helm_release_argo_workflows.namespace }}"
+    state: present
+
+- name: Import Gateway installation tasks
+  ansible.builtin.import_tasks:
+    file: install_gateway.yaml
 
 - name: Import Argo components installation tasks
   ansible.builtin.import_tasks:

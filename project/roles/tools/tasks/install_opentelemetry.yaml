@@ -1,17 +1,15 @@
 ---
 - name: Install OpenTelemetry Operator on Kubernetes
   kubernetes.core.helm:
-    chart_ref: "oci://ghcr.io/open-telemetry/opentelemetry-helm-charts/opentelemetry-operator"
-    chart_version: "0.129.1"
-    release_name: "{{ tools_helm_release_opentelemetry_operator }}"
-    release_namespace: "{{ tools_itbench_namespace_observability }}"
+    chart_ref: "{{ helm_chart_opentelemetry_operator.reference }}"
+    chart_version: "{{ helm_chart_opentelemetry_operator.version }}"
+    release_name: "{{ helm_release_opentelemetry_operator.name }}"
+    release_namespace: "{{ itbench_namespaces.operators }}"
     release_state: present
     release_values:
       admissionWebhooks:
-        autoGenerateCert:
-          enabled: true
         certManager:
-          enabled: false
+          enabled: true
       manager:
         serviceMonitor:
           enabled: true
@@ -21,9 +19,6 @@
     - tools_cluster.platform == "kubernetes"
 
 - name: Install OpenTelemetry Operator on OpenShift
-  vars:
-    operator_namespace: openshift-opentelemetry-operator
-    subscription: opentelemetry-product
   when:
     - tools_cluster.platform == "openshift"
   block:
@@ -37,7 +32,7 @@
               "itbench.io/ansible-role": tools
               "itbench.io/layer": observability
               "itbench.io/monitor": "true"
-            name: "{{ operator_namespace }}"
+            name: "{{ openshift_opentelemetry_operator_namespace }}"
           state: present
 
     - name: Create the operator group for RH build of OpenTelemetry Operator
@@ -46,8 +41,8 @@
           apiVersion: operators.coreos.com/v1
           kind: OperatorGroup
           metadata:
-            name: openshift-opentelemetry-operator
-            namespace: "{{ operator_namespace }}"
+            name: "{{ openshift_opentelemetry_operator_operator_group.name }}"
+            namespace: "{{ openshift_opentelemetry_operator_operator_group.namespace }}"
           spec:
             upgradeStrategy: Default
         state: present
@@ -61,14 +56,14 @@
             labels:
               "itbench.io/ansible-role": tools
               "itbench.io/layer": observability
-            name: "{{ subscription }}"
-            namespace: "{{ operator_namespace }}"
+            name: "{{ openshift_opentelemetry_operator_subscription.name }}"
+            namespace: "{{ openshift_opentelemetry_operator_subscription.namespace }}"
           spec:
-            channel: stable
-            installPlanApproval: Automatic
-            name: "{{ subscription }}"
-            source: redhat-operators
-            sourceNamespace: openshift-marketplace
+            channel: "{{ openshift_opentelemetry_operator_subscription.channel }}"
+            installPlanApproval: "{{ openshift_operator_subscription_install_plan_approval }}"
+            name: "{{ openshift_opentelemetry_operator_subscription.name }}"
+            source: "{{ openshift_operator_subscription_source }}"
+            sourceNamespace: "{{ openshift_operator_subscription_source_namespace }}"
         state: present
         wait: true
         wait_condition:
@@ -82,8 +77,8 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: "{{ tools_itbench_jaeger }}"
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        name: "{{ itbench_opentelemetry_collectors.jaeger.name }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         config:
           exporters:
@@ -91,8 +86,6 @@
               trace_storage: traces_store
           extensions:
             jaeger_query:
-              ai:
-                mcp: {}
               storage:
                 traces: traces_store
             jaeger_storage:
@@ -100,7 +93,7 @@
                 traces_store:
                   clickhouse:
                     addresses:
-                      - "{{ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+                      - "{{ fqdn_itbench_clickhouse_database_observability.tcp }}"
                     auth:
                       basic:
                         password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
@@ -116,7 +109,7 @@
             otlp:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_jaeger_collector_port }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_collectors.jaeger.ports.collector }}
           service:
             extensions:
               - jaeger_storage
@@ -131,49 +124,21 @@
                   - otlp
         envFrom:
           - secretRef:
-              name: user-jaeger-credentials
-        image: quay.io/jaegertracing/jaeger:2.23.0@sha256:3823829974ccfc2485d2e48b165579091f32295022ae80ca49704e2f4834116e
+              name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.jaeger.name }}"
+        image: "{{ container_image_jaegertracing_jaeger }}"
         mode: deployment
         observability:
           metrics:
             enableMetrics: true
         ports:
           - name: query-http
-            port: "{{ tools_itbench_jaeger_querier_port }}"
+            port: "{{ itbench_opentelemetry_collectors.jaeger.ports.querier }}"
     state: present
     wait: true
     wait_condition:
       reason: Reconciled
       status: "True"
       type: Ready
-
-- name: Install HTTPRoute for Jaeger MCP
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: gateway.networking.k8s.io/v1
-      kind: HTTPRoute
-      metadata:
-        name: "{{ tools_itbench_jaeger ~ '-mcp' }}"
-        namespace: "{{ tools_itbench_namespace_observability }}"
-      spec:
-        parentRefs:
-          - name: "{{ tools_itbench_gateway_kubernetes }}"
-            namespace: "{{ tools_namespace_kubernetes_gateway_system }}"
-        rules:
-          - matches:
-              - path:
-                  type: PathPrefix
-                  value: /mcp/jaeger
-            filters:
-              - type: URLRewrite
-                urlRewrite:
-                  path:
-                    type: ReplacePrefixMatch
-                    replacePrefixMatch: /api/ai/mcp/
-            backendRefs:
-              - name: "{{ tools_itbench_jaeger ~ '-collector' }}"
-                port: "{{ tools_itbench_jaeger_querier_port }}"
-    state: present
 
 # NOTE: The two gateways are the only Clickhouse writers for OTLP logs. Each source has its own
 #       named receiver (and port) with a dedicated pipeline, so no routing is required.
@@ -187,14 +152,14 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: "{{ tools_itbench_gateway_opentelemetry_infrastructure }}"
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        name: "{{ itbench_opentelemetry_gateways.infrastructure.name }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         config:
           exporters:
             clickhouse/istio:
               database: istio
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              endpoint: "{{ _fqdn_clickhouse }}"
               logs_table_name: access_logs
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               retry_on_failure:
@@ -208,7 +173,7 @@
               username: ${env:CLICKHOUSE_USER}
             clickhouse/kubernetes_events:
               database: kubernetes
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              endpoint: "{{ _fqdn_clickhouse }}"
               logs_table_name: events
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               retry_on_failure:
@@ -222,7 +187,7 @@
               username: ${env:CLICKHOUSE_USER}
             clickhouse/kubernetes_infrastructure:
               database: kubernetes
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              endpoint: "{{ _fqdn_clickhouse }}"
               logs_table_name: infrastructure
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               retry_on_failure:
@@ -236,7 +201,7 @@
               username: ${env:CLICKHOUSE_USER}
             clickhouse/kubernetes_topology:
               database: kubernetes
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              endpoint: "{{ _fqdn_clickhouse }}"
               logs_table_name: topology
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               retry_on_failure:
@@ -249,7 +214,7 @@
                 queue_size: 1000
               username: ${env:CLICKHOUSE_USER}
             otlp_grpc/jaeger:
-              endpoint: "{{ tools_itbench_fqdn_jaeger_collector }}"
+              endpoint: "{{ fqdn_itbench_opentelemetry_collectors_jaeger.collector }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -269,23 +234,23 @@
             otlp/istio:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_infrastructure_port_istio }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_gateways.infrastructure.ports.istio }}
             otlp/kubernetes_events:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_events }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_gateways.infrastructure.ports.kubernetes_events }}
             otlp/kubernetes_infrastructure:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_infrastructure }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_gateways.infrastructure.ports.kubernetes_infrastructure }}
             otlp/kubernetes_topology:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_topology }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_gateways.infrastructure.ports.kubernetes_topology }}
             otlp/traces:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_infrastructure_port_traces }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_gateways.infrastructure.ports.traces }}
           service:
             pipelines:
               logs/istio:
@@ -330,7 +295,7 @@
                   - otlp/traces
         envFrom:
           - secretRef:
-              name: user-ingest-credentials
+              name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.observability.name }}"
         image: quay.io/it-bench/opentelemetry-collector:2.0.0
         mode: deployment
         observability:
@@ -338,15 +303,15 @@
             enableMetrics: true
         ports:
           - name: istio
-            port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_istio }}"
+            port: "{{ itbench_opentelemetry_gateways.infrastructure.ports.istio }}"
           - name: k8s-events
-            port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_events }}"
+            port: "{{ itbench_opentelemetry_gateways.infrastructure.ports.kubernetes_events }}"
           - name: k8s-infra
-            port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_infrastructure }}"
+            port: "{{ itbench_opentelemetry_gateways.infrastructure.ports.kubernetes_infrastructure }}"
           - name: k8s-topology
-            port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_kubernetes_topology }}"
+            port: "{{ itbench_opentelemetry_gateways.infrastructure.ports.kubernetes_topology }}"
           - name: traces
-            port: "{{ tools_itbench_gateway_opentelemetry_infrastructure_port_traces }}"
+            port: "{{ itbench_opentelemetry_gateways.infrastructure.ports.traces }}"
         resources:
           limits:
             memory: 512Mi
@@ -358,6 +323,8 @@
       reason: Reconciled
       status: "True"
       type: Ready
+  vars:
+    _fqdn_clickhouse: "tcp://{{ fqdn_itbench_clickhouse_database_observability.tcp }}"
 
 - name: Install OpenTelemetry Collector for OTLP applications gateway
   kubernetes.core.k8s:
@@ -365,14 +332,14 @@
       apiVersion: opentelemetry.io/v1beta1
       kind: OpenTelemetryCollector
       metadata:
-        name: "{{ tools_itbench_gateway_opentelemetry_applications }}"
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        name: "{{ itbench_opentelemetry_gateways.applications.name }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         config:
           exporters:
             clickhouse/bank_of_anthos:
               database: bank_of_anthos
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              endpoint: "{{ _fqdn_clickhouse }}"
               logs_table_name: logs
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               retry_on_failure:
@@ -386,7 +353,7 @@
               username: ${env:CLICKHOUSE_USER}
             clickhouse/microservices_demo:
               database: microservices_demo
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              endpoint: "{{ _fqdn_clickhouse }}"
               logs_table_name: logs
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               retry_on_failure:
@@ -400,7 +367,7 @@
               username: ${env:CLICKHOUSE_USER}
             clickhouse/opentelemetry_demo:
               database: opentelemetry_demo
-              endpoint: "{{ 'tcp://' ~ tools_itbench_fqdn_clickhouse_observability_tcp }}"
+              endpoint: "{{ _fqdn_clickhouse }}"
               logs_table_name: logs
               password: ${env:CLICKHOUSE_PASSWORD} # pragma: allowlist secret
               retry_on_failure:
@@ -413,7 +380,7 @@
                 queue_size: 1000
               username: ${env:CLICKHOUSE_USER}
             otlp_grpc/jaeger:
-              endpoint: "{{ tools_itbench_fqdn_jaeger_collector }}"
+              endpoint: "{{ fqdn_itbench_opentelemetry_collectors_jaeger.collector }}"
               retry_on_failure:
                 enabled: true
               sending_queue:
@@ -435,23 +402,23 @@
             otlp/bank_of_anthos:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_applications_port_bank_of_anthos }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_gateways.applications.ports.bank_of_anthos }}
             otlp/metrics:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_applications_port_metrics }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_gateways.applications.ports.metrics }}
             otlp/microservices_demo:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_applications_port_microservices_demo }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_gateways.applications.ports.microservices_demo }}
             otlp/opentelemetry_demo:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_applications_port_opentelemetry_demo }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_gateways.applications.ports.opentelemetry_demo }}
             otlp/traces:
               protocols:
                 grpc:
-                  endpoint: 0.0.0.0:{{ tools_itbench_gateway_opentelemetry_applications_port_traces }}
+                  endpoint: 0.0.0.0:{{ itbench_opentelemetry_gateways.applications.ports.traces }}
           service:
             pipelines:
               logs/bank_of_anthos:
@@ -496,7 +463,7 @@
                   - otlp/traces
         envFrom:
           - secretRef:
-              name: user-ingest-credentials
+              name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.observability.name }}"
         image: quay.io/it-bench/opentelemetry-collector:2.0.0
         mode: deployment
         observability:
@@ -504,17 +471,17 @@
             enableMetrics: true
         ports:
           - name: bank-of-anthos
-            port: "{{ tools_itbench_gateway_opentelemetry_applications_port_bank_of_anthos }}"
+            port: "{{ itbench_opentelemetry_gateways.applications.ports.bank_of_anthos }}"
           - name: metrics
-            port: "{{ tools_itbench_gateway_opentelemetry_applications_port_metrics }}"
+            port: "{{ itbench_opentelemetry_gateways.applications.ports.metrics }}"
           - name: micro-demo
-            port: "{{ tools_itbench_gateway_opentelemetry_applications_port_microservices_demo }}"
+            port: "{{ itbench_opentelemetry_gateways.applications.ports.microservices_demo }}"
           - name: otel-demo
-            port: "{{ tools_itbench_gateway_opentelemetry_applications_port_opentelemetry_demo }}"
+            port: "{{ itbench_opentelemetry_gateways.applications.ports.opentelemetry_demo }}"
           - name: prometheus
             port: 8889
           - name: traces
-            port: "{{ tools_itbench_gateway_opentelemetry_applications_port_traces }}"
+            port: "{{ itbench_opentelemetry_gateways.applications.ports.traces }}"
         resources:
           limits:
             memory: 1Gi
@@ -526,3 +493,5 @@
       reason: Reconciled
       status: "True"
       type: Ready
+  vars:
+    _fqdn_clickhouse: "tcp://{{ fqdn_itbench_clickhouse_database_observability.tcp }}"

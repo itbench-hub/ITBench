@@ -25,4 +25,8 @@
                     memory: 5Mi
     state: patched
   vars:
-    container: "{{ faults_kubernetes_object.spec.template.spec.containers | ansible.builtin.random }}"
+    container: >-
+      {{
+        faults_kubernetes_object.spec.template.spec.containers |
+        ansible.builtin.random(seed=random_fault_injection_seed)
+      }}

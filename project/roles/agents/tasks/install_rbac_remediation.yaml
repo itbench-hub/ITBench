@@ -1,0 +1,310 @@
+---
+- name: Create ServiceAccount for agent remediation
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      automountServiceAccountToken: false
+      metadata:
+        labels:
+          "itbench.io/agent-mission": remediation
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: agent-remediation
+        namespace: "{{ itbench_namespaces.agents }}"
+    state: present
+
+# Everything in `agent-diagnosis` plus write access to the objects affected by faults.
+# Secrets are `get`, `patch` and `update` only (no `list`/`watch`) so that they cannot be enumerated.
+- name: Create ClusterRole for agent remediation
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          "itbench.io/agent-mission": remediation
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: agent-remediation
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - configmaps
+            - persistentvolumeclaims
+            - services
+          verbs:
+            - create
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - ""
+          resources:
+            - endpoints
+            - events
+            - limitranges
+            - pods/log
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - ""
+          resources:
+            - pods
+          verbs:
+            - delete
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - ""
+          resources:
+            - resourcequotas
+          verbs:
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - ""
+          resources:
+            - secrets
+          verbs:
+            - get
+            - patch
+            - update
+        - apiGroups:
+            - apps
+          resources:
+            - daemonsets
+          verbs:
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - apps
+          resources:
+            - deployments
+            - statefulsets
+          verbs:
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - apps
+          resources:
+            - replicasets
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - apps
+          resources:
+            - deployments/scale
+            - statefulsets/scale
+          verbs:
+            - get
+            - patch
+            - update
+        - apiGroups:
+            - autoscaling
+          resources:
+            - horizontalpodautoscalers
+          verbs:
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - batch
+          resources:
+            - cronjobs
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - batch
+          resources:
+            - jobs
+          verbs:
+            - delete
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - discovery.k8s.io
+          resources:
+            - endpointslices
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - events.k8s.io
+          resources:
+            - events
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - gateway.networking.k8s.io
+          resources:
+            - httproutes
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - metrics.k8s.io
+          resources:
+            - pods
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - networking.istio.io
+          resources:
+            - destinationrules
+            - virtualservices
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - networking.k8s.io
+          resources:
+            - ingresses
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - networking.k8s.io
+          resources:
+            - networkpolicies
+          verbs:
+            - create
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+        - apiGroups:
+            - policy
+          resources:
+            - poddisruptionbudgets
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - security.istio.io
+          resources:
+            - authorizationpolicies
+            - peerauthentications
+          verbs:
+            - create
+            - delete
+            - get
+            - list
+            - patch
+            - update
+            - watch
+    state: present
+
+# Only `patch` and `update` on `nodes` itself, so that the agent can uncordon a node.
+# The `itbench-agent-node-guard` policy limits what an update may change.
+- name: Create ClusterRole for agent remediation node access
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          "itbench.io/agent-mission": remediation
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: agent-remediation-nodes
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - nodes
+          verbs:
+            - patch
+            - update
+    state: present
+
+- name: Create ClusterRoleBindings for agent remediation cluster-scoped access
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        labels:
+          "itbench.io/agent-mission": remediation
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: "{{ agent_cluster_binding.name }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: "{{ agent_cluster_binding.role }}"
+      subjects:
+        - kind: ServiceAccount
+          name: agent-remediation
+          namespace: "{{ itbench_namespaces.agents }}"
+    state: present
+  loop:
+    - name: agent-remediation-cluster-read
+      role: agent-cluster-read
+    - name: agent-remediation-nodes
+      role: agent-remediation-nodes
+  loop_control:
+    label: clusterrolebinding/{{ agent_cluster_binding.name }}
+    loop_var: agent_cluster_binding
+
+- name: Create RoleBindings for agent remediation in each fault injectable application namespace
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        labels:
+          "itbench.io/agent-mission": remediation
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: "{{ application_namespace.metadata.name ~ '-remediation' }}"
+        namespace: "{{ application_namespace.metadata.name }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: agent-remediation
+      subjects:
+        - kind: ServiceAccount
+          name: agent-remediation
+          namespace: "{{ itbench_namespaces.agents }}"
+    state: present
+  loop: "{{ agents_injectable_namespaces.resources }}"
+  loop_control:
+    label: rolebinding/{{ application_namespace.metadata.name ~ '-remediation' }}
+    loop_var: application_namespace

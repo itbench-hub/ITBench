@@ -3,14 +3,85 @@ argument_specs:
   main:
     author:
       - Gerard Vanloo
+    short_description: Install or uninstall the demo applications that faults are injected into.
+    description:
+      - Each application has its own namespace, labeled so that faults can be injected into it and its telemetry is recorded.
+      - Uninstall deletes every namespace labeled `itbench.io/ansible-role=applications`.
     options:
       applications_cluster:
-        required: false
-        type: dict
+        description: The cluster the applications are installed on.
         options:
           platform:
             choices:
               - kubernetes
               - openshift
+            description: Platform of the cluster, as detected by the `cluster` role.
             required: true
             type: str
+        required: true
+        type: dict
+      applications_bank_of_anthos_enabled:
+        default: false
+        description: Install Bank of Anthos.
+        required: false
+        type: bool
+      applications_bank_of_anthos_namespace:
+        default: bank-of-anthos
+        description: Namespace of Bank of Anthos.
+        required: false
+        type: str
+      applications_bank_of_anthos_service_mesh_enabled:
+        default: false
+        description: Enroll the Bank of Anthos namespace in the Istio ambient mesh.
+        required: false
+        type: bool
+      applications_microservices_demo_enabled:
+        default: false
+        description: Install the Microservices Demo (Online Boutique).
+        required: false
+        type: bool
+      applications_microservices_demo_namespace:
+        default: online-boutique
+        description: Namespace of the Microservices Demo.
+        required: false
+        type: str
+      applications_microservices_demo_service_mesh_enabled:
+        default: false
+        description: Enroll the Microservices Demo namespace in the Istio ambient mesh.
+        required: false
+        type: bool
+      applications_opentelemetry_demo_enabled:
+        default: false
+        description: Install the OpenTelemetry Demo (Astronomy Shop).
+        required: false
+        type: bool
+      applications_opentelemetry_demo_kubernetes_autoscaling_enabled:
+        default: false
+        description: Create HorizontalPodAutoscalers for the OpenTelemetry Demo workloads.
+        required: false
+        type: bool
+      applications_opentelemetry_demo_load_generator_browser_enabled:
+        default: false
+        description: Let the OpenTelemetry Demo load generator drive a headless browser as well.
+        required: false
+        type: bool
+      applications_opentelemetry_demo_load_generator_spawn_rate:
+        default: 5
+        description: Users per second the OpenTelemetry Demo load generator adds until it reaches its user count.
+        required: false
+        type: int
+      applications_opentelemetry_demo_load_generator_users:
+        default: 50
+        description: Number of simulated users of the OpenTelemetry Demo load generator.
+        required: false
+        type: int
+      applications_opentelemetry_demo_namespace:
+        default: otel-demo
+        description: Namespace of the OpenTelemetry Demo.
+        required: false
+        type: str
+      applications_opentelemetry_demo_service_mesh_enabled:
+        default: false
+        description: Enroll the OpenTelemetry Demo namespace in the Istio ambient mesh.
+        required: false
+        type: bool

@@ -1,0 +1,236 @@
+---
+- name: Retrieve Kubernetes GatewayClasses
+  kubernetes.core.k8s_info:
+    api_version: gateway.networking.k8s.io/v1
+    kind: GatewayClass
+  register: agents_gateway_classes
+
+- name: Fail playbook due to `gatewayclass not found` error
+  ansible.builtin.fail:
+    msg: No Kubernetes GatewayClass found. Please ensure a GatewayClass has been configured.
+  when:
+    - agents_gateway_classes.resources | ansible.builtin.length == 0
+
+- name: Install MCP Gateway and Certificates
+  when:
+    - agents_gateway_classes.resources | ansible.builtin.length > 0
+  vars:
+    _ca:
+      certificate: "{{ itbench_kubernetes_gateways.mcp.name ~ '-ca' }}"
+      issuer: "{{ itbench_kubernetes_gateways.mcp.name ~ '-ca-issuer' }}"
+      secret: "{{ itbench_kubernetes_gateways.mcp.name ~ '-ca-tls' }}" # pragma: allowlist secret
+    _selfsigned_issuer: "{{ itbench_kubernetes_gateways.mcp.name ~ '-selfsigned-issuer' }}"
+    _tls_secret: "{{ itbench_kubernetes_gateways.mcp.name ~ '-tls' }}" # pragma: allowlist secret
+  block:
+    - name: Install self-signed Issuer for MCP Gateway
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: cert-manager.io/v1
+          kind: Issuer
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: "{{ _selfsigned_issuer }}"
+            namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+          spec:
+            selfSigned: {}
+        state: present
+
+    - name: Install CA Certificate for MCP Gateway
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: "{{ _ca.certificate }}"
+            namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+          spec:
+            commonName: "{{ _ca.certificate }}"
+            duration: 87600h
+            isCA: true
+            issuerRef:
+              kind: Issuer
+              name: "{{ _selfsigned_issuer }}"
+            privateKey:
+              algorithm: ECDSA
+              size: 256
+            renewBefore: 720h
+            secretName: "{{ _ca.secret }}"
+            secretTemplate:
+              labels:
+                "itbench.io/ansible-role": agents
+                "itbench.io/layer": ai-integration
+        state: present
+
+    - name: Install CA Issuer for MCP Gateway
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: cert-manager.io/v1
+          kind: Issuer
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: "{{ _ca.issuer }}"
+            namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+          spec:
+            ca:
+              secretName: "{{ _ca.secret }}"
+        state: present
+
+    # The Gateway controller only allocates an address for a Gateway with a valid listener, and an HTTPS listener is
+    # invalid until its TLS Secret exists. But the Secret's certificate needs the address. So the Gateway starts
+    # with a plain HTTP listener, and is patched to HTTPS once the certificate is issued.
+    - name: Retrieve MCP Gateway TLS Secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: "{{ _tls_secret }}"
+        namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+      register: agents_mcp_gateway_tls_secret
+
+    - name: Create Kubernetes Gateway for MCP servers
+      when:
+        - agents_mcp_gateway_tls_secret.resources | ansible.builtin.length == 0
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: Gateway
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: "{{ itbench_kubernetes_gateways.mcp.name }}"
+            namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+          spec:
+            gatewayClassName: >-
+              {{
+                agents_gateway_classes.resources |
+                ansible.builtin.map(attribute="metadata.name") |
+                ansible.builtin.select("equalto", openshift_kubernetes_gateway_class.name) |
+                ansible.builtin.first |
+                ansible.builtin.default("nginx")
+              }}
+            listeners:
+              - allowedRoutes:
+                  namespaces:
+                    from: Selector
+                    selector:
+                      matchLabels:
+                        "itbench.io/gateway-access": shared
+                name: https
+                port: 8443
+                protocol: HTTP
+        state: present
+
+    - name: Retrieve MCP Gateway allocated addresses
+      kubernetes.core.k8s_info:
+        api_version: gateway.networking.k8s.io/v1
+        kind: Gateway
+        name: "{{ itbench_kubernetes_gateways.mcp.name }}"
+        namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+      delay: 5
+      register: agents_mcp_gateway_info
+      retries: 60
+      until:
+        - agents_mcp_gateway_info.resources | ansible.builtin.length > 0
+        - agents_mcp_gateway_info.resources[0].status.addresses | ansible.builtin.default([]) | ansible.builtin.length > 0
+
+    - name: Install Leaf Certificate for MCP Gateway
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: "{{ _tls_secret }}"
+            namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+          spec:
+            dnsNames: >-
+              {{
+                [
+                  itbench_kubernetes_gateways.mcp.name,
+                  itbench_kubernetes_gateways.mcp.name ~ "." ~ itbench_kubernetes_gateways.mcp.namespace,
+                  itbench_kubernetes_gateways.mcp.name ~ "." ~ itbench_kubernetes_gateways.mcp.namespace ~ ".svc.cluster.local"
+                ] + (
+                  agents_mcp_gateway_info.resources[0].status.addresses |
+                  ansible.builtin.default([]) |
+                  ansible.builtin.selectattr("type", "==", "Hostname") |
+                  ansible.builtin.map(attribute="value") |
+                  ansible.builtin.list
+                )
+              }}
+            ipAddresses: >-
+              {{
+                agents_mcp_gateway_info.resources[0].status.addresses |
+                ansible.builtin.default([]) |
+                ansible.builtin.selectattr("type", "==", "IPAddress") |
+                ansible.builtin.map(attribute="value") |
+                ansible.builtin.list
+              }}
+            duration: 2160h
+            isCA: false
+            issuerRef:
+              kind: Issuer
+              name: "{{ _ca.issuer }}"
+            privateKey:
+              algorithm: ECDSA
+              size: 256
+            renewBefore: 360h
+            secretName: "{{ _tls_secret }}"
+            secretTemplate:
+              labels:
+                "itbench.io/ansible-role": agents
+                "itbench.io/layer": ai-integration
+            usages:
+              - server auth
+              - client auth
+        state: present
+        wait: true
+        wait_condition:
+          status: "True"
+          type: Ready
+        wait_timeout: 300
+
+    - name: Switch MCP Gateway listener to HTTPS
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: Gateway
+          metadata:
+            name: "{{ itbench_kubernetes_gateways.mcp.name }}"
+            namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+          spec:
+            listeners:
+              - allowedRoutes:
+                  namespaces:
+                    from: Selector
+                    selector:
+                      matchLabels:
+                        "itbench.io/gateway-access": shared
+                name: https
+                port: 8443
+                protocol: HTTPS
+                tls:
+                  certificateRefs:
+                    - name: "{{ _tls_secret }}"
+                  mode: Terminate
+        state: patched
+
+    - name: Wait for MCP Gateway to be programmed
+      kubernetes.core.k8s_info:
+        api_version: gateway.networking.k8s.io/v1
+        kind: Gateway
+        name: "{{ itbench_kubernetes_gateways.mcp.name }}"
+        namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+        wait: true
+        wait_condition:
+          status: "True"
+          type: Programmed
+        wait_timeout: 300

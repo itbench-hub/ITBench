@@ -1,0 +1,48 @@
+---
+- name: Import tools role intallation tasks
+  vars:
+    tools_cluster:
+      platform: "{{ argo_cluster.platform }}"
+  block:
+    - name: Import tools role to install required CRDs
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: install_crds_gateway
+
+    - name: Import tools role to install the Gateway controller
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: install_gateway_controller
+
+- name: Create Kubernetes Gateway for Argo
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: gateway.networking.k8s.io/v1
+      kind: Gateway
+      metadata:
+        labels:
+          "itbench.io/ansible-role": argo
+          "itbench.io/layer": networking
+        name: "{{ itbench_kubernetes_gateways.argo.name }}"
+        namespace: "{{ itbench_kubernetes_gateways.argo.namespace }}"
+      spec:
+        gatewayClassName: >-
+          {{
+            query("kubernetes.core.k8s", api_version="gateway.networking.k8s.io/v1", kind="GatewayClass") |
+            ansible.builtin.map(attribute="metadata.name") |
+            ansible.builtin.select("equalto", openshift_kubernetes_gateway_class.name) |
+            ansible.builtin.first |
+            ansible.builtin.default("nginx")
+          }}
+        listeners:
+          - allowedRoutes:
+              namespaces:
+                from: Same
+            name: http
+            port: 8080
+            protocol: HTTP
+    state: present
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Programmed

@@ -1,0 +1,58 @@
+---
+- name: Deploy topology writer
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          "itbench.io/ansible-role": recorders
+          "itbench.io/data-writer": topology
+          "itbench.io/layer": data
+        name: "{{ itbench_topology_managers.scenario.name }}"
+        namespace: "{{ itbench_topology_managers.scenario.namespace }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            "itbench.io/ansible-role": recorders
+            "itbench.io/data-writer": topology
+            "itbench.io/layer": data
+        template:
+          metadata:
+            labels:
+              "itbench.io/ansible-role": recorders
+              "itbench.io/data-writer": topology
+              "itbench.io/layer": data
+          spec:
+            containers:
+              - env:
+                  - name: CLICKHOUSE_HOST
+                    value: "{{ fqdn_itbench_clickhouse_database_observability.tcp }}"
+                  - name: RECORDING_START_TIMESTAMP
+                    value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (recorders_benchmark_duration_minutes * 60)) }}"
+                  - name: POLL_INTERVAL_SECONDS
+                    value: "2"
+                envFrom:
+                  - secretRef:
+                      name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.topology.name }}"
+                image: quay.io/it-bench/topology-writer:1.0.0
+                imagePullPolicy: IfNotPresent
+                name: writer
+                resources:
+                  limits:
+                    memory: 256Mi
+                  requests:
+                    cpu: 50m
+                    memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+            securityContext:
+              runAsNonRoot: true
+              seccompProfile:
+                type: RuntimeDefault
+    state: present
+    wait: true

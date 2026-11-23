@@ -1,8 +1,8 @@
 ---
 - name: Uninstall Prometheus Operator and Prometheus Helm release
   kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_kube_prometheus_stack }}"
-    release_namespace: "{{ tools_itbench_namespace_observability }}"
+    release_name: "{{ helm_release_kube_prometheus_stack.name }}"
+    release_namespace: "{{ itbench_namespaces.observability }}"
     release_state: absent
     timeout: "600s"
     wait: true
@@ -17,14 +17,14 @@
       kubernetes.core.k8s:
         api_version: v1
         kind: ConfigMap
-        name: user-workload-monitoring-config
-        namespace: "{{ tools_openshift_namespace_user_workload_monitoring }}"
+        name: "{{ openshift_user_workload_monitoring_config_map }}"
+        namespace: "{{ openshift_user_workload_monitoring_namespace }}"
         state: absent
 
     - name: Delete Cluster Monitoring ConfigMap
       kubernetes.core.k8s:
         api_version: v1
         kind: ConfigMap
-        name: cluster-monitoring-config
-        namespace: "{{ tools_openshift_namespace_monitoring }}"
+        name: "{{ openshift_monitoring_config_map }}"
+        namespace: "{{ openshift_monitoring_namespace }}"
         state: absent

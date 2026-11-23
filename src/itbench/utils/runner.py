@@ -89,6 +89,7 @@ def run_playbook(
     """
     run_id = run_id or str(uuid.uuid4())
     artifact_dir = run_directory(run_id)
+    artifact_dir.mkdir(parents=True, exist_ok=True)
 
     cmdline_args: list[str] = []
     if tags:
@@ -103,8 +104,11 @@ def run_playbook(
         **(extra_vars or {}),
     }
 
+    # A per-run private data dir keeps ansible-runner from loading stale ``env/`` files
+    # (``cmdline``, ``extravars``, ``envvars``, ...) left in the project directory.
     runner = ansible_runner.run(
-        private_data_dir=str(repository.ansible_project),
+        private_data_dir=str(artifact_dir),
+        project_dir=str(repository.ansible_project),
         inventory=str(repository.inventory),
         playbook=playbook,
         extravars=extravars,

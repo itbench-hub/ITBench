@@ -1,0 +1,144 @@
+---
+- name: Create PersistentVolumeClaim for Prometheus Recorder
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        labels:
+          "itbench.io/ansible-role": recorders
+          "itbench.io/layer": data
+        name: "{{ itbench_data_recorders.prometheus.persistent_volume_claim }}"
+        namespace: "{{ itbench_data_recorders.prometheus.namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+        volumeMode: Filesystem
+    state: present
+
+- name: Create ServiceAccount for Prometheus recorder
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        labels:
+          "itbench.io/ansible-role": recorders
+          "itbench.io/layer": data
+        name: "{{ itbench_data_recorders.prometheus.name }}"
+        namespace: "{{ itbench_data_recorders.prometheus.namespace }}"
+    state: present
+
+- name: Create ClusterRoleBinding for Prometheus recorder
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        labels:
+          "itbench.io/ansible-role": recorders
+          "itbench.io/layer": data
+        name: "{{ itbench_data_recorders.prometheus.name }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: "{{ 'monitoring-alertmanager-api-reader' if recorders_cluster.platform == 'openshift' else 'monitoring-prometheus-api-reader' }}"
+      subjects:
+        - kind: ServiceAccount
+          name: "{{ itbench_data_recorders.prometheus.name }}"
+          namespace: "{{ itbench_data_recorders.prometheus.namespace }}"
+    state: present
+
+- name: Install Kubernetes Job for Prometheus Recorder
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        labels:
+          "itbench.io/ansible-role": recorders
+          "itbench.io/layer": data
+        name: "{{ itbench_data_recorders.prometheus.name }}"
+        namespace: "{{ itbench_data_recorders.prometheus.namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - env:
+                  - name: OUTPUT_DIR
+                    value: /records
+                  - name: PROMETHEUS_ENDPOINT
+                    value: >-
+                      {{
+                        (recorders_cluster.platform == 'openshift') |
+                        ansible.builtin.ternary(
+                          fqdn_openshift_monitoring_thanos_querier,
+                          _fqdn_prometheus
+                        )
+                      }}
+                  - name: RECORDING_START_TIMESTAMP
+                    value: "{{ '%Y-%m-%dT%H:%M:%SZ' | ansible.builtin.strftime(now(utc=true).timestamp() - (recorders_benchmark_duration_minutes * 60)) }}"
+                  - name: RECORDING_END_TIMESTAMP
+                    value: "{{ now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ') }}"
+                  - name: NAMESPACES
+                    value: >-
+                      {{
+                        recorders_recordable_namespaces.resources |
+                        map(attribute='metadata.name') |
+                        ansible.builtin.join(',')
+                      }}
+                  - name: RECORDING_INTERVAL_SECONDS
+                    value: "60"
+                image: quay.io/it-bench/prometheus-recorder:1.0.0
+                name: recorder
+                resources:
+                  limits:
+                    memory: 512Mi
+                  requests:
+                    cpu: 100m
+                    memory: 128Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                      - ALL
+                volumeMounts:
+                  - mountPath: /records
+                    name: records
+            restartPolicy: Never
+            securityContext:
+              fsGroup: 1001
+              runAsNonRoot: true
+              runAsUser: 1001
+              seccompProfile:
+                type: RuntimeDefault
+            serviceAccountName: "{{ itbench_data_recorders.prometheus.name }}"
+            volumes:
+              - name: records
+                persistentVolumeClaim:
+                  claimName: "{{ itbench_data_recorders.prometheus.persistent_volume_claim }}"
+    state: present
+    wait: true
+    wait_condition:
+      status: "True"
+      type: Complete
+    wait_timeout: 300
+  vars:
+    _fqdn_prometheus: >-
+      {{
+        "https://%s-prometheus.%s.svc.cluster.local:%i" |
+        ansible.builtin.format(
+          helm_release_kube_prometheus_stack.name,
+          itbench_namespaces.observability,
+          itbench_prometheus_proxy.ports.https
+        )
+      }}
+
+- name: Export Prometheus records
+  ansible.builtin.import_tasks:
+    file: export_records.yaml
+  vars:
+    recorder_persistent_volume_claim: "{{ itbench_data_recorders.prometheus.persistent_volume_claim }}"

@@ -6,7 +6,7 @@
     label_selectors:
       - "itbench.io/ansible-role=argo"
       - "itbench.io/benchmark-role=environment"
-    namespace: "{{ argo_namespace }}"
+    namespace: "{{ helm_release_argo_workflows.namespace }}"
   no_log: true
   register: argo_benchmark_secrets
 
@@ -28,7 +28,7 @@
           "itbench.io/scenario": "{{ argo_benchmark_scenario | ansible.builtin.string }}"
           "itbench.io/trial": "{{ trial | ansible.builtin.string }}"
         name: "itbench-scenario-{{ argo_benchmark_scenario }}-trial-{{ trial }}-{{ argo_benchmark_timestamp }}"
-        namespace: "{{ argo_namespace }}"
+        namespace: "{{ helm_release_argo_workflows.namespace }}"
       spec:
         arguments:
           parameters:

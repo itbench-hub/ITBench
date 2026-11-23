@@ -1,0 +1,57 @@
+---
+argument_specs:
+  main:
+    author:
+      - Gerard Vanloo
+    short_description: Install, configure and schedule benchmark trials on the ITBench orchestrator cluster.
+    description:
+      - >-
+        Install deploys Argo Workflows behind a Gateway. Configure registers the environment clusters and the
+        WorkflowTemplate. Schedule creates one Workflow per trial.
+    options:
+      argo_cluster:
+        description: The orchestrator cluster.
+        options:
+          platform:
+            choices:
+              - kubernetes
+              - openshift
+            description: Platform of the cluster, as detected by the `cluster` role.
+            required: true
+            type: str
+          provider:
+            description: Cloud or distribution provider of the cluster, as detected by the `cluster` role.
+            required: true
+            type: str
+        required: true
+        type: dict
+      argo_environment_kubeconfigs:
+        default: []
+        description: >-
+          Paths of the kubeconfig files of the environment clusters, from `stack.environments.kubeconfigs`.
+          Each becomes an `environment-<n>-kubeconfig` Secret.
+        elements: str
+        required: false
+        type: list
+      argo_benchmark_scenario:
+        description: Scenario to run. Required by the `schedule` tag.
+        required: false
+        type: str
+      argo_benchmark_timestamp:
+        description: Suffix that keeps Workflow names unique across scheduling runs.
+        required: false
+        type: str
+      argo_benchmark_trials:
+        default: 1
+        description: Number of trials. They are spread round-robin over the registered environments.
+        required: false
+        type: int
+      argo_benchmark_variant:
+        choices:
+          - full
+          - setup
+          - teardown
+        default: full
+        description: Which stages of the benchmark to run.
+        required: false
+        type: str

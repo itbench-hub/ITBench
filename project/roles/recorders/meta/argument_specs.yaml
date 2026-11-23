@@ -1,0 +1,58 @@
+---
+argument_specs:
+  main:
+    author:
+      - Gerard Vanloo
+    short_description: Record the telemetry of an ITBench run and export it to storage.
+    description:
+      - Install deploys the Kubernetes topology collector and the scenario topology writer, but only when a namespace is labeled `itbench.io/record=true`.
+      - Export runs the ClickHouse and Prometheus recorders and copies the records to S3, to a local directory, or to both.
+      - When neither storage is configured, the records stay on the recorder PersistentVolumeClaims and are deleted with them on undeploy.
+    options:
+      recorders_cluster:
+        description: The cluster the recorders run on.
+        options:
+          platform:
+            choices:
+              - kubernetes
+              - openshift
+            description: Platform of the cluster, as detected by the `cluster` role.
+            required: true
+            type: str
+        required: true
+        type: dict
+      recorders_benchmark_duration_minutes:
+        default: 15
+        description: Length, in minutes, of the window that ends now and that the recorders export.
+        required: false
+        type: int
+      storage_localhost_directory:
+        description: Local directory that receives the exported records. Written by `itbench generate variables localhost`.
+        required: false
+        type: str
+      storage_s3_bucket:
+        description: >-
+          S3 bucket that receives the exported records. Written by `itbench generate variables s3`.
+          Falls back to the `ITBENCH_S3_BUCKET` environment variable when unset.
+        required: false
+        type: str
+      storage_s3_directory:
+        description: >-
+          Directory in the S3 bucket. Written by `itbench generate variables s3`.
+          Falls back to the `ITBENCH_S3_DIRECTORY` environment variable when unset.
+        required: false
+        type: str
+      storage_s3_endpoint:
+        description: S3 endpoint URL. Written by `itbench generate variables s3`. Falls back to the `ITBENCH_S3_ENDPOINT` environment variable when unset.
+        required: false
+        type: str
+      aws_access_key_id:
+        description: S3 access key. Written by `itbench generate variables aws`. Falls back to the `ITBENCH_S3_USERNAME` environment variable when unset.
+        no_log: true
+        required: false
+        type: str
+      aws_secret_access_key:
+        description: S3 secret key. Written by `itbench generate variables aws`. Falls back to the `ITBENCH_S3_PASSWORD` environment variable when unset.
+        no_log: true
+        required: false
+        type: str

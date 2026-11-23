@@ -1,10 +1,10 @@
 ---
 - name: Install cert-manager on Kubernetes
   kubernetes.core.helm:
-    chart_ref: "oci://quay.io/jetstack/charts/cert-manager"
-    chart_version: "v1.21.3"
-    release_name: "{{ tools_helm_release_cert_manager }}"
-    release_namespace: "{{ tools_itbench_namespace }}"
+    chart_ref: "{{ helm_chart_cert_manager.reference }}"
+    chart_version: "{{ helm_chart_cert_manager.version }}"
+    release_name: "{{ helm_release_cert_manager.name }}"
+    release_namespace: "{{ itbench_namespaces.system }}"
     release_state: present
     release_values:
       crds:
@@ -19,9 +19,6 @@
     - tools_cluster.platform == "kubernetes"
 
 - name: Install cert-manager Operator on OpenShift
-  vars:
-    operator_namespace: cert-manager-operator
-    subscription: openshift-cert-manager-operator
   when:
     - tools_cluster.platform == "openshift"
   block:
@@ -36,7 +33,7 @@
               "itbench.io/inject": false
               "itbench.io/layer": infrastructure
               "itbench.io/monitor": "true"
-            name: "{{ operator_namespace }}"
+            name: "{{ openshift_cert_manager_namespace }}"
         state: present
 
     - name: Create the operator group for RH cert-manager Operator
@@ -45,8 +42,8 @@
           apiVersion: operators.coreos.com/v1
           kind: OperatorGroup
           metadata:
-            name: openshift-cert-manager-operator
-            namespace: "{{ operator_namespace }}"
+            name: "{{ openshift_cert_manager_operator_group.name }}"
+            namespace: "{{ openshift_cert_manager_operator_group.namespace }}"
         state: present
 
     - name: Create the subscription for RH cert-manager Operator
@@ -58,14 +55,14 @@
             labels:
               "itbench.io/ansible-role": tools
               "itbench.io/layer": infrastructure
-            name: "{{ subscription }}"
-            namespace: "{{ operator_namespace }}"
+            name: "{{ openshift_cert_manager_subscription.name }}"
+            namespace: "{{ openshift_cert_manager_subscription.namespace }}"
           spec:
-            channel: stable
-            installPlanApproval: Automatic
-            name: "{{ subscription }}"
-            source: redhat-operators
-            sourceNamespace: openshift-marketplace
+            channel: "{{ openshift_cert_manager_subscription.channel }}"
+            installPlanApproval: "{{ openshift_operator_subscription_install_plan_approval }}"
+            name: "{{ openshift_cert_manager_subscription.name }}"
+            source: "{{ openshift_operator_subscription_source }}"
+            sourceNamespace: "{{ openshift_operator_subscription_source_namespace }}"
         state: present
         wait: true
         wait_condition:

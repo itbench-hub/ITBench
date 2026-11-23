@@ -1,0 +1,21 @@
+---
+# Namespaced recorder resources are removed with the observability Namespace when the tools are
+# uninstalled. Only the cluster-scoped resources are removed here.
+
+- name: Delete ITBench related recorder ClusterRoleBindings
+  kubernetes.core.k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    label_selectors:
+      - "itbench.io/ansible-role=recorders"
+    state: absent
+    wait: true
+
+- name: Delete ITBench related recorder ClusterRoles
+  kubernetes.core.k8s:
+    api_version: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    label_selectors:
+      - "itbench.io/ansible-role=recorders"
+    state: absent
+    wait: true

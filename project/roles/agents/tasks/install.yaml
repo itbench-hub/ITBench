@@ -1,0 +1,58 @@
+---
+# The `itbench-mcp-servers` namespace is owned by the `tools` role, which installs the MCP servers into it.
+- name: Create Namespace for AI agents
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: "{{ 'project.openshift.io/v1' if agents_cluster.platform == 'openshift' else 'v1' }}"
+      kind: "{{ 'Project' if agents_cluster.platform == 'openshift' else 'Namespace' }}"
+      metadata:
+        labels:
+          "itbench.io/ansible-role": agents
+          "itbench.io/inject": "false"
+          "itbench.io/layer": ai-integration
+        name: "{{ itbench_namespaces.agents }}"
+
+- name: Import Gateway installation tasks
+  ansible.builtin.import_tasks:
+    file: install_gateway.yaml
+
+- name: Retrieve fault injectable application namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+    label_selectors:
+      - "itbench.io/ansible-role=applications"
+      - "itbench.io/inject=true"
+  register: agents_injectable_namespaces
+
+- name: Import admission policies installation tasks
+  ansible.builtin.import_tasks:
+    file: install_admission_policies.yaml
+
+- name: Import cluster-scoped read RBAC installation tasks
+  ansible.builtin.import_tasks:
+    file: install_rbac_cluster_read.yaml
+  when:
+    - agents_diagnosis_enabled or agents_remediation_enabled
+
+- name: Import diagnosis RBAC installation tasks
+  ansible.builtin.import_tasks:
+    file: install_rbac_diagnosis.yaml
+  when:
+    - agents_diagnosis_enabled
+
+- name: Import policies for agent remediation
+  when:
+    - agents_remediation_enabled
+  block:
+    - name: Import remediation RBAC installation tasks
+      ansible.builtin.import_tasks:
+        file: install_rbac_remediation.yaml
+
+    - name: Import network policies installation tasks
+      ansible.builtin.import_tasks:
+        file: install_network_policies.yaml
+
+- name: Import agent bundle installation tasks
+  ansible.builtin.import_tasks:
+    file: install_agent_bundle.yaml

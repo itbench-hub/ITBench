@@ -99,5 +99,10 @@ class ITBenchRepository:
         """Default variables of the ``applications`` role."""
         return self.ansible_project / "roles" / "applications" / "defaults" / "main"
 
+    @property
+    def recorders_defaults(self) -> Path:
+        """Default variables of the ``recorders`` role."""
+        return self.ansible_project / "roles" / "recorders" / "defaults" / "main"
+
 
 repository = ITBenchRepository()

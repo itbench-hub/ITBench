@@ -7,50 +7,55 @@
   ansible.builtin.include_tasks:
     file: validate_worker_nodes.yaml
 
-- name: Select an available worker node randomly
-  ansible.builtin.set_fact:
-    faults_node: "{{ faults_sandbox_nodes | ansible.builtin.random }}"
-
-- name: Select a container randomly from workload
-  ansible.builtin.set_fact:
-    faults_container: "{{ faults_kubernetes_object.spec.template.spec.containers | ansible.builtin.random }}"
-
-- name: Update workload containers
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
-      kind: "{{ faults_kubernetes_object.kind }}"
-      metadata:
-        name: "{{ faults_kubernetes_object.metadata.name }}"
-        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
-      spec:
-        template:
+- name: Inject workload fault with randomly selected node and container
+  vars:
+    container: >-
+      {{
+        faults_kubernetes_object.spec.template.spec.containers |
+        ansible.builtin.random(seed=random_fault_injection_seed)
+      }}
+    node: >-
+      {{
+        faults_sandbox_nodes |
+        ansible.builtin.random(seed=random_fault_injection_seed)
+      }}
+  block:
+    - name: Update workload containers
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+          kind: "{{ faults_kubernetes_object.kind }}"
+          metadata:
+            name: "{{ faults_kubernetes_object.metadata.name }}"
+            namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
           spec:
-            containers:
-              - image: quay.io/it-bench/hello-bench-arm64:2.0.0@sha256:20c6ce98bea7470d39364356ec0a8482fa7356ac92e132256539417688da615a
-                name: "{{ faults_container.name }}"
-            nodeSelector:
-              "kubernetes.io/hostname": "{{ faults_node.metadata.name }}"
-    state: patched
-  when:
-    - faults_node.status.nodeInfo.architecture == "amd64"
+            template:
+              spec:
+                containers:
+                  - image: quay.io/it-bench/hello-bench-arm64:2.0.0@sha256:20c6ce98bea7470d39364356ec0a8482fa7356ac92e132256539417688da615a
+                    name: "{{ container.name }}"
+                nodeSelector:
+                  "kubernetes.io/hostname": "{{ node.metadata.name }}"
+        state: patched
+      when:
+        - node.status.nodeInfo.architecture == "amd64"
 
-- name: Update workload containers
-  kubernetes.core.k8s:
-    resource_definition:
-      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
-      kind: "{{ faults_kubernetes_object.kind }}"
-      metadata:
-        name: "{{ faults_kubernetes_object.metadata.name }}"
-        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
-      spec:
-        template:
+    - name: Update workload containers
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+          kind: "{{ faults_kubernetes_object.kind }}"
+          metadata:
+            name: "{{ faults_kubernetes_object.metadata.name }}"
+            namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
           spec:
-            containers:
-              - image: quay.io/it-bench/hello-bench-amd64:2.0.0@sha256:e2b537a99596d9ecf07987a7d8e189e100926e72462826dd429408378bee21d4
-                name: "{{ faults_container.name }}"
-            nodeSelector:
-              "kubernetes.io/hostname": "{{ faults_node.metadata.name }}"
-    state: patched
-  when:
-    - faults_node.status.nodeInfo.architecture == "arm64"
+            template:
+              spec:
+                containers:
+                  - image: quay.io/it-bench/hello-bench-amd64:2.0.0@sha256:e2b537a99596d9ecf07987a7d8e189e100926e72462826dd429408378bee21d4
+                    name: "{{ container.name }}"
+                nodeSelector:
+                  "kubernetes.io/hostname": "{{ node.metadata.name }}"
+        state: patched
+      when:
+        - node.status.nodeInfo.architecture == "arm64"

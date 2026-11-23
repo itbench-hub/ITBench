@@ -15,9 +15,9 @@ pytestmark = pytest.mark.integration
 
 
 def test_cli_lifecycle_tools_and_kubeconfig(itbench_cli: CliRunner, kubeconfig: str, tmp_path: Path) -> None:
-    """Test full CLI lifecycle: deploy tools, generate restricted kubeconfigs, and undeploy."""
+    """Test full CLI lifecycle: deploy agents, generate restricted kubeconfigs, and undeploy."""
     deploy = subprocess.run(
-        ["uv", "run", "itbench", "deploy", "environment", "--only", "tools", "--kubeconfig", kubeconfig],
+        ["uv", "run", "itbench", "deploy", "environment", "--only", "agents", "--kubeconfig", kubeconfig],
         capture_output=True,
         text=True,
         check=False,
@@ -25,7 +25,9 @@ def test_cli_lifecycle_tools_and_kubeconfig(itbench_cli: CliRunner, kubeconfig: 
     assert deploy.returncode == 0, f"itbench deploy failed: {deploy.stderr}\n{deploy.stdout}"
 
     try:
-        for mission in ("diagnosis", "remediation"):
+        # The remediation agent is off by default (`agents_remediation_enabled: false`) and the CLI has no
+        # flag to enable it, so only the diagnosis agent exists after a default deploy.
+        for mission in ("diagnosis",):
             out_dir = tmp_path / mission
             result = itbench_cli.invoke(
                 generate_kubeconfig_command,

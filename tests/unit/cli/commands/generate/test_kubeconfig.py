@@ -34,15 +34,15 @@ def scenarios(tmp_path: Path):
         (tmp_path / scenario / "scenario.yaml").write_text("faults: []\n", encoding="utf-8")
         if minutes is not None:
             (tmp_path / scenario / "extra_variables.yaml").write_text(
-                f"tools_benchmark_duration_minutes: {minutes}\n", encoding="utf-8"
+                f"recorders_benchmark_duration_minutes: {minutes}\n", encoding="utf-8"
             )
     (tmp_path / "5").mkdir()
     with patch("itbench.cli.commands.generate.kubeconfig.repository") as repository:
         repository.scenarios = tmp_path
-        repository.tools_defaults = tmp_path / "defaults"
+        repository.recorders_defaults = tmp_path / "defaults"
         (tmp_path / "defaults").mkdir()
         (tmp_path / "defaults" / "benchmark.yaml").write_text(
-            "tools_benchmark_duration_minutes: 15\n", encoding="utf-8"
+            "recorders_benchmark_duration_minutes: 15\n", encoding="utf-8"
         )
         yield tmp_path
 

@@ -16,7 +16,7 @@ from itbench.utils.cluster import create_agent_access
 from itbench.utils.scenarios import known_scenario_ids
 
 MISSIONS = ("diagnosis", "remediation")
-DURATION_VARIABLE = "tools_benchmark_duration_minutes"
+DURATION_VARIABLE = "recorders_benchmark_duration_minutes"
 MIN_DURATION_MINUTES = 15
 MAX_DURATION_MINUTES = 60
 
@@ -34,7 +34,7 @@ def _benchmark_minutes(scenario_id: int | None) -> int:
     The result is never below :data:`MIN_DURATION_MINUTES`. It may exceed :data:`MAX_DURATION_MINUTES`,
     because a scenario can set a longer benchmark than ``--duration`` accepts.
     """
-    minutes = _read_variables(repository.tools_defaults / "benchmark.yaml")[DURATION_VARIABLE]
+    minutes = _read_variables(repository.recorders_defaults / "benchmark.yaml")[DURATION_VARIABLE]
     if scenario_id is not None:
         scenario_variables = _read_variables(repository.scenarios / str(scenario_id) / "extra_variables.yaml")
         minutes = scenario_variables.get(DURATION_VARIABLE, minutes)
@@ -63,7 +63,7 @@ def _write_private(path: Path, content: str) -> None:
     metavar="MINUTES",
     help=(
         f"Token lifetime in minutes ({MIN_DURATION_MINUTES}-{MAX_DURATION_MINUTES}). "
-        f"Defaults to {DURATION_VARIABLE} from the scenario, then from the tools role (15)."
+        f"Defaults to {DURATION_VARIABLE} from the scenario, then from the recorders role (15)."
     ),
 )
 @click.option(

@@ -3,14 +3,21 @@
   ansible.builtin.import_tasks:
     file: uninstall_istio.yaml
 
-- name: Import Kubernetes Gateway uninstallation tasks
+- name: Import Gateway controller uninstallation tasks
   ansible.builtin.import_tasks:
-    file: uninstall_kubernetes_gateway.yaml
+    file: uninstall_gateway_controller.yaml
+
+- name: Uninstall Prometheus MCP server
+  kubernetes.core.helm:
+    release_name: "{{ helm_release_prometheus_mcp.name }}"
+    release_namespace: "{{ itbench_mcp_servers.prometheus.namespace }}"
+    release_state: absent
+    wait: true
 
 - name: Uninstall OpenCost Helm release
   kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_opencost }}"
-    release_namespace: "{{ tools_namespace_opencost }}"
+    release_name: "{{ helm_release_opencost.name }}"
+    release_namespace: "{{ helm_release_opencost.namespace }}"
     release_state: absent
     wait: true
 
@@ -28,8 +35,8 @@
 
 - name: Uninstall Kubernetes Metrics Server Helm release
   kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_kubernetes_metrics_server }}"
-    release_namespace: "{{ tools_namespace_kubernetes_metrics_server }}"
+    release_name: "{{ helm_release_kubernetes_metrics_server.name }}"
+    release_namespace: "{{ helm_release_kubernetes_metrics_server.namespace }}"
     release_state: absent
     wait: true
   when:
@@ -37,32 +44,23 @@
 
 - name: Uninstall cert-manager Helm release
   kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_cert_manager }}"
-    release_namespace: "{{ tools_itbench_namespace }}"
+    release_name: "{{ helm_release_cert_manager.name }}"
+    release_namespace: "{{ itbench_namespaces.system }}"
     release_state: absent
     wait: true
   when:
     - tools_cluster.platform == "kubernetes"
 
-- name: Delete ITBench related MutatingPolicy
-  kubernetes.core.k8s:
-    api_version: policies.kyverno.io/v1
-    kind: MutatingPolicy
-    label_selectors:
-      - "itbench.io/ansible-role=tools"
-    state: absent
-    wait: true
-
 - name: Uninstall Kyverno Helm release
   kubernetes.core.helm:
-    release_name: "{{ tools_helm_release_kyverno }}"
-    release_namespace: "{{ tools_namespace_kyverno }}"
+    release_name: "{{ helm_release_kyverno.name }}"
+    release_namespace: "{{ helm_release_kyverno.namespace }}"
     release_state: absent
     wait: true
 
-- name: Import Custom Resource Definition removal tasks
+- name: Import CRDs uninstallation tasks
   ansible.builtin.import_tasks:
-    file: uninstall_custom_resource_definitions.yaml
+    file: uninstall_crds.yaml
 
 - name: Delete all OpenShift Operators
   when:

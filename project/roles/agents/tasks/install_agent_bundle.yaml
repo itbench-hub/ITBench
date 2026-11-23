@@ -1,0 +1,77 @@
+---
+- name: Retrieve MCP Gateway
+  kubernetes.core.k8s_info:
+    api_version: gateway.networking.k8s.io/v1
+    kind: Gateway
+    name: "{{ itbench_kubernetes_gateways.mcp.name }}"
+    namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+  register: agents_mcp_gateway
+
+- name: Retrieve MCP Gateway CA Secret
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "{{ itbench_kubernetes_gateways.mcp.name ~ '-ca-tls' }}"
+    namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+  register: agents_mcp_gateway_ca_secret
+
+- name: Retrieve Jaeger MCP server
+  kubernetes.core.k8s_info:
+    api_version: opentelemetry.io/v1beta1
+    kind: OpenTelemetryCollector
+    name: "{{ itbench_mcp_servers.jaeger.name }}"
+    namespace: "{{ itbench_mcp_servers.jaeger.namespace }}"
+  register: agents_mcp_server_jaeger
+
+- name: Retrieve OpenCost Helm Release
+  kubernetes.core.helm_info:
+    release_name: "{{ helm_release_opencost.name }}"
+    release_namespace: "{{ helm_release_opencost.namespace }}"
+    release_state: ["deployed"]
+  register: agents_mcp_server_opencost
+
+- name: Retrieve Prometheus MCP server Helm Release
+  kubernetes.core.helm_info:
+    release_name: "{{ helm_release_prometheus_mcp.name }}"
+    release_namespace: "{{ itbench_mcp_servers.prometheus.namespace }}"
+    release_state: ["deployed"]
+  register: agents_mcp_server_prometheus
+
+# Written last, from what exists: a server that was not installed is `null`.
+# `generate bundle` adds the kubeconfigs, which cannot be written here because their tokens expire.
+# Neither agent has any RBAC on this Secret.
+- name: Create Secret with the agent bundle
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: Secret
+      data:
+        ca.crt: "{{ agents_mcp_gateway_ca_secret.resources[0].data['tls.crt'] }}"
+        mcp_servers: "{{ _mcp_servers | ansible.builtin.to_json | ansible.builtin.b64encode }}"
+        token: "{{ itbench_kubernetes_gateways.mcp.token | ansible.builtin.b64encode }}"
+      metadata:
+        labels:
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: itbench-agent-bundle
+        namespace: "{{ itbench_namespaces.mcp_servers }}"
+      type: Opaque
+    state: present
+  no_log: true
+  vars:
+    _endpoint: >-
+      {{
+        "https://%s:%i/mcp/" |
+        ansible.builtin.format(
+          agents_mcp_gateway.resources[0].status.addresses[0].value,
+          agents_mcp_gateway.resources[0].spec.listeners[0].port
+        )
+      }}
+    _mcp_servers: >-
+      {{
+        {
+          "jaeger": (_endpoint ~ "jaeger") if agents_mcp_server_jaeger.resources | ansible.builtin.length > 0 else none,
+          "opencost": (_endpoint ~ "opencost") if agents_mcp_server_opencost.status is ansible.builtin.defined else none,
+          "prometheus": (_endpoint ~ "prometheus") if agents_mcp_server_prometheus.status is ansible.builtin.defined else none
+        }
+      }}

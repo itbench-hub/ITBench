@@ -27,7 +27,8 @@
     {
       "matchFileNames": [
         "components/recorders/**",
-        "components/telemetry/**"
+        "components/telemetry/**",
+        "inventory/group_vars/all/container_image.yaml"
       ],
       "matchManagers": [
         "custom.regex"
@@ -40,7 +41,6 @@
       "matchPackageNames": [
         "quay.io/it-bench/hello-bench-arm64",
         "quay.io/it-bench/hello-bench-amd64",
-        "quay.io/it-bench/jaeger-recorder",
         "quay.io/it-bench/prometheus-recorder",
         "quay.io/it-bench/clickhouse-recorder",
         "quay.io/it-bench/topology-writer",
@@ -77,65 +77,50 @@
       "extractVersion": "^(?<version>1\\.\\d+\\.\\d+-\\d+)$"
     }
   ],
-  "ansible": {
-    "managerFilePatterns": [
-      "/(^|/)molecule/[^/]+/create\\.ya?ml$/"
-    ]
-  },
   "customManagers": [
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/(^|\\/)tasks\\/discover_[^\\/]*\\.yaml$/",
-        "/(^|\\/)tasks\\/install_[^\\/]*\\.yaml$/",
-        "/(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$/"
+        "/(^|\\/)inventory\\/group_vars\\/all\\/helm_chart\\.yaml$/"
       ],
       "matchStrings": [
-        "chart_ref:\\s*[\"']oci:\\/\\/(?<depName>[^\"'\\s]+)[\"'](?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
+        "#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*reference:[^\\n]*\\n\\s*version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
       ],
-      "datasourceTemplate": "docker",
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|\\/)inventory\\/group_vars\\/all\\/github_release\\.yaml$/"],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*url:[^\\n]*?(?<currentValue>v\\d+\\.\\d+\\.\\d+)"
+      ],
+      "versioningTemplate": "semver"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|\\/)inventory\\/group_vars\\/all\\/container_image\\.yaml$/"],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*digest:\\s*\"(?<currentDigest>sha256:[a-f0-9]+)\"\\s*\\n\\s*reference:[^\\n]*\\n\\s*tag:\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/(^|\\/)mise\\.[^\\/]*toml$/"],
+      "matchStrings": [
+        "#\\s*renovate:\\s*datasource=(?<datasource>[a-z-]+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*[A-Z][A-Z0-9_]*\\s*=\\s*\"(?<currentValue>[^\"]+)\""
+      ],
       "versioningTemplate": "semver"
     },
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/(^|\\/)tasks\\/install_[^\\/]*\\.yaml$/",
         "/(^|\\/)molecule\\/[^\\/]+\\/create\\.ya?ml$/"
       ],
       "matchStrings": [
         "chart_ref:\\s*[\"']?(?<depName>[^\"'\\s]+)[\"']?(?:\\s+.*)*\\s+chart_repo_url:\\s*[\"']?(?<registryUrl>https?:\\/\\/[^\"'\\s]+)[\"']?(?:\\s+.*)*\\s+chart_version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
       ],
       "datasourceTemplate": "helm"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/(^|\\/)tasks\\/install_[^\\/]*\\.yaml$/"
-      ],
-      "matchStrings": [
-        "repo:\\s*[\"']?https?:\\/\\/github\\.com\\/(?<depName>[^\\/]+\\/[^\\/\\s.]+)(?:\\.git)?[\"']?(?:\\s+.*)*\\s+version:\\s*[\"']?(?<currentValue>[^\"'\\s]+)[\"']?"
-      ],
-      "datasourceTemplate": "github-releases"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/(^|\\/)tasks\\/install_kubernetes_gateway_api\\.yaml$/"
-      ],
-      "matchStrings": [
-        "https://github\\.com/(?<depName>[^/]+/[^/]+)/releases/download/(?<currentValue>v\\d+\\.\\d+\\.\\d+)/"
-      ],
-      "datasourceTemplate": "github-releases"
-    },
-    {
-      "customType": "regex",
-      "managerFilePatterns": [
-        "/(^|\\/)tasks\\/install_bank_of_anthos\\.yaml$/"
-      ],
-      "matchStrings": [
-        "https://github\\.com/(?<depName>[^/]+/[^/]+)/archive/refs/tags/(?<currentValue>v\\d+\\.\\d+\\.\\d+)\\.tar\\.gz"
-      ],
-      "datasourceTemplate": "github-releases"
     },
     {
       "customType": "regex",

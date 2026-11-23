@@ -1,14 +1,18 @@
 ---
-- name: Install Alinity Clickhouse Operator
+- name: Install altinity Clickhouse Operator
   kubernetes.core.helm:
-    chart_ref: "oci://ghcr.io/altinity/clickhouse-operator-helm-chart/altinity-clickhouse-operator"
-    chart_version: "0.27.4"
-    release_name: "{{ tools_helm_release_alinity_clickhouse_operator }}"
-    release_namespace: "{{ tools_itbench_namespace_observability }}"
+    chart_ref: "{{ helm_chart_altinity_clickhouse_operator.reference }}"
+    chart_version: "{{ helm_chart_altinity_clickhouse_operator.version }}"
+    release_name: "{{ helm_release_altinity_clickhouse_operator.name }}"
+    release_namespace: "{{ itbench_namespaces.operators }}"
     release_state: present
     release_values:
       serviceMonitor:
         enabled: true
+      # The operator runs in its own namespace but the Clickhouse installation lives in the observability one.
+      # Without this it only watches its own namespace and never reconciles the installation.
+      watchNamespaces:
+        - "{{ itbench_clickhouse_databases.observability.namespace }}"
     timeout: 10m0s
     wait: true
 
@@ -18,23 +22,79 @@
       apiVersion: v1
       kind: Secret
       metadata:
-        name: "user-{{ clickhouse_user.name }}-credentials"
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        name: "{{ 'clickhouse-user-' ~ clickhouse_user.value.name }}"
+        namespace: "{{ itbench_clickhouse_databases.observability.namespace }}"
       stringData:
-        CLICKHOUSE_PASSWORD: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_letters,digits length=32') }}" # pragma: allowlist secret
-        CLICKHOUSE_USER: "{{ clickhouse_user.name }}"
+        CLICKHOUSE_PASSWORD: "{{ clickhouse_user.value.password }}"
+        CLICKHOUSE_USER: "{{ clickhouse_user.value.name }}"
       type: Opaque
     state: present
-  loop:
-    - name: admin
-    - name: agent
-    - name: ingest
-    - name: jaeger
-    - name: recorder
-    - name: topology
+  loop: "{{ itbench_clickhouse_databases.observability.users | ansible.builtin.dict2items }}"
   loop_control:
-    label: secret/user-{{ clickhouse_user.name }}-credentials
+    label: user/{{ clickhouse_user.key }}
     loop_var: clickhouse_user
+
+# Only pods in the observability namespace (OpenTelemetry collectors, recorders, topology writer, Jaeger, Prometheus)
+# and the Clickhouse operator may reach Clickhouse. Agents never connect directly; they use the MCP servers.
+- name: Create NetworkPolicy restricting ingress to Clickhouse
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": observability
+        name: itbench-clickhouse-ingress
+        namespace: "{{ itbench_namespaces.observability }}"
+      spec:
+        ingress:
+          - from:
+              - podSelector: {}
+              - namespaceSelector:
+                  matchLabels:
+                    "kubernetes.io/metadata.name": "{{ itbench_namespaces.operators }}"
+            ports:
+              - port: 8123
+                protocol: TCP
+              - port: 9000
+                protocol: TCP
+        podSelector:
+          matchLabels:
+            "app.kubernetes.io/name": clickhouse
+        policyTypes:
+          - Ingress
+    state: present
+
+# On OpenShift the user workload Prometheus scrapes Clickhouse from outside the observability namespace.
+- name: Create NetworkPolicy allowing OpenShift user workload monitoring to scrape Clickhouse
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        labels:
+          "itbench.io/ansible-role": tools
+          "itbench.io/layer": observability
+        name: itbench-clickhouse-ingress-monitoring
+        namespace: "{{ itbench_namespaces.observability }}"
+      spec:
+        ingress:
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    "kubernetes.io/metadata.name": "{{ openshift_user_workload_monitoring_namespace }}"
+            ports:
+              - port: 8123
+                protocol: TCP
+        podSelector:
+          matchLabels:
+            "app.kubernetes.io/name": clickhouse
+        policyTypes:
+          - Ingress
+    state: present
+  when:
+    - tools_cluster.platform == "openshift"
 
 - name: Create Clickhouse Installation
   kubernetes.core.k8s:
@@ -45,8 +105,8 @@
         labels:
           "app.kubernetes.io/name": clickhouse
           app.kubernetes.io/version: 26.3.33.10001
-        name: "{{ tools_itbench_clickhouse_observability }}"
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        name: "{{ itbench_clickhouse_databases.observability.name }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         configuration:
           clusters:
@@ -65,12 +125,12 @@
           users:
             admin/access_management: 1
             admin/named_collection_control: 1
-            admin/networks/ip: 0.0.0.0/0
+            admin/networks/ip: "{{ _clickhouse_networks }}"
             admin/password:
               valueFrom:
                 secretKeyRef:
                   key: CLICKHOUSE_PASSWORD
-                  name: user-admin-credentials
+                  name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.admin.name }}"
             admin/show_named_collections: 1
             admin/show_named_collections_secrets: 1
             agent/grants/query:
@@ -82,52 +142,52 @@
               - GRANT SELECT ON kubernetes.topology_graph
               - GRANT SELECT ON microservices_demo.logs
               - GRANT SELECT ON opentelemetry_demo.logs
-            agent/networks/ip: 0.0.0.0/0
+            agent/networks/ip: "{{ _clickhouse_networks }}"
             agent/password:
               valueFrom:
                 secretKeyRef:
                   key: CLICKHOUSE_PASSWORD
-                  name: user-agent-credentials
-            ingest/grants/query:
+                  name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.agent.name }}"
+            itbench-jaeger/grants/query:
+              - GRANT CREATE, INSERT, SELECT ON jaeger.*
+            itbench-jaeger/networks/ip: "{{ _clickhouse_networks }}"
+            itbench-jaeger/password:
+              valueFrom:
+                secretKeyRef:
+                  key: CLICKHOUSE_PASSWORD
+                  name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.jaeger.name }}"
+            itbench-observability/grants/query:
               - GRANT CREATE, INSERT ON bank_of_anthos.*
               - GRANT CREATE, INSERT ON istio.*
               - GRANT CREATE, INSERT ON kubernetes.*
               - GRANT CREATE, INSERT ON microservices_demo.*
               - GRANT CREATE, INSERT ON opentelemetry_demo.*
-            ingest/networks/ip: 0.0.0.0/0
-            ingest/password:
+            itbench-observability/networks/ip: "{{ _clickhouse_networks }}"
+            itbench-observability/password:
               valueFrom:
                 secretKeyRef:
                   key: CLICKHOUSE_PASSWORD
-                  name: user-ingest-credentials
-            jaeger/grants/query:
-              - GRANT ALL ON jaeger.*
-            jaeger/networks/ip: 0.0.0.0/0
-            jaeger/password:
-              valueFrom:
-                secretKeyRef:
-                  key: CLICKHOUSE_PASSWORD
-                  name: user-jaeger-credentials
-            recorder/grants/query:
+                  name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.observability.name }}"
+            itbench-recorder/grants/query:
               - GRANT SELECT ON bank_of_anthos.*
               - GRANT SELECT ON jaeger.*
               - GRANT SELECT ON kubernetes.*
               - GRANT SELECT ON microservices_demo.*
               - GRANT SELECT ON opentelemetry_demo.*
-            recorder/networks/ip: 0.0.0.0/0
-            recorder/password:
+            itbench-recorder/networks/ip: "{{ _clickhouse_networks }}"
+            itbench-recorder/password:
               valueFrom:
                 secretKeyRef:
                   key: CLICKHOUSE_PASSWORD
-                  name: user-recorder-credentials
-            topology/grants/query:
+                  name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.recorder.name }}"
+            itbench-topology/grants/query:
               - GRANT CREATE, INSERT, SELECT ON kubernetes.*
-            topology/networks/ip: 0.0.0.0/0
-            topology/password:
+            itbench-topology/networks/ip: "{{ _clickhouse_networks }}"
+            itbench-topology/password:
               valueFrom:
                 secretKeyRef:
                   key: CLICKHOUSE_PASSWORD
-                  name: user-topology-credentials
+                  name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.topology.name }}"
         defaults:
           templates:
             dataVolumeClaimTemplate: data-volume-template
@@ -142,7 +202,7 @@
               name: pod-template
               spec:
                 containers:
-                  - image: altinity/clickhouse-server:26.3.33.10001.altinitystable@sha256:5bd62b50208bae1d065de7685b0b0a1812f267d1a179aabb15f97c78aed47d1a
+                  - image: "{{ container_image_altinity_clickhouse_server }}"
                     imagePullPolicy: IfNotPresent
                     name: clickhouse
                     ports:
@@ -195,14 +255,24 @@
                   requests:
                     storage: 10Gi
     state: present
+  vars:
+    # Defence in depth behind the NetworkPolicy: loopback plus the private ranges pod IPs are allocated from.
+    _clickhouse_networks:
+      - 127.0.0.1
+      - "::1"
+      - 10.0.0.0/8
+      - 100.64.0.0/10
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - fc00::/7
 
 - name: Wait for Clickhouse installation to complete
   delay: 30
   kubernetes.core.k8s_info:
     api_version: clickhouse.altinity.com/v1
     kind: ClickHouseInstallation
-    name: "{{ tools_itbench_clickhouse_observability }}"
-    namespace: "{{ tools_itbench_namespace_observability }}"
+    name: "{{ itbench_clickhouse_databases.observability.name }}"
+    namespace: "{{ itbench_namespaces.observability }}"
   register: tools_chi
   retries: 10
   until:
@@ -219,7 +289,7 @@
         labels:
           "app.kubernetes.io/name": clickhouse-init
         name: clickhouse-init
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         backoffLimit: 5
         template:
@@ -248,18 +318,18 @@
                   - -c
                 env:
                   - name: CLICKHOUSE_HOST
-                    value: "{{ 'clickhouse-' ~ tools_itbench_clickhouse_observability }}"
+                    value: "{{ 'clickhouse-' ~ itbench_clickhouse_databases.observability.name }}"
                   - name: CLICKHOUSE_USER
                     valueFrom:
                       secretKeyRef:
                         key: CLICKHOUSE_USER
-                        name: user-admin-credentials
+                        name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.admin.name }}"
                   - name: CLICKHOUSE_PASSWORD
                     valueFrom:
                       secretKeyRef:
                         key: CLICKHOUSE_PASSWORD
-                        name: user-admin-credentials
-                image: altinity/clickhouse-server:26.3.33.10001.altinitystable@sha256:5bd62b50208bae1d065de7685b0b0a1812f267d1a179aabb15f97c78aed47d1a
+                        name: "{{ 'clickhouse-user-' ~ itbench_clickhouse_databases.observability.users.admin.name }}"
+                image: "{{ container_image_altinity_clickhouse_server }}"
                 imagePullPolicy: IfNotPresent
                 name: init
                 resources:
@@ -294,7 +364,7 @@
       kind: ServiceMonitor
       metadata:
         name: main
-        namespace: "{{ tools_itbench_namespace_observability }}"
+        namespace: "{{ itbench_namespaces.observability }}"
       spec:
         endpoints:
           - interval: 30s

@@ -1,0 +1,187 @@
+---
+- name: Create ServiceAccount for agent diagnosis
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      automountServiceAccountToken: false
+      metadata:
+        labels:
+          "itbench.io/agent-mission": diagnosis
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: agent-diagnosis
+        namespace: "{{ itbench_namespaces.agents }}"
+    state: present
+
+# Namespaced, read-only access. Intentionally excludes Secrets, pods/exec, RBAC objects and ServiceAccount tokens.
+- name: Create ClusterRole for agent diagnosis
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          "itbench.io/agent-mission": diagnosis
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: agent-diagnosis
+      rules:
+        - apiGroups:
+            - ""
+          resources:
+            - configmaps
+            - endpoints
+            - events
+            - limitranges
+            - persistentvolumeclaims
+            - pods
+            - pods/log
+            - resourcequotas
+            - services
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - apps
+          resources:
+            - daemonsets
+            - deployments
+            - replicasets
+            - statefulsets
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - autoscaling
+          resources:
+            - horizontalpodautoscalers
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - batch
+          resources:
+            - cronjobs
+            - jobs
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - discovery.k8s.io
+          resources:
+            - endpointslices
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - events.k8s.io
+          resources:
+            - events
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - gateway.networking.k8s.io
+          resources:
+            - httproutes
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - metrics.k8s.io
+          resources:
+            - pods
+          verbs:
+            - get
+            - list
+        - apiGroups:
+            - networking.istio.io
+          resources:
+            - destinationrules
+            - virtualservices
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - networking.k8s.io
+          resources:
+            - ingresses
+            - networkpolicies
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - policy
+          resources:
+            - poddisruptionbudgets
+          verbs:
+            - get
+            - list
+            - watch
+        - apiGroups:
+            - security.istio.io
+          resources:
+            - authorizationpolicies
+            - peerauthentications
+          verbs:
+            - get
+            - list
+            - watch
+    state: present
+
+- name: Create ClusterRoleBinding for agent diagnosis cluster-scoped reads
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        labels:
+          "itbench.io/agent-mission": diagnosis
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: agent-diagnosis-cluster-read
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: agent-cluster-read
+      subjects:
+        - kind: ServiceAccount
+          name: agent-diagnosis
+          namespace: "{{ itbench_namespaces.agents }}"
+    state: present
+
+- name: Create RoleBindings for agent diagnosis in each fault injectable application namespace
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        labels:
+          "itbench.io/agent-mission": diagnosis
+          "itbench.io/ansible-role": agents
+          "itbench.io/layer": ai-integration
+        name: "{{ application_namespace.metadata.name ~ '-diagnosis' }}"
+        namespace: "{{ application_namespace.metadata.name }}"
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: agent-diagnosis
+      subjects:
+        - kind: ServiceAccount
+          name: agent-diagnosis
+          namespace: "{{ itbench_namespaces.agents }}"
+    state: present
+  loop: "{{ agents_injectable_namespaces.resources }}"
+  loop_control:
+    label: rolebinding/{{ application_namespace.metadata.name ~ '-diagnosis' }}
+    loop_var: application_namespace

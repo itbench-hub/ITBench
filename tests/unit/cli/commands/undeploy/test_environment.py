@@ -13,8 +13,29 @@ from itbench.utils.runner import PlaybookError
 _APPLICATIONS_STEP = call(
     playbook="manage_environment.yaml",
     extra_vars={
-        "environment_tool_management_enabled": False,
         "environment_application_management_enabled": True,
+    },
+    tags=["uninstall"],
+    run_id=None,
+    verbose=False,
+    kubeconfig="/kube.conf",
+)
+
+_AGENTS_STEP = call(
+    playbook="manage_environment.yaml",
+    extra_vars={
+        "environment_agent_management_enabled": True,
+    },
+    tags=["uninstall"],
+    run_id=None,
+    verbose=False,
+    kubeconfig="/kube.conf",
+)
+
+_RECORDERS_STEP = call(
+    playbook="manage_environment.yaml",
+    extra_vars={
+        "environment_recorder_management_enabled": True,
     },
     tags=["uninstall"],
     run_id=None,
@@ -26,7 +47,6 @@ _TOOLS_STEP = call(
     playbook="manage_environment.yaml",
     extra_vars={
         "environment_tool_management_enabled": True,
-        "environment_application_management_enabled": False,
     },
     tags=["uninstall"],
     run_id=None,
@@ -45,7 +65,7 @@ def test_undeploy_environment_with_yes_flag_success() -> None:
 
     assert result.exit_code == 0
     assert "Environment undeployed successfully" in result.output
-    assert mock_run.call_args_list == [_APPLICATIONS_STEP, _TOOLS_STEP]
+    assert mock_run.call_args_list == [_APPLICATIONS_STEP, _AGENTS_STEP, _RECORDERS_STEP, _TOOLS_STEP]
 
 
 def test_undeploy_environment_prompt_confirmed(terminal_input: io.BytesIO) -> None:
@@ -62,7 +82,7 @@ def test_undeploy_environment_prompt_confirmed(terminal_input: io.BytesIO) -> No
 
     assert result.exit_code == 0
     assert "Environment undeployed successfully" in result.output
-    assert mock_run.call_count == 2
+    assert mock_run.call_count == 4
     assert mock_confirm.call_args.args[0] == "Are you sure you want to undeploy the environment?"
 
 
@@ -98,7 +118,7 @@ def test_undeploy_environment_without_terminal_requires_yes() -> None:
     mock_run.assert_not_called()
 
 
-def test_undeploy_environment_only_applications_leaves_tools(terminal_input: io.BytesIO) -> None:
+def test_undeploy_environment_only_applications_leaves_agents_and_tools(terminal_input: io.BytesIO) -> None:
     runner = CliRunner()
 
     with (
@@ -138,10 +158,10 @@ def test_undeploy_environment_verbose_streams_ansible_output() -> None:
         result = runner.invoke(undeploy_environment, ["-y", "-v", "--kubeconfig", "/kube.conf"])
 
     assert result.exit_code == 0
-    assert [c.kwargs["verbose"] for c in mock_run.call_args_list] == [True, True]
+    assert [c.kwargs["verbose"] for c in mock_run.call_args_list] == [True, True, True, True]
 
 
-def test_undeploy_environment_applications_failure_aborts_tools(tmp_path: Path) -> None:
+def test_undeploy_environment_applications_failure_aborts_agents_recorders_and_tools(tmp_path: Path) -> None:
     runner = CliRunner()
     error = PlaybookError("manage_environment.yaml", 2, tmp_path, output="TASK [boom] fatal")
 
@@ -154,7 +174,7 @@ def test_undeploy_environment_applications_failure_aborts_tools(tmp_path: Path) 
     assert mock_run.call_count == 1
 
 
-def test_undeploy_environment_tools_failure(tmp_path: Path) -> None:
+def test_undeploy_environment_agents_failure_aborts_recorders_and_tools(tmp_path: Path) -> None:
     runner = CliRunner()
     error = PlaybookError("manage_environment.yaml", 2, tmp_path)
 
@@ -164,3 +184,29 @@ def test_undeploy_environment_tools_failure(tmp_path: Path) -> None:
     assert result.exit_code == 1
     assert "Environment undeploy failed" in result.output
     assert mock_run.call_count == 2
+
+
+def test_undeploy_environment_recorders_failure_aborts_tools(tmp_path: Path) -> None:
+    runner = CliRunner()
+    error = PlaybookError("manage_environment.yaml", 2, tmp_path)
+
+    with patch("itbench.cli.playbook.run_playbook", side_effect=[MagicMock(), MagicMock(), error]) as mock_run:
+        result = runner.invoke(undeploy_environment, ["-y", "--kubeconfig", "/kube.conf"])
+
+    assert result.exit_code == 1
+    assert "Environment undeploy failed" in result.output
+    assert mock_run.call_count == 3
+
+
+def test_undeploy_environment_tools_failure(tmp_path: Path) -> None:
+    runner = CliRunner()
+    error = PlaybookError("manage_environment.yaml", 2, tmp_path)
+
+    with patch(
+        "itbench.cli.playbook.run_playbook", side_effect=[MagicMock(), MagicMock(), MagicMock(), error]
+    ) as mock_run:
+        result = runner.invoke(undeploy_environment, ["-y", "--kubeconfig", "/kube.conf"])
+
+    assert result.exit_code == 1
+    assert "Environment undeploy failed" in result.output
+    assert mock_run.call_count == 4

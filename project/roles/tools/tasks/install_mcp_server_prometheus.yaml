@@ -1,0 +1,153 @@
+---
+- name: Retrieve Prometheus Service
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    name: >-
+      {{
+        (tools_cluster.platform == "openshift") |
+        ansible.builtin.ternary(
+          openshift_monitoring_thanos_querier.name,
+          helm_release_kube_prometheus_stack.name ~ "-prometheus"
+        )
+      }}
+    namespace: >-
+      {{
+        (tools_cluster.platform == "openshift") |
+        ansible.builtin.ternary(
+          openshift_monitoring_namespace,
+          itbench_namespaces.observability
+        )
+      }}
+  register: tools_prometheus_service
+
+- name: Install Prometheus MCP server
+  when:
+    - tools_prometheus_service.resources | ansible.builtin.length > 0
+  block:
+    # Only `get` on `/api/*` is granted, so that kube-rbac-proxy refuses the `create` verb of a `POST` (`quit`, `reload`).
+    - name: Create ClusterRole for Prometheus MCP server
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRole
+          metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": ai-integration
+            name: "{{ helm_release_prometheus_mcp.name }}"
+          rules:
+            - nonResourceURLs:
+                - /api/*
+              verbs:
+                - get
+        state: present
+      when:
+        - tools_cluster.platform == "kubernetes"
+
+    - name: Create ClusterRoleBinding for Prometheus MCP server
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": ai-integration
+            name: "{{ helm_release_prometheus_mcp.name }}"
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: "{{ 'cluster-monitoring-view' if tools_cluster.platform == 'openshift' else helm_release_prometheus_mcp.name }}"
+          subjects:
+            - kind: ServiceAccount
+              name: "{{ helm_release_prometheus_mcp.name }}"
+              namespace: "{{ itbench_mcp_servers.prometheus.namespace }}"
+        state: present
+
+    - name: Install Prometheus MCP server
+      kubernetes.core.helm:
+        chart_ref: "oci://ghcr.io/tjhop/charts/prometheus-mcp-server"
+        chart_version: "0.18.0"
+        release_name: "{{ helm_release_prometheus_mcp.name }}"
+        release_namespace: "{{ itbench_mcp_servers.prometheus.namespace }}"
+        release_state: present
+        release_values:
+          docs:
+            autoUpdate: false
+          extraVolumeMounts:
+            - mountPath: /var/run/secrets/prometheus
+              name: prometheus-token
+              readOnly: true
+          extraVolumes:
+            - name: prometheus-token
+              projected:
+                sources:
+                  - serviceAccountToken:
+                      expirationSeconds: 3600
+                      path: token
+          httpConfig:
+            authorization:
+              credentials_file: /var/run/secrets/prometheus/token
+            tls_config:
+              insecure_skip_verify: true
+          mcp:
+            tools:
+              - docs_list
+              - docs_read
+              - docs_search
+              - exemplar_query
+              - label_names
+              - label_values
+              - list_alerts
+              - list_rules
+              - list_targets
+              - query
+              - range_query
+          prometheus:
+            url: >-
+              {{
+                (tools_cluster.platform == "openshift") |
+                ansible.builtin.ternary(
+                  fqdn_openshift_monitoring_thanos_querier,
+                  _fqdn_prometheus
+                )
+              }}
+          route:
+            main:
+              enabled: true
+              filters:
+                - type: URLRewrite
+                  urlRewrite:
+                    path:
+                      type: ReplacePrefixMatch
+                      replacePrefixMatch: /
+              matches:
+                - headers:
+                    - name: Authorization
+                      type: Exact
+                      value: "{{ 'Bearer ' ~ itbench_kubernetes_gateways.mcp.token }}"
+                  path:
+                    type: PathPrefix
+                    value: /mcp/prometheus
+              parentRefs:
+                - name: "{{ itbench_kubernetes_gateways.mcp.name }}"
+                  namespace: "{{ itbench_kubernetes_gateways.mcp.namespace }}"
+          serviceAccount:
+            create: true
+            name: "{{ helm_release_prometheus_mcp.name }}"
+          serviceMonitor:
+            enabled: true
+          tsdbAdmin:
+            enabled: false
+        wait: true
+      vars:
+        _fqdn_prometheus: >-
+          {{
+            "https://%s.%s.svc.cluster.local:%i" |
+            ansible.builtin.format(
+              helm_release_kube_prometheus_stack.name ~ "-prometheus",
+              itbench_namespaces.observability,
+              itbench_prometheus_proxy.ports.https
+            )
+          }}

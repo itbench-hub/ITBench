@@ -1,0 +1,58 @@
+---
+- name: Install Gateway controller on Kubernetes
+  when:
+    - tools_cluster.platform == "kubernetes"
+  block:
+    - name: Create Namespace for NGINX Gateway Fabric
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/inject": "false"
+              "itbench.io/layer": networking
+              "itbench.io/monitor": "true"
+            name: "{{ helm_release_nginx_gateway_fabric.namespace }}"
+        state: present
+
+    - name: Install NGINX Gateway Fabric
+      kubernetes.core.helm:
+        chart_ref: "{{ helm_chart_nginx_gateway_fabric.reference }}"
+        chart_version: "{{ helm_chart_nginx_gateway_fabric.version }}"
+        release_name: "{{ helm_release_nginx_gateway_fabric.name }}"
+        release_namespace: "{{ helm_release_nginx_gateway_fabric.namespace }}"
+        release_state: present
+        release_values:
+          certGenerator:
+            enable: true
+          nginx:
+            serviceMonitor:
+              enable: "{{ tools_observability_enabled }}"
+            metrics:
+              serviceMonitor:
+                enable: "{{ tools_observability_enabled }}"
+        wait: true
+
+- name: Install Gateway controller on OpenShift
+  when:
+    - tools_cluster.platform == "openshift"
+  block:
+    - name: Create GatewayClass for OpenShift Ingress
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: gateway.networking.k8s.io/v1
+          kind: GatewayClass
+          metadata:
+            labels:
+              "itbench.io/ansible-role": tools
+              "itbench.io/layer": networking
+            name: "{{ openshift_kubernetes_gateway_class.name }}"
+          spec:
+            controllerName: "{{ openshift_kubernetes_gateway_class.controller_name }}"
+        state: present
+        wait: true
+        wait_condition:
+          status: "True"
+          type: Accepted

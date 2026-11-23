@@ -14,6 +14,12 @@ from itbench.paths import repository
 from itbench.utils.runner import PlaybookError, create_run, run_directory, run_playbook
 
 
+@pytest.fixture(autouse=True)
+def _run_in_tmp_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Run directories are created under the working directory, so keep them out of the repository."""
+    monkeypatch.chdir(tmp_path)
+
+
 def _make_runner(rc: int = 0, output: str = "") -> MagicMock:
     runner = MagicMock()
     runner.rc = rc
@@ -25,8 +31,17 @@ def test_playbooks_run_from_the_sre_project() -> None:
     with patch("ansible_runner.run", return_value=_make_runner()) as mock_run:
         run_playbook(playbook="my.yaml")
 
-    assert mock_run.call_args.kwargs["private_data_dir"] == str(repository.ansible_project)
+    assert mock_run.call_args.kwargs["project_dir"] == str(repository.ansible_project)
     assert repository.ansible_project.parts[-1:] == ("project",)
+
+
+def test_playbooks_do_not_load_runner_state_from_the_sre_project() -> None:
+    with patch("ansible_runner.run", return_value=_make_runner()) as mock_run:
+        run_playbook(playbook="my.yaml", run_id="abc")
+
+    private_data_dir = Path(mock_run.call_args.kwargs["private_data_dir"])
+    assert private_data_dir != repository.ansible_project
+    assert private_data_dir == run_directory("abc")
 
 
 def test_playbooks_use_the_sre_inventory_so_group_vars_apply() -> None:

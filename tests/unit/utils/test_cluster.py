@@ -1,8 +1,13 @@
 """Tests for itbench.utils.cluster."""
 
+import base64
+import json
+
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+from kubernetes.client.exceptions import ApiException
 
 from itbench.utils.cluster import (
     AGENT_MISSION_LABEL,
@@ -14,6 +19,7 @@ from itbench.utils.cluster import (
     configure_environment,
     create_agent_access,
     delete_events,
+    read_agent_endpoints,
     taint_sandbox_nodes,
 )
 
@@ -242,3 +248,58 @@ def test_create_agent_access_requires_exactly_one_service_account(count: int) ->
         _create_agent_access(core_api, _client_settings())
 
     core_api.create_namespaced_service_account_token.assert_not_called()
+
+
+def _encoded(value: str) -> str:
+    return base64.b64encode(value.encode()).decode()
+
+
+def _read_agent_endpoints(core_api: MagicMock):
+    with (
+        patch("itbench.utils.cluster.config.load_kube_config") as mock_load_config,
+        patch("itbench.utils.cluster.client.CoreV1Api", return_value=core_api),
+    ):
+        endpoints = read_agent_endpoints(kubeconfig="/path/to/kubeconfig")
+    mock_load_config.assert_called_once_with(config_file="/path/to/kubeconfig")
+    return endpoints
+
+
+def test_read_agent_endpoints_decodes_the_bundle_secret() -> None:
+    servers = {"jaeger": "https://10.0.0.1:8443/mcp/jaeger", "opencost": None, "prometheus": None}
+    core_api = MagicMock()
+    core_api.read_namespaced_secret.return_value.data = {
+        "mcp_servers": _encoded(json.dumps(servers)),
+        "ca.crt": _encoded("CERT"),
+        "token": _encoded("mcp-token"),
+    }
+
+    endpoints = _read_agent_endpoints(core_api)
+
+    core_api.read_namespaced_secret.assert_called_once_with("itbench-agent-bundle", "itbench-mcp-servers")
+    assert endpoints.mcp_servers == servers
+    assert endpoints.ca_certificate == "CERT"
+    assert endpoints.token == "mcp-token"  # noqa: S105
+
+
+def test_read_agent_endpoints_requires_the_secret() -> None:
+    core_api = MagicMock()
+    core_api.read_namespaced_secret.side_effect = ApiException(status=404, reason="Not Found")
+
+    with pytest.raises(RuntimeError, match="itbench-agent-bundle.*not found"):
+        _read_agent_endpoints(core_api)
+
+
+def test_read_agent_endpoints_propagates_other_api_errors() -> None:
+    core_api = MagicMock()
+    core_api.read_namespaced_secret.side_effect = ApiException(status=403, reason="Forbidden")
+
+    with pytest.raises(ApiException):
+        _read_agent_endpoints(core_api)
+
+
+def test_read_agent_endpoints_rejects_an_incomplete_secret() -> None:
+    core_api = MagicMock()
+    core_api.read_namespaced_secret.return_value.data = {"token": _encoded("mcp-token")}
+
+    with pytest.raises(RuntimeError, match=r"lacks: mcp_servers, ca\.crt"):
+        _read_agent_endpoints(core_api)
