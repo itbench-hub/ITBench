@@ -42,8 +42,16 @@ jobs:
         run: |
           mise run destroy:kind:environment
   sre-faults:
-    name: SRE Fault Injection Tests
+    name: SRE Fault Injection Tests (${{ matrix.group }})
     runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - core
+          - istio
+          - kyverno
+          - valkey
     env:
       KUBECONFIG: ${{ github.workspace }}/clusters/kind/kubeconfigs/kind-environment
       MISE_ENV: kind
@@ -74,7 +82,7 @@ jobs:
         run: uv run itbench configure environment
       - name: Run Molecule tests
         run: |
-          mise run test:molecule:faults
+          mise run test:molecule:faults:${{ matrix.group }}
       - name: Destroy Kind cluster
         run: |
           mise run destroy:kind:environment
