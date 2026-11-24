@@ -25,6 +25,93 @@ class FaultAlerts(StrEnum):
     NoRequestsReceived = "NoRequestsReceived"
 
 
+class PrometheusAlertState(StrEnum):
+    """Prometheus alert state a signal expects."""
+
+    Firing = "firing"
+    Pending = "pending"
+    Inactive = "inactive"
+
+
+class KyvernoPolicyReportStatus(StrEnum):
+    """Result status of a policy report entry (``wgpolicyk8s.io`` ``results[].result``)."""
+
+    Pass = "pass"
+    Fail = "fail"
+    Warn = "warn"
+    Error = "error"
+    Skip = "skip"
+
+
+class PrometheusAlertSignal(BaseModel):
+    """A Prometheus alert a fault causes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: FaultAlerts = Field(
+        description="Alert identifier.",
+    )
+    state: PrometheusAlertState = Field(
+        default=PrometheusAlertState.Firing,
+        description="State the alert is expected to be in while the fault is active.",
+    )
+
+
+class PrometheusSignals(BaseModel):
+    """Signals observed through Prometheus."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    alerts: list[PrometheusAlertSignal] = Field(
+        default_factory=list,
+        description="Alerts caused by the fault.",
+        json_schema_extra={"uniqueItems": True},
+    )
+
+
+class KyvernoPolicyReportSignal(BaseModel):
+    """A policy report result a fault causes.
+
+    Names a policy and the status expected for it. It does not name the reported object.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    policy: str = Field(
+        description="Policy the report entry is for, as written in the report's results[].policy.",
+    )
+    status: KyvernoPolicyReportStatus = Field(
+        description="Status expected for the policy (the report's results[].result).",
+    )
+
+
+class KubernetesSignals(BaseModel):
+    """Signals observed through the Kubernetes API."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    policy_reports: list[KyvernoPolicyReportSignal] = Field(
+        default_factory=list,
+        description="Policy report results expected for the fault.",
+        json_schema_extra={"uniqueItems": True},
+    )
+
+
+class FaultSignals(BaseModel):
+    """Signals a fault causes, grouped by where they are observed."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kubernetes: KubernetesSignals = Field(
+        default_factory=KubernetesSignals,
+        description="Signals observed through the Kubernetes API.",
+    )
+    prometheus: PrometheusSignals = Field(
+        default_factory=PrometheusSignals,
+        description="Signals observed through Prometheus.",
+    )
+
+
 class FaultTags(StrEnum):
     """Categories/tags for faults."""
 
@@ -130,11 +217,6 @@ class Fault(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    alerts: list[FaultAlerts] = Field(
-        default_factory=list,
-        description="Alerts triggered by this fault.",
-        json_schema_extra={"uniqueItems": True},
-    )
     description: str = Field(
         description="Description of what the fault does.",
     )
@@ -151,6 +233,10 @@ class Fault(BaseModel):
         default_factory=list,
         description="Reference documentation or links.",
         json_schema_extra={"uniqueItems": True},
+    )
+    signals: FaultSignals = Field(
+        default_factory=FaultSignals,
+        description="Signals this fault causes, such as Prometheus alerts or policy report results.",
     )
     solution_templates: FaultSolutionTemplates = Field(
         description="Recommended troubleshooting solutions.",
@@ -174,6 +260,11 @@ class Fault(BaseModel):
     )
 
     @property
+    def alert_names(self) -> list[str]:
+        """Names of the Prometheus alerts this fault causes."""
+        return [str(alert.name) for alert in self.signals.prometheus.alerts]
+
+    @property
     def is_retired(self) -> bool:
         """Whether the fault has been retired."""
         return self.status is not None and self.status.retired is not None
@@ -194,13 +285,6 @@ class Fault(BaseModel):
         if self.status is None or self.status.retired is None:
             return None
         return self.status.retired.reason
-
-    @model_validator(mode="after")
-    def _require_alerts_for_active_faults(self) -> Self:
-        """Enforce that at least one alert is defined for non-retired faults."""
-        if not self.is_retired and not self.alerts:
-            raise ValueError("Non-retired faults must define at least one alert in 'alerts'.")
-        return self
 
     @model_validator(mode="after")
     def _require_tags_for_active_faults(self) -> Self:

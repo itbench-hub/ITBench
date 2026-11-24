@@ -48,7 +48,7 @@ def list_faults(tag: str | None, platform: str | None, show_usage: bool, output_
                 "name": fault.name,
                 "platform": fault.platform,
                 "tags": list(fault.tags),
-                "alerts": list(fault.alerts),
+                "alerts": fault.alert_names,
                 "status": "retired" if fault.is_retired else "active",
                 "retired_reason": fault.retired_reason,
             }

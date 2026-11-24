@@ -39,7 +39,7 @@ _SCENARIO: dict[str, Any] = {
 }
 
 _GROUND_TRUTH: dict[str, Any] = {
-    "alerts": [{"name": "KubePodNotReady", "labels": {}}],
+    "signals": {"prometheus": {"alerts": [{"name": "KubePodNotReady"}]}},
     "entities": {
         "faulted": {
             "kubernetes": [
@@ -174,7 +174,7 @@ def test_explain_scenario_multiple_variants_and_faults_labeled(tmp_path: Path) -
 
 def test_explain_scenario_no_solutions_recorded(tmp_path: Path) -> None:
     _write_scenario(
-        tmp_path, "1", ground_truth={"alerts": [], "entities": {"faulted": {"kubernetes": []}}, "solutions": []}
+        tmp_path, "1", ground_truth={"signals": {}, "entities": {"faulted": {"kubernetes": []}}, "solutions": []}
     )
 
     result = _invoke(tmp_path, ["1"])
@@ -185,7 +185,7 @@ def test_explain_scenario_no_solutions_recorded(tmp_path: Path) -> None:
 
 def test_explain_scenario_renders_entity_groups(tmp_path: Path) -> None:
     ground_truth = {
-        "alerts": [],
+        "signals": {"kubernetes": {"policy_reports": [{"policy": "require-non-root", "status": "pass"}]}},
         "entities": {
             "faulted": {"kubernetes": [{"apiVersion": "apps/v1", "kind": "Deployment", "name": "frontend"}]},
             "impacted": {"kubernetes": [{"apiVersion": "v1", "kind": "Service", "name": "frontend-svc"}]},
@@ -211,6 +211,8 @@ def test_explain_scenario_renders_entity_groups(tmp_path: Path) -> None:
     assert "Impacted entities" in result.output
     assert "Entities that must stay unchanged" in result.output
     assert "NamespacedValidatingPolicy require-non-root" in result.output
+    assert "Policy reports" in result.output
+    assert "require-non-root: pass" in result.output
     assert "spec.template.spec.containers[0].name = server" in result.output
 
 
@@ -238,7 +240,7 @@ def test_explain_scenario_ground_truth_with_schema_comment(tmp_path: Path) -> No
     (tmp_path / "scenarios" / "16" / "ground_truth.yaml").write_text(
         "# yaml-language-server: $schema=../../../schemas/json/library/ground_truth.json\n"
         "---\n"
-        "alerts: []\n"
+        "signals: {}\n"
         "entities:\n"
         "  faulted:\n"
         "    kubernetes: []\n"
@@ -270,7 +272,7 @@ def test_explain_scenario_json_output(tmp_path: Path) -> None:
     data = json.loads(result.output)
     assert data["id"] == "16"
     assert data["environment"]["domains"] == ["sre"]
-    assert data["ground_truth"]["alerts"][0]["name"] == "KubePodNotReady"
+    assert data["ground_truth"]["signals"]["prometheus"]["alerts"][0]["name"] == "KubePodNotReady"
 
 
 def test_explain_scenario_yaml_output_without_ground_truth(tmp_path: Path) -> None:

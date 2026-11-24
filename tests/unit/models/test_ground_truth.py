@@ -6,12 +6,14 @@ from pydantic import ValidationError
 
 from itbench.models.fault import (
     FaultAlerts,
+    FaultSignals,
     FaultSolution,
     FaultSolutionStep,
+    PrometheusAlertSignal,
+    PrometheusSignals,
 )
 from itbench.models.ground_truth import (
     GroundTruth,
-    GroundTruthAlert,
     GroundTruthEntities,
     GroundTruthEntityGroup,
     GroundTruthField,
@@ -23,12 +25,9 @@ from itbench.models.kubernetes import KubernetesWorkload
 
 def test_ground_truth_valid() -> None:
     gt = GroundTruth(
-        alerts=[
-            GroundTruthAlert(
-                name=FaultAlerts.KubePodCrashLooping,
-                labels={"namespace": "default", "app": "frontend"},
-            )
-        ],
+        signals=FaultSignals(
+            prometheus=PrometheusSignals(alerts=[PrometheusAlertSignal(name=FaultAlerts.KubePodCrashLooping)])
+        ),
         entities=GroundTruthEntities(
             faulted=GroundTruthEntityGroup(
                 kubernetes=[
@@ -53,12 +52,34 @@ def test_ground_truth_valid() -> None:
             ]
         ],
     )
-    assert len(gt.alerts) == 1
-    assert gt.alerts[0].name == FaultAlerts.KubePodCrashLooping
+    assert len(gt.signals.prometheus.alerts) == 1
+    assert gt.signals.prometheus.alerts[0].name == FaultAlerts.KubePodCrashLooping
     assert len(gt.entities.faulted.kubernetes) == 1
     assert gt.entities.impacted.kubernetes == []
     assert gt.entities.unchanged.kubernetes == []
     assert len(gt.solutions) == 1
+
+
+def test_ground_truth_signals_from_dict() -> None:
+    gt = GroundTruth.model_validate(
+        {
+            "signals": {
+                "prometheus": {"alerts": [{"name": "KubePodNotReady", "state": "pending"}]},
+                "kubernetes": {"policy_reports": [{"policy": "require-limits", "status": "fail"}]},
+            },
+            "entities": {"faulted": {"kubernetes": []}},
+            "solutions": [],
+        }
+    )
+    assert gt.signals.prometheus.alerts[0].state == "pending"
+    assert gt.signals.kubernetes.policy_reports[0].status == "fail"
+
+
+def test_ground_truth_legacy_alerts_key_rejected() -> None:
+    with pytest.raises(ValidationError):
+        GroundTruth.model_validate(
+            {"alerts": [{"name": "KubePodNotReady"}], "entities": {"faulted": {"kubernetes": []}}, "solutions": []}
+        )
 
 
 def test_ground_truth_entities_from_dict() -> None:
@@ -147,7 +168,7 @@ def test_ground_truth_unchanged_field_requires_path_and_value() -> None:
 
 def test_ground_truth_extra_fields_forbidden() -> None:
     with pytest.raises(ValidationError):
-        GroundTruthAlert(
+        PrometheusAlertSignal(
             name=FaultAlerts.KubePodCrashLooping,
             extra_field="invalid",
         )

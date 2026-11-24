@@ -15,11 +15,14 @@ from itbench.cli.render import console, fail
 from itbench.models.fault import (
     Fault,
     FaultAlerts,
+    FaultSignals,
     FaultSolution,
     FaultSolutionStep,
     FaultSolutionTemplates,
     FaultTags,
     FaultTargetReference,
+    PrometheusAlertSignal,
+    PrometheusSignals,
 )
 from itbench.models.kubernetes import KubernetesObjectKind
 from itbench.models.platform import Platform
@@ -160,7 +163,9 @@ def create_fault_command() -> None:
         solution_templates=FaultSolutionTemplates(
             templates=[FaultSolution(steps=solution_steps)],
         ),
-        alerts=[FaultAlerts(a) for a in selected_alerts],
+        signals=FaultSignals(
+            prometheus=PrometheusSignals(alerts=[PrometheusAlertSignal(name=FaultAlerts(a)) for a in selected_alerts]),
+        ),
         targets=target_refs,
     )
 

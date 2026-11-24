@@ -12,15 +12,24 @@ from itbench.models.fault import (
     FaultAlerts,
     FaultConvertedStatus,
     FaultRetiredStatus,
+    FaultSignals,
     FaultSolution,
     FaultSolutionStep,
     FaultSolutionTemplates,
     FaultStatus,
     FaultTags,
     FaultTargetReference,
+    PrometheusAlertSignal,
+    PrometheusSignals,
 )
 from itbench.models.kubernetes import KubernetesObjectKind
 from itbench.models.platform import Platform
+
+
+def _crash_looping_signals() -> FaultSignals:
+    return FaultSignals(
+        prometheus=PrometheusSignals(alerts=[PrometheusAlertSignal(name=FaultAlerts.KubePodCrashLooping)])
+    )
 
 
 def _sample_solution_templates() -> FaultSolutionTemplates:
@@ -38,21 +47,8 @@ def _sample_solution_templates() -> FaultSolutionTemplates:
     )
 
 
-def test_active_fault_requires_alerts_tags_targets() -> None:
+def test_active_fault_requires_tags_targets() -> None:
     solution = _sample_solution_templates()
-
-    # Missing alerts
-    with pytest.raises(ValidationError, match="Non-retired faults must define at least one alert"):
-        Fault(
-            name="Test Fault",
-            description="Test fault description",
-            expectation="Expected pod crash",
-            platform=Platform.Kubernetes,
-            solution_templates=solution,
-            alerts=[],
-            tags=[FaultTags.Deployment],
-            targets=[FaultTargetReference(kubernetes=KubernetesObjectKind.KubernetesWorkload)],
-        )
 
     # Missing tags
     with pytest.raises(ValidationError, match="Non-retired faults must define at least one tag"):
@@ -62,7 +58,7 @@ def test_active_fault_requires_alerts_tags_targets() -> None:
             expectation="Expected pod crash",
             platform=Platform.Kubernetes,
             solution_templates=solution,
-            alerts=[FaultAlerts.KubePodCrashLooping],
+            signals=_crash_looping_signals(),
             tags=[],
             targets=[FaultTargetReference(kubernetes=KubernetesObjectKind.KubernetesWorkload)],
         )
@@ -75,9 +71,43 @@ def test_active_fault_requires_alerts_tags_targets() -> None:
             expectation="Expected pod crash",
             platform=Platform.Kubernetes,
             solution_templates=solution,
-            alerts=[FaultAlerts.KubePodCrashLooping],
+            signals=_crash_looping_signals(),
             tags=[FaultTags.Deployment],
             targets=[],
+        )
+
+
+def test_active_fault_without_signals_is_valid() -> None:
+    fault = Fault(
+        name="Signal Free Fault",
+        description="d",
+        expectation="e",
+        platform=Platform.Kubernetes,
+        solution_templates=_sample_solution_templates(),
+        tags=[FaultTags.Deployment],
+        targets=[FaultTargetReference(kubernetes=KubernetesObjectKind.KubernetesWorkload)],
+    )
+    assert fault.alert_names == []
+    assert fault.signals.kubernetes.policy_reports == []
+
+
+def test_alert_signal_state_defaults_to_firing() -> None:
+    signal = PrometheusAlertSignal(name=FaultAlerts.KubePodCrashLooping)
+    assert signal.state == "firing"
+
+
+def test_policy_report_signal() -> None:
+    signals = FaultSignals.model_validate(
+        {"kubernetes": {"policy_reports": [{"policy": "require-limits", "status": "pass"}]}}
+    )
+    assert signals.kubernetes.policy_reports[0].policy == "require-limits"
+    assert signals.kubernetes.policy_reports[0].status == "pass"
+
+
+def test_policy_report_signal_has_no_resource_field() -> None:
+    with pytest.raises(ValidationError):
+        FaultSignals.model_validate(
+            {"kubernetes": {"policy_reports": [{"policy": "p", "status": "pass", "resource": "x"}]}}
         )
 
 
@@ -88,7 +118,7 @@ def test_active_fault_valid() -> None:
         expectation="Pod stays in CrashLoopBackOff",
         platform=Platform.Kubernetes,
         solution_templates=_sample_solution_templates(),
-        alerts=[FaultAlerts.KubePodCrashLooping],
+        signals=_crash_looping_signals(),
         tags=[FaultTags.Deployment],
         targets=[FaultTargetReference(kubernetes=KubernetesObjectKind.KubernetesWorkload)],
     )
@@ -97,7 +127,7 @@ def test_active_fault_valid() -> None:
     assert fault.resources == []
 
 
-def test_retired_fault_can_omit_alerts_tags_targets() -> None:
+def test_retired_fault_can_omit_signals_tags_targets() -> None:
     retired_status = FaultStatus(retired=FaultRetiredStatus(version="1.4.0", reason="Replaced by new fault"))
     fault = Fault(
         name="Old Retired Fault",
@@ -108,7 +138,7 @@ def test_retired_fault_can_omit_alerts_tags_targets() -> None:
         status=retired_status,
     )
     assert fault.id == "old-retired-fault"
-    assert fault.alerts == []
+    assert fault.alert_names == []
     assert fault.tags == []
     assert fault.targets == []
 
@@ -126,7 +156,7 @@ def test_converted_fault_status() -> None:
         expectation="None",
         platform=Platform.Kubernetes,
         solution_templates=_sample_solution_templates(),
-        alerts=[FaultAlerts.KubePodCrashLooping],
+        signals=_crash_looping_signals(),
         tags=[FaultTags.Deployment],
         targets=[FaultTargetReference(kubernetes=KubernetesObjectKind.KubernetesWorkload)],
         status=converted_status,
@@ -143,7 +173,7 @@ def test_fault_without_status_is_active() -> None:
         expectation="e",
         platform=Platform.Kubernetes,
         solution_templates=_sample_solution_templates(),
-        alerts=[FaultAlerts.KubePodCrashLooping],
+        signals=_crash_looping_signals(),
         tags=[FaultTags.Deployment],
         targets=[FaultTargetReference(kubernetes=KubernetesObjectKind.KubernetesWorkload)],
     )
@@ -191,7 +221,7 @@ def test_converted_fault_status_properties() -> None:
         expectation="e",
         platform=Platform.Kubernetes,
         solution_templates=_sample_solution_templates(),
-        alerts=[FaultAlerts.KubePodCrashLooping],
+        signals=_crash_looping_signals(),
         tags=[FaultTags.Deployment],
         targets=[FaultTargetReference(kubernetes=KubernetesObjectKind.KubernetesWorkload)],
         status=FaultStatus(converted=FaultConvertedStatus(id="restart-kubernetes-workload", version="1.3.0")),

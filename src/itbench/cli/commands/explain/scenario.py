@@ -109,8 +109,10 @@ def _render_entities(entities: dict[str, Any]) -> None:
 
 
 def _render_solution(ground_truth: dict[str, Any]) -> None:
-    """Print the ground-truth alerts, entities and solution steps."""
-    alerts: list[dict[str, Any]] = ground_truth.get("alerts") or []
+    """Print the ground-truth signals, entities and solution steps."""
+    signals: dict[str, Any] = ground_truth.get("signals") or {}
+    alerts: list[dict[str, Any]] = (signals.get("prometheus") or {}).get("alerts") or []
+    policy_reports: list[dict[str, Any]] = (signals.get("kubernetes") or {}).get("policy_reports") or []
     entities: dict[str, Any] = ground_truth.get("entities") or {}
     solutions: list[list[dict[str, Any]]] = ground_truth.get("solutions") or []
 
@@ -119,7 +121,12 @@ def _render_solution(ground_truth: dict[str, Any]) -> None:
     if alerts:
         console.print("  [bold]Alerts[/bold]")
         for alert in alerts:
-            console.print(f"    • {escape(str(alert.get('name', '?')))}")
+            console.print(f"    • {escape(str(alert.get('name', '?')))} ({escape(str(alert.get('state', 'firing')))})")
+
+    if policy_reports:
+        console.print("  [bold]Policy reports[/bold]")
+        for report in policy_reports:
+            console.print(f"    • {escape(str(report.get('policy', '?')))}: {escape(str(report.get('status', '?')))}")
 
     _render_entities(entities)
 

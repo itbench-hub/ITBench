@@ -74,7 +74,7 @@ def _generate_faults_documentation(output_dir: Path) -> Path:
                 fault.name,
                 fault.platform,
                 ", ".join(fault.tags),
-                ", ".join(fault.alerts) if fault.alerts else "",
+                ", ".join(fault.alert_names),
                 fault.description,
             ]
             for slug, fault in sorted(FAULT_CATALOG.items())

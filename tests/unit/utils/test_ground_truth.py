@@ -8,11 +8,14 @@ import yaml
 from itbench.models.fault import (
     Fault,
     FaultAlerts,
+    FaultSignals,
     FaultSolution,
     FaultSolutionStep,
     FaultSolutionTemplates,
     FaultTags,
     FaultTargetReference,
+    PrometheusAlertSignal,
+    PrometheusSignals,
 )
 from itbench.models.kubernetes import KubernetesWorkload
 from itbench.models.scenario import (
@@ -38,7 +41,11 @@ def _make_fault(
         name=name,
         description="desc",
         expectation="exp",
-        alerts=[FaultAlerts(a) for a in (alerts or ["KubePodNotReady"])],
+        signals=FaultSignals(
+            prometheus=PrometheusSignals(
+                alerts=[PrometheusAlertSignal(name=FaultAlerts(a)) for a in (alerts or ["KubePodNotReady"])]
+            )
+        ),
         tags=[FaultTags.Deployment],
         targets=[FaultTargetReference(kubernetes="KubernetesWorkload")],
         status=None,
@@ -155,7 +162,7 @@ def test_generate_ground_truth_alerts_present(tmp_path: Path) -> None:
         out = generate_ground_truth(scenario, tmp_path)
 
     data = yaml.safe_load(out.read_text(encoding="utf-8"))
-    alert_names = [a["name"] for a in data["alerts"]]
+    alert_names = [a["name"] for a in data["signals"]["prometheus"]["alerts"]]
     assert "KubePodNotReady" in alert_names
     assert "KubePodCrashLooping" in alert_names
 
@@ -186,7 +193,7 @@ def test_generate_ground_truth_deduplicates_alerts(tmp_path: Path) -> None:
         out = generate_ground_truth(scenario, tmp_path)
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
-    assert len(doc["alerts"]) == 1
+    assert len(doc["signals"]["prometheus"]["alerts"]) == 1
 
 
 def test_generate_ground_truth_entities_contain_target(tmp_path: Path) -> None:
@@ -300,6 +307,6 @@ def test_generate_ground_truth_unknown_fault_id_skipped(tmp_path: Path) -> None:
         out = generate_ground_truth(scenario, tmp_path)
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
-    assert doc["alerts"] == []
+    assert doc["signals"] == {}
     assert doc["entities"] == {"faulted": {"kubernetes": []}}
     assert doc["solutions"] == []

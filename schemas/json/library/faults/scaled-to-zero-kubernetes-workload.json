@@ -65,6 +65,20 @@
             "title": "FaultRetiredStatus",
             "type": "object"
         },
+        "FaultSignals": {
+            "additionalProperties": false,
+            "description": "Signals a fault causes, grouped by where they are observed.",
+            "properties": {
+                "kubernetes": {
+                    "$ref": "#/$defs/KubernetesSignals"
+                },
+                "prometheus": {
+                    "$ref": "#/$defs/PrometheusSignals"
+                }
+            },
+            "title": "FaultSignals",
+            "type": "object"
+        },
         "FaultSolution": {
             "additionalProperties": false,
             "description": "A single recommended solution comprising ordered remediation steps.",
@@ -207,6 +221,23 @@
             "title": "KubernetesObjectKind",
             "type": "string"
         },
+        "KubernetesSignals": {
+            "additionalProperties": false,
+            "description": "Signals observed through the Kubernetes API.",
+            "properties": {
+                "policy_reports": {
+                    "description": "Policy report results expected for the fault.",
+                    "items": {
+                        "$ref": "#/$defs/KyvernoPolicyReportSignal"
+                    },
+                    "title": "Policy Reports",
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "title": "KubernetesSignals",
+            "type": "object"
+        },
         "KubernetesWorkload": {
             "additionalProperties": false,
             "description": "Reference to a Kubernetes workload (DaemonSet, Deployment, or StatefulSet).",
@@ -247,6 +278,39 @@
             "title": "KubernetesWorkload",
             "type": "object"
         },
+        "KyvernoPolicyReportSignal": {
+            "additionalProperties": false,
+            "description": "A policy report result a fault causes.\n\nNames a policy and the status expected for it. It does not name the reported object.",
+            "properties": {
+                "policy": {
+                    "description": "Policy the report entry is for, as written in the report's results[].policy.",
+                    "title": "Policy",
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/$defs/KyvernoPolicyReportStatus",
+                    "description": "Status expected for the policy (the report's results[].result)."
+                }
+            },
+            "required": [
+                "policy",
+                "status"
+            ],
+            "title": "KyvernoPolicyReportSignal",
+            "type": "object"
+        },
+        "KyvernoPolicyReportStatus": {
+            "description": "Result status of a policy report entry (``wgpolicyk8s.io`` ``results[].result``).",
+            "enum": [
+                "pass",
+                "fail",
+                "warn",
+                "error",
+                "skip"
+            ],
+            "title": "KyvernoPolicyReportStatus",
+            "type": "string"
+        },
         "Platform": {
             "description": "Supported platforms for ITBench applications, faults, and waiters.",
             "enum": [
@@ -256,21 +320,59 @@
             ],
             "title": "Platform",
             "type": "string"
+        },
+        "PrometheusAlertSignal": {
+            "additionalProperties": false,
+            "description": "A Prometheus alert a fault causes.",
+            "properties": {
+                "name": {
+                    "$ref": "#/$defs/FaultAlerts",
+                    "description": "Alert identifier."
+                },
+                "state": {
+                    "$ref": "#/$defs/PrometheusAlertState",
+                    "default": "firing",
+                    "description": "State the alert is expected to be in while the fault is active."
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "PrometheusAlertSignal",
+            "type": "object"
+        },
+        "PrometheusAlertState": {
+            "description": "Prometheus alert state a signal expects.",
+            "enum": [
+                "firing",
+                "pending",
+                "inactive"
+            ],
+            "title": "PrometheusAlertState",
+            "type": "string"
+        },
+        "PrometheusSignals": {
+            "additionalProperties": false,
+            "description": "Signals observed through Prometheus.",
+            "properties": {
+                "alerts": {
+                    "description": "Alerts caused by the fault.",
+                    "items": {
+                        "$ref": "#/$defs/PrometheusAlertSignal"
+                    },
+                    "title": "Alerts",
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "title": "PrometheusSignals",
+            "type": "object"
         }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "additionalProperties": false,
     "description": "This fault scales a Kubernetes workload to 0.",
     "properties": {
-        "alerts": {
-            "description": "Alerts triggered by this fault.",
-            "items": {
-                "$ref": "#/$defs/FaultAlerts"
-            },
-            "title": "Alerts",
-            "type": "array",
-            "uniqueItems": true
-        },
         "description": {
             "description": "Description of what the fault does.",
             "title": "Description",
@@ -298,6 +400,10 @@
             "title": "Resources",
             "type": "array",
             "uniqueItems": true
+        },
+        "signals": {
+            "$ref": "#/$defs/FaultSignals",
+            "description": "Signals this fault causes, such as Prometheus alerts or policy report results."
         },
         "solution_templates": {
             "$ref": "#/$defs/FaultSolutionTemplates",

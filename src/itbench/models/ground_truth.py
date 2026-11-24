@@ -2,22 +2,8 @@
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
-from itbench.models.fault import FaultAlerts, FaultSolution
+from itbench.models.fault import FaultSignals, FaultSolution
 from itbench.models.kubernetes import KubernetesObject
-
-
-class GroundTruthAlert(BaseModel):
-    """A single alert entry in a ground truth definition."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    labels: dict[str, str] = Field(
-        default_factory=dict,
-        description="Key/value label pairs associated with the alert.",
-    )
-    name: FaultAlerts = Field(
-        description="Alert identifier.",
-    )
 
 
 class GroundTruthField(BaseModel):
@@ -89,13 +75,12 @@ class GroundTruth(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    alerts: list[GroundTruthAlert] = Field(
-        default_factory=list,
-        description="Alerts expected to fire when the fault is active.",
-        json_schema_extra={"uniqueItems": True},
-    )
     entities: GroundTruthEntities = Field(
         description="Entities involved in the fault, grouped by their relationship to it.",
+    )
+    signals: FaultSignals = Field(
+        default_factory=FaultSignals,
+        description="Signals expected while the fault is active, collected from the faults.",
     )
     solutions: list[list[FaultSolution]] = Field(
         description=(

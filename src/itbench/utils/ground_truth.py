@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from itbench.models.fault import FAULT_CATALOG, FaultSolutionStep
+from itbench.models.fault import FAULT_CATALOG, FaultSolutionStep, PrometheusAlertState
 from itbench.models.kubernetes import KubernetesObject
 from itbench.models.scenario import Scenario, ScenarioFaultInjection
 
@@ -40,8 +40,8 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
     Derives all content from the scenario's fault injections and the
     :data:`FAULT_CATALOG`:
 
-    - **alerts** — union of every ``fault.alerts`` value across all injections,
-      deduplicated in first-seen order, each written as ``{name: <alert>, labels: {}}``.
+    - **signals** — union of every ``fault.signals`` entry across all injections,
+      deduplicated in first-seen order. Alert states are written only when they are not ``firing``.
     - **entities** — ``faulted.kubernetes`` lists one object per injection target in order, plus
       the companion objects a fault creates or changes. ``impacted`` and ``unchanged`` are not
       generated.
@@ -57,17 +57,33 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
         for injection in fault_block.injections
     ]
 
-    seen_alerts: set[str] = set()
+    seen_alerts: set[tuple[str, str]] = set()
     alerts_out: list[dict] = []
+    seen_reports: set[tuple[str, str]] = set()
+    reports_out: list[dict] = []
     for injection, _ in injections:
         fault = FAULT_CATALOG.get(injection.id)
         if fault is None:
             continue
-        for alert in fault.alerts:
-            alert_name = str(alert)
-            if alert_name not in seen_alerts:
-                seen_alerts.add(alert_name)
-                alerts_out.append({"name": alert_name, "labels": {}})
+        for alert in fault.signals.prometheus.alerts:
+            key = (str(alert.name), str(alert.state))
+            if key not in seen_alerts:
+                seen_alerts.add(key)
+                alert_entry = {"name": key[0]}
+                if alert.state != PrometheusAlertState.Firing:
+                    alert_entry["state"] = key[1]
+                alerts_out.append(alert_entry)
+        for report in fault.signals.kubernetes.policy_reports:
+            key = (report.policy, str(report.status))
+            if key not in seen_reports:
+                seen_reports.add(key)
+                reports_out.append({"policy": key[0], "status": key[1]})
+
+    signals_out: dict = {}
+    if reports_out:
+        signals_out["kubernetes"] = {"policy_reports": reports_out}
+    if alerts_out:
+        signals_out["prometheus"] = {"alerts": alerts_out}
 
     faulted_out: list[dict] = []
     for injection, targets in injections:
@@ -129,7 +145,7 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
             solutions_out.append(group)
 
     doc: dict = {
-        "alerts": alerts_out,
+        "signals": signals_out,
         "entities": {"faulted": {"kubernetes": faulted_out}},
         "solutions": solutions_out,
     }
