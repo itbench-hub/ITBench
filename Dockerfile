@@ -1,6 +1,6 @@
 FROM registry.access.redhat.com/ubi10/python-314-minimal:10.3-1795234906@sha256:6a3ac934913b426ccf9a9d8406084e47044ef8da88a6722a3acc60ac990595c3
 
-COPY --from=ghcr.io/jdx/mise:2026.11.13@sha256:06a4e5b507ac24d0279d6d2fc1f0849cb54fd0c1eb305a93db028398364b45f9 /usr/local/bin/mise /usr/local/bin/mise
+COPY --from=ghcr.io/jdx/mise:2026.11.14@sha256:7178a0bc7eb30d5090f81237fc0a7830f57e52126b9d8df656e24547437a1e53 /usr/local/bin/mise /usr/local/bin/mise
 
 USER 0
 
