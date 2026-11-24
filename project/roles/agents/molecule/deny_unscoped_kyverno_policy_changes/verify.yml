@@ -1,0 +1,212 @@
+---
+- name: Verify that the agent can only turn background scanning on for the faulted Kyverno policy
+  hosts:
+    - localhost
+  vars:
+    agents_test_namespace: deny-unscoped-kyverno-policy-changes-test
+    agents_test_policy: require-read-only-root-filesystem
+    agents_test_user: "system:serviceaccount:{{ itbench_namespaces.agents }}:agent-remediation"
+  tasks:
+    # `failed_when: false` replaces the `failed` flag of the registered result, so a denial is asserted from the text in the
+    # result and not with `is failed`. Only the guard's own message contains its name, and only an RBAC denial says "forbidden".
+    - name: Patch another field of the policy as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: policies.kyverno.io/v1
+          kind: NamespacedValidatingPolicy
+          metadata:
+            name: "{{ agents_test_policy }}"
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            validationActions:
+              - Deny
+        state: patched
+      failed_when: false
+      register: agents_patch_other_field
+
+    - name: Patch another field together with background scanning as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: policies.kyverno.io/v1
+          kind: NamespacedValidatingPolicy
+          metadata:
+            name: "{{ agents_test_policy }}"
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            evaluation:
+              background:
+                enabled: true
+            validationActions:
+              - Deny
+        state: patched
+      failed_when: false
+      register: agents_patch_both
+
+    - name: Patch the policy to match nothing as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: policies.kyverno.io/v1
+          kind: NamespacedValidatingPolicy
+          metadata:
+            name: "{{ agents_test_policy }}"
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            matchConstraints:
+              resourceRules:
+                - apiGroups:
+                    - apps
+                  apiVersions:
+                    - v1
+                  operations:
+                    - CREATE
+                  resources:
+                    - nonexistent
+        state: patched
+      failed_when: false
+      register: agents_patch_match_nothing
+
+    - name: Validate that the agent was denied by the Kyverno policy guard
+      ansible.builtin.assert:
+        that:
+          - "'itbench-agent-policy-guard' in (agents_patch_other_field | ansible.builtin.to_json)"
+          - "'itbench-agent-policy-guard' in (agents_patch_both | ansible.builtin.to_json)"
+          - "'itbench-agent-policy-guard' in (agents_patch_match_nothing | ansible.builtin.to_json)"
+        fail_msg: Agent changed, or was not denied by the guard when changing, a field other than background scanning.
+        success_msg: Agent was denied by the Kyverno policy guard.
+
+    - name: Patch another policy as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: policies.kyverno.io/v1
+          kind: NamespacedValidatingPolicy
+          metadata:
+            name: unrelated-policy
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            evaluation:
+              background:
+                enabled: true
+        state: patched
+      failed_when: false
+      register: agents_patch_unrelated
+
+    - name: Create a policy as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: policies.kyverno.io/v1
+          kind: NamespacedValidatingPolicy
+          metadata:
+            name: agent-created-policy
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            validationActions:
+              - Audit
+        state: present
+      failed_when: false
+      register: agents_create_policy
+
+    - name: Delete the policy as the agent
+      kubernetes.core.k8s:
+        api_version: policies.kyverno.io/v1
+        impersonate_user: "{{ agents_test_user }}"
+        kind: NamespacedValidatingPolicy
+        name: "{{ agents_test_policy }}"
+        namespace: "{{ agents_test_namespace }}"
+        state: absent
+      failed_when: false
+      register: agents_delete_policy
+
+    - name: Validate that the agent was denied by RBAC
+      ansible.builtin.assert:
+        that:
+          - "'forbidden' in (agents_patch_unrelated | ansible.builtin.to_json | ansible.builtin.lower)"
+          - "'forbidden' in (agents_create_policy | ansible.builtin.to_json | ansible.builtin.lower)"
+          - "'forbidden' in (agents_delete_policy | ansible.builtin.to_json | ansible.builtin.lower)"
+        fail_msg: Agent could patch another policy, or create or delete a policy.
+        success_msg: Agent was denied by RBAC.
+
+    - name: Retrieve policies
+      kubernetes.core.k8s_info:
+        api_version: policies.kyverno.io/v1
+        kind: NamespacedValidatingPolicy
+        namespace: "{{ agents_test_namespace }}"
+      register: agents_policies
+
+    - name: Validate that the policies are unchanged
+      ansible.builtin.assert:
+        that:
+          - agents_policies.resources | ansible.builtin.map(attribute='metadata.name') | ansible.builtin.sort == [agents_test_policy, 'unrelated-policy']
+          - agents_policies.resources | ansible.builtin.map(attribute='spec.evaluation.background.enabled') | ansible.builtin.unique == [false]
+          - agents_tested_policy.spec.validationActions == ['Audit']
+        fail_msg: Policies in the namespace changed.
+        success_msg: Policies are unchanged.
+      vars:
+        agents_tested_policy: >-
+          {{
+            agents_policies.resources |
+            ansible.builtin.selectattr('metadata.name', 'equalto', agents_test_policy) |
+            ansible.builtin.first
+          }}
+
+    # Positive control: shows that the denials above come from the guard and RBAC, and that the intended fix is allowed.
+    - name: Turn background scanning on as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: policies.kyverno.io/v1
+          kind: NamespacedValidatingPolicy
+          metadata:
+            name: "{{ agents_test_policy }}"
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            evaluation:
+              background:
+                enabled: true
+        state: patched
+      register: agents_turn_on
+
+    - name: Retrieve the policy
+      kubernetes.core.k8s_info:
+        api_version: policies.kyverno.io/v1
+        kind: NamespacedValidatingPolicy
+        name: "{{ agents_test_policy }}"
+        namespace: "{{ agents_test_namespace }}"
+      register: agents_policy
+
+    - name: Validate that the agent could turn background scanning on and nothing else changed
+      ansible.builtin.assert:
+        that:
+          - agents_turn_on is not failed
+          - agents_policy.resources[0].spec.evaluation.background.enabled is true
+          - agents_policy.resources[0].spec.validationActions == ['Audit']
+        fail_msg: Agent could not turn background scanning on, or something else changed.
+        success_msg: Agent turned background scanning on.
+
+    - name: Turn background scanning off again as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: policies.kyverno.io/v1
+          kind: NamespacedValidatingPolicy
+          metadata:
+            name: "{{ agents_test_policy }}"
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            evaluation:
+              background:
+                enabled: false
+        state: patched
+      failed_when: false
+      register: agents_turn_off
+
+    - name: Validate that the agent was denied turning background scanning off
+      ansible.builtin.assert:
+        that:
+          - "'itbench-agent-policy-guard' in (agents_turn_off | ansible.builtin.to_json)"
+        fail_msg: Agent was able to turn background scanning off.
+        success_msg: Agent was denied turning background scanning off.

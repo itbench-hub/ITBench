@@ -4,10 +4,8 @@ All benchmark scenarios available in ITBench.
 
 | ID | Domains | Applications | Faults |
 | -- | ------- | ------------ | ------ |
-| 16 | sre | opentelemetry-demo | modified-kubernetes-workload-container-environment-variable |
 | 20 | sre | opentelemetry-demo | nonexistent-kubernetes-workload-container-image |
 | 23 | sre | opentelemetry-demo | unsupported-architecture-kubernetes-workload-container-image |
-| 24 | sre | opentelemetry-demo | modified-kubernetes-workload-container-environment-variable |
 | 30 | sre | opentelemetry-demo | modified-target-port-kubernetes-service |
 | 31 | sre | opentelemetry-demo | ingress-port-blocking-network-policy |
 | 33 | sre | opentelemetry-demo | nonexistent-kubernetes-workload-node, nonexistent-kubernetes-workload-node |
@@ -28,6 +26,8 @@ All benchmark scenarios available in ITBench.
 | 59 | sre | opentelemetry-demo | crashing-kubernetes-workload-init-container |
 | 60 | sre | opentelemetry-demo | crashing-kubernetes-workload-init-container, unsupported-architecture-kubernetes-workload-container-image |
 | 63 | sre | opentelemetry-demo | corrupted-kubernetes-secret-credentials |
+| 64 | ciso | bank-of-anthos | missing-resource-limits-kyverno-policy |
+| 65 | ciso | bank-of-anthos | historical-context-lacking-kyverno-policy |
 | 102 | sre | opentelemetry-demo | insufficient-kubernetes-resource-quota |
 | 105 | sre | opentelemetry-demo | invalid-kubernetes-workload-container-command |
 | 114 | sre | opentelemetry-demo | deleted-kubernetes-service |

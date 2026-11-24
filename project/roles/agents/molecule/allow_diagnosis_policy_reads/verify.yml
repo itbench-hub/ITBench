@@ -1,0 +1,130 @@
+---
+- name: Verify that the diagnosis agent can read policies and policy reports, and nothing more
+  hosts:
+    - localhost
+  vars:
+    agents_test_namespace: allow-diagnosis-policy-reads-test
+    agents_test_other_namespace: allow-diagnosis-policy-reads-other
+    agents_test_user: "system:serviceaccount:{{ itbench_namespaces.agents }}:agent-diagnosis"
+  tasks:
+    # These reads are not allowed to fail, so a denial fails the task itself.
+    - name: List policies in the fault injectable namespace as the agent
+      kubernetes.core.k8s_info:
+        api_version: policies.kyverno.io/v1
+        impersonate_user: "{{ agents_test_user }}"
+        kind: NamespacedValidatingPolicy
+        namespace: "{{ agents_test_namespace }}"
+      register: agents_list_policies
+
+    - name: Get the policy in the fault injectable namespace as the agent
+      kubernetes.core.k8s_info:
+        api_version: policies.kyverno.io/v1
+        impersonate_user: "{{ agents_test_user }}"
+        kind: NamespacedValidatingPolicy
+        name: require-replicas
+        namespace: "{{ agents_test_namespace }}"
+      register: agents_get_policy
+
+    - name: Validate that the agent read the policy
+      ansible.builtin.assert:
+        that:
+          - agents_list_policies.resources | ansible.builtin.length == 1
+          - agents_get_policy.resources | ansible.builtin.length == 1
+        fail_msg: Agent could not read the policy.
+        success_msg: Agent read the policy.
+
+    # Kyverno creates the report after its controllers have seen the workload, so the first list may be empty.
+    - name: List policy reports in the fault injectable namespace as the agent
+      kubernetes.core.k8s_info:
+        api_version: wgpolicyk8s.io/v1alpha2
+        impersonate_user: "{{ agents_test_user }}"
+        kind: PolicyReport
+        namespace: "{{ agents_test_namespace }}"
+      register: agents_list_policy_reports
+      vars:
+        policy_results: >-
+          {{
+            agents_list_policy_reports.resources |
+            ansible.builtin.default([]) |
+            ansible.builtin.map(attribute="results", default=[]) |
+            ansible.builtin.flatten |
+            ansible.builtin.selectattr("policy", "equalto", agents_test_namespace ~ "/require-replicas") |
+            ansible.builtin.list
+          }}
+      until:
+        - policy_results | ansible.builtin.length > 0
+      retries: 30
+      delay: 5
+
+    # `failed_when: false` replaces the `failed` flag of the registered result, so a denial is asserted from the text in the
+    # result and not with `is failed`.
+    - name: List policies in a namespace that is not fault injectable as the agent
+      kubernetes.core.k8s_info:
+        api_version: policies.kyverno.io/v1
+        impersonate_user: "{{ agents_test_user }}"
+        kind: NamespacedValidatingPolicy
+        namespace: "{{ agents_test_other_namespace }}"
+      failed_when: false
+      register: agents_list_other_policies
+
+    - name: List policy reports in a namespace that is not fault injectable as the agent
+      kubernetes.core.k8s_info:
+        api_version: wgpolicyk8s.io/v1alpha2
+        impersonate_user: "{{ agents_test_user }}"
+        kind: PolicyReport
+        namespace: "{{ agents_test_other_namespace }}"
+      failed_when: false
+      register: agents_list_other_policy_reports
+
+    - name: Patch the policy as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: policies.kyverno.io/v1
+          kind: NamespacedValidatingPolicy
+          metadata:
+            name: require-replicas
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            validationActions:
+              - Deny
+        state: patched
+      failed_when: false
+      register: agents_patch_policy
+
+    - name: Delete the policy as the agent
+      kubernetes.core.k8s:
+        api_version: policies.kyverno.io/v1
+        impersonate_user: "{{ agents_test_user }}"
+        kind: NamespacedValidatingPolicy
+        name: require-replicas
+        namespace: "{{ agents_test_namespace }}"
+        state: absent
+      failed_when: false
+      register: agents_delete_policy
+
+    - name: Validate that the agent was denied by RBAC
+      ansible.builtin.assert:
+        that:
+          - "'forbidden' in (agents_list_other_policies | ansible.builtin.to_json | ansible.builtin.lower)"
+          - "'forbidden' in (agents_list_other_policy_reports | ansible.builtin.to_json | ansible.builtin.lower)"
+          - "'forbidden' in (agents_patch_policy | ansible.builtin.to_json | ansible.builtin.lower)"
+          - "'forbidden' in (agents_delete_policy | ansible.builtin.to_json | ansible.builtin.lower)"
+        fail_msg: Agent could read outside the fault injectable namespaces, or could change or delete a policy.
+        success_msg: Agent was denied by RBAC.
+
+    - name: Retrieve the policy
+      kubernetes.core.k8s_info:
+        api_version: policies.kyverno.io/v1
+        kind: NamespacedValidatingPolicy
+        name: require-replicas
+        namespace: "{{ agents_test_namespace }}"
+      register: agents_policy
+
+    - name: Validate that the policy is unchanged
+      ansible.builtin.assert:
+        that:
+          - agents_policy.resources | ansible.builtin.length == 1
+          - agents_policy.resources[0].spec.validationActions == ['Audit']
+        fail_msg: The policy changed.
+        success_msg: The policy is unchanged.

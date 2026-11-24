@@ -89,7 +89,7 @@ def test_create_fault_command_success(
         assert data["name"] == "Crash Pods"
         assert data["platform"] == "Kubernetes"
         assert data["tags"] == ["Deployment"]
-        assert data["alerts"] == ["KubePodCrashLooping"]
+        assert data["signals"]["prometheus"]["alerts"] == [{"name": "KubePodCrashLooping", "state": "firing"}]
         assert data["targets"] == [{"kubernetes": "KubernetesWorkload"}]
         assert len(data["solution_templates"]["templates"][0]["steps"]) == 1
 

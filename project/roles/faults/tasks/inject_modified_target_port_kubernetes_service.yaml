@@ -3,26 +3,6 @@
   ansible.builtin.include_tasks:
     file: validate_fault_arguments.yaml
 
-- name: Build list of modified with shifted target ports
-  ansible.builtin.set_fact:
-    faults_modified_ports: >-
-      {{
-        (
-          faults_modified_ports | default([])
-        ) +
-        [
-          port | ansible.builtin.combine({
-            "targetPort": port.targetPort + modifier if (port.targetPort is ansible.builtin.number) else "http-" ~ modifier
-          })
-        ]
-      }}
-  loop: "{{ faults_kubernetes_object.spec.ports }}"
-  loop_control:
-    label: port/{{ port.port }}
-    loop_var: port
-  vars:
-    modifier: "{{ range(1, 11) | ansible.builtin.list | ansible.builtin.random(seed=random_fault_injection_seed) }}"
-
 - name: Update service ports
   kubernetes.core.k8s:
     resource_definition:
@@ -32,5 +12,20 @@
         name: "{{ faults_kubernetes_object.metadata.name }}"
         namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
       spec:
-        ports: "{{ faults_modified_ports }}"
+        ports: >-
+          {{
+            [
+              port |
+              ansible.builtin.combine({
+                "targetPort": port.targetPort + _modifier if port.targetPort is ansible.builtin.number else "http-" ~ _modifier
+              })
+            ]
+          }}
     state: patched
+  loop: "{{ faults_kubernetes_object.spec.ports }}"
+  loop_control:
+    label: port/{{ port.port }}
+    loop_var: port
+    pause: "{{ range(1, 5) | ansible.builtin.list | ansible.builtin.random }}"
+  vars:
+    _modifier: "{{ range(1, 11) | ansible.builtin.list | ansible.builtin.random(seed=random_fault_injection_seed) }}"

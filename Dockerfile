@@ -41,7 +41,7 @@ ENV PATH="/itbench/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 
 # Install Ansible collections from requirements.yaml
-RUN ansible-galaxy collection install -r requirements.yaml
+RUN ansible-galaxy collection install -r requirements.yaml --no-cache
 
 # Run through mise so `mise` and the pinned helm are on PATH for Ansible
 ENTRYPOINT ["mise", "exec", "--", "itbench"]

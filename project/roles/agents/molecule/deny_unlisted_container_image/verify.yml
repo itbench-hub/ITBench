@@ -1,0 +1,83 @@
+---
+- name: Verify that the agent cannot set an image outside the allowlist
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve image allowlist
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: ConfigMap
+        name: itbench-agent-images
+        namespace: "{{ itbench_namespaces.mcp_servers }}"
+      register: agents_image_allowlist
+
+    - name: Validate that the allowlist holds the image in use before the change
+      ansible.builtin.assert:
+        that:
+          - agents_image_allowlist.resources | ansible.builtin.length == 1
+          - container_image_ubi10_ubi_minimal in agents_image_allowlist.resources[0].data.images.split('\n')
+        fail_msg: Image allowlist does not contain the workload image.
+        success_msg: Image allowlist contains the workload image.
+
+    - name: Patch the workload to an image outside the allowlist as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "system:serviceaccount:{{ itbench_namespaces.agents }}:agent-remediation"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: compromised-workload
+            namespace: deny-unlisted-container-image-test
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: server
+                    image: "{{ container_image_ubi10_ubi }}"
+        state: patched
+      failed_when: false
+      register: agents_unlisted_image_patch
+
+    - name: Validate that the image allowlist policy denied the change
+      ansible.builtin.assert:
+        that:
+          - "'itbench-agent-images-allowlist' in (agents_unlisted_image_patch | ansible.builtin.to_json)"
+        fail_msg: Agent was able to set an image outside the allowlist, or was denied by something other than the image allowlist policy.
+        success_msg: Agent was denied by the image allowlist policy.
+
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: compromised-workload
+        namespace: deny-unlisted-container-image-test
+      register: agents_deployment
+
+    - name: Validate that the workload image did not change
+      ansible.builtin.assert:
+        that:
+          - agents_deployment.resources[0].spec.template.spec.containers[0].image == container_image_ubi10_ubi_minimal
+        fail_msg: Workload image was changed.
+        success_msg: Workload image is unchanged.
+
+    # Positive control: shows that the denial above comes from the allowlist and not from missing RBAC.
+    - name: Annotate the workload as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "system:serviceaccount:{{ itbench_namespaces.agents }}:agent-remediation"
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            annotations:
+              "itbench.io/test": agent-write
+            name: compromised-workload
+            namespace: deny-unlisted-container-image-test
+        state: patched
+      register: agents_annotation_patch
+
+    - name: Validate that the agent can still change the workload without changing its image
+      ansible.builtin.assert:
+        that:
+          - agents_annotation_patch is not failed
+        fail_msg: Agent could not patch the workload. The denial above may not come from the allowlist.
+        success_msg: Agent can patch the workload.

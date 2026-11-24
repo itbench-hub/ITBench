@@ -15,13 +15,13 @@
       ansible.builtin.assert:
         that:
           - faults_secret.resources | ansible.builtin.length == 1
-          - faults_secret.resources[0].data['valkey-password'] is ansible.builtin.defined
+          - faults_secret.resources[0].data['PASSWORD'] is ansible.builtin.defined
         fail_msg: Secret not found or password key missing. Fault injection failed.
         success_msg: Secret found with password key.
 
     - name: Validate password was changed from the original empty value
       ansible.builtin.assert:
         that:
-          - faults_secret.resources[0].data['valkey-password'] != "" | ansible.builtin.b64encode
+          - faults_secret.resources[0].data['PASSWORD'] != "" | ansible.builtin.b64encode
         fail_msg: Password was not changed from original value. Fault injection failed.
         success_msg: Password was changed successfully.

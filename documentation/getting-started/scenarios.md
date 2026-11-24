@@ -14,7 +14,10 @@ Briefly, one could think of a scenario in each domain as such:
 - FinOps: Ensure that the cost of running an application does not exceed the budget
 - SRE: Ensures that an application is running and fully available for customers
 
-There is currently not a unifed running procedure that covers both CISO, FinOps, and SRE scenarios. Since FinOps and SRE are deployed using the same mechanism, the process to run them is described here. For instructions for CISO scenarios, please use the instructions [here](../../scenarios/ciso/README.md).
+All three domains are deployed and run with the procedure described here.
+
+>[!NOTE]
+>The earlier CISO scenarios, which used a separate bench server and Makefile targets, are archived. See the [archive](../library/archive.md#ciso-scenarios).
 
 ## Required Software
 

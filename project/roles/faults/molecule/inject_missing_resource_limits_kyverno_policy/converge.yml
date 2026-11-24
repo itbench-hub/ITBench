@@ -1,0 +1,17 @@
+---
+- name: Run fault injection test
+  hosts:
+    - localhost
+  tasks:
+    - name: Import faults role
+      ansible.builtin.import_role:
+        name: faults
+      vars:
+        faults_injection_tasks:
+          - id: missing-resource-limits-kyverno-policy
+            targets:
+              - kubernetes:
+                  apiVersion: apps/v1
+                  kind: Deployment
+                  name: test-workload
+                  namespace: missing-resource-limits-test

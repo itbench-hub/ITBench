@@ -1,0 +1,20 @@
+---
+- name: Destroy Kubernetes objects
+  hosts:
+    - localhost
+  tasks:
+    - name: Delete namespaces
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Namespace
+        name: "{{ namespace_name }}"
+        state: absent
+        wait: true
+        wait_timeout: 300
+      loop:
+        - deny-disallowed-pod-egress-test
+        - deny-disallowed-pod-egress-external-test
+        - "{{ itbench_namespaces.agents }}"
+        - "{{ itbench_namespaces.mcp_servers }}"
+      loop_control:
+        loop_var: namespace_name

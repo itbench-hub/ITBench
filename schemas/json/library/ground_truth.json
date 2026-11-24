@@ -1,18 +1,18 @@
 {
     "$defs": {
-        "FaultAlerts": {
-            "description": "Alerts associated with a fault.",
-            "enum": [
-                "HighRequestErrorRate",
-                "HighRequestLatency",
-                "KubeContainerWaiting",
-                "KubeHpaMaxedOut",
-                "KubePodCrashLooping",
-                "KubePodNotReady",
-                "NoRequestsReceived"
-            ],
-            "title": "FaultAlerts",
-            "type": "string"
+        "FaultSignals": {
+            "additionalProperties": false,
+            "description": "Signals a fault causes, grouped by where they are observed.",
+            "properties": {
+                "kubernetes": {
+                    "$ref": "#/$defs/KubernetesSignals"
+                },
+                "prometheus": {
+                    "$ref": "#/$defs/PrometheusSignals"
+                }
+            },
+            "title": "FaultSignals",
+            "type": "object"
         },
         "FaultSolution": {
             "additionalProperties": false,
@@ -62,35 +62,35 @@
             "title": "FaultSolutionStep",
             "type": "object"
         },
-        "GroundTruthAlert": {
+        "GroundTruthEntities": {
             "additionalProperties": false,
-            "description": "A single alert entry in a ground truth definition.",
+            "description": "Entities of a scenario, grouped by their relationship to the fault.",
             "properties": {
-                "labels": {
-                    "additionalProperties": {
-                        "type": "string"
-                    },
-                    "description": "Key/value label pairs associated with the alert.",
-                    "title": "Labels",
-                    "type": "object"
+                "faulted": {
+                    "$ref": "#/$defs/GroundTruthEntityGroup",
+                    "description": "Entities the fault acts on directly, including objects it creates."
                 },
-                "name": {
-                    "$ref": "#/$defs/FaultAlerts",
-                    "description": "Alert identifier."
+                "impacted": {
+                    "$ref": "#/$defs/GroundTruthEntityGroup",
+                    "description": "Entities affected by cascade from the faulted ones."
+                },
+                "unchanged": {
+                    "$ref": "#/$defs/GroundTruthUnchangedEntityGroup",
+                    "description": "Entities that must stay unchanged."
                 }
             },
             "required": [
-                "name"
+                "faulted"
             ],
-            "title": "GroundTruthAlert",
+            "title": "GroundTruthEntities",
             "type": "object"
         },
-        "GroundTruthEntity": {
+        "GroundTruthEntityGroup": {
             "additionalProperties": false,
-            "description": "A Kubernetes object entity involved in a fault.",
+            "description": "Entities of one relationship to the fault, grouped by entity type.",
             "properties": {
                 "kubernetes": {
-                    "description": "One or more Kubernetes objects involved in this fault.",
+                    "description": "Kubernetes objects in this group.",
                     "items": {
                         "$ref": "#/$defs/KubernetesObject"
                     },
@@ -99,12 +99,97 @@
                     "uniqueItems": true
                 }
             },
-            "required": [
-                "kubernetes"
-            ],
-            "title": "GroundTruthEntity",
+            "title": "GroundTruthEntityGroup",
             "type": "object"
         },
+        "GroundTruthField": {
+            "additionalProperties": false,
+            "description": "A single field of an object that must keep an expected value.",
+            "properties": {
+                "path": {
+                    "description": "JSON key path of the field, e.g. spec.template.spec.containers[0].name.",
+                    "title": "Path",
+                    "type": "string"
+                },
+                "value": {
+                    "$ref": "#/$defs/JsonValue",
+                    "description": "Value the field is expected to hold, e.g. server."
+                }
+            },
+            "required": [
+                "path",
+                "value"
+            ],
+            "title": "GroundTruthField",
+            "type": "object"
+        },
+        "GroundTruthUnchangedEntityGroup": {
+            "additionalProperties": false,
+            "description": "Entities that must stay as they are, grouped by entity type.",
+            "properties": {
+                "kubernetes": {
+                    "description": "Kubernetes objects the fault does not touch and the agent must not change.",
+                    "items": {
+                        "$ref": "#/$defs/GroundTruthUnchangedKubernetesObject"
+                    },
+                    "title": "Kubernetes",
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "title": "GroundTruthUnchangedEntityGroup",
+            "type": "object"
+        },
+        "GroundTruthUnchangedKubernetesObject": {
+            "additionalProperties": false,
+            "description": "A Kubernetes object that the fault does not touch and the agent must not change.",
+            "properties": {
+                "apiVersion": {
+                    "default": "v1",
+                    "description": "API version of the Kubernetes resource (e.g. v1, apps/v1).",
+                    "title": "Apiversion",
+                    "type": "string"
+                },
+                "fields": {
+                    "description": "Fields that must keep the given value. When empty, the whole object must be unchanged.",
+                    "items": {
+                        "$ref": "#/$defs/GroundTruthField"
+                    },
+                    "title": "Fields",
+                    "type": "array"
+                },
+                "kind": {
+                    "description": "Kind of the Kubernetes resource (e.g. Deployment, Service, Node).",
+                    "title": "Kind",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Name of the Kubernetes resource.",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "namespace": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Namespace of the resource (if namespaced).",
+                    "title": "Namespace"
+                }
+            },
+            "required": [
+                "kind",
+                "name"
+            ],
+            "title": "GroundTruthUnchangedKubernetesObject",
+            "type": "object"
+        },
+        "JsonValue": {},
         "KubernetesObject": {
             "additionalProperties": false,
             "description": "Base model for a Kubernetes object reference.",
@@ -145,32 +230,146 @@
             ],
             "title": "KubernetesObject",
             "type": "object"
+        },
+        "KubernetesSignals": {
+            "additionalProperties": false,
+            "description": "Signals observed through the Kubernetes API.",
+            "properties": {
+                "policy_reports": {
+                    "description": "Policy report results expected for the fault.",
+                    "items": {
+                        "$ref": "#/$defs/KyvernoPolicyReportSignal"
+                    },
+                    "title": "Policy Reports",
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "title": "KubernetesSignals",
+            "type": "object"
+        },
+        "KyvernoPolicyReportSignal": {
+            "additionalProperties": false,
+            "description": "A policy report result a fault causes.\n\nNames a policy and the status expected for it, or that no entry is expected for it.\nIt does not name the reported object.",
+            "properties": {
+                "absent": {
+                    "default": false,
+                    "description": "When true, no report entry for the policy is expected and `status` must not be set.",
+                    "title": "Absent",
+                    "type": "boolean"
+                },
+                "policy": {
+                    "description": "Policy the report entry is for, as written in the report's results[].policy.",
+                    "title": "Policy",
+                    "type": "string"
+                },
+                "status": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/KyvernoPolicyReportStatus"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Status expected for the policy (the report's results[].result). Required unless `absent` is true."
+                }
+            },
+            "required": [
+                "policy"
+            ],
+            "title": "KyvernoPolicyReportSignal",
+            "type": "object"
+        },
+        "KyvernoPolicyReportStatus": {
+            "description": "Result status of a policy report entry (``wgpolicyk8s.io`` ``results[].result``).",
+            "enum": [
+                "pass",
+                "fail",
+                "warn",
+                "error",
+                "skip"
+            ],
+            "title": "KyvernoPolicyReportStatus",
+            "type": "string"
+        },
+        "PrometheusAlertNames": {
+            "description": "Alerts associated with a fault.",
+            "enum": [
+                "HighRequestErrorRate",
+                "HighRequestLatency",
+                "KubeContainerWaiting",
+                "KubeHpaMaxedOut",
+                "KubePodCrashLooping",
+                "KubePodNotReady",
+                "NoRequestsReceived"
+            ],
+            "title": "PrometheusAlertNames",
+            "type": "string"
+        },
+        "PrometheusAlertSignal": {
+            "additionalProperties": false,
+            "description": "A Prometheus alert a fault causes.",
+            "properties": {
+                "name": {
+                    "$ref": "#/$defs/PrometheusAlertNames",
+                    "description": "Alert identifier."
+                },
+                "state": {
+                    "$ref": "#/$defs/PrometheusAlertState",
+                    "default": "firing",
+                    "description": "State the alert is expected to be in while the fault is active."
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "title": "PrometheusAlertSignal",
+            "type": "object"
+        },
+        "PrometheusAlertState": {
+            "description": "Prometheus alert state a signal expects.",
+            "enum": [
+                "firing",
+                "pending",
+                "inactive"
+            ],
+            "title": "PrometheusAlertState",
+            "type": "string"
+        },
+        "PrometheusSignals": {
+            "additionalProperties": false,
+            "description": "Signals observed through Prometheus.",
+            "properties": {
+                "alerts": {
+                    "description": "Alerts caused by the fault.",
+                    "items": {
+                        "$ref": "#/$defs/PrometheusAlertSignal"
+                    },
+                    "title": "Alerts",
+                    "type": "array",
+                    "uniqueItems": true
+                }
+            },
+            "title": "PrometheusSignals",
+            "type": "object"
         }
     },
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "additionalProperties": false,
     "description": "Ground truth definition for a benchmark scenario.",
     "properties": {
-        "alerts": {
-            "description": "Alerts expected to fire when the fault is active.",
-            "items": {
-                "$ref": "#/$defs/GroundTruthAlert"
-            },
-            "title": "Alerts",
-            "type": "array",
-            "uniqueItems": true
-        },
         "entities": {
-            "description": "Kubernetes objects directly involved in the fault.",
-            "items": {
-                "$ref": "#/$defs/GroundTruthEntity"
-            },
-            "title": "Entities",
-            "type": "array",
-            "uniqueItems": true
+            "$ref": "#/$defs/GroundTruthEntities",
+            "description": "Entities involved in the fault, grouped by their relationship to it."
+        },
+        "signals": {
+            "$ref": "#/$defs/FaultSignals",
+            "description": "Signals expected while the fault is active, collected from the faults."
         },
         "solutions": {
-            "description": "One or more alternative solution groups, each comprising an ordered list of remediation steps.",
+            "description": "One entry per fault injection, each containing one or more alternative remediation paths (solution templates) for that injection.",
             "items": {
                 "items": {
                     "$ref": "#/$defs/FaultSolution"

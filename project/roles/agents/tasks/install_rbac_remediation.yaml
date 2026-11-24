@@ -209,6 +209,24 @@
             - update
             - watch
         - apiGroups:
+            - policies.kyverno.io
+          resources:
+            - namespacedvalidatingpolicies
+          verbs:
+            - get
+            - list
+            - watch
+        # The one policy of the `historical-context-lacking-kyverno-policy` fault, patch only: no create, no delete.
+        # The `itbench-agent-policy-guard` policy limits what a patch may change.
+        - apiGroups:
+            - policies.kyverno.io
+          resourceNames:
+            - require-read-only-root-filesystem
+          resources:
+            - namespacedvalidatingpolicies
+          verbs:
+            - patch
+        - apiGroups:
             - policy
           resources:
             - poddisruptionbudgets
@@ -228,6 +246,14 @@
             - list
             - patch
             - update
+            - watch
+        - apiGroups:
+            - wgpolicyk8s.io
+          resources:
+            - policyreports
+          verbs:
+            - get
+            - list
             - watch
     state: present
 

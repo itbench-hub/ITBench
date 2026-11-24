@@ -1,19 +1,21 @@
 # yaml-language-server: $schema=../../../schemas/json/library/scenarios/ground_truth.json
 ---
-alerts:
-  - name: NoRequestsReceived
-    labels: {}
-  - name: HighRequestErrorRate
-    labels: {}
+signals:
+  prometheus:
+    alerts:
+      - name: NoRequestsReceived
+      - name: HighRequestErrorRate
 entities:
-  - apiVersion: apps/v1
-    kind: Deployment
-    name: frontend
-    namespace: otel-demo
-  - apiVersion: networking.k8s.io/v1
-    kind: NetworkPolicy
-    name: frontend-ingress
-    namespace: otel-demo
+  faulted:
+    kubernetes:
+      - apiVersion: apps/v1
+        kind: Deployment
+        name: frontend
+        namespace: otel-demo
+      - apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: frontend-ingress
+        namespace: otel-demo
 solutions:
   - - steps:
         - text: Retrieve and review the configuration of the network policy(s) in

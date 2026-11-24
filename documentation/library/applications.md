@@ -11,6 +11,6 @@ All benchmark applications available in ITBench.
 ## Usage
 
 ```yaml
-# itbench explain app <slug>
-# itbench list apps
+# itbench explain application <slug>
+# itbench list applications
 ```

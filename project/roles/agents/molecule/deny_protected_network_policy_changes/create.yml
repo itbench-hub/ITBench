@@ -1,0 +1,36 @@
+---
+- name: Create Kubernetes objects
+  hosts:
+    - localhost
+  tasks:
+    - name: Create agents namespace
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+            name: "{{ itbench_namespaces.agents }}"
+        state: present
+
+    - name: Create MCP servers namespace
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: "{{ itbench_namespaces.mcp_servers }}"
+        state: present
+
+    - name: Create fault injectable namespace
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            labels:
+              "itbench.io/ansible-role": applications
+              "itbench.io/inject": "true"
+            name: deny-protected-network-policy-changes-test
+        state: present

@@ -13,7 +13,7 @@ run = [
     "uv run itbench check resources localhost --only environment",
     "mkdir -p kubeconfigs",
     "kind create cluster --config configs/environment.yaml --kubeconfig kubeconfigs/kind-environment",
-    "helm install cilium oci://quay.io/cilium/charts/cilium --version $CILIUM_VERSION --namespace kube-system --set ipam.mode=kubernetes",
+    "helm install cilium oci://quay.io/cilium/charts/cilium --version $CILIUM_VERSION --namespace kube-system --set ipam.mode=kubernetes --set cni.exclusive=false --set socketLB.enabled=true --set socketLB.hostNamespaceOnly=true",
     "uv run python scripts/approve_kubelet_csrs.py kubeconfigs/kind-environment",
     'echo "Run the following command to access the cluster (kind-environment) using kubectl:"',
     'echo "export KUBECONFIG=$PWD/kubeconfigs/kind-environment"',

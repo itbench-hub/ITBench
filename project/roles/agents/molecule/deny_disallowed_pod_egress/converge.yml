@@ -1,0 +1,27 @@
+---
+- name: Install agent network containment
+  hosts:
+    - localhost
+  vars:
+    agents_cluster:
+      platform: kubernetes
+    agents_remediation_enabled: true
+  tasks:
+    - name: Retrieve fault injectable application namespaces
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        label_selectors:
+          - "itbench.io/ansible-role=applications"
+          - "itbench.io/inject=true"
+      register: agents_injectable_namespaces
+
+    - name: Import agents role network policies tasks
+      ansible.builtin.import_role:
+        name: agents
+        tasks_from: install_network_policies.yaml
+
+    # The CNI programs a policy asynchronously, after the object exists.
+    - name: Wait for network policies to be enforced
+      ansible.builtin.pause:
+        seconds: 15

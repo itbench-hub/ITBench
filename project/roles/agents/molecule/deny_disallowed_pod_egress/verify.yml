@@ -1,0 +1,62 @@
+---
+- name: Verify that pods in a protected namespace cannot reach disallowed destinations
+  hosts:
+    - localhost
+  tasks:
+    - name: Retrieve HTTP server pods
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        name: http-server
+        namespace: "{{ http_server_namespace }}"
+      loop:
+        - deny-disallowed-pod-egress-test
+        - deny-disallowed-pod-egress-external-test
+      loop_control:
+        loop_var: http_server_namespace
+      register: agents_http_servers
+
+    - name: Set HTTP server addresses
+      ansible.builtin.set_fact:
+        agents_allowed_address: "{{ agents_http_servers.results[0].resources[0].status.podIP }}"
+        agents_disallowed_address: "{{ agents_http_servers.results[1].resources[0].status.podIP }}"
+
+    # The connections below are made from inside the `http-client` pod, not from the machine running Molecule.
+    # `k8s_exec` only needs API access: the API server and kubelet run the command in the pod, so the traffic under test
+    # is pod to pod over the cluster network, which is what `itbench-agent-egress` restricts. Pod IPs need no route from the host.
+    # The exec channel itself does not pass through the pod's egress policy.
+    # Positive control: shows that a failure below comes from the egress policy and not from a broken server or client.
+    - name: Connect from the client pod to a pod in a fault injectable namespace
+      kubernetes.core.k8s_exec:
+        command: >-
+          python -c "import socket; socket.create_connection(('{{ agents_allowed_address }}', 8080), timeout=5)"
+        namespace: deny-disallowed-pod-egress-test
+        pod: http-client
+      delay: 5
+      failed_when: false
+      register: agents_allowed_connection
+      retries: 6
+      until: agents_allowed_connection.rc == 0
+
+    - name: Validate that egress to a fault injectable namespace is allowed
+      ansible.builtin.assert:
+        that:
+          - agents_allowed_connection.rc == 0
+        fail_msg: Connection to a fault injectable namespace failed. The egress policy is too strict, or the test pods are broken.
+        success_msg: Connection to a fault injectable namespace succeeded.
+
+    - name: Connect from the client pod to a pod in a namespace that is not fault injectable
+      kubernetes.core.k8s_exec:
+        command: >-
+          python -c "import socket; socket.create_connection(('{{ agents_disallowed_address }}', 8080), timeout=5)"
+        namespace: deny-disallowed-pod-egress-test
+        pod: http-client
+      failed_when: false
+      register: agents_disallowed_connection
+
+    - name: Validate that egress to a namespace that is not fault injectable is denied
+      ansible.builtin.assert:
+        that:
+          - agents_disallowed_connection.rc != 0
+        fail_msg: Pod in a protected namespace reached a namespace that is not fault injectable.
+        success_msg: Connection to a namespace that is not fault injectable was denied.

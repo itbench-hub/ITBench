@@ -26,10 +26,8 @@ _TOOLS_VARS = [var for _, var in _TOOL_CHOICES]
 
 def _application_choices() -> list[tuple[str, str]]:
     """Return (name, ansible_var_slug) for all applications registered in the catalog."""
-    return [
-        (app.name, app.id.replace("-", "_"))
-        for app in sorted(APPLICATION_CATALOG.values(), key=lambda a: a.name)
-    ]
+    return [(app.name, app.id.replace("-", "_")) for app in sorted(APPLICATION_CATALOG.values(), key=lambda a: a.name)]
+
 
 # Which subsystems each ``--only`` value deploys, in order. Applications and recorders both need the tools.
 # Agents run right after the tools and applications, because they patch what those install.

@@ -55,6 +55,13 @@
   ansible.builtin.import_tasks:
     file: install_cert_manager.yaml
 
+- name: Check if metrics.k8s.io APIService already exists
+  kubernetes.core.k8s_info:
+    api_version: apiregistration.k8s.io/v1
+    kind: APIService
+    name: v1beta1.metrics.k8s.io
+  register: tools_metrics_apiservice
+
 - name: Install Kubernetes Metrics Server
   kubernetes.core.helm:
     chart_ref: metrics-server
@@ -71,7 +78,7 @@
     timeout: 10m0s
     wait: true
   when:
-    - tools_cluster.platform == "kubernetes"
+    - tools_metrics_apiservice.resources | ansible.builtin.length == 0
 
 - name: Install governance tools
   when:

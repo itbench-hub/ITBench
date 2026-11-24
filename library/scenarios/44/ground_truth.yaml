@@ -1,13 +1,16 @@
 # yaml-language-server: $schema=../../../schemas/json/library/scenarios/ground_truth.json
 ---
-alerts:
-  - name: KubePodNotReady
-    labels: {}
+signals:
+  prometheus:
+    alerts:
+      - name: KubePodNotReady
 entities:
-  - apiVersion: apps/v1
-    kind: Deployment
-    name: payment
-    namespace: otel-demo
+  faulted:
+    kubernetes:
+      - apiVersion: apps/v1
+        kind: Deployment
+        name: payment
+        namespace: otel-demo
 solutions:
   - - steps:
         - text: Manually edit the manifest and remove the faulty pod anti-affinity

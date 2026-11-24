@@ -1,15 +1,17 @@
 # yaml-language-server: $schema=../../../schemas/json/library/scenarios/ground_truth.json
 ---
-alerts:
-  - name: NoRequestsReceived
-    labels: {}
-  - name: HighRequestErrorRate
-    labels: {}
+signals:
+  prometheus:
+    alerts:
+      - name: NoRequestsReceived
+      - name: HighRequestErrorRate
 entities:
-  - apiVersion: apps/v1
-    kind: Deployment
-    name: accounting
-    namespace: otel-demo
+  faulted:
+    kubernetes:
+      - apiVersion: apps/v1
+        kind: Deployment
+        name: accounting
+        namespace: otel-demo
 solutions:
   - - steps:
         - text: Manually scale the workload to the correct value.

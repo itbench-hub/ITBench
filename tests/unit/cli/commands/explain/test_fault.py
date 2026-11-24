@@ -11,7 +11,6 @@ from itbench.cli.commands.explain.fault import _placeholder_name, _render_fault,
 from itbench.models.fault import (
     FAULT_CATALOG,
     Fault,
-    FaultAlerts,
     FaultConvertedStatus,
     FaultRetiredStatus,
     FaultSolution,
@@ -20,6 +19,7 @@ from itbench.models.fault import (
     FaultStatus,
     FaultTags,
     FaultTargetReference,
+    PrometheusAlertNames,
 )
 from itbench.models.kubernetes import KubernetesObjectKind
 from itbench.models.platform import Platform
@@ -31,7 +31,7 @@ def _fault(**overrides: object) -> Fault:
         "description": "Does something.",
         "expectation": "Something breaks.",
         "platform": Platform.Kubernetes,
-        "alerts": [FaultAlerts.KubePodNotReady],
+        "signals": {"prometheus": {"alerts": [{"name": PrometheusAlertNames.KubePodNotReady}]}},
         "tags": [FaultTags.Code],
         "targets": [FaultTargetReference(kubernetes=KubernetesObjectKind.KubernetesWorkload)],
         "solution_templates": FaultSolutionTemplates(
@@ -133,7 +133,7 @@ def test_explain_fault_without_status_has_no_status_section() -> None:
 
 def test_render_fault_converted_status_points_to_waiter(capsys: pytest.CaptureFixture[str]) -> None:
     fault = _fault(
-        alerts=[],
+        signals={},
         tags=[],
         targets=[],
         status=FaultStatus(

@@ -23,7 +23,7 @@
                     CONFIG SET maxmemory 1mb &&
                     valkey-cli -h {{ faults_kubernetes_object.metadata.name }}
                     CONFIG SET maxmemory-policy noeviction
-                image: "{{ container_image_valkey_valkey }}"
+                image: "{{ container_image_valkey_io_valkey }}"
                 name: valkey-cli
                 securityContext:
                   allowPrivilegeEscalation: false
@@ -33,6 +33,7 @@
             restartPolicy: Never
             securityContext:
               runAsNonRoot: true
+              runAsUser: 999
               seccompProfile:
                 type: RuntimeDefault
             tolerations:

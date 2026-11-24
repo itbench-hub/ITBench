@@ -1,0 +1,26 @@
+---
+- name: Destroy test resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Delete test namespace
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: missing-resource-limits-test
+        state: absent
+        wait: true
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: uninstall.yaml
+      vars:
+        tools_cluster:
+          platform: "{{ cluster_platform }}"

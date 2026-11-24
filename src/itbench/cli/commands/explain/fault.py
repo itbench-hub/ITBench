@@ -111,9 +111,15 @@ def _render_fault(slug: str, fault: Fault) -> None:
     console.print("[bold]EXPECTATION[/bold]")
     console.print(f"  {escape(fault.expectation)}\n")
 
-    if fault.alerts:
+    if fault.alert_names:
         console.print("[bold]ALERTS[/bold]")
-        console.print(f"  {escape(', '.join(fault.alerts))}\n")
+        console.print(f"  {escape(', '.join(fault.alert_names))}\n")
+
+    if fault.signals.kubernetes.policy_reports:
+        console.print("[bold]POLICY REPORTS[/bold]")
+        for report in fault.signals.kubernetes.policy_reports:
+            console.print(f"  {escape(report.policy)}: {'absent' if report.absent else escape(str(report.status))}")
+        console.print()
 
     if fault.targets:
         console.print("[bold]TARGETS[/bold]")

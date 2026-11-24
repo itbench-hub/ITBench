@@ -35,10 +35,57 @@ depends = ["lint:ansible", "lint:python"]
 description = "Run ITBench CLI integration tests"
 run = "uv run --group dev pytest --integration -m integration -v tests/integration/cli"
 
+[tasks."test:molecule:agents"]
+description = "Run Molecule tests for the Agents role"
+dir = "{{config_root}}/project/roles/agents"
+run = "uv run molecule test --all --report --command-borders"
+
 [tasks."test:molecule:faults"]
-description = "Run Molecule tests for the Faults role"
+description = "Run all Molecule tests for the Faults role"
 dir = "{{config_root}}/project/roles/faults"
 run = "uv run molecule test --all --report --command-borders"
+
+[tasks."test:molecule:faults:core"]
+description = "Run Molecule tests for the Faults role excluding the Istio, Kyverno, and Valkey groups"
+dir = "{{config_root}}/project/roles/faults"
+run = """
+uv run molecule test --all --report --command-borders \
+    -e inject_strict_mutual_tls_istio_service_mesh_enforcement \
+    -e inject_traffic_denying_istio_gateway_authorization_policy \
+    -e inject_disabled_istio_ambient_mode_kubernetes_namespace \
+    -e inject_historical_context_lacking_kyverno_policy \
+    -e inject_missing_resource_limits_kyverno_policy \
+    -e inject_valkey_workload_out_of_memory \
+    -e inject_valkey_workload_changed_password
+"""
+
+[tasks."test:molecule:faults:istio"]
+description = "Run Istio Molecule tests for the Faults role"
+dir = "{{config_root}}/project/roles/faults"
+run = """
+uv run molecule test --report --command-borders \
+    -s inject_strict_mutual_tls_istio_service_mesh_enforcement \
+    -s inject_traffic_denying_istio_gateway_authorization_policy \
+    -s inject_disabled_istio_ambient_mode_kubernetes_namespace
+"""
+
+[tasks."test:molecule:faults:kyverno"]
+description = "Run Kyverno Molecule tests for the Faults role"
+dir = "{{config_root}}/project/roles/faults"
+run = """
+uv run molecule test --report --command-borders \
+    -s inject_historical_context_lacking_kyverno_policy \
+    -s inject_missing_resource_limits_kyverno_policy
+"""
+
+[tasks."test:molecule:faults:valkey"]
+description = "Run Valkey Molecule tests for the Faults role"
+dir = "{{config_root}}/project/roles/faults"
+run = """
+uv run molecule test --report --command-borders \
+    -s inject_valkey_workload_out_of_memory \
+    -s inject_valkey_workload_changed_password
+"""
 
 [tasks."test:molecule:waiters"]
 description = "Run Molecule tests for the Waiters role"

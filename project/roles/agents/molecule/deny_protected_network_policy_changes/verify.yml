@@ -1,0 +1,133 @@
+---
+- name: Verify that the agent cannot change protected network policies
+  hosts:
+    - localhost
+  vars:
+    agents_test_namespace: deny-protected-network-policy-changes-test
+    agents_test_user: "system:serviceaccount:{{ itbench_namespaces.agents }}:agent-remediation"
+  tasks:
+    - name: Retrieve protected network policy
+      kubernetes.core.k8s_info:
+        api_version: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: itbench-agent-egress
+        namespace: "{{ agents_test_namespace }}"
+      register: agents_protected_network_policy
+
+    - name: Validate that the protected network policy was installed
+      ansible.builtin.assert:
+        that:
+          - agents_protected_network_policy.resources | ansible.builtin.length == 1
+          - agents_protected_network_policy.resources[0].metadata.labels['itbench.io/protected'] == 'true'
+        fail_msg: Protected network policy was not installed.
+        success_msg: Protected network policy is installed.
+
+    # `failed_when: false` replaces the `failed` flag of the registered result, so the denial is asserted from the
+    # policy name in the result and not with `is failed`. Only the guard's own message contains its name.
+    - name: Delete the protected network policy as the agent
+      kubernetes.core.k8s:
+        api_version: networking.k8s.io/v1
+        impersonate_user: "{{ agents_test_user }}"
+        kind: NetworkPolicy
+        name: itbench-agent-egress
+        namespace: "{{ agents_test_namespace }}"
+        state: absent
+      failed_when:
+        - false
+      register: agents_delete_protected
+
+    - name: Patch the protected network policy as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: itbench-agent-egress
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            egress:
+              - {}
+        state: patched
+      failed_when: false
+      register: agents_patch_protected
+
+    - name: Create an egress network policy as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: agent-allow-all-egress
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            egress:
+              - {}
+            podSelector: {}
+            policyTypes:
+              - Egress
+        state: present
+      failed_when: false
+      register: agents_create_egress
+
+    - name: Validate that the agent was denied by the network policy guard
+      ansible.builtin.assert:
+        that:
+          - "'itbench-agent-network-policy-guard' in (agents_delete_protected | ansible.builtin.to_json)"
+          - "'itbench-agent-network-policy-guard' in (agents_patch_protected | ansible.builtin.to_json)"
+          - "'itbench-agent-network-policy-guard' in (agents_create_egress | ansible.builtin.to_json)"
+        fail_msg: Agent changed, or was not denied by the guard when changing, the protected network policies.
+        success_msg: Agent was denied by the network policy guard.
+
+    - name: Retrieve network policies
+      kubernetes.core.k8s_info:
+        api_version: networking.k8s.io/v1
+        kind: NetworkPolicy
+        namespace: "{{ agents_test_namespace }}"
+      register: agents_network_policies
+
+    - name: Validate that the protected network policy is unchanged and no egress policy was added
+      ansible.builtin.assert:
+        that:
+          - agents_network_policies.resources | ansible.builtin.map(attribute='metadata.name') | ansible.builtin.sort == ['itbench-agent-egress']
+          - agents_network_policies.resources[0].spec.egress | ansible.builtin.length == 3
+        fail_msg: Network policies in the namespace changed.
+        success_msg: Network policies are unchanged.
+
+    # Positive control: SRE `ingress-port-blocking-network-policy` needs ingress-only policies to stay editable.
+    - name: Create an ingress-only network policy as the agent
+      kubernetes.core.k8s:
+        impersonate_user: "{{ agents_test_user }}"
+        resource_definition:
+          apiVersion: networking.k8s.io/v1
+          kind: NetworkPolicy
+          metadata:
+            name: agent-ingress-only
+            namespace: "{{ agents_test_namespace }}"
+          spec:
+            ingress:
+              - {}
+            podSelector: {}
+            policyTypes:
+              - Ingress
+        state: present
+      register: agents_create_ingress
+
+    - name: Delete the ingress-only network policy as the agent
+      kubernetes.core.k8s:
+        api_version: networking.k8s.io/v1
+        impersonate_user: "{{ agents_test_user }}"
+        kind: NetworkPolicy
+        name: agent-ingress-only
+        namespace: "{{ agents_test_namespace }}"
+        state: absent
+      register: agents_delete_ingress
+
+    - name: Validate that the agent can manage unprotected ingress-only network policies
+      ansible.builtin.assert:
+        that:
+          - agents_create_ingress is not failed
+          - agents_delete_ingress is not failed
+        fail_msg: Agent could not manage an ingress-only network policy.
+        success_msg: Agent can manage ingress-only network policies.

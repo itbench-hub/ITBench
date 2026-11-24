@@ -93,6 +93,14 @@
             - httproutes
             - gateways
           verbs: ["get", "list", "watch"]
+        - apiGroups: ["policies.kyverno.io"]
+          resources:
+            - namespacedvalidatingpolicies
+          verbs: ["get", "list", "watch"]
+        - apiGroups: ["wgpolicyk8s.io"]
+          resources:
+            - policyreports
+          verbs: ["get", "list", "watch"]
     state: present
 
 - name: Create ClusterRoleBinding for Kubernetes topology collector
@@ -245,6 +253,23 @@
                   mode: watch
                   name: gateways
                   namespaces: "{{ topology_required_namespaces }}"
+            # Kyverno policies and their reports, for the CISO domain. A PolicyReport is owned by the object it
+            # reports on, so the topology writer links it to that object through ownerReferences.
+            k8sobjects/topology-kyverno:
+              include_initial_state: true
+              kube_api_burst: 20
+              kube_api_qps: 10
+              objects:
+                - exclude_watch_type: [BOOKMARK]
+                  group: policies.kyverno.io
+                  mode: watch
+                  name: namespacedvalidatingpolicies
+                  namespaces: "{{ topology_required_namespaces }}"
+                - exclude_watch_type: [BOOKMARK]
+                  group: wgpolicyk8s.io
+                  mode: watch
+                  name: policyreports
+                  namespaces: "{{ topology_required_namespaces }}"
             k8sobjects/topology-istio:
               include_initial_state: true
               kube_api_burst: 20
@@ -388,7 +413,8 @@
                       "k8sobjects/topology-cluster",
                       "k8sobjects/topology-gateway"
                     ] +
-                    (["k8sobjects/topology-istio"] if recorders_istio_present else [])
+                    (["k8sobjects/topology-istio"] if recorders_istio_present else []) +
+                    (["k8sobjects/topology-kyverno"] if recorders_kyverno_present else [])
                   }}
         image: quay.io/it-bench/opentelemetry-collector:2.0.0
         podSecurityContext:

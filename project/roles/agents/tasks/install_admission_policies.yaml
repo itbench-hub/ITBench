@@ -359,3 +359,63 @@
             validationActions:
               - Deny
         state: present
+
+    # The one patch an agent may make to a Kyverno policy is turning background scanning on, so `spec.evaluation.background.enabled`
+    # must end up `true` (its default) and the rest of `spec` must stay as it was. Otherwise an agent could weaken the policy, or
+    # point it at nothing, and make the symptom disappear without fixing anything.
+    # Only UPDATE is matched because RBAC grants no create or delete on these policies.
+    # The CRD defaults the siblings of `background` (`admission`, `mode`), so they are compared with the old object, not with a literal.
+    - name: Create ValidatingAdmissionPolicy limiting agent Kyverno policy updates to background scanning
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingAdmissionPolicy
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-policy-guard
+          spec:
+            failurePolicy: Fail
+            matchConditions:
+              - name: agent-service-accounts-only
+                expression: >-
+                  request.userInfo.username.startsWith('system:serviceaccount:{{ itbench_namespaces.agents }}:agent-')
+            matchConstraints:
+              resourceRules:
+                - apiGroups:
+                    - policies.kyverno.io
+                  apiVersions:
+                    - "*"
+                  operations:
+                    - UPDATE
+                  resources:
+                    - namespacedvalidatingpolicies
+            validations:
+              - expression: object.spec.?evaluation.background.enabled.orValue(true) == true
+                message: Agents may only turn background scanning on for a Kyverno policy.
+                reason: Forbidden
+              - expression: >-
+                  object.spec.all(key, key == 'evaluation' || (key in oldObject.spec && object.spec[key] == oldObject.spec[key])) &&
+                  oldObject.spec.all(key, key == 'evaluation' || key in object.spec) &&
+                  object.spec.?evaluation.?admission.orValue({}) == oldObject.spec.?evaluation.?admission.orValue({}) &&
+                  object.spec.?evaluation.?mode.orValue('') == oldObject.spec.?evaluation.?mode.orValue('')
+                message: Agents may not change a Kyverno policy other than its background scanning.
+                reason: Forbidden
+        state: present
+
+    - name: Create ValidatingAdmissionPolicyBinding limiting agent Kyverno policy updates to background scanning
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: admissionregistration.k8s.io/v1
+          kind: ValidatingAdmissionPolicyBinding
+          metadata:
+            labels:
+              "itbench.io/ansible-role": agents
+              "itbench.io/layer": ai-integration
+            name: itbench-agent-policy-guard
+          spec:
+            policyName: itbench-agent-policy-guard
+            validationActions:
+              - Deny
+        state: present
