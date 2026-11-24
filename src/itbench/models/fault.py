@@ -13,7 +13,7 @@ from itbench.models.platform import Platform
 from itbench.paths import repository
 
 
-class FaultAlerts(StrEnum):
+class PrometheusAlertNames(StrEnum):
     """Alerts associated with a fault."""
 
     HighRequestErrorRate = "HighRequestErrorRate"
@@ -48,7 +48,7 @@ class PrometheusAlertSignal(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    name: FaultAlerts = Field(
+    name: PrometheusAlertNames = Field(
         description="Alert identifier.",
     )
     state: PrometheusAlertState = Field(

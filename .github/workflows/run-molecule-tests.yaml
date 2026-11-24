@@ -48,6 +48,14 @@ jobs:
       KUBECONFIG: ${{ github.workspace }}/clusters/kind/kubeconfigs/kind-environment
       MISE_ENV: kind
     steps:
+      - name: Change Host Kernel Watcher Limits
+        run: |
+          # Elevate values directly on the shared runner host kernel
+          sudo sysctl fs.inotify.max_user_instances=1024
+          sudo sysctl fs.inotify.max_user_watches=524288
+
+          # Boost process-level descriptor capacity for the shell
+          ulimit -n 65536
       - uses: actions/checkout@v7.0.1
       - uses: jdx/mise-action@924e7c586e33d7d4bae9c14e26c5d22e2beb6e78 # v5.3.0
         with:

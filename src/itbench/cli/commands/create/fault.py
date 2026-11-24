@@ -14,13 +14,13 @@ from jinja2 import Template
 from itbench.cli.render import console, fail
 from itbench.models.fault import (
     Fault,
-    FaultAlerts,
     FaultSignals,
     FaultSolution,
     FaultSolutionStep,
     FaultSolutionTemplates,
     FaultTags,
     FaultTargetReference,
+    PrometheusAlertNames,
     PrometheusAlertSignal,
     PrometheusSignals,
 )
@@ -135,7 +135,7 @@ def create_fault_command() -> None:
 
     selected_alerts = questionary.checkbox(
         "Select alerts:",
-        choices=[a.value for a in FaultAlerts],
+        choices=[a.value for a in PrometheusAlertNames],
         validate=lambda choices: True if len(choices) > 0 else "At least one alert must be selected.",
     ).ask()
     if selected_alerts is None:
@@ -164,7 +164,9 @@ def create_fault_command() -> None:
             templates=[FaultSolution(steps=solution_steps)],
         ),
         signals=FaultSignals(
-            prometheus=PrometheusSignals(alerts=[PrometheusAlertSignal(name=FaultAlerts(a)) for a in selected_alerts]),
+            prometheus=PrometheusSignals(
+                alerts=[PrometheusAlertSignal(name=PrometheusAlertNames(a)) for a in selected_alerts]
+            ),
         ),
         targets=target_refs,
     )

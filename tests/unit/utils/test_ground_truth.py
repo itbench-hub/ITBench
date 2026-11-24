@@ -7,13 +7,13 @@ import yaml
 
 from itbench.models.fault import (
     Fault,
-    FaultAlerts,
     FaultSignals,
     FaultSolution,
     FaultSolutionStep,
     FaultSolutionTemplates,
     FaultTags,
     FaultTargetReference,
+    PrometheusAlertNames,
     PrometheusAlertSignal,
     PrometheusSignals,
 )
@@ -43,7 +43,7 @@ def _make_fault(
         expectation="exp",
         signals=FaultSignals(
             prometheus=PrometheusSignals(
-                alerts=[PrometheusAlertSignal(name=FaultAlerts(a)) for a in (alerts or ["KubePodNotReady"])]
+                alerts=[PrometheusAlertSignal(name=PrometheusAlertNames(a)) for a in (alerts or ["KubePodNotReady"])]
             )
         ),
         tags=[FaultTags.Deployment],

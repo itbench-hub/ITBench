@@ -1,0 +1,25 @@
+---
+- name: Destroy test resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Delete experiment namespaces
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Namespace
+        label_selectors:
+          - "itbench.io/experiment=kyverno-policy-report"
+        state: absent
+        wait: true
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: uninstall.yaml
+      vars:
+        tools_cluster:
+          platform: "{{ cluster_platform }}"

@@ -5,10 +5,10 @@ import pytest
 from pydantic import ValidationError
 
 from itbench.models.fault import (
-    FaultAlerts,
     FaultSignals,
     FaultSolution,
     FaultSolutionStep,
+    PrometheusAlertNames,
     PrometheusAlertSignal,
     PrometheusSignals,
 )
@@ -26,7 +26,7 @@ from itbench.models.kubernetes import KubernetesWorkload
 def test_ground_truth_valid() -> None:
     gt = GroundTruth(
         signals=FaultSignals(
-            prometheus=PrometheusSignals(alerts=[PrometheusAlertSignal(name=FaultAlerts.KubePodCrashLooping)])
+            prometheus=PrometheusSignals(alerts=[PrometheusAlertSignal(name=PrometheusAlertNames.KubePodCrashLooping)])
         ),
         entities=GroundTruthEntities(
             faulted=GroundTruthEntityGroup(
@@ -53,7 +53,7 @@ def test_ground_truth_valid() -> None:
         ],
     )
     assert len(gt.signals.prometheus.alerts) == 1
-    assert gt.signals.prometheus.alerts[0].name == FaultAlerts.KubePodCrashLooping
+    assert gt.signals.prometheus.alerts[0].name == PrometheusAlertNames.KubePodCrashLooping
     assert len(gt.entities.faulted.kubernetes) == 1
     assert gt.entities.impacted.kubernetes == []
     assert gt.entities.unchanged.kubernetes == []
@@ -169,6 +169,6 @@ def test_ground_truth_unchanged_field_requires_path_and_value() -> None:
 def test_ground_truth_extra_fields_forbidden() -> None:
     with pytest.raises(ValidationError):
         PrometheusAlertSignal(
-            name=FaultAlerts.KubePodCrashLooping,
+            name=PrometheusAlertNames.KubePodCrashLooping,
             extra_field="invalid",
         )

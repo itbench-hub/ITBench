@@ -14,6 +14,7 @@ Use the release tag to run archived content. Use the links to read it. Each link
 
 - [Book Info Scenarios](#book-info-scenarios)
 - [Chaos Mesh Faults and Scenarios](#chaos-mesh-faults-and-scenarios)
+- [CISO Scenarios](#ciso-scenarios)
 - [Kubernetes API Server Request Surge Fault and Scenarios](#kubernetes-api-server-request-surge-fault-and-scenarios)
 - [Modified Kubernetes Workload Container Environment Variable Fault and Scenarios](#modified-kubernetes-workload-container-environment-variable-fault-and-scenarios)
 - [OpenTelemetry Demo Flagd Fault and Scenarios](#opentelemetry-demo-flagd-fault-and-scenarios)
@@ -49,6 +50,22 @@ Use the release tag to run archived content. Use the links to read it. Each link
 - [`uninstall_chaos_mesh.yaml`](https://github.com/itbench-hub/ITBench/blob/145b2c4f3cee5ee3ffa22471664f840d79b37aba/scenarios/sre/project/roles/tools/tasks/uninstall_chaos_mesh.yaml)
 
 **Related Scenarios:** [17](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_17), [18](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_18), [19](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_19), [21](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_21), [22](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_22), [25](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_25), [26](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_26), [27](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_27), [29](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_29), [35](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_35), [41](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_41), [54](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_54), [55](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_55), [61](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_61), [62](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_62), [80](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_80), [81](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_81), [83](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_83), [91](https://github.com/itbench-hub/ITBench/tree/b254e32152f91bb33a0a2fa315c74619b494d32c/scenarios/sre/project/roles/scenarios/files/scenario_91)
+
+## CISO Scenarios
+
+**Last Supported Release:** [`v1.4.1`](https://github.com/itbench-hub/ITBench/releases/tag/v1.4.1)
+
+**Reason:** The CISO scenarios were archived because (1) they relied on a bench server calling Makefile targets and on the agent writing policies and scripts that the evaluator then ran, and (2) the agent could not be contained: scenarios 1, 2 and 4 needed broad write access to the cluster, and scenario 3 needed write access to an external RHEL9 host that ITBench never provisioned. They were replaced by CISO faults and scenarios built on the same library as the SRE ones. Scenarios 1 and 4 were reimagined as faults without agent-authored policies, and scenarios 2 and 3 have no replacement.
+
+**Related Files:**
+
+- [`README.md`](https://github.com/itbench-hub/ITBench/blob/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/README.md)
+- [`scenario-bundles.json`](https://github.com/itbench-hub/ITBench/blob/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/scenario-bundles.json)
+- [`Dockerfile`](https://github.com/itbench-hub/ITBench/blob/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/Dockerfile)
+- [`prepare-kubeconfig-eks.md`](https://github.com/itbench-hub/ITBench/blob/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/prepare-kubeconfig-eks.md)
+- [`prepare-kubeconfig-kind.md`](https://github.com/itbench-hub/ITBench/blob/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/prepare-kubeconfig-kind.md)
+
+**Related Scenarios:** [1](https://github.com/itbench-hub/ITBench/tree/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/1.gen-cis-b-k8s-kyverno), [2](https://github.com/itbench-hub/ITBench/tree/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/2.gen-cis-b-k8s-kubectl-opa), [3](https://github.com/itbench-hub/ITBench/tree/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/3.gen-cis-b-rhel9-ansible-opa), [4](https://github.com/itbench-hub/ITBench/tree/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/4.upd-cis-b-k8s-kyverno)
 
 ## Kubernetes API Server Request Surge Fault and Scenarios
 

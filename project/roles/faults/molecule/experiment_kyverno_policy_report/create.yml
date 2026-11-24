@@ -1,0 +1,17 @@
+---
+- name: Create test resources
+  hosts:
+    - localhost
+  tasks:
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: install.yaml
+      vars:
+        tools_cluster:
+          platform: "{{ cluster_platform }}"
+        tools_governance_enabled: true

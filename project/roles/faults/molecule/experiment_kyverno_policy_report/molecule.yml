@@ -1,0 +1,26 @@
+---
+dependency:
+  name: galaxy
+
+ansible:
+  env:
+    ANSIBLE_ROLES_PATH: ../../..
+    K8S_AUTH_KUBECONFIG: ${KUBECONFIG}
+  executor:
+    backend: ansible-playbook
+    args:
+      ansible_playbook:
+        - --inventory=${MOLECULE_PROJECT_DIRECTORY}/../../../inventory
+        - --tags=inject_faults,untagged
+  playbooks:
+    create: create.yml
+    converge: converge.yml
+    destroy: destroy.yml
+
+scenario:
+  name: experiment_kyverno_policy_report
+  test_sequence:
+    - syntax
+    - create
+    - converge
+    - destroy

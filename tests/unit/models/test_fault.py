@@ -9,7 +9,6 @@ from pydantic import ValidationError
 from itbench.models.fault import (
     FAULT_CATALOG,
     Fault,
-    FaultAlerts,
     FaultConvertedStatus,
     FaultRetiredStatus,
     FaultSignals,
@@ -19,6 +18,7 @@ from itbench.models.fault import (
     FaultStatus,
     FaultTags,
     FaultTargetReference,
+    PrometheusAlertNames,
     PrometheusAlertSignal,
     PrometheusSignals,
 )
@@ -28,7 +28,7 @@ from itbench.models.platform import Platform
 
 def _crash_looping_signals() -> FaultSignals:
     return FaultSignals(
-        prometheus=PrometheusSignals(alerts=[PrometheusAlertSignal(name=FaultAlerts.KubePodCrashLooping)])
+        prometheus=PrometheusSignals(alerts=[PrometheusAlertSignal(name=PrometheusAlertNames.KubePodCrashLooping)])
     )
 
 
@@ -92,7 +92,7 @@ def test_active_fault_without_signals_is_valid() -> None:
 
 
 def test_alert_signal_state_defaults_to_firing() -> None:
-    signal = PrometheusAlertSignal(name=FaultAlerts.KubePodCrashLooping)
+    signal = PrometheusAlertSignal(name=PrometheusAlertNames.KubePodCrashLooping)
     assert signal.state == "firing"
 
 
