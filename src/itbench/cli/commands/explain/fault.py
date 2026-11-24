@@ -118,7 +118,7 @@ def _render_fault(slug: str, fault: Fault) -> None:
     if fault.signals.kubernetes.policy_reports:
         console.print("[bold]POLICY REPORTS[/bold]")
         for report in fault.signals.kubernetes.policy_reports:
-            console.print(f"  {escape(report.policy)}: {escape(report.status)}")
+            console.print(f"  {escape(report.policy)}: {'absent' if report.absent else escape(str(report.status))}")
         console.print()
 
     if fault.targets:

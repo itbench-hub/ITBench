@@ -1,19 +1,5 @@
 {
     "$defs": {
-        "FaultAlerts": {
-            "description": "Alerts associated with a fault.",
-            "enum": [
-                "HighRequestErrorRate",
-                "HighRequestLatency",
-                "KubeContainerWaiting",
-                "KubeHpaMaxedOut",
-                "KubePodCrashLooping",
-                "KubePodNotReady",
-                "NoRequestsReceived"
-            ],
-            "title": "FaultAlerts",
-            "type": "string"
-        },
         "FaultConvertedStatus": {
             "additionalProperties": false,
             "description": "Conversion metadata for a fault that has been converted into a waiter.",
@@ -237,21 +223,34 @@
         },
         "KyvernoPolicyReportSignal": {
             "additionalProperties": false,
-            "description": "A policy report result a fault causes.\n\nNames a policy and the status expected for it. It does not name the reported object.",
+            "description": "A policy report result a fault causes.\n\nNames a policy and the status expected for it, or that no entry is expected for it.\nIt does not name the reported object.",
             "properties": {
+                "absent": {
+                    "default": false,
+                    "description": "When true, no report entry for the policy is expected and `status` must not be set.",
+                    "title": "Absent",
+                    "type": "boolean"
+                },
                 "policy": {
                     "description": "Policy the report entry is for, as written in the report's results[].policy.",
                     "title": "Policy",
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/$defs/KyvernoPolicyReportStatus",
-                    "description": "Status expected for the policy (the report's results[].result)."
+                    "anyOf": [
+                        {
+                            "$ref": "#/$defs/KyvernoPolicyReportStatus"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Status expected for the policy (the report's results[].result). Required unless `absent` is true."
                 }
             },
             "required": [
-                "policy",
-                "status"
+                "policy"
             ],
             "title": "KyvernoPolicyReportSignal",
             "type": "object"
@@ -278,12 +277,26 @@
             "title": "Platform",
             "type": "string"
         },
+        "PrometheusAlertNames": {
+            "description": "Alerts associated with a fault.",
+            "enum": [
+                "HighRequestErrorRate",
+                "HighRequestLatency",
+                "KubeContainerWaiting",
+                "KubeHpaMaxedOut",
+                "KubePodCrashLooping",
+                "KubePodNotReady",
+                "NoRequestsReceived"
+            ],
+            "title": "PrometheusAlertNames",
+            "type": "string"
+        },
         "PrometheusAlertSignal": {
             "additionalProperties": false,
             "description": "A Prometheus alert a fault causes.",
             "properties": {
                 "name": {
-                    "$ref": "#/$defs/FaultAlerts",
+                    "$ref": "#/$defs/PrometheusAlertNames",
                     "description": "Alert identifier."
                 },
                 "state": {

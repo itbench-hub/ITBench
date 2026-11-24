@@ -3,12 +3,13 @@
   hosts:
     - localhost
   tasks:
-    - name: Delete experiment namespaces
+    - name: Delete test namespace
       kubernetes.core.k8s:
-        api_version: v1
-        kind: Namespace
-        label_selectors:
-          - "itbench.io/experiment=kyverno-policy-report"
+        resource_definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: historical-context-test
         state: absent
         wait: true
 

@@ -1,0 +1,26 @@
+---
+signals:
+  kubernetes:
+    policy_reports:
+      - absent: true
+        policy: require-read-only-root-filesystem
+description: This fault installs a Kyverno policy that requires a read-only root filesystem on every container of the indicated workload, after making the root filesystem of one of its containers writable when that container had set it to read-only. The policy has background scanning turned off, so it only evaluates workloads when they are created or updated and never looks at workloads that already exist.
+expectation: The workload keeps running because the policy only audits. The policy looks correct, but its Kyverno policy report never shows an entry for the `require-read-only-root-filesystem` policy, although the workload has a container with a writable root filesystem. Once background scanning is turned on again, the report shows the policy as failed until the container's root filesystem is read-only again.
+name: Historical Context Lacking Kyverno Policy
+platform: Kubernetes
+resources:
+  - https://kyverno.io/docs/guides/reports/
+  - https://kyverno.io/docs/policy-types/validating-policy/
+  - https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+  - https://kubernetes.io/docs/concepts/workloads/
+tags:
+  - Deployment
+targets:
+  - kubernetes: KubernetesWorkload
+solution_templates:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit namespacedvalidatingpolicy require-read-only-root-filesystem
+          text: Manually edit the policy and set `spec.evaluation.background.enabled` to `true`, so that the policy also evaluates workloads that already exist.
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and set `securityContext.readOnlyRootFilesystem` to `true` on every container that does not have it.

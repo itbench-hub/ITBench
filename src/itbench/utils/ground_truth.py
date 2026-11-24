@@ -59,7 +59,7 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
 
     seen_alerts: set[tuple[str, str]] = set()
     alerts_out: list[dict] = []
-    seen_reports: set[tuple[str, str]] = set()
+    seen_reports: set[tuple[str, bool, str | None]] = set()
     reports_out: list[dict] = []
     for injection, _ in injections:
         fault = FAULT_CATALOG.get(injection.id)
@@ -74,10 +74,15 @@ def generate_ground_truth(scenario: Scenario, scenario_dir: Path) -> Path:
                     alert_entry["state"] = key[1]
                 alerts_out.append(alert_entry)
         for report in fault.signals.kubernetes.policy_reports:
-            key = (report.policy, str(report.status))
+            key = (report.policy, report.absent, None if report.status is None else str(report.status))
             if key not in seen_reports:
                 seen_reports.add(key)
-                reports_out.append({"policy": key[0], "status": key[1]})
+                report_entry: dict = {"policy": report.policy}
+                if report.absent:
+                    report_entry["absent"] = True
+                else:
+                    report_entry["status"] = key[2]
+                reports_out.append(report_entry)
 
     signals_out: dict = {}
     if reports_out:

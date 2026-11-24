@@ -13,6 +13,9 @@ from itbench.models.fault import (
     FaultSolutionTemplates,
     FaultTags,
     FaultTargetReference,
+    KubernetesSignals,
+    KyvernoPolicyReportSignal,
+    KyvernoPolicyReportStatus,
     PrometheusAlertNames,
     PrometheusAlertSignal,
     PrometheusSignals,
@@ -194,6 +197,29 @@ def test_generate_ground_truth_deduplicates_alerts(tmp_path: Path) -> None:
 
     doc = yaml.safe_load(out.read_text(encoding="utf-8"))
     assert len(doc["signals"]["prometheus"]["alerts"]) == 1
+
+
+def test_generate_ground_truth_policy_report_signals(tmp_path: Path) -> None:
+    fault = _make_fault()
+    fault.signals = FaultSignals(
+        kubernetes=KubernetesSignals(
+            policy_reports=[
+                KyvernoPolicyReportSignal(policy="require-limits", status=KyvernoPolicyReportStatus.Fail),
+                KyvernoPolicyReportSignal(policy="require-limits", absent=True),
+                KyvernoPolicyReportSignal(policy="require-limits", absent=True),
+            ]
+        )
+    )
+    scenario = _make_scenario(fault.id, _make_workload())
+
+    with patch("itbench.utils.ground_truth.FAULT_CATALOG", {fault.id: fault}):
+        out = generate_ground_truth(scenario, tmp_path)
+
+    doc = yaml.safe_load(out.read_text(encoding="utf-8"))
+    assert doc["signals"]["kubernetes"]["policy_reports"] == [
+        {"policy": "require-limits", "status": "fail"},
+        {"policy": "require-limits", "absent": True},
+    ]
 
 
 def test_generate_ground_truth_entities_contain_target(tmp_path: Path) -> None:

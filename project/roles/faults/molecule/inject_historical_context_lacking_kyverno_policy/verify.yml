@@ -1,0 +1,105 @@
+---
+- name: Verify that fault injection succeeded
+  hosts:
+    - localhost
+  vars:
+    verify_namespace: historical-context-test
+    verify_policy_report_name: historical-context-test/require-read-only-root-filesystem
+  tasks:
+    - name: Retrieve policy
+      kubernetes.core.k8s_info:
+        api_version: policies.kyverno.io/v1
+        kind: NamespacedValidatingPolicy
+        name: require-read-only-root-filesystem
+        namespace: "{{ verify_namespace }}"
+      register: faults_policy
+
+    - name: Validate that policy was created with background scanning turned off
+      ansible.builtin.assert:
+        that:
+          - faults_policy.resources | ansible.builtin.length == 1
+          - faults_policy.resources[0].spec.evaluation.background.enabled is false
+        fail_msg: Policy not found or background scanning is not turned off. Fault injection failed.
+        success_msg: Policy found with background scanning turned off.
+
+    - name: Retrieve workload
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        name: test-workload
+        namespace: "{{ verify_namespace }}"
+      register: faults_deployment
+
+    - name: Validate that the workload container no longer has a read-only root filesystem
+      ansible.builtin.assert:
+        that:
+          - faults_deployment.resources[0].spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem is false
+        fail_msg: Workload container still has a read-only root filesystem. Fault injection failed.
+        success_msg: Workload container has a writable root filesystem.
+
+    # The first experiment run saw a background scan report entry about 11 seconds after a policy was created,
+    # and no entry at all in 121 seconds with background scanning turned off.
+    - name: Wait for a background scan to have had time to report
+      ansible.builtin.pause:
+        seconds: 45
+
+    - name: Retrieve policy reports
+      kubernetes.core.k8s_info:
+        api_version: wgpolicyk8s.io/v1alpha2
+        kind: PolicyReport
+        namespace: "{{ verify_namespace }}"
+      register: faults_policy_reports_active
+
+    - name: Validate that the policy report has no entry for the policy
+      ansible.builtin.assert:
+        that:
+          - policy_results | ansible.builtin.length == 0
+        fail_msg: "The policy report has an entry for the policy: {{ policy_results }}"
+        success_msg: The policy report has no entry for the policy.
+      vars:
+        policy_results: >-
+          {{
+            faults_policy_reports_active.resources |
+            ansible.builtin.default([]) |
+            ansible.builtin.map(attribute="results", default=[]) |
+            ansible.builtin.flatten |
+            ansible.builtin.selectattr("policy", "equalto", verify_policy_report_name) |
+            ansible.builtin.list
+          }}
+
+    # The fix of the one defective field, as the agent would make it. The entry that was missing must now appear.
+    - name: Turn background scanning on
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: policies.kyverno.io/v1
+          kind: NamespacedValidatingPolicy
+          metadata:
+            name: require-read-only-root-filesystem
+            namespace: "{{ verify_namespace }}"
+          spec:
+            evaluation:
+              background:
+                enabled: true
+        state: patched
+
+    - name: Wait for the policy report to show the failed result
+      kubernetes.core.k8s_info:
+        api_version: wgpolicyk8s.io/v1alpha2
+        kind: PolicyReport
+        namespace: "{{ verify_namespace }}"
+      register: faults_policy_reports_fixed
+      vars:
+        failed_results: >-
+          {{
+            faults_policy_reports_fixed.resources |
+            ansible.builtin.default([]) |
+            ansible.builtin.map(attribute="results", default=[]) |
+            ansible.builtin.flatten |
+            ansible.builtin.selectattr("policy", "equalto", verify_policy_report_name) |
+            ansible.builtin.selectattr("result", "equalto", "fail") |
+            ansible.builtin.list
+          }}
+      until:
+        - failed_results | ansible.builtin.length > 0
+      retries: 30
+      delay: 5

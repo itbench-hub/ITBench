@@ -72,17 +72,31 @@ class PrometheusSignals(BaseModel):
 class KyvernoPolicyReportSignal(BaseModel):
     """A policy report result a fault causes.
 
-    Names a policy and the status expected for it. It does not name the reported object.
+    Names a policy and the status expected for it, or that no entry is expected for it.
+    It does not name the reported object.
     """
 
     model_config = ConfigDict(extra="forbid")
 
+    absent: bool = Field(
+        default=False,
+        description="When true, no report entry for the policy is expected and `status` must not be set.",
+    )
     policy: str = Field(
         description="Policy the report entry is for, as written in the report's results[].policy.",
     )
-    status: KyvernoPolicyReportStatus = Field(
-        description="Status expected for the policy (the report's results[].result).",
+    status: KyvernoPolicyReportStatus | None = Field(
+        default=None,
+        description="Status expected for the policy (the report's results[].result). Required unless `absent` is true.",
     )
+
+    @model_validator(mode="after")
+    def _status_xor_absent(self) -> Self:
+        if self.absent and self.status is not None:
+            raise ValueError("'status' must not be set when 'absent' is true.")
+        if not self.absent and self.status is None:
+            raise ValueError("'status' is required unless 'absent' is true.")
+        return self
 
 
 class KubernetesSignals(BaseModel):

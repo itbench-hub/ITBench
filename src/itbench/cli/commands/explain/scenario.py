@@ -126,7 +126,8 @@ def _render_solution(ground_truth: dict[str, Any]) -> None:
     if policy_reports:
         console.print("  [bold]Policy reports[/bold]")
         for report in policy_reports:
-            console.print(f"    • {escape(str(report.get('policy', '?')))}: {escape(str(report.get('status', '?')))}")
+            state = "absent" if report.get("absent") else escape(str(report.get("status", "?")))
+            console.print(f"    • {escape(str(report.get('policy', '?')))}: {state}")
 
     _render_entities(entities)
 

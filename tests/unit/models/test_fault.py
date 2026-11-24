@@ -111,6 +111,33 @@ def test_policy_report_signal_has_no_resource_field() -> None:
         )
 
 
+def test_policy_report_signal_absent() -> None:
+    signals = FaultSignals.model_validate(
+        {"kubernetes": {"policy_reports": [{"policy": "require-limits", "absent": True}]}}
+    )
+    assert signals.kubernetes.policy_reports[0].absent is True
+    assert signals.kubernetes.policy_reports[0].status is None
+
+
+def test_policy_report_signal_absent_defaults_to_false() -> None:
+    signals = FaultSignals.model_validate(
+        {"kubernetes": {"policy_reports": [{"policy": "require-limits", "status": "fail"}]}}
+    )
+    assert signals.kubernetes.policy_reports[0].absent is False
+
+
+def test_policy_report_signal_absent_forbids_status() -> None:
+    with pytest.raises(ValidationError, match="must not be set when 'absent' is true"):
+        FaultSignals.model_validate(
+            {"kubernetes": {"policy_reports": [{"policy": "p", "absent": True, "status": "fail"}]}}
+        )
+
+
+def test_policy_report_signal_requires_status_unless_absent() -> None:
+    with pytest.raises(ValidationError, match="required unless 'absent' is true"):
+        FaultSignals.model_validate({"kubernetes": {"policy_reports": [{"policy": "p"}]}})
+
+
 def test_active_fault_valid() -> None:
     fault = Fault(
         name="Crashing Init Container",

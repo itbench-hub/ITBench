@@ -1,0 +1,75 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+# The workload is made non-compliant before the policy exists, and the rollout is awaited. Otherwise an admission review
+# of the workload (the patch itself, or the Deployment controller updating the object afterwards) would give the
+# policy a report entry, and the fault is about the entry that is missing.
+# A container that does not set `readOnlyRootFilesystem` is already non-compliant, so it is left alone.
+- name: Make the root filesystem of one workload container writable
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+      kind: "{{ faults_kubernetes_object.kind }}"
+      metadata:
+        name: "{{ faults_kubernetes_object.metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ container.name }}"
+                securityContext:
+                  readOnlyRootFilesystem: false
+    state: patched
+    wait: true
+  vars:
+    container: >-
+      {{
+        faults_kubernetes_object.spec.template.spec.containers |
+        ansible.builtin.random(seed=random_fault_injection_seed)
+      }}
+  when:
+    - container.securityContext.readOnlyRootFilesystem | ansible.builtin.default(false)
+
+# The defect is `spec.evaluation.background.enabled: false`. Its default is `true`.
+- name: Create Kyverno policy requiring read-only root filesystems without background scanning
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: policies.kyverno.io/v1
+      kind: NamespacedValidatingPolicy
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ansible
+          "app.kubernetes.io/part-of": itbench
+          "itbench.io/layer": application
+        name: require-read-only-root-filesystem
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+      spec:
+        evaluation:
+          background:
+            enabled: false
+        matchConstraints:
+          resourceRules:
+            - apiGroups:
+                - apps
+              apiVersions:
+                - v1
+              operations:
+                - CREATE
+                - UPDATE
+              resourceNames:
+                - "{{ faults_kubernetes_object.metadata.name }}"
+              resources:
+                - "{{ faults_kubernetes_object.kind | ansible.builtin.lower }}s"
+        validationActions:
+          - Audit
+        validations:
+          - expression: >-
+              object.spec.template.spec.containers.all(container,
+              has(container.securityContext) &&
+              has(container.securityContext.readOnlyRootFilesystem) &&
+              container.securityContext.readOnlyRootFilesystem)
+            message: Every container must use a read-only root filesystem.
+    state: present
