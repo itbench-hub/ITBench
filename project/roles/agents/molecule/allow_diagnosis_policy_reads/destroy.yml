@@ -1,0 +1,59 @@
+---
+- name: Destroy Kubernetes objects
+  hosts:
+    - localhost
+  tasks:
+    - name: Delete RoleBindings
+      kubernetes.core.k8s:
+        api_version: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        label_selectors:
+          - "itbench.io/ansible-role=agents"
+        namespace: allow-diagnosis-policy-reads-test
+        state: absent
+        wait: true
+
+    - name: Delete ClusterRoleBindings
+      kubernetes.core.k8s:
+        api_version: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        label_selectors:
+          - "itbench.io/ansible-role=agents"
+        state: absent
+        wait: true
+
+    - name: Delete ClusterRoles
+      kubernetes.core.k8s:
+        api_version: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        label_selectors:
+          - "itbench.io/ansible-role=agents"
+        state: absent
+        wait: true
+
+    - name: Delete namespaces
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Namespace
+        name: "{{ namespace_name }}"
+        state: absent
+        wait: true
+      loop:
+        - allow-diagnosis-policy-reads-test
+        - allow-diagnosis-policy-reads-other
+        - "{{ itbench_namespaces.agents }}"
+      loop_control:
+        loop_var: namespace_name
+
+    - name: Import cluster role
+      ansible.builtin.import_role:
+        name: cluster
+
+    # The `tools` role owns the `itbench-mcp-servers` namespace, so it is removed here.
+    - name: Import tools role
+      ansible.builtin.import_role:
+        name: tools
+        tasks_from: uninstall.yaml
+      vars:
+        tools_cluster:
+          platform: "{{ cluster_platform }}"

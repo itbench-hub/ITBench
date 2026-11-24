@@ -1,0 +1,27 @@
+---
+- name: Install agent diagnosis access controls
+  hosts:
+    - localhost
+  vars:
+    agents_cluster:
+      platform: kubernetes
+  tasks:
+    - name: Retrieve fault injectable application namespaces
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Namespace
+        label_selectors:
+          - "itbench.io/ansible-role=applications"
+          - "itbench.io/inject=true"
+      register: agents_injectable_namespaces
+
+    # The diagnosis ClusterRoleBinding refers to the cluster-scoped read ClusterRole.
+    - name: Import agents role cluster-scoped read RBAC tasks
+      ansible.builtin.import_role:
+        name: agents
+        tasks_from: install_rbac_cluster_read.yaml
+
+    - name: Import agents role diagnosis RBAC tasks
+      ansible.builtin.import_role:
+        name: agents
+        tasks_from: install_rbac_diagnosis.yaml

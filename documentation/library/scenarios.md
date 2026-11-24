@@ -26,6 +26,8 @@ All benchmark scenarios available in ITBench.
 | 59 | sre | opentelemetry-demo | crashing-kubernetes-workload-init-container |
 | 60 | sre | opentelemetry-demo | crashing-kubernetes-workload-init-container, unsupported-architecture-kubernetes-workload-container-image |
 | 63 | sre | opentelemetry-demo | corrupted-kubernetes-secret-credentials |
+| 64 | ciso | bank-of-anthos | missing-resource-limits-kyverno-policy |
+| 65 | ciso | bank-of-anthos | historical-context-lacking-kyverno-policy |
 | 102 | sre | opentelemetry-demo | insufficient-kubernetes-resource-quota |
 | 105 | sre | opentelemetry-demo | invalid-kubernetes-workload-container-command |
 | 114 | sre | opentelemetry-demo | deleted-kubernetes-service |

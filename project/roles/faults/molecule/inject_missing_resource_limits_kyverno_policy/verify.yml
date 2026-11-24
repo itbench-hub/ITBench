@@ -55,3 +55,45 @@
         - failed_results | ansible.builtin.length > 0
       retries: 30
       delay: 5
+
+    # The fix, as the agent would make it. The failed entry must turn into a passed one.
+    - name: Restore the resource limits
+      kubernetes.core.k8s:
+        resource_definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: test-workload
+            namespace: missing-resource-limits-test
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: server
+                    resources:
+                      limits:
+                        cpu: 100m
+                        memory: 64Mi
+        state: patched
+
+    - name: Wait for the policy report to show the passed result
+      kubernetes.core.k8s_info:
+        api_version: wgpolicyk8s.io/v1alpha2
+        kind: PolicyReport
+        namespace: missing-resource-limits-test
+      register: faults_policy_reports_fixed
+      vars:
+        passed_results: >-
+          {{
+            faults_policy_reports_fixed.resources |
+            ansible.builtin.default([]) |
+            ansible.builtin.map(attribute="results", default=[]) |
+            ansible.builtin.flatten |
+            ansible.builtin.selectattr("policy", "equalto", "missing-resource-limits-test/require-container-limits") |
+            ansible.builtin.selectattr("result", "equalto", "pass") |
+            ansible.builtin.list
+          }}
+      until:
+        - passed_results | ansible.builtin.length > 0
+      retries: 30
+      delay: 5

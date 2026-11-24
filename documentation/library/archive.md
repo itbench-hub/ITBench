@@ -67,6 +67,15 @@ Use the release tag to run archived content. Use the links to read it. Each link
 
 **Related Scenarios:** [1](https://github.com/itbench-hub/ITBench/tree/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/1.gen-cis-b-k8s-kyverno), [2](https://github.com/itbench-hub/ITBench/tree/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/2.gen-cis-b-k8s-kubectl-opa), [3](https://github.com/itbench-hub/ITBench/tree/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/3.gen-cis-b-rhel9-ansible-opa), [4](https://github.com/itbench-hub/ITBench/tree/e0623c4413ef07128ef7e9e9ea494ad68ff2f2b3/scenarios/ciso/4.upd-cis-b-k8s-kyverno)
 
+**Ported to ITBench v2:**
+
+| Archived scenario | Goal | Successor | What carries over |
+| --- | --- | --- | --- |
+| 1 (`cis-b.5.2.5-gen`) | Write a Kyverno policy that minimizes admission of containers sharing the host network namespace. | [64](../../library/scenarios/64/scenario.yaml) | A Kyverno policy reports on a Kubernetes workload and the agent works from that report. The agent no longer writes the policy, and the control is different (resource limits, not host networking). |
+| 2 (`k8s-opa/cis-b-gen/5.2.5`) | The same control as scenario 1, written as OPA with `kubectl`. | None | |
+| 3 (`rhel9/cis-b-gen/5.2.12`) | Ensure SSH X11 forwarding is disabled on a RHEL9 host. | None | |
+| 4 (`policy-adapt/scenario1`) | Edit the existing Kyverno policies, without renaming or replacing them, to meet new requirements. | [65](../../library/scenarios/65/scenario.yaml) | The agent fixes an existing policy in place instead of creating a new one. The edit is limited to one field of one policy, and the new requirements are replaced by a defect (a policy that never reports). |
+
 ## Kubernetes API Server Request Surge Fault and Scenarios
 
 **Last Supported Release:** [`v1.4.1`](https://github.com/itbench-hub/ITBench/releases/tag/v1.4.1)
