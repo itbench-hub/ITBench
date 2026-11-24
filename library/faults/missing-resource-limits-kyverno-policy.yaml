@@ -1,0 +1,24 @@
+---
+signals:
+  kubernetes:
+    policy_reports:
+      - policy: require-container-limits
+        status: pass
+description: This fault installs a Kyverno policy that requires resource limits on every container of the indicated workload, then removes the resource limits of one of its containers.
+expectation: The workload keeps running because the policy only audits. However, its Kyverno policy report will show the `require-container-limits` policy as failed until the container's resource limits are restored.
+name: Missing Resource Limits Kyverno Policy
+platform: Kubernetes
+resources:
+  - https://kyverno.io/docs/guides/reports/
+  - https://kyverno.io/docs/policy-types/validating-policy/
+  - https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  - https://kubernetes.io/docs/concepts/workloads/
+tags:
+  - Deployment
+targets:
+  - kubernetes: KubernetesWorkload
+solution_templates:
+  templates:
+    - steps:
+        - command: kubectl -n {{ args.kubernetesObject.metadata.namespace }} edit {{ args.kubernetesObject.kind | lower }} {{ args.kubernetesObject.metadata.name }}
+          text: Manually edit the manifest and add resource limits to every container that does not have them.

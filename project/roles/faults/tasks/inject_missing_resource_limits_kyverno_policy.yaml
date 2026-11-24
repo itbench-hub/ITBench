@@ -1,0 +1,64 @@
+---
+- name: Include fault argument validation tasks
+  ansible.builtin.include_tasks:
+    file: validate_fault_arguments.yaml
+
+- name: Create Kyverno policy requiring resource limits
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: policies.kyverno.io/v1
+      kind: NamespacedValidatingPolicy
+      metadata:
+        labels:
+          "app.kubernetes.io/managed-by": ansible
+          "app.kubernetes.io/part-of": itbench
+          "itbench.io/layer": application
+        name: require-container-limits
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+      spec:
+        matchConstraints:
+          resourceRules:
+            - apiGroups:
+                - apps
+              apiVersions:
+                - v1
+              operations:
+                - CREATE
+                - UPDATE
+              resourceNames:
+                - "{{ faults_kubernetes_object.metadata.name }}"
+              resources:
+                - "{{ faults_kubernetes_object.kind | ansible.builtin.lower }}s"
+        validationActions:
+          - Audit
+        validations:
+          - expression: >-
+              object.spec.template.spec.containers.all(container,
+              has(container.resources) &&
+              has(container.resources.limits) &&
+              size(container.resources.limits) > 0)
+            message: Every container must define resource limits.
+    state: present
+
+- name: Remove resource limits from workload container
+  kubernetes.core.k8s:
+    resource_definition:
+      apiVersion: "{{ faults_kubernetes_object.apiVersion }}"
+      kind: "{{ faults_kubernetes_object.kind }}"
+      metadata:
+        name: "{{ faults_kubernetes_object.metadata.name }}"
+        namespace: "{{ faults_kubernetes_object.metadata.namespace }}"
+      spec:
+        template:
+          spec:
+            containers:
+              - name: "{{ container.name }}"
+                resources:
+                  limits:
+    state: patched
+  vars:
+    container: >-
+      {{
+        faults_kubernetes_object.spec.template.spec.containers |
+        ansible.builtin.random(seed=random_fault_injection_seed)
+      }}

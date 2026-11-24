@@ -4,10 +4,8 @@ All benchmark scenarios available in ITBench.
 
 | ID | Domains | Applications | Faults |
 | -- | ------- | ------------ | ------ |
-| 16 | sre | opentelemetry-demo | modified-kubernetes-workload-container-environment-variable |
 | 20 | sre | opentelemetry-demo | nonexistent-kubernetes-workload-container-image |
 | 23 | sre | opentelemetry-demo | unsupported-architecture-kubernetes-workload-container-image |
-| 24 | sre | opentelemetry-demo | modified-kubernetes-workload-container-environment-variable |
 | 30 | sre | opentelemetry-demo | modified-target-port-kubernetes-service |
 | 31 | sre | opentelemetry-demo | ingress-port-blocking-network-policy |
 | 33 | sre | opentelemetry-demo | nonexistent-kubernetes-workload-node, nonexistent-kubernetes-workload-node |
